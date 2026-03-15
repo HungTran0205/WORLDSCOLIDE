@@ -1,0 +1,270 @@
+.panel-overlay {
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 400px;
+  height: 100vh;
+  background: rgba(20, 20, 30, 0.95);
+  color: #e0e0e0;
+  padding: 16px;
+  overflow-y: auto;
+  z-index: 100;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  border-left: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+.panel-overlay h2 {
+  color: #ffd700;
+  margin: 0 0 12px;
+  font-size: 1.2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panel-close-btn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ccc;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.panel-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.panel-section {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.panel-btn {
+  background: linear-gradient(135deg, #4a3f2f, #2a2520);
+  color: #ffd700;
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.panel-btn:hover {
+  background: linear-gradient(135deg, #5a4f3f, #3a3530);
+}
+
+.panel-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Character creation full-screen */
+.char-creation-overlay {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+  color: #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.char-creation-overlay h1 {
+  color: #ffd700;
+  font-size: 2rem;
+  margin-bottom: 24px;
+}
+
+.stat-allocation-grid {
+  display: grid;
+  grid-template-columns: 80px 1fr 40px 40px;
+  gap: 8px;
+  align-items: center;
+  max-width: 400px;
+  width: 100%;
+}
+
+.stat-allocation-grid button {
+  background: rgba(255, 215, 0, 0.2);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  color: #ffd700;
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.stat-allocation-grid button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+input[type="text"] {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 1rem;
+  width: 100%;
+  max-width: 300px;
+  margin-bottom: 16px;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: #ffd700;
+}
+
+/* Confirm dialog modal */
+.confirm-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+}
+
+.confirm-dialog {
+  background: rgba(20, 20, 30, 0.98);
+  border: 2px solid rgba(255, 215, 0, 0.4);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 380px;
+  text-align: center;
+}
+
+.confirm-dialog__message {
+  color: #e0e0e0;
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.confirm-dialog__btn--danger {
+  border-color: rgba(231, 76, 60, 0.6) !important;
+  color: #e74c3c !important;
+}
+
+/* Mission progress bar */
+.mission-progress-bar {
+  position: relative;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.mission-progress-bar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4a90d9, #67b8e3);
+  transition: width 1s linear;
+}
+
+.mission-progress-bar__label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  color: #fff;
+}
+
+/* Member status badge */
+.member-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+/* Quest detail modal */
+.quest-detail-modal {
+  background: rgba(20, 20, 30, 0.98);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  max-width: 400px;
+  width: 90vw;
+}
+
+.quest-detail-modal__tier {
+  color: #ffd700;
+  font-size: 0.8rem;
+}
+
+.quest-detail-modal__zone {
+  color: #87ceeb;
+  font-size: 0.85rem;
+  margin: 8px 0;
+}
+
+.quest-detail-modal__enemies {
+  list-style: none;
+  padding: 0;
+}
+
+.quest-detail-modal__enemy {
+  padding: 4px 0;
+  font-size: 0.85rem;
+  color: #ddd;
+}
+
+/* Combat log */
+.combat-log {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.combat-log__tick {
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  border-left: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+.combat-log__event {
+  font-size: 0.8rem;
+  color: #ccc;
+  padding: 2px 0;
+}
+
+.combat-log__event--death {
+  color: #e74c3c;
+}
+
+.combat-log__event--victory {
+  color: #2ecc71;
+  font-weight: bold;
+}
+
+.combat-log__event--skill {
+  color: #4a90d9;
+}
+
+.combat-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}

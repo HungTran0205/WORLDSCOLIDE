@@ -1,0 +1,22 @@
+import { Canvas } from '@react-three/fiber';
+import { GuildHall } from './guild-hall';
+import { MemberLayer } from './member-layer';
+import { CameraController } from './camera-controller';
+
+/** Main 3D world — isometric guild hall view */
+export function World() {
+  return (
+    <Canvas
+      orthographic
+      camera={{ zoom: 80, position: [10, 10, 10], near: 0.1, far: 1000 }}
+      style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}
+    >
+      <ambientLight intensity={0.6} />
+      <directionalLight position={[5, 10, 5]} intensity={0.8} castShadow />
+
+      <CameraController />
+      <GuildHall />
+      <MemberLayer />
+    </Canvas>
+  );
+}

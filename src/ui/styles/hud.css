@@ -1,0 +1,133 @@
+.hud-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  pointer-events: none;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.hud-top-bar {
+  display: flex;
+  gap: 16px;
+  padding: 8px 16px;
+  background: rgba(20, 20, 30, 0.8);
+  color: #ffd700;
+  font-size: 0.9rem;
+  align-items: center;
+  pointer-events: auto;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.hud-top-bar span {
+  color: #ccc;
+}
+
+.panel-toggle-bar {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+  z-index: 50;
+}
+
+.panel-toggle-bar button {
+  background: rgba(20, 20, 30, 0.9);
+  color: #ccc;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.panel-toggle-bar button:hover {
+  background: rgba(40, 40, 60, 0.9);
+  color: #ffd700;
+}
+
+.panel-toggle-bar button.active {
+  background: rgba(255, 215, 0, 0.2);
+  color: #ffd700;
+  border-color: #ffd700;
+}
+
+.gold-display {
+  color: #ffd700;
+  font-weight: bold;
+}
+
+/* Save status badge */
+.save-badge {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.save-badge--saving {
+  color: #ffd700;
+  animation: savePulse 1s ease-in-out infinite;
+}
+
+.save-badge--saved {
+  color: #4caf50;
+  animation: saveFadeOut 2s ease forwards;
+}
+
+.save-badge--error {
+  color: #e74c3c;
+  cursor: pointer;
+  background: rgba(231, 76, 60, 0.15);
+}
+
+@keyframes savePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes saveFadeOut {
+  0%, 70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Notification toasts */
+.notification-stack {
+  position: fixed;
+  top: 50px;
+  right: 16px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.notification-toast {
+  background: rgba(20, 20, 30, 0.95);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 8px;
+  padding: 12px 16px;
+  min-width: 280px;
+  animation: notifSlideIn 0.3s ease;
+  cursor: pointer;
+}
+
+.notification-toast--victory {
+  border-color: rgba(100, 200, 100, 0.5);
+}
+
+.notification-toast--wipe {
+  border-color: rgba(200, 60, 60, 0.5);
+}
+
+@keyframes notifSlideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
