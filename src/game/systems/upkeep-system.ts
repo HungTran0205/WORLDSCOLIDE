@@ -9,9 +9,11 @@ export function calcMemberUpkeep(level: number): number {
   return Math.round(BASE_UPKEEP * Math.pow(UPKEEP_SCALE, level - 1));
 }
 
-/** Total daily upkeep for all members */
+/** Total daily upkeep — mercenaries excluded (they charge per-mission instead) */
 export function calcTotalUpkeep(members: Member[]): number {
-  return members.reduce((sum, m) => sum + calcMemberUpkeep(m.level), 0);
+  return members
+    .filter((m) => m.rank !== 'MERCENARY')
+    .reduce((sum, m) => sum + calcMemberUpkeep(m.level), 0);
 }
 
 /** Charge upkeep for N game days. Returns new gold and debt info. */
@@ -46,7 +48,8 @@ export function processDebtPenalty(
     return { updatedRoster: roster, removedMembers: [] };
   }
 
-  const nonFounders = roster.filter((m) => !m.isFounder);
+  // Mercenaries are excluded from eviction (no upkeep, no debt liability)
+  const nonFounders = roster.filter((m) => !m.isFounder && m.rank !== 'MERCENARY');
   if (nonFounders.length === 0) {
     return { updatedRoster: roster, removedMembers: [] };
   }

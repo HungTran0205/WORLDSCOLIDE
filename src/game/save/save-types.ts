@@ -9,10 +9,11 @@ import type {
   GameSettings,
   ActiveMission,
   TutorialStep,
+  TavernState,
 } from '@/game/state/game-state';
 
 /** Increment when game state shape changes; add a migration in save-migrations.ts */
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 /** Metadata shown on title-screen save slot cards */
 export interface SaveSlotMetadata {
@@ -39,6 +40,7 @@ export interface GameSaveData {
   activeMissions: ActiveMission[];
   completedMissions: string[];
   tutorialStep: TutorialStep;
+  tavern: TavernState;
 }
 
 /** Top-level save structure persisted to IndexedDB */
@@ -64,6 +66,7 @@ export function extractGameSaveData(state: Record<string, unknown>): GameSaveDat
     activeMissions: state.activeMissions as ActiveMission[],
     completedMissions: state.completedMissions as string[],
     tutorialStep: state.tutorialStep as TutorialStep,
+    tavern: state.tavern as TavernState,
   };
 }
 

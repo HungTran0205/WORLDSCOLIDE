@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
-import type { ActiveMission, MissionPhase } from '@/game/state/game-state';
+import type { ActiveMission, MissionPhase, QuestTier } from '@/game/state/game-state';
 import { useGameStore } from '@/game/state/store';
-import type { Mission, QuestTier } from '@/game/state/game-state';
+import type { Mission } from '@/game/state/game-state';
 import { MISSIONS } from '@/game/data/missions';
-import { createActiveMission } from '@/game/systems/mission-dispatch';
+import { validateDispatch, createActiveMission } from '@/game/systems/mission-dispatch';
+import { QUEST_BOARD_TIER_BY_LEVEL } from '@/game/data/buildings';
 import { ARRIVAL_TIMEOUT_MS } from '@/game/systems/mission-tick';
 import { MissionProgressBar } from '@/ui/components/mission-progress-bar';
 import { QuestDetailModal } from '@/ui/panels/quest-detail-modal';
@@ -12,14 +13,7 @@ import { playSFX } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
 import '@/ui/styles/panels.css';
 
-const TIER_UNLOCK: Record<number, QuestTier[]> = {
-  1: ['F', 'E'],
-  2: ['F', 'E', 'D'],
-  3: ['F', 'E', 'D', 'C'],
-  4: ['F', 'E', 'D', 'C', 'B'],
-  5: ['F', 'E', 'D', 'C', 'B', 'A'],
-  6: ['F', 'E', 'D', 'C', 'B', 'A', 'S'],
-};
+const TIER_ORDER: QuestTier[] = ['F', 'E', 'D', 'C', 'B', 'A', 'S'];
 
 interface QuestBoardProps {
   onClose: () => void;
@@ -28,7 +22,8 @@ interface QuestBoardProps {
 export function QuestBoard({ onClose }: QuestBoardProps) {
   const founder = useGameStore((s) => s.founder);
   const roster = useGameStore((s) => s.roster);
-  const guildLevel = useGameStore((s) => s.guildLevel);
+  const guildHall = useGameStore((s) => s.guildHall);
+  const gold = useGameStore((s) => s.gold);
   const activeMissions = useGameStore((s) => s.activeMissions);
 
   const availableMembers = useMemo(() => {
@@ -36,10 +31,18 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
     return all.filter((m) => m.status === 'idle');
   }, [founder, roster]);
 
+  // Determine max quest tier from highest-level quest-board room
   const unlockedTiers = useMemo(() => {
-    return TIER_UNLOCK[Math.min(guildLevel, 6)] ?? ['F' as QuestTier];
-  }, [guildLevel]);
+    const questBoards = guildHall.rooms.filter((r) => r.type === 'quest-board');
+    if (questBoards.length === 0) return ['F' as QuestTier];
+    const maxLevel = Math.max(...questBoards.map((r) => r.level));
+    const maxTier = QUEST_BOARD_TIER_BY_LEVEL[maxLevel] ?? 'F';
+    const maxIdx = TIER_ORDER.indexOf(maxTier);
+    return TIER_ORDER.slice(0, maxIdx + 1);
+  }, [guildHall]);
+
   const dispatchMission = useGameStore((s) => s.dispatchMission);
+  const spendGold = useGameStore((s) => s.spendGold);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [filterTier, setFilterTier] = useState<QuestTier | 'all'>('all');
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
@@ -59,6 +62,12 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
   const handleDispatch = (mission: Mission) => {
     if (selectedMembers.length < mission.requiredMembers) return;
     const dispatched = selectedMembers.slice(0, mission.requiredMembers);
+    const party = [...(founder ? [founder] : []), ...roster].filter((m) =>
+      dispatched.includes(m.id),
+    );
+    const validation = validateDispatch(mission, party, gold);
+    if (!validation.valid) return;
+    if (validation.mercenaryFee > 0 && !spendGold(validation.mercenaryFee)) return;
     const now = Date.now();
     dispatchMission(createActiveMission(mission, dispatched, now));
     dispatched.forEach((id) => updateMemberStatus(id, 'on-mission'));

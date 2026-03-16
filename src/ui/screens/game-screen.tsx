@@ -5,9 +5,11 @@
 
 import { useState, useEffect } from 'react';
 import { World } from '@/scene/world';
+import type { RoomType } from '@/game/state/game-state';
 import { HUD } from '@/ui/hud/hud';
 import { QuestBoard } from '@/ui/panels/quest-board';
 import { GuildRoster } from '@/ui/panels/guild-roster';
+import { TavernPanel } from '@/ui/panels/tavern-panel';
 import { BuildMenu } from '@/ui/panels/build-menu';
 import { CombatView } from '@/ui/panels/combat-view';
 import { SettingsPanel } from '@/ui/panels/settings-panel';
@@ -67,15 +69,21 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   const allMembers = founder ? [founder, ...roster] : roster;
   const isGameOver = allMembers.length > 0 && allMembers.every((m) => m.status === 'injured');
 
-  // Start game tick loop (missions, injuries, clock)
+  // Start game tick loop (missions, injuries, clock, tavern refresh)
   useGameTickLoop();
+
+  const handleRoomClick = (roomType: RoomType) => {
+    if (roomType === 'tavern') setActivePanel('tavern');
+    else if (roomType === 'quest-board') setActivePanel('quests');
+  };
 
   return (
     <>
-      <World />
+      <World onRoomClick={handleRoomClick} />
       <HUD activePanel={activePanel} setActivePanel={setActivePanel} />
       {activePanel === 'quests' && <QuestBoard onClose={() => setActivePanel(null)} />}
       {activePanel === 'roster' && <GuildRoster onClose={() => setActivePanel(null)} />}
+      {activePanel === 'tavern' && <TavernPanel onClose={() => setActivePanel(null)} />}
       {activePanel === 'build' && <BuildMenu onClose={() => setActivePanel(null)} />}
       {activePanel === 'combat' && <CombatView onClose={() => setActivePanel(null)} />}
       {activePanel === 'settings' && (

@@ -62,7 +62,7 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
         result.data.metadata.slotId = slotId;
         await saveSlot(slotId, result.data);
       }
-      useGameStore.setState(result.data.gameState, true);
+      useGameStore.setState(result.data.gameState as unknown as Parameters<typeof useGameStore.setState>[0], true);
       setImportSuccess(true);
     };
     input.click();

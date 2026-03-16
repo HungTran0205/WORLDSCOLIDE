@@ -46,11 +46,18 @@ export function MemberCard({ member, onAllocateStat, activeMissionName }: Member
     statusLabel = `Injured (${mins}m)`;
   }
 
+  const isMercenary = member.rank === 'MERCENARY';
+
   return (
     <div className="panel-section">
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
         <strong style={{ color: member.isFounder ? '#ffd700' : '#87ceeb' }}>
           {member.name}
+          {isMercenary && (
+            <span style={{ fontSize: '0.7rem', color: '#f0a500', marginLeft: 6, border: '1px solid #f0a500', padding: '1px 4px', borderRadius: 3 }}>
+              MERC
+            </span>
+          )}
         </strong>
         <span style={{ fontSize: '0.8rem', color: '#aaa' }}>
           Lv.{member.level} | {member.civilization}
@@ -78,6 +85,8 @@ export function MemberCard({ member, onAllocateStat, activeMissionName }: Member
           {member.unallocatedPoints > 0 && onAllocateStat && (
             <button
               onClick={() => onAllocateStat(stat)}
+              disabled={isMercenary}
+              title={isMercenary ? 'Mercenaries auto-distribute stats' : undefined}
               style={{
                 background: 'rgba(255,215,0,0.2)',
                 border: '1px solid rgba(255,215,0,0.4)',
@@ -85,8 +94,9 @@ export function MemberCard({ member, onAllocateStat, activeMissionName }: Member
                 width: 20,
                 height: 20,
                 borderRadius: 4,
-                cursor: 'pointer',
+                cursor: isMercenary ? 'not-allowed' : 'pointer',
                 fontSize: '0.7rem',
+                opacity: isMercenary ? 0.4 : 1,
               }}
             >
               +

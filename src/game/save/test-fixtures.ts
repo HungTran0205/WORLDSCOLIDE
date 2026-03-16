@@ -18,6 +18,7 @@ export const VALID_MEMBER: Member = {
   injuredUntil: null,
   civilization: 'human',
   isFounder: true,
+  rank: 'MEMBER',
 };
 
 export const VALID_ROSTER_MEMBER: Member = {
@@ -32,6 +33,7 @@ export const VALID_ROSTER_MEMBER: Member = {
   injuredUntil: null,
   civilization: 'elf',
   isFounder: false,
+  rank: 'MEMBER',
 };
 
 export const VALID_GUILD_HALL: GuildHall = {
@@ -69,6 +71,7 @@ export const VALID_GAME_SAVE_DATA: GameSaveData = {
   activeMissions: [],
   completedMissions: [],
   tutorialStep: 'sandbox-intro',
+  tavern: { lastRefreshTime: 0, availableMercenaries: [] },
 };
 
 export const VALID_METADATA: SaveSlotMetadata = {

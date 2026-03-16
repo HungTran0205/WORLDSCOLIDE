@@ -1,6 +1,18 @@
 import type { StateCreator } from 'zustand';
-import type { Member, MemberStatus, StatKey } from './game-state';
+import type { Member, MemberStatus, StatKey, Stats } from './game-state';
 import { expToNextLevel, LEVEL_UP_BONUS_POINTS } from '@/game/systems/leveling-system';
+
+const ALL_STATS: StatKey[] = ['STR', 'END', 'INT', 'DEX', 'CHA', 'LCK', 'AGI'];
+
+/** Randomly distribute stat points across all stats (for mercenary level-ups) */
+function autoDistributeStats(stats: Stats, points: number): Stats {
+  const result = { ...stats };
+  for (let i = 0; i < points; i++) {
+    const key = ALL_STATS[Math.floor(Math.random() * ALL_STATS.length)];
+    result[key] += 1;
+  }
+  return result;
+}
 
 export interface RosterSlice {
   founder: Member | null;
@@ -18,14 +30,20 @@ function applyExpGain(member: Member, exp: number): Member {
   let newExp = member.exp + exp;
   let newLevel = member.level;
   let newPoints = member.unallocatedPoints;
+  let newStats = member.stats;
 
   while (newExp >= expToNextLevel(newLevel)) {
     newExp -= expToNextLevel(newLevel);
     newLevel++;
-    newPoints += LEVEL_UP_BONUS_POINTS;
+    if (member.rank === 'MERCENARY') {
+      // Mercenaries auto-distribute stat points — no manual allocation
+      newStats = autoDistributeStats(newStats, LEVEL_UP_BONUS_POINTS);
+    } else {
+      newPoints += LEVEL_UP_BONUS_POINTS;
+    }
   }
 
-  return { ...member, exp: newExp, level: newLevel, unallocatedPoints: newPoints };
+  return { ...member, exp: newExp, level: newLevel, unallocatedPoints: newPoints, stats: newStats };
 }
 
 function updateMember(members: Member[], id: string, updater: (m: Member) => Member): Member[] {

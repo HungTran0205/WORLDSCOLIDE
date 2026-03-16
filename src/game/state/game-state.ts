@@ -22,6 +22,8 @@ export interface Skill {
 
 export type MemberStatus = 'idle' | 'on-mission' | 'injured' | 'training';
 
+export type MemberRank = 'MEMBER' | 'MERCENARY';
+
 export interface Member {
   id: string;
   name: string;
@@ -34,6 +36,12 @@ export interface Member {
   injuredUntil: number | null;
   civilization: string;
   isFounder: boolean;
+  rank: MemberRank;
+}
+
+export interface TavernState {
+  lastRefreshTime: number; // Unix ms timestamp
+  availableMercenaries: Member[];
 }
 
 export type QuestTier = 'F' | 'E' | 'D' | 'C' | 'B' | 'A' | 'S';

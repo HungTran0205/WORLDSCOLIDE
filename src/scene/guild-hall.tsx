@@ -4,6 +4,9 @@ import { getRotatedSize, HALL_WIDTH, HALL_DEPTH } from '@/game/systems/building-
 import { BuildOverlay } from './build-overlay';
 import type { Room, RoomType } from '@/game/state/game-state';
 
+/** Room types that open a panel when clicked outside build mode */
+const CLICKABLE_ROOM_TYPES: RoomType[] = ['quest-board', 'tavern'];
+
 const ROOM_COLORS: Record<RoomType, string> = {
   'quest-board': '#DAA520',
   'tavern': '#8B4513',
@@ -12,7 +15,12 @@ const ROOM_COLORS: Record<RoomType, string> = {
   'infirmary': '#FF6347',
 };
 
-function RoomMesh({ room }: { room: Room }) {
+interface RoomMeshProps {
+  room: Room;
+  onRoomClick?: (roomType: RoomType) => void;
+}
+
+function RoomMesh({ room, onRoomClick }: RoomMeshProps) {
   const isBuildMode = useGameStore((s) => s.isBuildMode);
   const activeItem = useGameStore((s) => s.activeItem);
   const startMovingRoom = useGameStore((s) => s.startMovingRoom);
@@ -26,10 +34,14 @@ function RoomMesh({ room }: { room: Room }) {
   if (activeItem?.type === 'existing' && activeItem.roomId === room.id) return null;
 
   const handleClick = (e: { stopPropagation: () => void }) => {
-    // Only pick up rooms when in build mode and nothing else is being placed
     if (isBuildMode && !activeItem) {
+      // In build mode: pick up the room to move it
       e.stopPropagation();
       startMovingRoom(room.id, room.type, room.position, room.rotation);
+    } else if (!isBuildMode && CLICKABLE_ROOM_TYPES.includes(room.type)) {
+      // Outside build mode: open the room's panel
+      e.stopPropagation();
+      onRoomClick?.(room.type);
     }
   };
 
@@ -45,8 +57,12 @@ function RoomMesh({ room }: { room: Room }) {
   );
 }
 
+interface GuildHallProps {
+  onRoomClick?: (roomType: RoomType) => void;
+}
+
 /** Guild hall floor + rooms + build overlay */
-export function GuildHall() {
+export function GuildHall({ onRoomClick }: GuildHallProps) {
   const rooms = useGameStore((s) => s.guildHall.rooms);
   const isBuildMode = useGameStore((s) => s.isBuildMode);
 
@@ -59,7 +75,7 @@ export function GuildHall() {
       </mesh>
 
       {rooms.map((room) => (
-        <RoomMesh key={room.id} room={room} />
+        <RoomMesh key={room.id} room={room} onRoomClick={onRoomClick} />
       ))}
 
       {isBuildMode && <BuildOverlay />}

@@ -1,10 +1,11 @@
 import '@/ui/styles/hud.css';
 
-export type PanelId = 'quests' | 'roster' | 'build' | 'combat' | 'settings' | null;
+export type PanelId = 'quests' | 'roster' | 'build' | 'combat' | 'settings' | 'tavern' | null;
 
 const PANELS = [
   { id: 'quests' as const, label: 'Quests' },
   { id: 'roster' as const, label: 'Roster' },
+  { id: 'tavern' as const, label: 'Tavern' },
   { id: 'build' as const, label: 'Build' },
   { id: 'settings' as const, label: 'Settings' },
 ];

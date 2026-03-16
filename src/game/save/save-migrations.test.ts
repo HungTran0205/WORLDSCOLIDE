@@ -7,10 +7,13 @@ describe('migrateSave', () => {
   it('migrates v1 data to current version', () => {
     const result = migrateSave(VALID_SAVE_ENVELOPE);
     expect(result.version).toBe(SAVE_VERSION);
-    // v1→v2 adds phase/arrivalTime/combatMode to missions
     // v2→v3 adds rotation to rooms
-    const rooms = (result.gameState.guildHall as { rooms: Array<Record<string, unknown>> }).rooms;
+    const rooms = (result.gameState.guildHall as unknown as { rooms: Array<Record<string, unknown>> }).rooms;
     expect(rooms[0].rotation).toBe(0);
+    // v3→v4 adds rank to members and tavern to gameState
+    expect(result.gameState.founder?.rank).toBe('MEMBER');
+    result.gameState.roster.forEach((m) => expect(m.rank).toBe('MEMBER'));
+    expect(result.gameState.tavern).toEqual({ lastRefreshTime: 0, availableMercenaries: [] });
     expect(result.metadata).toEqual(VALID_SAVE_ENVELOPE.metadata);
   });
 

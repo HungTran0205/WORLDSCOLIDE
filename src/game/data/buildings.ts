@@ -1,4 +1,4 @@
-import type { RoomType } from '@/game/state/game-state';
+import type { RoomType, QuestTier } from '@/game/state/game-state';
 
 export interface GuildUpgrade {
   level: number;
@@ -26,6 +26,15 @@ export interface RoomDefinition {
   /** Grid depth (z-axis cells) */
   depth: number;
 }
+
+/** Maps quest-board room level → maximum unlockable quest tier */
+export const QUEST_BOARD_TIER_BY_LEVEL: Record<number, QuestTier> = {
+  1: 'F',
+  2: 'E',
+  3: 'D',
+  4: 'C',
+  5: 'B',
+};
 
 export const ROOM_DEFINITIONS: RoomDefinition[] = [
   { type: 'quest-board', name: 'Quest Board', description: 'Enables missions', baseCost: 0, effect: 'mission-access', width: 1, depth: 1 },
