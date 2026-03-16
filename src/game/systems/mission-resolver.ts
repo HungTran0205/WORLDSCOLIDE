@@ -1,7 +1,9 @@
 import type { Member, Mission } from '@/game/state/game-state';
 import type { CombatResult, CombatOutcome } from './combat-types';
+import type { ItemID } from '@/game/data/items';
 import { ENEMIES } from '@/game/data/enemies';
 import { simulateCombat } from './combat-simulator';
+import { rollLoot, mergeLoot } from './loot-roller';
 
 export interface MissionResult {
   missionId: string;
@@ -11,6 +13,7 @@ export interface MissionResult {
   survivors: string[];
   injured: string[];
   combatResult: CombatResult;
+  lootEarned: Partial<Record<ItemID, number>>;
 }
 
 function randomInt(min: number, max: number): number {
@@ -27,6 +30,7 @@ export function resolveMission(mission: Mission, members: Member[]): MissionResu
 
   let goldEarned = 0;
   let expPerMember = 0;
+  let lootEarned: Partial<Record<ItemID, number>> = {};
 
   if (combatResult.outcome !== 'full-wipe') {
     goldEarned = randomInt(mission.goldRewardMin, mission.goldRewardMax);
@@ -35,6 +39,13 @@ export function resolveMission(mission: Mission, members: Member[]): MissionResu
     // LCK bonus on gold
     const avgLck = members.reduce((s, m) => s + m.stats.LCK, 0) / members.length;
     goldEarned = Math.floor(goldEarned * (1 + avgLck * 0.01));
+
+    // Roll loot for each enemy in the mission
+    const lootRolls = mission.enemyIds
+      .map((id) => ENEMIES[id])
+      .filter(Boolean)
+      .map((enemy) => rollLoot(enemy.loot));
+    lootEarned = mergeLoot(...lootRolls);
   }
 
   return {
@@ -45,5 +56,6 @@ export function resolveMission(mission: Mission, members: Member[]): MissionResu
     survivors: combatResult.survivors,
     injured: combatResult.injured,
     combatResult,
+    lootEarned,
   };
 }

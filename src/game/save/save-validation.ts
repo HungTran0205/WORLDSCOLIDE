@@ -91,7 +91,9 @@ function isValidGameSaveData(v: unknown): v is GameSaveData {
     v.roster.every(isValidMember) &&
     Array.isArray(v.activeMissions) &&
     Array.isArray(v.completedMissions) &&
-    typeof v.tutorialStep === 'string'
+    typeof v.tutorialStep === 'string' &&
+    // inventory added in v5 — accept missing (migration will add it) or valid object
+    (v.inventory === undefined || (isRecord(v.inventory) && isRecord((v.inventory as Record<string, unknown>).items)))
   );
 }
 

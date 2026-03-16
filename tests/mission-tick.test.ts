@@ -10,7 +10,7 @@ function makeMember(id: string, status: Member['status'] = 'on-mission'): Member
     id, name: id, level: 5, exp: 0,
     stats: { STR: 10, END: 10, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 },
     unallocatedPoints: 0, skill: null, status, injuredUntil: null,
-    civilization: 'human', isFounder: false,
+    civilization: 'human', isFounder: false, rank: 'MEMBER',
   };
 }
 
@@ -61,6 +61,7 @@ function makeStore(
       calls.push(`setArrivedMissionId:${id}`);
     }),
     addGold: vi.fn((g: number) => { calls.push(`addGold:${g}`); }),
+    addItem: vi.fn((id: string, amt: number) => { calls.push(`addItem:${id}:${amt}`); }),
     addMemberExp: vi.fn((id: string, exp: number) => { calls.push(`addExp:${id}:${exp}`); }),
     updateMemberStatus: vi.fn((id: string, s: string) => { calls.push(`setStatus:${id}:${s}`); }),
     completeMission: vi.fn((id: string) => {
@@ -176,6 +177,7 @@ describe('processMissionTick — in-combat phase', () => {
         survivors: ['m1'],
         injured: [],
         combatResult: { outcome: 'victory', ticks: [], totalDamageDealt: 100, durationMs: 5000 },
+        lootEarned: {},
       }),
     }));
 

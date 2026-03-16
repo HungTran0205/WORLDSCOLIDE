@@ -1,8 +1,8 @@
 # Development Roadmap
 
-**Last Updated**: 2026-03-15
-**Current Phase**: Phase 5 In Progress (Build Mode Advanced v3 Complete)
-**Overall Progress**: ~75% Complete
+**Last Updated**: 2026-03-16
+**Current Phase**: Phase 5 In Progress (Structures Utility v1.4 Complete)
+**Overall Progress**: ~80% Complete
 
 ---
 
@@ -148,7 +148,7 @@
 
 ## Phase 5: Polish & Launch (IN PROGRESS)
 
-**Status**: 🟡 IN PROGRESS (75% complete)
+**Status**: 🟡 IN PROGRESS (80% complete)
 **Target Completion**: 2026-03-30
 **Duration**: ~2 weeks
 
@@ -157,6 +157,10 @@
 - [x] Collision detection & boundary validation (24 tests, 95%+ coverage)
 - [x] Advanced Build Mode — Room moving, build toggle, member hiding (v1.3 released)
 - [x] Build mode advanced tests (48 new tests, 100% passing)
+- [x] Structures Utility — Mercenary system + Tavern + Quest Board tier gating (v1.4 released)
+- [x] Mercenary/Tavern integration tests (25/25 passing)
+- [x] Inventory & Multi-Resource Economy — Item database, loot system, building costs (v1.5 released)
+- [x] Resource loot and cost integration tests (full suite passing)
 - [x] Documentation updated (codebase-summary, system-architecture, changelog, roadmap)
 
 ### Current Tasks
@@ -179,7 +183,7 @@
 
 | Week | Tasks | Target |
 |------|-------|--------|
-| Week 1 (03/15-03/21) | Build Mode v2+v3 complete, advanced features, comprehensive testing | 75% complete ✅ |
+| Week 1 (03/15-03/21) | Build Mode v2+v3 complete, advanced features, mercenary system (v1.4), testing | 80% complete ✅ |
 | Week 2 (03/22-03/28) | Performance optimization, accessibility, i18n, final docs, bug fixes | 90% complete (on track) |
 | Week 3 (03/29-03/30) | Launch decision, final build | 100% complete |
 
@@ -239,6 +243,8 @@
 | Phase 4 Complete | 2026-03-15 | ✅ Done | Save system v1 |
 | Phase 5 Checkpoint 1 | 2026-03-21 | ✅ Done | Build Mode v2 complete, 24 tests passing |
 | Phase 5 Checkpoint 2 | 2026-03-21 | ✅ Done | Advanced Build Mode v3, 48 tests passing, docs updated |
+| Phase 5 Checkpoint 3 | 2026-03-16 | ✅ Done | Structures Utility v1.4 (mercenary system), 25/25 tests passing |
+| Phase 5 Checkpoint 4 | 2026-03-16 | ✅ Done | Inventory & Multi-Resource Economy v1.5, full test suite passing |
 | Phase 5 Complete | 2026-03-30 | 🟡 Expected | Performance optimization, accessibility, launch decision |
 | Phase 6 Start | 2026-04-15 | 📋 Planned | Post-launch content |
 

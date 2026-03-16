@@ -5,6 +5,7 @@
 
 import { useEffect } from 'react';
 import { useGameStore } from '@/game/state/store';
+import { getItemInfo, type ItemID } from '@/game/data/items';
 import '@/ui/styles/hud.css';
 
 export function MissionNotification() {
@@ -24,6 +25,7 @@ export function MissionNotification() {
           outcome={n.result?.outcome ?? null}
           gold={n.result?.goldEarned ?? 0}
           exp={n.result?.expPerMember ?? 0}
+          loot={n.result?.lootEarned ?? {}}
           survivors={n.result?.survivors.length ?? 0}
           injured={n.result?.injured.length ?? 0}
           onDismiss={() => dismissNotification(n.id)}
@@ -40,12 +42,13 @@ interface ToastProps {
   outcome: string | null;
   gold: number;
   exp: number;
+  loot: Partial<Record<ItemID, number>>;
   survivors: number;
   injured: number;
   onDismiss: () => void;
 }
 
-function NotificationToast({ id, missionName, notificationType, outcome, gold, exp, survivors, injured, onDismiss }: ToastProps) {
+function NotificationToast({ id, missionName, notificationType, outcome, gold, exp, loot, survivors, injured, onDismiss }: ToastProps) {
   // Use id as dep instead of onDismiss to prevent timer reset on parent re-render
   useEffect(() => {
     const timer = setTimeout(onDismiss, 5000);
@@ -74,6 +77,14 @@ function NotificationToast({ id, missionName, notificationType, outcome, gold, e
         <div style={{ fontSize: '0.8rem', color: '#ccc', marginTop: 4 }}>
           +{gold} Gold | +{exp} EXP | {survivors} survived
           {injured > 0 && <span style={{ color: '#e74c3c' }}> | {injured} injured</span>}
+          {Object.keys(loot).length > 0 && (
+            <div style={{ color: '#a8d8ea', marginTop: 2 }}>
+              {Object.entries(loot)
+                .filter(([, amt]) => amt && amt > 0)
+                .map(([id, amt]) => `+${amt} ${getItemInfo(id as ItemID).name}`)
+                .join(', ')}
+            </div>
+          )}
         </div>
       )}
     </div>

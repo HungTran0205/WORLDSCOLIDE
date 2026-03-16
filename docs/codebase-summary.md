@@ -111,6 +111,7 @@ src/
 - **Upkeep**: Daily cost scales with roster size + room count
 - **Debt**: Accumulates if upkeep unpaid; penalties apply
 - **Recruitment**: Fixed costs per civilization, unlock higher tiers with progression
+- **Multi-Resource Economy**: 8 item types earned from loot, spent on building costs
 
 ### Guild Hall System (Build Mode Level 2)
 - **Grid-Based Placement**: 10x6 cell grid with multi-cell room support
@@ -135,6 +136,54 @@ src/
 - **Keys**: Game UI, panel headers, button labels, system messages
 - **Title Screen**: Slot display, action buttons, messages
 - **Save/Import Dialogs**: User-facing feedback
+
+## Recent Changes (Inventory & Multi-Resource Economy — v1.5)
+
+### Item Database & Inventory System (Major Feature)
+- **8 Core Item Types**: WOOD, STONE, IRON_ORE, SLIME_GEL, BOAR_PELT, WOLF_FANG, GOBLIN_EAR, ORC_TUSK
+- **Inventory Zustand Slice**: Atomic `consumeItems()` and `addItems()` actions
+- **Item Registry**: `items.ts` defines all item types with names and stack limits
+- **Inventory State**: Stores quantity per item type in guild state
+
+### Multi-Resource Loot System (Major Feature)
+- **Loot Rules**: Each enemy has `LootRule[]` with `chance`, `minQuantity`, `maxQuantity`
+- **Loot Rolling**: Pure `rollLoot()` function generates random item drops per enemy defeated
+- **Loot Merging**: `mergeLoot()` combines drops into `ItemDropMap`
+- **Mission Integration**: `MissionResult` includes `lootEarned: ItemDropMap`
+- **Mission Notifications**: Toast notifications show items earned alongside gold/EXP
+
+### Multi-Resource Building Costs (Major Feature)
+- **ResourceCost Type**: `{ gold: number; items: ItemQuantityMap }`
+- **Building Requirements**: Training Room (200g + 10 Wood), Workshop (300g + 5 Wood + 5 Iron Ore), Infirmary (250g + 8 Stone)
+- **Placement Validation**: `canPlaceRoom()` checks both gold AND inventory items
+- **Cost Deduction**: Building placement deducts resources atomically
+- **Item Consumption**: `consumeItems()` action ensures inventory consistency
+
+### Resource HUD Display (Major Feature)
+- **Resource Bar**: Shows Wood/Stone/Iron quantities alongside gold in top bar
+- **Quick Reference**: At-a-glance inventory status during gameplay
+- **Quest Board**: Missions show potential item drops (from loot tables)
+
+### Save Migration v4 → v5
+- **Version Bump**: `SAVE_VERSION` incremented to 5
+- **Auto-Migration**: `migrateV4toV5()` adds `inventory: { ... }` structure with zero quantities
+- **Backward Compatibility**: Old saves load with default empty inventory
+
+**Key Files (New)**:
+- `src/game/data/items.ts` — Item type registry with name + stack limits
+- `src/game/state/inventory-slice.ts` — Zustand slice for inventory CRUD
+- `src/game/systems/loot-roller.ts` — `rollLoot()` + `mergeLoot()` pure functions
+- `src/ui/components/resource-bar.tsx` — HUD resource display component
+
+**Key Files (Modified)**:
+- `game-state.ts` — `ItemDropMap` type, `ResourceCost` type
+- `buildings.ts` — Updated cost definitions (ResourceCost format)
+- `mission-resolver.ts` — Integrated loot earning into `MissionResult`
+- `quest-board.tsx` — Display potential drops + call `consumeItems()` on dispatch
+- `save-types.ts` — `SAVE_VERSION: 5`, inventory field
+- `save-migrations.ts` — `migrateV4toV5` migration
+
+**Test Coverage**: Full test suite passing with inventory/loot/cost validation
 
 ## Recent Changes (Build Mode Advanced — v1.3)
 

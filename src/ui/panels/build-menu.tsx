@@ -1,9 +1,24 @@
 import { useGameStore } from '@/game/state/store';
-import { ROOM_DEFINITIONS } from '@/game/data/buildings';
+import { ROOM_DEFINITIONS, type ResourceCost } from '@/game/data/buildings';
+import { getItemInfo } from '@/game/data/items';
 import { getUpgradeCost } from '@/game/systems/guild-upgrade-system';
 import { canPlaceRoom } from '@/game/systems/building-system';
 import type { RoomType } from '@/game/state/game-state';
 import '@/ui/styles/panels.css';
+
+/** Format a ResourceCost for display, e.g. "200 G + 10 Wood" */
+function formatCost(cost: ResourceCost): string {
+  const parts: string[] = [];
+  if (cost.gold > 0) parts.push(`${cost.gold} G`);
+  if (cost.items) {
+    for (const [id, amount] of Object.entries(cost.items)) {
+      if (amount && amount > 0) {
+        parts.push(`${amount} ${getItemInfo(id as import('@/game/data/items').ItemID).name}`);
+      }
+    }
+  }
+  return parts.length > 0 ? parts.join(' + ') : 'Free';
+}
 
 interface BuildMenuProps {
   onClose: () => void;
@@ -12,6 +27,7 @@ interface BuildMenuProps {
 export function BuildMenu({ onClose }: BuildMenuProps) {
   const guildHall = useGameStore((s) => s.guildHall);
   const gold = useGameStore((s) => s.gold);
+  const inventory = useGameStore((s) => s.inventory);
   const guildLevel = useGameStore((s) => s.guildLevel);
   const upgradeGuild = useGameStore((s) => s.upgradeGuild);
   const spendGold = useGameStore((s) => s.spendGold);
@@ -22,7 +38,7 @@ export function BuildMenu({ onClose }: BuildMenuProps) {
   const upgradeCost = getUpgradeCost(guildLevel);
 
   const handleSelectRoom = (type: RoomType) => {
-    const check = canPlaceRoom(guildHall, type, gold);
+    const check = canPlaceRoom(guildHall, type, gold, inventory);
     if (!check.success) return;
     startPlacement(type);
     onClose(); // Close panel to show grid overlay
@@ -59,7 +75,7 @@ export function BuildMenu({ onClose }: BuildMenuProps) {
       {ROOM_DEFINITIONS
         .filter((def) => !existingTypes.has(def.type))
         .map((def) => {
-          const check = canPlaceRoom(guildHall, def.type, gold);
+          const check = canPlaceRoom(guildHall, def.type, gold, inventory);
           return (
             <div key={def.type} className="panel-section">
               <strong>{def.name}</strong>
@@ -71,7 +87,7 @@ export function BuildMenu({ onClose }: BuildMenuProps) {
                 disabled={!canBuildMore || !check.success}
                 onClick={() => handleSelectRoom(def.type)}
               >
-                Place ({def.baseCost} G)
+                Place ({formatCost(def.cost)})
               </button>
             </div>
           );

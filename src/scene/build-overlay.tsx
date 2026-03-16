@@ -11,6 +11,7 @@ import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '@/game/state/store';
 import { ROOM_DEFINITIONS } from '@/game/data/buildings';
+import type { ItemID } from '@/game/data/items';
 import {
   HALL_WIDTH,
   HALL_DEPTH,
@@ -113,10 +114,17 @@ export function BuildOverlay() {
     [],
   );
 
-  // Valid placement: no collision, and for new rooms also check gold
+  const inventory = useGameStore((s) => s.inventory);
+
+  // Valid placement: no collision, and for new rooms also check gold + items
+  const canAfford = def
+    ? gold >= def.cost.gold && (!def.cost.items || Object.entries(def.cost.items).every(
+        ([id, needed]) => needed === undefined || (inventory.items[id as ItemID] ?? 0) >= needed,
+      ))
+    : false;
   const isValid = ghostPos && def
     ? !checkCollision(guildHall, ghostPos.x, ghostPos.z, size.w, size.h, excludeId) &&
-      (activeItem?.type === 'existing' || gold >= def.baseCost)
+      (activeItem?.type === 'existing' || canAfford)
     : false;
 
   // Confirm placement or move on click — reads fresh state to avoid stale closure
@@ -150,9 +158,14 @@ export function BuildOverlay() {
         },
       }));
     } else {
-      if (hasCollision || state.gold < currentDef.baseCost) return;
-      // New room: spend gold and add to hall
-      if (!state.spendGold(currentDef.baseCost)) return;
+      if (hasCollision || state.gold < currentDef.cost.gold) return;
+      // Spend gold first (cheaper check), then consume items atomically
+      if (!state.spendGold(currentDef.cost.gold)) return;
+      if (currentDef.cost.items && !state.consumeItems(currentDef.cost.items)) {
+        // Rollback gold if item consumption fails
+        state.addGold(currentDef.cost.gold);
+        return;
+      }
       const newRoom = placeRoom(currentType, { x: ghostPos.x, z: ghostPos.z }, currentRotation);
       useGameStore.setState((s) => ({
         guildHall: { ...s.guildHall, rooms: [...s.guildHall.rooms, newRoom] },

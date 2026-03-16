@@ -391,6 +391,70 @@ getRotatedSize(width, depth, rotation):
 **Example**: Tavern (2×2) rotated 90° → still 2×2 (square, no visual change)
 **Example**: Training Room (2×1) rotated 90° → becomes 1×2 (tall instead of wide)
 
+## Data Flow: Multi-Resource Loot & Inventory (NEW - v1.5)
+
+### Mission Loot Generation
+
+```
+resolveMission(mission, members) called:
+  1. Combat simulation runs
+  2. For each defeated enemy:
+     → rollLoot(enemyDef) checks each LootRule
+       - If random < chance: generate minQty to maxQty of itemType
+       - Return ItemDrop[] for this enemy
+  3. mergeLoot(allDrops[]) combines all enemy drops
+     → { WOOD: 5, IRON_ORE: 2, ... }
+  4. MissionResult includes lootEarned: ItemDropMap
+  5. Mission completion adds items to guild.inventory
+  6. Toast notification shows "+5 Wood, +2 Iron Ore"
+```
+
+### Inventory Management
+
+```
+guild.inventory: Record<ItemType, number>
+  - Tracks quantity for each of 8 item types
+  - Updated via atomic actions: addItems(), consumeItems()
+
+consumeItems(items: ItemQuantityMap):
+  1. Validate: for each item, check inventory >= required qty
+  2. If any insufficient: reject with reason
+  3. If all valid: deduct all quantities atomically
+  4. Side effect: playSound, emit change notification
+
+addItems(items: ItemQuantityMap):
+  1. For each item: increase quantity (respects 100+ stack limit)
+  2. Atomic update to guild state
+```
+
+### Building Cost Integration
+
+```
+canPlaceRoom(hall, roomType, playerGold, playerInventory):
+  1. Find RoomDefinition for roomType
+  2. Extract cost: { gold: X, items: { WOOD: Y, ... } }
+  3. Check: playerGold >= gold AND
+           for each item: playerInventory[item] >= required qty
+  4. Return { success: bool, reason?: string }
+
+placeRoom(type, position, rotation):
+  1. Validate via canPlaceRoom()
+  2. Deduct gold: guild.gold -= cost.gold
+  3. Deduct items: consumeItems(cost.items)
+  4. If either fails: transaction rolls back
+  5. If both succeed: add Room to guild.halls[0].rooms
+```
+
+### Resource Bar HUD
+
+```
+ResourceBar component:
+  1. Subscribe to guild.inventory changes
+  2. Render: Wood (qty), Stone (qty), Iron Ore (qty)
+  3. Display in top HUD next to gold total
+  4. Update on every inventory change (loot earned, building cost)
+```
+
 ### Room Bounds Calculation
 
 ```
@@ -411,6 +475,7 @@ getRoomBounds(room: Room):
 - Buildings, rooms, effects
 - Upkeep costs
 - Treasury (gold)
+- Inventory (8 item types with quantities)
 
 ### Roster Slice
 - Array of members with stats
@@ -477,10 +542,11 @@ getRoomBounds(room: Room):
 | `panel-toggle.tsx` | Button bar for switching panels |
 | `mission-notification.tsx` | Toast notification stack renderer |
 
-### `/ui/components/` — Reusable Components (Build Mode)
+### `/ui/components/` — Reusable Components (Build Mode & HUD)
 | File | Purpose |
 |------|---------|
 | `build-mode-hint.tsx` | HUD hint overlay displaying placement controls (R, Escape, Click) |
+| `resource-bar.tsx` | HUD resource display showing Wood/Stone/Iron quantities |
 | Other components | Stat bars, cards, buttons, dialogs |
 
 ### `/ui/components/` — Reusable Components
@@ -521,13 +587,14 @@ getRoomBounds(room: Room):
 |------|---------|
 | `store.ts` | Combined store with all slices |
 | `game-slice.ts` | Active guild, clock, combat log |
-| `guild-slice.ts` | Buildings, rooms, treasury, upkeep |
+| `guild-slice.ts` | Buildings, rooms, treasury, upkeep, inventory |
 | `roster-slice.ts` | Members, stats, EXP, levels, status |
 | `mission-slice.ts` | Active missions, timers, rewards, rewards queue |
 | `combat-slice.ts` | Current combat, turns, damage log |
 | `save-status-slice.ts` | Auto-save status (idle/saving/saved/error) |
 | `notification-slice.ts` | Ephemeral mission notifications (not persisted) |
 | `build-mode-slice.ts` | Build mode state (activeBuildType, buildRotation, placement controls) |
+| `inventory-slice.ts` | Inventory CRUD: addItems(), consumeItems() with atomic validation |
 
 ### `/game/systems/` — Game Logic
 | File | Purpose |
@@ -536,21 +603,23 @@ getRoomBounds(room: Room):
 | `economy-system.ts` | Gold, upkeep, debt |
 | `mission-system.ts` | Quest dispatch, timers |
 | `mission-tick.ts` | Phase state machine: processMissionTick (advancing traveling→arrived→in-combat→completed/failed), MissionTickEvent emission |
-| `mission-resolver.ts` | resolveMission combat simulation + reward calculation |
+| `mission-resolver.ts` | resolveMission combat simulation + reward calculation + loot generation |
 | `mission-dispatch.ts` | Dispatch mission, set initial phase to 'traveling' |
 | `mission-board.ts` | Quest listing & dispatch UI logic |
 | `leveling-system.ts` | EXP, levels, stat growth |
-| `building-system.ts` | Grid constants, AABB collision detection, room placement validation, rotation sizing |
+| `building-system.ts` | Grid constants, AABB collision detection, room placement validation, rotation sizing, resource cost validation |
+| `loot-roller.ts` | Pure functions: rollLoot(enemy) generates drops, mergeLoot(drops[]) combines |
 | `/workers/game-loop.worker.ts` | Web Worker: 1s tick heartbeat |
 
 ### `/game/data/` — Static Data
 | File | Purpose |
 |------|---------|
-| `enemies.ts` | Enemy templates by tier |
+| `enemies.ts` | Enemy templates by tier (includes lootRules) |
 | `missions.ts` | Quest definitions, rewards, duration |
 | `skills.ts` | Ability data |
 | `characters.ts` | 80+ hero templates |
-| `buildings.ts` | Room definitions (type, name, cost, width/depth, effect) |
+| `buildings.ts` | Room definitions (type, name, cost: ResourceCost, width/depth, effect) |
+| `items.ts` | Item registry (8 types: names, stack limits) |
 
 ### `/ui/hooks/` — Custom React Hooks
 | File | Purpose |

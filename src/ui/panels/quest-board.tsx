@@ -3,6 +3,8 @@ import type { ActiveMission, MissionPhase, QuestTier } from '@/game/state/game-s
 import { useGameStore } from '@/game/state/store';
 import type { Mission } from '@/game/state/game-state';
 import { MISSIONS } from '@/game/data/missions';
+import { ENEMIES } from '@/game/data/enemies';
+import { getItemInfo } from '@/game/data/items';
 import { validateDispatch, createActiveMission } from '@/game/systems/mission-dispatch';
 import { QUEST_BOARD_TIER_BY_LEVEL } from '@/game/data/buildings';
 import { ARRIVAL_TIMEOUT_MS } from '@/game/systems/mission-tick';
@@ -119,6 +121,7 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
             EXP: {mission.expReward} |
             Members: {mission.requiredMembers} | Lv.{mission.requiredLevel}+
           </div>
+          <PotentialDrops enemyIds={mission.enemyIds} />
           <button
             className="panel-btn"
             disabled={selectedMembers.length < mission.requiredMembers}
@@ -160,6 +163,28 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
       {activeMissions.length > 0 && (
         <ActiveMissionsList activeMissions={activeMissions} />
       )}
+    </div>
+  );
+}
+
+/** Show unique potential item drops for a mission's enemies */
+function PotentialDrops({ enemyIds }: { enemyIds: string[] }) {
+  const dropNames = useMemo(() => {
+    const seen = new Set<string>();
+    for (const eid of enemyIds) {
+      const enemy = ENEMIES[eid];
+      if (!enemy) continue;
+      for (const rule of enemy.loot) {
+        seen.add(getItemInfo(rule.itemId).name);
+      }
+    }
+    return [...seen];
+  }, [enemyIds]);
+
+  if (dropNames.length === 0) return null;
+  return (
+    <div style={{ fontSize: '0.75rem', color: '#a8d8ea', marginTop: 2 }}>
+      Drops: {dropNames.join(', ')}
     </div>
   );
 }

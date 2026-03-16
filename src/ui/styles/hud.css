@@ -62,6 +62,17 @@
   font-weight: bold;
 }
 
+/* Resource bar (Wood, Stone, Iron) */
+.resource-bar {
+  display: flex;
+  gap: 12px;
+  font-size: 0.85rem;
+}
+
+.resource-item {
+  font-weight: 500;
+}
+
 /* Save status badge */
 .save-badge {
   font-size: 0.75rem;

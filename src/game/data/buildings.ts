@@ -1,4 +1,5 @@
 import type { RoomType, QuestTier } from '@/game/state/game-state';
+import type { ItemID } from '@/game/data/items';
 
 export interface GuildUpgrade {
   level: number;
@@ -15,11 +16,16 @@ export const GUILD_UPGRADES: GuildUpgrade[] = [
   { level: 5, cost: 30000, maxRooms: 5, unlockedFeatures: ['b-rank-quests'] },
 ];
 
+export interface ResourceCost {
+  gold: number;
+  items?: Partial<Record<ItemID, number>>;
+}
+
 export interface RoomDefinition {
   type: RoomType;
   name: string;
   description: string;
-  baseCost: number;
+  cost: ResourceCost;
   effect: string;
   /** Grid width (x-axis cells) */
   width: number;
@@ -37,9 +43,9 @@ export const QUEST_BOARD_TIER_BY_LEVEL: Record<number, QuestTier> = {
 };
 
 export const ROOM_DEFINITIONS: RoomDefinition[] = [
-  { type: 'quest-board', name: 'Quest Board', description: 'Enables missions', baseCost: 0, effect: 'mission-access', width: 1, depth: 1 },
-  { type: 'tavern', name: 'Tavern', description: 'Reduces upkeep by 5% per level', baseCost: 200, effect: 'upkeep-reduction', width: 2, depth: 2 },
-  { type: 'training-room', name: 'Training Room', description: 'Passive EXP gain for idle members', baseCost: 300, effect: 'passive-exp', width: 2, depth: 1 },
-  { type: 'workshop', name: 'Workshop', description: 'Enables crafting (future)', baseCost: 400, effect: 'crafting', width: 1, depth: 1 },
-  { type: 'infirmary', name: 'Infirmary', description: 'Reduces injury recovery time', baseCost: 350, effect: 'recovery-reduction', width: 2, depth: 1 },
+  { type: 'quest-board', name: 'Quest Board', description: 'Enables missions', cost: { gold: 0 }, effect: 'mission-access', width: 1, depth: 1 },
+  { type: 'tavern', name: 'Tavern', description: 'Reduces upkeep by 5% per level', cost: { gold: 200 }, effect: 'upkeep-reduction', width: 2, depth: 2 },
+  { type: 'training-room', name: 'Training Room', description: 'Passive EXP gain for idle members', cost: { gold: 200, items: { WOOD: 10 } }, effect: 'passive-exp', width: 2, depth: 1 },
+  { type: 'workshop', name: 'Workshop', description: 'Enables crafting (future)', cost: { gold: 300, items: { WOOD: 5, IRON_ORE: 5 } }, effect: 'crafting', width: 1, depth: 1 },
+  { type: 'infirmary', name: 'Infirmary', description: 'Reduces injury recovery time', cost: { gold: 250, items: { STONE: 8 } }, effect: 'recovery-reduction', width: 2, depth: 1 },
 ];

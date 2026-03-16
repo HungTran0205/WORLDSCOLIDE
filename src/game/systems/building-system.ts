@@ -1,4 +1,5 @@
-import type { GuildHall, Room, RoomType, Rotation } from '@/game/state/game-state';
+import type { GuildHall, Room, RoomType, Rotation, InventoryState } from '@/game/state/game-state';
+import type { ItemID } from '@/game/data/items';
 import { ROOM_DEFINITIONS } from '@/game/data/buildings';
 
 /** Guild hall grid dimensions (cells) */
@@ -57,14 +58,26 @@ export function checkCollision(
   return false;
 }
 
-/** Validate room can be placed (capacity, gold, collision) */
-export function canPlaceRoom(hall: GuildHall, roomType: RoomType, gold: number): PlacementResult {
+/** Validate room can be placed (capacity, gold, items) */
+export function canPlaceRoom(
+  hall: GuildHall,
+  roomType: RoomType,
+  gold: number,
+  inventory?: InventoryState,
+): PlacementResult {
   if (hall.rooms.length >= hall.maxRooms) {
     return { success: false, reason: 'Max rooms reached. Upgrade guild hall.' };
   }
   const def = ROOM_DEFINITIONS.find((r) => r.type === roomType);
   if (!def) return { success: false, reason: 'Unknown room type' };
-  if (gold < def.baseCost) return { success: false, reason: `Need ${def.baseCost} gold` };
+  if (gold < def.cost.gold) return { success: false, reason: `Need ${def.cost.gold} gold` };
+  if (def.cost.items && inventory) {
+    for (const [itemId, needed] of Object.entries(def.cost.items)) {
+      if (needed && needed > 0 && (inventory.items[itemId as ItemID] ?? 0) < needed) {
+        return { success: false, reason: `Need more ${itemId.replace(/_/g, ' ').toLowerCase()}` };
+      }
+    }
+  }
   return { success: true };
 }
 

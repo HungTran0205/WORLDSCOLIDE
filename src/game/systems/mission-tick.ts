@@ -6,6 +6,7 @@
 
 import { MISSIONS } from '@/game/data/missions';
 import { resolveMission, type MissionResult } from './mission-resolver';
+import type { ItemID } from '@/game/data/items';
 import type { GameStore } from '@/game/state/store';
 
 /** Time player has to choose manual/auto before auto-combat triggers */
@@ -73,6 +74,10 @@ export function processMissionTick(store: GameStore, now: number): MissionTickEv
 
         if (result.outcome !== 'full-wipe') {
           store.addGold(result.goldEarned);
+          // Deposit loot items into inventory
+          for (const [itemId, amount] of Object.entries(result.lootEarned)) {
+            if (amount && amount > 0) store.addItem(itemId as ItemID, amount);
+          }
           for (const memberId of result.survivors) {
             store.addMemberExp(memberId, result.expPerMember);
             store.updateMemberStatus(memberId, 'idle');

@@ -1,5 +1,7 @@
 /** Core type definitions for game state — all interfaces must be JSON-serializable */
 
+import type { ItemID } from '@/game/data/items';
+
 export type StatKey = 'STR' | 'END' | 'INT' | 'DEX' | 'CHA' | 'LCK' | 'AGI';
 
 export interface Stats {
@@ -101,6 +103,10 @@ export type TutorialStep =
   | 'first-combat'
   | 'first-recruit'
   | 'complete';
+
+export interface InventoryState {
+  items: Partial<Record<ItemID, number>>;
+}
 
 export interface GameSettings {
   musicVolume: number;

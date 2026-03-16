@@ -72,6 +72,7 @@ export const VALID_GAME_SAVE_DATA: GameSaveData = {
   completedMissions: [],
   tutorialStep: 'sandbox-intro',
   tavern: { lastRefreshTime: 0, availableMercenaries: [] },
+  inventory: { items: {} },
 };
 
 export const VALID_METADATA: SaveSlotMetadata = {

@@ -14,6 +14,8 @@ describe('migrateSave', () => {
     expect(result.gameState.founder?.rank).toBe('MEMBER');
     result.gameState.roster.forEach((m) => expect(m.rank).toBe('MEMBER'));
     expect(result.gameState.tavern).toEqual({ lastRefreshTime: 0, availableMercenaries: [] });
+    // v4→v5 adds inventory
+    expect(result.gameState.inventory).toEqual({ items: {} });
     expect(result.metadata).toEqual(VALID_SAVE_ENVELOPE.metadata);
   });
 

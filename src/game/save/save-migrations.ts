@@ -73,10 +73,22 @@ const migrateV3toV4: MigrationFn = (envelope) => ({
 });
 
 /**
- * Ordered migration functions. Index N migrates version (N+1) → (N+2).
- * Index 0 = v1→v2, Index 1 = v2→v3, Index 2 = v3→v4.
+ * v4 → v5: Add inventory with empty items map.
  */
-export const migrations: MigrationFn[] = [migrateV1toV2, migrateV2toV3, migrateV3toV4];
+const migrateV4toV5: MigrationFn = (envelope) => ({
+  ...envelope,
+  version: 5,
+  gameState: {
+    ...envelope.gameState,
+    inventory: { items: {} },
+  },
+});
+
+/**
+ * Ordered migration functions. Index N migrates version (N+1) → (N+2).
+ * Index 0 = v1→v2, Index 1 = v2→v3, Index 2 = v3→v4, Index 3 = v4→v5.
+ */
+export const migrations: MigrationFn[] = [migrateV1toV2, migrateV2toV3, migrateV3toV4, migrateV4toV5];
 
 /**
  * Apply all necessary migrations to bring an envelope up to SAVE_VERSION.
