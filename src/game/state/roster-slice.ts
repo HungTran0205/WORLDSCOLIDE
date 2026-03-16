@@ -22,6 +22,7 @@ export interface RosterSlice {
   removeMember: (id: string) => void;
   updateMemberStatus: (id: string, status: MemberStatus) => void;
   setMemberInjuredUntil: (id: string, until: number | null) => void;
+  toggleAutoCast: (memberId: string) => void;
   allocateStat: (memberId: string, stat: StatKey) => void;
   addMemberExp: (memberId: string, exp: number) => void;
 }
@@ -80,6 +81,18 @@ export const createRosterSlice: StateCreator<RosterSlice> = (set) => ({
           status: until ? 'injured' : 'idle',
         })),
       };
+    }),
+
+  toggleAutoCast: (memberId) =>
+    set((s) => {
+      const toggler = (m: Member): Member => {
+        if (!m.skill) return m;
+        return { ...m, skill: { ...m.skill, autoEnabled: !m.skill.autoEnabled } };
+      };
+      if (s.founder?.id === memberId) {
+        return { founder: toggler(s.founder) };
+      }
+      return { roster: updateMember(s.roster, memberId, toggler) };
     }),
 
   allocateStat: (memberId, stat) =>

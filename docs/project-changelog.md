@@ -2,8 +2,102 @@
 
 All notable changes to Worlds Collide are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
-**Current Version**: 1.5
-**Release Date**: 2026-03-16 (Inventory & Multi-Resource Economy)
+**Current Version**: 1.6
+**Release Date**: 2026-03-16 (Roster Management & Combat Enhancements)
+
+---
+
+## [1.6] — 2026-03-16 (Roster Management & Combat Enhancements)
+
+### Added
+
+#### Multi-Member Quest Dispatch (Major Feature)
+- **Party Size Flexibility**: Dispatch N+ members (above quest minimum) on single mission
+- **EXP Sharing**: Reward divided by party size (`Math.max(1, Math.floor(expReward / members.length))`)
+  - Larger parties earn less per member; incentivizes focused teams
+  - Maintains gold earning (not divided, quest-level reward)
+- **Dispatch UI**: Quest detail modal shows member count with "(selected/min+)" format
+
+#### Skill Cooldown Rebalance (Gameplay Adjustment)
+- **1-Turn Cooldown System**: Skills now cooldown for `attackIntervalMs * 2` instead of fixed `cooldownMs`
+  - Forces minimum 1 normal attack between skill uses
+  - Attack speed affects cooldown duration (AGI scaling)
+  - Prevents skill spam, encourages turn-based flow
+- **Combat Simulator Update**: `combat-simulator.ts` uses dynamic cooldown calculation
+- **Balance Impact**: Higher AGI members have shorter skill cooldowns
+
+#### Auto-cast Toggle Feature (NEW)
+- **Store Action**: `toggleAutoCast(memberId)` added to roster slice
+- **UI Implementation**: Toggle in Character Detail panel (roster page)
+- **Combat Effect**: Auto-cast enabled members use skills automatically in combat
+- **Persistent**: Auto-cast state saved with member data
+
+#### Compact Roster UI (Major Refactor)
+- **Condensed List Items**: Guild Roster panel shows minimized member cards
+- **Character Detail Panel**: Left-side panel opens on member click with:
+  - Avatar image (large preview)
+  - Equipment placeholders (5 armor slots)
+  - Skill section with auto-cast toggle
+  - Talent/stat allocation UI
+- **New Files**:
+  - `roster-list-item.tsx` — Compact member card component
+  - `character-detail-panel.tsx` — Left panel with stats/equipment/skills
+
+#### Quest Board Label Updates (UI Polish)
+- **Changed**: "Members: N" → "Min Members: N" (clarity on minimum requirement)
+- **Dispatch Button**: Now shows "(selected/min+)" format indicating party size range
+- **Modal Display**: Quest detail modal lists selected members with "(N selected)" label
+
+### Changed
+
+#### Mission Resolution (EXP Division)
+- **Old**: EXP awarded equally to all members regardless of party size
+- **New**: EXP divided by members.length for multi-member parties
+  - Single-member missions: full EXP (no division)
+  - Multi-member missions: EXP/count per survivor
+  - Example: 100 EXP mission with 4-member party = 25 EXP each
+
+#### Combat Simulator
+- **Skill Cooldown Logic**: `cooldownMs` field replaced with dynamic calculation
+  - Previous cooldown: fixed value
+  - New cooldown: `Math.ceil(attackIntervalMs * 2)`
+  - More responsive to character AGI/equipment
+
+#### Guild Roster UI Structure
+- **Old**: Full-width member cards with inline details
+- **New**: Condensed list on right, expandable detail panel on left
+- **Files Modified**: `guild-roster.tsx` (layout restructure), `quest-board.tsx` (label update), `quest-detail-modal.tsx` (member display)
+
+#### Roster Slice (Zustand)
+- **New Field**: `autoCastEnabled: Record<memberId, boolean>` tracking per-member auto-cast state
+- **New Action**: `toggleAutoCast(memberId)` flips auto-cast flag
+- **Persistence**: Auto-cast state included in save data (save migration required)
+
+### Fixed
+
+#### Multi-Member Party Dispatch
+- **Fixed**: No EXP penalty for larger teams (now properly incentivizes focused groups)
+- **Fixed**: Unclear party size requirements in UI (now shows "Min Members: N")
+
+#### Skill Balance
+- **Fixed**: Skills too spammable (now cooldown based on attack interval, forces tactical use)
+
+#### Roster Navigation
+- **Fixed**: No way to quickly view character details without opening quest modal
+- **Fixed**: Equipment status not visible in roster (now shown in detail panel)
+
+### Performance
+
+- **Roster Rendering**: Compact list items reduce DOM nodes vs. full-width cards
+- **Detail Panel**: Lazy-loads character data on open (minimal initial render cost)
+- **EXP Division**: O(1) division operation (single multiplication + floor)
+- **Auto-cast Toggle**: O(1) state update in Zustand
+
+### Save Migration v5 → v6
+
+- **Version Bump**: `SAVE_VERSION` incremented from 5 to 6
+- **Auto-Migration**: `migrateV5toV6()` adds `autoCastEnabled` map to roster state
+- **Backward Compatibility**: Old v5 saves load with all members defaulting to auto-cast disabled
 
 ---
 

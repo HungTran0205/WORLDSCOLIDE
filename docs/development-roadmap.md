@@ -1,8 +1,8 @@
 # Development Roadmap
 
 **Last Updated**: 2026-03-16
-**Current Phase**: Phase 5 In Progress (Structures Utility v1.4 Complete)
-**Overall Progress**: ~80% Complete
+**Current Phase**: Phase 5 In Progress (Roster Management v1.6 Complete)
+**Overall Progress**: ~85% Complete
 
 ---
 
@@ -13,7 +13,7 @@
 [PHASE 2: Guild Hall]          ████████████████████ 100% COMPLETE
 [PHASE 3: Characters & NPCs]   ████████████████████ 100% COMPLETE
 [PHASE 4: Save System v1]      ████████████████████ 100% COMPLETE
-[PHASE 5: Polish & Launch]     ███████████████░░░░░ 75% IN PROGRESS
+[PHASE 5: Polish & Launch]     ████████████████░░░░ 85% IN PROGRESS
 [PHASE 6: Post-Launch]         ░░░░░░░░░░░░░░░░░░░░ 0% PLANNED
 ```
 
@@ -161,6 +161,8 @@
 - [x] Mercenary/Tavern integration tests (25/25 passing)
 - [x] Inventory & Multi-Resource Economy — Item database, loot system, building costs (v1.5 released)
 - [x] Resource loot and cost integration tests (full suite passing)
+- [x] Roster Management & Combat Enhancements — Multi-member dispatch, skill cooldown, auto-cast, compact UI (v1.6 released)
+- [x] Roster UI refactor + character detail panel (new components)
 - [x] Documentation updated (codebase-summary, system-architecture, changelog, roadmap)
 
 ### Current Tasks
@@ -245,6 +247,7 @@
 | Phase 5 Checkpoint 2 | 2026-03-21 | ✅ Done | Advanced Build Mode v3, 48 tests passing, docs updated |
 | Phase 5 Checkpoint 3 | 2026-03-16 | ✅ Done | Structures Utility v1.4 (mercenary system), 25/25 tests passing |
 | Phase 5 Checkpoint 4 | 2026-03-16 | ✅ Done | Inventory & Multi-Resource Economy v1.5, full test suite passing |
+| Phase 5 Checkpoint 5 | 2026-03-16 | ✅ Done | Roster Management v1.6 (multi-member dispatch, skill cooldown, auto-cast, UI) |
 | Phase 5 Complete | 2026-03-30 | 🟡 Expected | Performance optimization, accessibility, launch decision |
 | Phase 6 Start | 2026-04-15 | 📋 Planned | Post-launch content |
 

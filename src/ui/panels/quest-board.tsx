@@ -63,7 +63,7 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
 
   const handleDispatch = (mission: Mission) => {
     if (selectedMembers.length < mission.requiredMembers) return;
-    const dispatched = selectedMembers.slice(0, mission.requiredMembers);
+    const dispatched = selectedMembers;
     const party = [...(founder ? [founder] : []), ...roster].filter((m) =>
       dispatched.includes(m.id),
     );
@@ -119,7 +119,7 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
             Duration: {Math.round(mission.durationMs / 60000)}min |
             Gold: {mission.goldRewardMin}-{mission.goldRewardMax} |
             EXP: {mission.expReward} |
-            Members: {mission.requiredMembers} | Lv.{mission.requiredLevel}+
+            Min Members: {mission.requiredMembers} | Lv.{mission.requiredLevel}+
           </div>
           <PotentialDrops enemyIds={mission.enemyIds} />
           <button
@@ -127,7 +127,7 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
             disabled={selectedMembers.length < mission.requiredMembers}
             onClick={(e) => { e.stopPropagation(); handleDispatch(mission); }}
           >
-            Dispatch ({selectedMembers.length}/{mission.requiredMembers})
+            Dispatch ({selectedMembers.length}/{mission.requiredMembers}+)
           </button>
         </div>
       ))}

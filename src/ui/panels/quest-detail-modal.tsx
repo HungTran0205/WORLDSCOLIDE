@@ -73,7 +73,7 @@ export function QuestDetailModal({ mission, canDispatch, selectedCount, onDispat
             onClick={onDispatch}
             style={{ flex: 1 }}
           >
-            Dispatch ({selectedCount}/{mission.requiredMembers})
+            Dispatch ({selectedCount}/{mission.requiredMembers}+)
           </button>
           <button className="panel-btn" onClick={onClose} style={{ flex: 0, width: 'auto', padding: '8px 16px' }}>
             Close

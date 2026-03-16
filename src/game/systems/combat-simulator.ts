@@ -137,7 +137,7 @@ export function simulateCombat(
             damage: skillDmg,
             skillName: entity.skill.name,
           });
-          entity.skillCooldownUntil = time + entity.skill.cooldownMs;
+          entity.skillCooldownUntil = time + (entity.attackIntervalMs * 2);
           if (target.currentHp <= 0) {
             events.push({ type: 'death', entityId: target.id });
           }

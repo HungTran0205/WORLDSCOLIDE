@@ -137,6 +137,62 @@ src/
 - **Title Screen**: Slot display, action buttons, messages
 - **Save/Import Dialogs**: User-facing feedback
 
+## Recent Changes (Roster Management & Combat Enhancements — v1.6)
+
+### Multi-Member Quest Dispatch (NEW - Major Feature)
+- **Party Flexibility**: Dispatch N+ members above quest minimum on single mission
+- **EXP Sharing**: Reward divided by party size (`Math.max(1, Math.floor(expReward / members.length))`)
+- **Dispatch Display**: Quest board shows "(selected/min+)" format in dispatch button
+- **Mission Integration**: `mission-resolver.ts` divides EXP among survivors
+
+### Skill Cooldown Rebalance (NEW - Gameplay Adjustment)
+- **Dynamic Cooldown**: Skills cooldown for `attackIntervalMs * 2` instead of fixed `cooldownMs`
+- **AGI Scaling**: Higher AGI characters have shorter skill cooldowns
+- **Prevents Spam**: Forces minimum 1 normal attack between skill uses
+- **Combat Logic**: `combat-simulator.ts` updated with new cooldown calculation
+
+### Auto-cast Toggle Feature (NEW)
+- **Store Action**: `toggleAutoCast(memberId)` in roster slice
+- **UI Control**: Toggle in Character Detail panel (new v1.6)
+- **Combat Behavior**: Auto-cast enabled members use skills automatically in combat
+- **Persistence**: Auto-cast state saved with member data
+
+### Compact Roster UI (NEW - Major Refactor)
+- **Condensed List**: Guild Roster panel shows minimized member cards
+- **Detail Panel**: Left-side panel opens on member click
+  - Avatar image (large preview)
+  - Equipment placeholders (5 armor slots)
+  - Skill section with auto-cast toggle
+  - Talent/stat allocation UI
+- **New Components**:
+  - `roster-list-item.tsx` — Compact member card
+  - `character-detail-panel.tsx` — Left panel with details
+- **UI Update**: Guild roster restructured for better information hierarchy
+
+### Quest Board Label Clarity (UI Polish)
+- **Changed**: "Members: N" → "Min Members: N"
+- **Dispatch Button**: Shows "(selected/min+)" indicating available party sizes
+- **Modal Display**: Selected members labeled with "(N selected)"
+
+**Key Files (New)**:
+- `src/ui/panels/character-detail-panel.tsx` — Character detail panel component
+- `src/ui/components/roster-list-item.tsx` — Compact roster item component
+
+**Key Files (Modified)**:
+- `mission-resolver.ts` — EXP division by party size
+- `combat-simulator.ts` — Dynamic skill cooldown calculation
+- `roster-slice.ts` — Added `autoCastEnabled` map + `toggleAutoCast()` action
+- `guild-roster.tsx` — Restructured layout with detail panel
+- `quest-board.tsx` — Updated label format "(selected/min+)"
+- `quest-detail-modal.tsx` — Multi-member party display
+- `save-types.ts` — `SAVE_VERSION: 6`, auto-cast field
+- `save-migrations.ts` — `migrateV5toV6()` migration
+
+**Save Migration v5 → v6**:
+- **Version Bump**: `SAVE_VERSION` incremented to 6
+- **Auto-Migration**: `migrateV5toV6()` adds `autoCastEnabled` map to roster
+- **Backward Compatibility**: Old saves load with auto-cast disabled for all members
+
 ## Recent Changes (Inventory & Multi-Resource Economy — v1.5)
 
 ### Item Database & Inventory System (Major Feature)

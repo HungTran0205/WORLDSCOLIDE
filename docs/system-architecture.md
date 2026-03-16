@@ -477,10 +477,12 @@ getRoomBounds(room: Room):
 - Treasury (gold)
 - Inventory (8 item types with quantities)
 
-### Roster Slice
-- Array of members with stats
-- EXP, levels, class
-- Equipment
+### Roster Slice (ENHANCED - v1.6)
+- Array of members with stats, EXP, levels, class
+- Equipment (armor, weapons)
+- Status tracking (idle/injured/active)
+- `autoCastEnabled: Record<memberId, boolean>` — Per-member auto-cast toggle state
+- `toggleAutoCast(memberId)` — Toggle auto-cast for member in combat
 
 ### Mission Slice
 - Active missions
@@ -560,13 +562,19 @@ getRoomBounds(room: Room):
 ### `/ui/panels/` — Collapsible Panels
 | File | Purpose |
 |------|---------|
-| `quest-board.tsx` | Dispatch missions, track progress (includes MissionProgressBar for active missions) |
-| `quest-detail-modal.tsx` | Modal overlay showing detailed quest info + party composition + rewards |
-| `guild-roster.tsx` | View/manage guild members (shows status: idle/injured/active) |
+| `quest-board.tsx` | Dispatch missions, track progress with member count "(selected/min+)" display |
+| `quest-detail-modal.tsx` | Modal showing quest info + party composition + multi-member rewards breakdown |
+| `guild-roster.tsx` | Compact member list with character detail panel (NEW v1.6) |
+| `character-detail-panel.tsx` | Left-side detail panel (avatar, equipment, auto-cast toggle, stats) — NEW v1.6 |
 | `build-menu.tsx` | Room selection UI (enter placement mode instead of direct placement) |
 | `combat-view.tsx` | Combat log + tick-by-tick simulation details |
 | `char-creation.tsx` | Stat allocation (50 points) |
 | `settings-panel.tsx` | Audio/lang toggle, import/export, return to title |
+
+### `/ui/components/roster/` — Roster Components (NEW - v1.6)
+| File | Purpose |
+|------|---------|
+| `roster-list-item.tsx` | Compact member card component (condensed UI) — NEW v1.6 |
 
 ### `/ui/styles/` — Styling
 | File | Purpose |
@@ -603,7 +611,8 @@ getRoomBounds(room: Room):
 | `economy-system.ts` | Gold, upkeep, debt |
 | `mission-system.ts` | Quest dispatch, timers |
 | `mission-tick.ts` | Phase state machine: processMissionTick (advancing traveling→arrived→in-combat→completed/failed), MissionTickEvent emission |
-| `mission-resolver.ts` | resolveMission combat simulation + reward calculation + loot generation |
+| `mission-resolver.ts` | resolveMission: combat sim + reward calc (EXP divided by party size) + loot generation |
+| `combat-simulator.ts` | Combat simulation with skill cooldown (attackIntervalMs * 2) + auto-cast logic |
 | `mission-dispatch.ts` | Dispatch mission, set initial phase to 'traveling' |
 | `mission-board.ts` | Quest listing & dispatch UI logic |
 | `leveling-system.ts` | EXP, levels, stat growth |

@@ -22,6 +22,14 @@ function randomInt(min: number, max: number): number {
 
 /** Resolve a mission by running combat simulation and calculating rewards */
 export function resolveMission(mission: Mission, members: Member[]): MissionResult {
+  if (members.length === 0) {
+    return {
+      missionId: mission.id, outcome: 'full-wipe', goldEarned: 0, expPerMember: 0,
+      survivors: [], injured: [], combatResult: { outcome: 'full-wipe', ticks: [], survivors: [], injured: [], totalDamageDealt: 0, durationMs: 0 },
+      lootEarned: {},
+    };
+  }
+
   const enemyTemplates = mission.enemyIds
     .map((id) => ENEMIES[id])
     .filter(Boolean);
@@ -34,7 +42,7 @@ export function resolveMission(mission: Mission, members: Member[]): MissionResu
 
   if (combatResult.outcome !== 'full-wipe') {
     goldEarned = randomInt(mission.goldRewardMin, mission.goldRewardMax);
-    expPerMember = mission.expReward;
+    expPerMember = Math.max(1, Math.floor(mission.expReward / members.length));
 
     // LCK bonus on gold
     const avgLck = members.reduce((s, m) => s + m.stats.LCK, 0) / members.length;
