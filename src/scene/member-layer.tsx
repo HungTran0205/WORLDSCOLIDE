@@ -2,31 +2,66 @@ import { Billboard, Text } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useGameStore } from '@/game/state/store';
 import { useRef, useMemo } from 'react';
-import { getWorldBounds } from '@/game/systems/building-system';
 import type { Group } from 'three';
-import type { Member } from '@/game/state/game-state';
+import type { Member, GridCell } from '@/game/state/game-state';
 
-/** Sprite margin from hall edges so members stay visually within the floor */
-const MARGIN = 0.5;
+/** Collect all cell centers from all rooms as walkable positions */
+function getAllCellCenters(rooms: { cells: GridCell[] }[]): { x: number; z: number }[] {
+  const centers: { x: number; z: number }[] = [];
+  for (const room of rooms) {
+    for (const cell of room.cells) {
+      centers.push({ x: cell.x + 0.5, z: cell.z + 0.5 });
+    }
+  }
+  return centers;
+}
+
+/** Deterministic pseudo-random from seed (avoid Math.random in render) */
+function seededIndex(seed: number, max: number): number {
+  return Math.abs(Math.floor(Math.sin(seed * 9301 + 49297) * 233280)) % max;
+}
 
 function MemberSprite({ member, index }: { member: Member; index: number }) {
   const ref = useRef<Group>(null);
+  const targetRef = useRef<{ x: number; z: number } | null>(null);
+  const waitRef = useRef(0);
   const rooms = useGameStore((s) => s.guildHall.rooms);
-  const bounds = useMemo(() => getWorldBounds(rooms), [rooms]);
+  const cells = useMemo(() => getAllCellCenters(rooms), [rooms]);
 
   useFrame(({ clock }) => {
-    if (!ref.current) return;
-    const t = clock.elapsedTime + index * 2;
-    const width = bounds.maxX - bounds.minX;
-    const depth = bounds.maxZ - bounds.minZ;
-    const halfW = (width - MARGIN * 2) / 2;
-    const halfD = (depth - MARGIN * 2) / 2;
-    ref.current.position.x = bounds.minX + MARGIN + halfW + Math.sin(t * 0.3 + index) * halfW;
-    ref.current.position.z = bounds.minZ + MARGIN + halfD + Math.cos(t * 0.2 + index * 1.7) * halfD;
+    if (!ref.current || cells.length === 0) return;
+    const pos = ref.current.position;
+
+    // Pick initial or new target when close enough
+    if (!targetRef.current || waitRef.current <= 0) {
+      const idx = seededIndex(clock.elapsedTime * 100 + index * 37, cells.length);
+      targetRef.current = cells[idx];
+      waitRef.current = 2 + index * 0.5; // seconds before picking next target
+    }
+
+    const target = targetRef.current;
+    const dx = target.x - pos.x;
+    const dz = target.z - pos.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+
+    if (dist < 0.15) {
+      // Arrived — countdown to next target
+      waitRef.current -= 1 / 60; // ~60fps approximation
+    } else {
+      // Move toward target
+      const speed = 0.015;
+      pos.x += (dx / dist) * speed;
+      pos.z += (dz / dist) * speed;
+    }
   });
 
+  // Start at first cell center
+  const startPos = cells.length > 0
+    ? cells[index % cells.length]
+    : { x: 3, z: 3 };
+
   return (
-    <group ref={ref} position={[1, 0.75, 1]}>
+    <group ref={ref} position={[startPos.x, 0.75, startPos.z]}>
       <Billboard>
         <mesh>
           <planeGeometry args={[0.8, 1.2]} />
