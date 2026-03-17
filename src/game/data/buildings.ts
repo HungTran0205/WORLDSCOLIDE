@@ -1,4 +1,4 @@
-import type { RoomType, QuestTier } from '@/game/state/game-state';
+import type { RoomType, QuestTier, FurnitureType } from '@/game/state/game-state';
 import type { ItemID } from '@/game/data/items';
 
 export interface GuildUpgrade {
@@ -27,13 +27,17 @@ export interface RoomDefinition {
   description: string;
   cost: ResourceCost;
   effect: string;
-  /** Grid width (x-axis cells) */
-  width: number;
-  /** Grid depth (z-axis cells) */
-  depth: number;
+  /** Default room width in cells (fixed 6x6 in v1) */
+  defaultWidth: number;
+  /** Default room depth in cells (fixed 6x6 in v1) */
+  defaultDepth: number;
+  /** Core furniture auto-placed when room is created */
+  coreFurniture: FurnitureType;
+  /** Floor tile color for 3D rendering */
+  floorColor: string;
 }
 
-/** Maps quest-board room level → maximum unlockable quest tier */
+/** Maps quest-board furniture level -> maximum unlockable quest tier */
 export const QUEST_BOARD_TIER_BY_LEVEL: Record<number, QuestTier> = {
   1: 'F',
   2: 'E',
@@ -43,9 +47,9 @@ export const QUEST_BOARD_TIER_BY_LEVEL: Record<number, QuestTier> = {
 };
 
 export const ROOM_DEFINITIONS: RoomDefinition[] = [
-  { type: 'quest-board', name: 'Quest Board', description: 'Enables missions', cost: { gold: 0 }, effect: 'mission-access', width: 1, depth: 1 },
-  { type: 'tavern', name: 'Tavern', description: 'Reduces upkeep by 5% per level', cost: { gold: 200 }, effect: 'upkeep-reduction', width: 2, depth: 2 },
-  { type: 'training-room', name: 'Training Room', description: 'Passive EXP gain for idle members', cost: { gold: 200, items: { WOOD: 10 } }, effect: 'passive-exp', width: 2, depth: 1 },
-  { type: 'workshop', name: 'Workshop', description: 'Enables crafting (future)', cost: { gold: 300, items: { WOOD: 5, IRON_ORE: 5 } }, effect: 'crafting', width: 1, depth: 1 },
-  { type: 'infirmary', name: 'Infirmary', description: 'Reduces injury recovery time', cost: { gold: 250, items: { STONE: 8 } }, effect: 'recovery-reduction', width: 2, depth: 1 },
+  { type: 'guild-hall', name: 'Guild Hall', description: 'Central hub with quest board', cost: { gold: 0 }, effect: 'mission-access', defaultWidth: 6, defaultDepth: 6, coreFurniture: 'quest-board', floorColor: '#DAA520' },
+  { type: 'tavern', name: 'Tavern', description: 'Reduces upkeep by 5% per level', cost: { gold: 200 }, effect: 'upkeep-reduction', defaultWidth: 6, defaultDepth: 6, coreFurniture: 'bar-counter', floorColor: '#8B4513' },
+  { type: 'training-room', name: 'Training Room', description: 'Passive EXP gain for idle members', cost: { gold: 200, items: { WOOD: 10 } }, effect: 'passive-exp', defaultWidth: 6, defaultDepth: 6, coreFurniture: 'training-dummy', floorColor: '#4682B4' },
+  { type: 'workshop', name: 'Workshop', description: 'Enables crafting (future)', cost: { gold: 300, items: { WOOD: 5, IRON_ORE: 5 } }, effect: 'crafting', defaultWidth: 6, defaultDepth: 6, coreFurniture: 'workbench', floorColor: '#708090' },
+  { type: 'infirmary', name: 'Infirmary', description: 'Reduces injury recovery time', cost: { gold: 250, items: { STONE: 8 } }, effect: 'recovery-reduction', defaultWidth: 6, defaultDepth: 6, coreFurniture: 'alchemy-table', floorColor: '#FF6347' },
 ];

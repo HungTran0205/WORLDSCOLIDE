@@ -77,16 +77,43 @@ export interface ActiveMission {
   combatMode: 'auto' | 'manual' | null;
 }
 
-export type RoomType = 'quest-board' | 'tavern' | 'workshop' | 'training-room' | 'infirmary';
+export type RoomType = 'guild-hall' | 'tavern' | 'workshop' | 'training-room' | 'infirmary';
 
 export type Rotation = 0 | 90 | 180 | 270;
+
+export interface GridCell {
+  x: number;
+  z: number;
+}
+
+export type FurnitureCategory = 'core' | 'upgrade';
+
+export type FurnitureType =
+  // Core (1 per room, upgradeable -> room level)
+  | 'quest-board'      // guild-hall core
+  | 'bar-counter'      // tavern core
+  | 'alchemy-table'    // infirmary core
+  | 'workbench'        // workshop core
+  | 'training-dummy'   // training-room core
+  // Upgrade (purchasable, room-specific)
+  | 'reception-desk'   // guild-hall upgrade
+  | 'wine-barrel'      // tavern upgrade
+  | 'medical-bed';     // infirmary upgrade
+
+export interface PlacedFurniture {
+  id: string;
+  type: FurnitureType;
+  level: number;
+  position: GridCell;
+  rotation: Rotation;
+}
 
 export interface Room {
   id: string;
   type: RoomType;
   level: number;
-  position: { x: number; z: number };
-  rotation: Rotation;
+  cells: GridCell[];
+  furniture: PlacedFurniture[];
 }
 
 export interface GuildHall {

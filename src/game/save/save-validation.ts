@@ -4,8 +4,12 @@
  */
 
 import type { SaveEnvelope, GameSaveData, SaveSlotMetadata } from './save-types';
-import type { Stats, Member, GuildHall, Room } from '@/game/state/game-state';
+import type { Stats, Member, GuildHall, Room, PlacedFurniture } from '@/game/state/game-state';
+import { SAVE_VERSION } from './save-types';
 import { migrateSave } from './save-migrations';
+
+/** Maximum cells a single room may occupy (matches building-system constant) */
+const MAX_ROOM_CELLS = 100;
 
 const TUTORIAL_STEPS = [
   'char-creation', 'sandbox-intro', 'first-build',
@@ -13,6 +17,8 @@ const TUTORIAL_STEPS = [
 ] as const;
 
 const STAT_KEYS: (keyof Stats)[] = ['STR', 'END', 'INT', 'DEX', 'CHA', 'LCK', 'AGI'];
+
+const VALID_ROTATIONS = [0, 90, 180, 270];
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -38,7 +44,21 @@ function isValidMember(v: unknown): v is Member {
   );
 }
 
-const VALID_ROTATIONS = [0, 90, 180, 270];
+function isValidGridCell(v: unknown): boolean {
+  if (!isRecord(v)) return false;
+  return typeof v.x === 'number' && typeof v.z === 'number';
+}
+
+function isValidPlacedFurniture(v: unknown): v is PlacedFurniture {
+  if (!isRecord(v)) return false;
+  return (
+    typeof v.id === 'string' &&
+    typeof v.type === 'string' &&
+    typeof v.level === 'number' &&
+    isValidGridCell(v.position) &&
+    VALID_ROTATIONS.includes(v.rotation as number)
+  );
+}
 
 function isValidRoom(v: unknown): v is Room {
   if (!isRecord(v)) return false;
@@ -46,10 +66,12 @@ function isValidRoom(v: unknown): v is Room {
     typeof v.id === 'string' &&
     typeof v.type === 'string' &&
     typeof v.level === 'number' &&
-    isRecord(v.position) &&
-    typeof (v.position as Record<string, unknown>).x === 'number' &&
-    typeof (v.position as Record<string, unknown>).z === 'number' &&
-    VALID_ROTATIONS.includes(v.rotation as number)
+    Array.isArray(v.cells) &&
+    v.cells.length > 0 &&
+    v.cells.length <= MAX_ROOM_CELLS &&
+    v.cells.every(isValidGridCell) &&
+    Array.isArray(v.furniture) &&
+    v.furniture.every(isValidPlacedFurniture)
   );
 }
 
@@ -92,7 +114,6 @@ function isValidGameSaveData(v: unknown): v is GameSaveData {
     Array.isArray(v.activeMissions) &&
     Array.isArray(v.completedMissions) &&
     typeof v.tutorialStep === 'string' &&
-    // inventory added in v5 — accept missing (migration will add it) or valid object
     (v.inventory === undefined || (isRecord(v.inventory) && isRecord((v.inventory as Record<string, unknown>).items)))
   );
 }
@@ -142,12 +163,22 @@ export function validateAndMigrate(raw: unknown): ValidationResult {
     }
   }
 
+  if (!isRecord(parsed)) {
+    return { ok: false, errors: ['Invalid save file structure'] };
+  }
+
+  // CRITICAL: Version check BEFORE structural validation
+  // This prevents confusing validation errors for old saves
+  if (typeof parsed.version === 'number' && parsed.version < SAVE_VERSION) {
+    return { ok: false, errors: ['Save data is from an older incompatible version. Please start a new game.'] };
+  }
+
   // Structural check
   if (!isValidSaveEnvelope(parsed)) {
     return { ok: false, errors: ['Invalid save file structure'] };
   }
 
-  // Version migration
+  // Version migration (handles future version check)
   let migrated: SaveEnvelope;
   try {
     migrated = migrateSave(parsed);

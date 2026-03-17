@@ -113,15 +113,16 @@ src/
 - **Recruitment**: Fixed costs per civilization, unlock higher tiers with progression
 - **Multi-Resource Economy**: 8 item types earned from loot, spent on building costs
 
-### Guild Hall System (Build Mode Level 2)
-- **Grid-Based Placement**: 10x6 cell grid with multi-cell room support
-- **Room Dimensions**: Quest board (1x1), tavern (2x2), training room (2x1), workshop (1x1), infirmary (2x1)
-- **Room Rotation**: 0/90/180/270-degree rotation with axis-swapped sizing
-- **Collision Detection**: AABB-based overlap checking with boundary validation
-- **Build Overlay**: Real-time 3D grid visualization, ghost preview (green/red valid/invalid)
-- **Placement Mode**: Dedicated UI state (activeBuildType, buildRotation) with R/Escape/click controls
-- **Room Effects**: Bonus effects to character stats/EXP gain
-- **Aesthetics**: Isometric guild hall scene with dynamic room sizing
+### Guild Hall System (Cell-Based Build v1.7)
+- **Cell-Based Rooms**: Room = collection of GridCell[] (6x6 default blocks), dynamic world bounds
+- **5 Room Types**: guild-hall, tavern, workshop, training-room, infirmary (quest-board is now furniture)
+- **Furniture System**: 8 items — 5 core (quest-board, bar-counter, alchemy-table, workbench, training-dummy) + 3 upgrade (reception-desk, wine-barrel, medical-bed)
+- **Room Level = Core Furniture Level**: Upgrade core furniture → room levels up
+- **3 Build Modes**: new-room, new-furniture, move-room with cell-based overlap + adjacency validation
+- **Build Overlay**: Dynamic grid with padding, ghost cell/furniture preview (green/red)
+- **Build Menu**: 2-tab layout (Rooms | Furniture) with room upgrade buttons
+- **Room Effects**: Bonuses derived from furniture types/levels, not room types
+- **Rendering**: Per-cell floor tiles with room-specific colors + furniture meshes
 
 ### UI Architecture (Screen-Based Routing)
 - **Title Screen**: Save slot selection (continue/new/delete)

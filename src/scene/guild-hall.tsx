@@ -1,59 +1,75 @@
+/** Guild hall 3D scene — per-cell floor tiles + furniture meshes (no walls) */
+
 import { useGameStore } from '@/game/state/store';
 import { ROOM_DEFINITIONS } from '@/game/data/buildings';
-import { getRotatedSize, HALL_WIDTH, HALL_DEPTH } from '@/game/systems/building-system';
+import { FURNITURE_DEFINITIONS } from '@/game/data/furniture';
 import { BuildOverlay } from './build-overlay';
-import type { Room, RoomType } from '@/game/state/game-state';
+import type { Room, RoomType, PlacedFurniture } from '@/game/state/game-state';
 
 /** Room types that open a panel when clicked outside build mode */
-const CLICKABLE_ROOM_TYPES: RoomType[] = ['quest-board', 'tavern'];
+const CLICKABLE_ROOM_TYPES: RoomType[] = ['guild-hall', 'tavern'];
 
-const ROOM_COLORS: Record<RoomType, string> = {
-  'quest-board': '#DAA520',
-  'tavern': '#8B4513',
-  'training-room': '#4682B4',
-  'workshop': '#708090',
-  'infirmary': '#FF6347',
-};
-
-interface RoomMeshProps {
-  room: Room;
-  onRoomClick?: (roomType: RoomType) => void;
+function FloorTile({ x, z, color, onClick }: {
+  x: number; z: number; color: string; onClick?: (e: { stopPropagation: () => void }) => void;
+}) {
+  return (
+    <mesh position={[x + 0.5, 0, z + 0.5]} receiveShadow onClick={onClick}>
+      <boxGeometry args={[0.98, 0.1, 0.98]} />
+      <meshStandardMaterial color={color} />
+    </mesh>
+  );
 }
 
-function RoomMesh({ room, onRoomClick }: RoomMeshProps) {
+function FurnitureMesh({ furniture }: { furniture: PlacedFurniture }) {
+  const def = FURNITURE_DEFINITIONS.find((f) => f.type === furniture.type);
+  if (!def) return null;
+  const [w, d] = (furniture.rotation === 90 || furniture.rotation === 270)
+    ? [def.depth, def.width] : [def.width, def.depth];
+  return (
+    <mesh position={[furniture.position.x + w / 2, 0.55, furniture.position.z + d / 2]} castShadow>
+      <boxGeometry args={[w * 0.9, 1, d * 0.9]} />
+      <meshStandardMaterial color="#DAA520" />
+    </mesh>
+  );
+}
+
+function RoomFloor({ room, onRoomClick }: {
+  room: Room; onRoomClick?: (roomType: RoomType) => void;
+}) {
   const isBuildMode = useGameStore((s) => s.isBuildMode);
   const activeItem = useGameStore((s) => s.activeItem);
   const startMovingRoom = useGameStore((s) => s.startMovingRoom);
 
   const def = ROOM_DEFINITIONS.find((r) => r.type === room.type);
-  const { w, h } = def
-    ? getRotatedSize(def.width, def.depth, room.rotation)
-    : { w: 1, h: 1 };
+  const color = def?.floorColor ?? '#8B7355';
 
-  // Hide this room if it's currently being moved
-  if (activeItem?.type === 'existing' && activeItem.roomId === room.id) return null;
+  // Hide this room's floor if it's being moved
+  if (activeItem?.type === 'move-room' && activeItem.roomId === room.id) return null;
 
   const handleClick = (e: { stopPropagation: () => void }) => {
     if (isBuildMode && !activeItem) {
-      // In build mode: pick up the room to move it
       e.stopPropagation();
-      startMovingRoom(room.id, room.type, room.position, room.rotation);
+      startMovingRoom(room.id, room.type, room.cells);
     } else if (!isBuildMode && CLICKABLE_ROOM_TYPES.includes(room.type)) {
-      // Outside build mode: open the room's panel
       e.stopPropagation();
       onRoomClick?.(room.type);
     }
   };
 
   return (
-    <mesh
-      position={[room.position.x + w / 2, 0.75, room.position.z + h / 2]}
-      castShadow
-      onClick={handleClick}
-    >
-      <boxGeometry args={[w, 1.5, h]} />
-      <meshStandardMaterial color={ROOM_COLORS[room.type] ?? '#888'} />
-    </mesh>
+    <group>
+      {room.cells.map((cell) => (
+        <FloorTile
+          key={`${cell.x},${cell.z}`}
+          x={cell.x} z={cell.z}
+          color={color}
+          onClick={handleClick}
+        />
+      ))}
+      {room.furniture.map((f) => (
+        <FurnitureMesh key={f.id} furniture={f} />
+      ))}
+    </group>
   );
 }
 
@@ -68,16 +84,9 @@ export function GuildHall({ onRoomClick }: GuildHallProps) {
 
   return (
     <group>
-      {/* Base floor aligned to grid origin (0,0) → (HALL_WIDTH, HALL_DEPTH) */}
-      <mesh position={[HALL_WIDTH / 2, -0.1, HALL_DEPTH / 2]} receiveShadow>
-        <boxGeometry args={[HALL_WIDTH, 0.2, HALL_DEPTH]} />
-        <meshStandardMaterial color="#8B7355" />
-      </mesh>
-
       {rooms.map((room) => (
-        <RoomMesh key={room.id} room={room} onRoomClick={onRoomClick} />
+        <RoomFloor key={room.id} room={room} onRoomClick={onRoomClick} />
       ))}
-
       {isBuildMode && <BuildOverlay />}
     </group>
   );

@@ -1,41 +1,33 @@
 import type { StateCreator } from 'zustand';
-import type { RoomType, Rotation } from './game-state';
+import type { RoomType, Rotation, FurnitureType, GridCell } from './game-state';
+
+/** 3 build modes: new-room | new-furniture | move-room */
+export type BuildItemType = 'new-room' | 'new-furniture' | 'move-room';
 
 /** Active item being placed or moved in build mode */
 export interface ActiveBuildItem {
-  /** 'new' = purchasing new room, 'existing' = moving an already-placed room */
-  type: 'new' | 'existing';
-  /** Room type being placed/moved */
-  roomType: RoomType;
-  /** Current rotation for placement preview */
+  type: BuildItemType;
+  roomType?: RoomType;
+  furnitureType?: FurnitureType;
+  targetRoomId?: string;
   rotation: Rotation;
-  /** ID of room being moved (only for 'existing') */
+  /** ID of room being moved (only for move-room) */
   roomId?: string;
-  /** Original position saved for cancel (only for 'existing') */
-  originalPosition?: { x: number; z: number };
-  /** Original rotation saved for cancel (only for 'existing') */
-  originalRotation?: Rotation;
+  /** Original cells saved for cancel (only for move-room) */
+  originalCells?: GridCell[];
 }
 
 export interface BuildModeSlice {
   /** Whether build mode is active (grid visible, members hidden) */
   isBuildMode: boolean;
-  /** Room type currently being placed, null = not placing */
-  activeBuildType: RoomType | null;
-  /** Current rotation for placement preview */
-  buildRotation: Rotation;
-  /** Active build item with move metadata */
+  /** Active build item with placement metadata */
   activeItem: ActiveBuildItem | null;
 
-  /** Toggle build mode on/off */
   toggleBuildMode: (on: boolean) => void;
-  /** Enter build placement mode for a new room type */
   startPlacement: (type: RoomType) => void;
-  /** Pick up an existing room to move it */
-  startMovingRoom: (roomId: string, roomType: RoomType, position: { x: number; z: number }, rotation: Rotation) => void;
-  /** Rotate placement preview by 90 degrees */
+  startMovingRoom: (roomId: string, roomType: RoomType, cells: GridCell[]) => void;
+  startFurniturePlacement: (furnitureType: FurnitureType, targetRoomId: string) => void;
   rotatePlacement: () => void;
-  /** Cancel placement or move (restores original position for moves) */
   cancelPlacement: () => void;
 }
 
@@ -43,51 +35,43 @@ const ROTATION_CYCLE: Rotation[] = [0, 90, 180, 270];
 
 export const createBuildModeSlice: StateCreator<BuildModeSlice> = (set) => ({
   isBuildMode: false,
-  activeBuildType: null,
-  buildRotation: 0,
   activeItem: null,
 
   toggleBuildMode: (on) =>
-    set({
-      isBuildMode: on,
-      activeBuildType: null,
-      buildRotation: 0,
-      activeItem: null,
-    }),
+    set({ isBuildMode: on, activeItem: null }),
 
   startPlacement: (type) =>
     set({
       isBuildMode: true,
-      activeBuildType: type,
-      buildRotation: 0,
-      activeItem: { type: 'new', roomType: type, rotation: 0 },
+      activeItem: { type: 'new-room', roomType: type, rotation: 0 },
     }),
 
-  startMovingRoom: (roomId, roomType, position, rotation) =>
+  startMovingRoom: (roomId, roomType, cells) =>
     set({
       isBuildMode: true,
-      activeBuildType: roomType,
-      buildRotation: rotation,
       activeItem: {
-        type: 'existing',
+        type: 'move-room',
         roomType,
-        rotation,
+        rotation: 0,
         roomId,
-        originalPosition: { ...position },
-        originalRotation: rotation,
+        originalCells: cells.map((c) => ({ ...c })),
       },
+    }),
+
+  startFurniturePlacement: (furnitureType, targetRoomId) =>
+    set({
+      isBuildMode: true,
+      activeItem: { type: 'new-furniture', furnitureType, targetRoomId, rotation: 0 },
     }),
 
   rotatePlacement: () =>
     set((s) => {
-      const idx = ROTATION_CYCLE.indexOf(s.buildRotation);
+      if (!s.activeItem) return s;
+      const idx = ROTATION_CYCLE.indexOf(s.activeItem.rotation);
       const nextRotation = ROTATION_CYCLE[(idx + 1) % 4];
-      return {
-        buildRotation: nextRotation,
-        activeItem: s.activeItem ? { ...s.activeItem, rotation: nextRotation } : null,
-      };
+      return { activeItem: { ...s.activeItem, rotation: nextRotation } };
     }),
 
   cancelPlacement: () =>
-    set({ activeBuildType: null, buildRotation: 0, activeItem: null }),
+    set({ activeItem: null }),
 });

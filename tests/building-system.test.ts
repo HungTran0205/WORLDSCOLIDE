@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  getRotatedSize,
-  getRoomBounds,
-  checkCollision,
+  generateRoomCells,
+  checkCellOverlap,
+  checkAdjacency,
+  getWorldBounds,
   canPlaceRoom,
   placeRoom,
-  HALL_WIDTH,
-  HALL_DEPTH,
+  MAX_ROOM_CELLS,
 } from '@/game/systems/building-system';
 import { useGameStore } from '@/game/state/store';
 import type { GuildHall, Room } from '@/game/state/game-state';
@@ -15,8 +15,8 @@ const makeRoom = (overrides: Partial<Room> = {}): Room => ({
   id: 'r1',
   type: 'tavern',
   level: 1,
-  position: { x: 0, z: 0 },
-  rotation: 0,
+  cells: generateRoomCells(0, 0, 6, 6),
+  furniture: [],
   ...overrides,
 });
 
@@ -26,95 +26,98 @@ const makeHall = (rooms: Room[] = [], maxRooms = 5): GuildHall => ({
   maxRooms,
 });
 
-describe('building-system', () => {
-  describe('getRotatedSize', () => {
-    it('returns original size for rotation 0', () => {
-      expect(getRotatedSize(2, 3, 0)).toEqual({ w: 2, h: 3 });
+describe('building-system (cell-based)', () => {
+  describe('generateRoomCells', () => {
+    it('generates correct number of cells', () => {
+      const cells = generateRoomCells(0, 0, 6, 6);
+      expect(cells.length).toBe(36);
     });
 
-    it('returns original size for rotation 180', () => {
-      expect(getRotatedSize(2, 3, 180)).toEqual({ w: 2, h: 3 });
+    it('generates cells with correct positions', () => {
+      const cells = generateRoomCells(2, 3, 2, 2);
+      expect(cells).toEqual([
+        { x: 2, z: 3 }, { x: 2, z: 4 },
+        { x: 3, z: 3 }, { x: 3, z: 4 },
+      ]);
     });
 
-    it('swaps axes for rotation 90', () => {
-      expect(getRotatedSize(2, 3, 90)).toEqual({ w: 3, h: 2 });
-    });
-
-    it('swaps axes for rotation 270', () => {
-      expect(getRotatedSize(2, 3, 270)).toEqual({ w: 3, h: 2 });
-    });
-
-    it('handles square sizes (no visible change)', () => {
-      expect(getRotatedSize(2, 2, 90)).toEqual({ w: 2, h: 2 });
+    it('handles single-cell room', () => {
+      const cells = generateRoomCells(5, 5, 1, 1);
+      expect(cells).toEqual([{ x: 5, z: 5 }]);
     });
   });
 
-  describe('getRoomBounds', () => {
-    it('computes bounds for unrotated room', () => {
-      const room = makeRoom({ type: 'tavern', position: { x: 2, z: 1 }, rotation: 0 });
-      // tavern = 2x2
-      expect(getRoomBounds(room)).toEqual({ x: 2, z: 1, w: 2, h: 2 });
+  describe('checkCellOverlap', () => {
+    it('returns true when cells overlap existing room', () => {
+      const existing = makeRoom({ cells: generateRoomCells(0, 0, 6, 6) });
+      const newCells = generateRoomCells(3, 3, 6, 6);
+      expect(checkCellOverlap([existing], newCells)).toBe(true);
     });
 
-    it('computes bounds for 90-degree rotated room', () => {
-      const room = makeRoom({ type: 'training-room', position: { x: 3, z: 0 }, rotation: 90 });
-      // training-room = 2x1, rotated 90 → w=1, h=2
-      expect(getRoomBounds(room)).toEqual({ x: 3, z: 0, w: 1, h: 2 });
+    it('returns false when no overlap', () => {
+      const existing = makeRoom({ cells: generateRoomCells(0, 0, 6, 6) });
+      const newCells = generateRoomCells(6, 0, 6, 6);
+      expect(checkCellOverlap([existing], newCells)).toBe(false);
     });
 
-    it('defaults to 1x1 for unknown type', () => {
-      const room = makeRoom({ type: 'quest-board', position: { x: 0, z: 0 }, rotation: 0 });
-      // quest-board = 1x1
-      expect(getRoomBounds(room)).toEqual({ x: 0, z: 0, w: 1, h: 1 });
-    });
-  });
-
-  describe('checkCollision', () => {
-    it('returns true when out of bounds (negative x)', () => {
-      const hall = makeHall();
-      expect(checkCollision(hall, -1, 0, 1, 1)).toBe(true);
-    });
-
-    it('returns true when out of bounds (exceeds width)', () => {
-      const hall = makeHall();
-      expect(checkCollision(hall, HALL_WIDTH, 0, 1, 1)).toBe(true);
-    });
-
-    it('returns true when out of bounds (exceeds depth)', () => {
-      const hall = makeHall();
-      expect(checkCollision(hall, 0, HALL_DEPTH, 1, 1)).toBe(true);
-    });
-
-    it('returns true when overlapping existing room', () => {
-      const existing = makeRoom({ type: 'tavern', position: { x: 2, z: 2 }, rotation: 0 });
-      const hall = makeHall([existing]);
-      // tavern is 2x2 at (2,2)→(4,4), placing 2x2 at (3,3) overlaps
-      expect(checkCollision(hall, 3, 3, 2, 2)).toBe(true);
-    });
-
-    it('returns false when no collision', () => {
-      const existing = makeRoom({ type: 'tavern', position: { x: 0, z: 0 }, rotation: 0 });
-      const hall = makeHall([existing]);
-      // tavern is 2x2 at (0,0)→(2,2), placing at (2,0) is adjacent
-      expect(checkCollision(hall, 2, 0, 1, 1)).toBe(false);
-    });
-
-    it('returns false when placing at far corner', () => {
-      const hall = makeHall();
-      expect(checkCollision(hall, HALL_WIDTH - 1, HALL_DEPTH - 1, 1, 1)).toBe(false);
+    it('returns false when empty rooms', () => {
+      const newCells = generateRoomCells(0, 0, 6, 6);
+      expect(checkCellOverlap([], newCells)).toBe(false);
     });
 
     it('excludes room by id', () => {
-      const existing = makeRoom({ id: 'r1', type: 'tavern', position: { x: 0, z: 0 }, rotation: 0 });
-      const hall = makeHall([existing]);
-      // Would overlap, but excluded
-      expect(checkCollision(hall, 0, 0, 2, 2, 'r1')).toBe(false);
+      const existing = makeRoom({ id: 'r1', cells: generateRoomCells(0, 0, 6, 6) });
+      const newCells = generateRoomCells(0, 0, 6, 6);
+      expect(checkCellOverlap([existing], newCells, 'r1')).toBe(false);
     });
 
-    it('handles multi-tile boundary check', () => {
-      const hall = makeHall();
-      // 2x2 at (9,5) would go to (11,7) — out of bounds
-      expect(checkCollision(hall, 9, 5, 2, 2)).toBe(true);
+    it('still detects overlap with other rooms when excluding one', () => {
+      const r1 = makeRoom({ id: 'r1', cells: generateRoomCells(0, 0, 6, 6) });
+      const r2 = makeRoom({ id: 'r2', cells: generateRoomCells(6, 0, 6, 6) });
+      const newCells = generateRoomCells(6, 0, 6, 6);
+      expect(checkCellOverlap([r1, r2], newCells, 'r1')).toBe(true);
+    });
+  });
+
+  describe('checkAdjacency', () => {
+    it('returns true for first room (empty rooms array)', () => {
+      const cells = generateRoomCells(10, 10, 6, 6);
+      expect(checkAdjacency([], cells)).toBe(true);
+    });
+
+    it('returns true when adjacent to existing room', () => {
+      const existing = makeRoom({ cells: generateRoomCells(0, 0, 6, 6) });
+      const newCells = generateRoomCells(6, 0, 6, 6); // right next to existing
+      expect(checkAdjacency([existing], newCells)).toBe(true);
+    });
+
+    it('returns false when not adjacent', () => {
+      const existing = makeRoom({ cells: generateRoomCells(0, 0, 6, 6) });
+      const newCells = generateRoomCells(20, 20, 6, 6); // far away
+      expect(checkAdjacency([existing], newCells)).toBe(false);
+    });
+
+    it('returns true when diagonally touching has shared edge', () => {
+      const existing = makeRoom({ cells: generateRoomCells(0, 0, 6, 6) });
+      const newCells = generateRoomCells(0, 6, 6, 6); // below existing
+      expect(checkAdjacency([existing], newCells)).toBe(true);
+    });
+  });
+
+  describe('getWorldBounds', () => {
+    it('returns default bounds for empty rooms', () => {
+      expect(getWorldBounds([])).toEqual({ minX: 0, minZ: 0, maxX: 6, maxZ: 6 });
+    });
+
+    it('computes bounds from single room', () => {
+      const room = makeRoom({ cells: generateRoomCells(2, 3, 4, 5) });
+      expect(getWorldBounds([room])).toEqual({ minX: 2, minZ: 3, maxX: 6, maxZ: 8 });
+    });
+
+    it('computes bounds from multiple rooms', () => {
+      const r1 = makeRoom({ id: 'r1', cells: generateRoomCells(0, 0, 6, 6) });
+      const r2 = makeRoom({ id: 'r2', cells: generateRoomCells(10, 10, 6, 6) });
+      expect(getWorldBounds([r1, r2])).toEqual({ minX: 0, minZ: 0, maxX: 16, maxZ: 16 });
     });
   });
 
@@ -141,31 +144,34 @@ describe('building-system', () => {
 
   describe('placeRoom', () => {
     it('creates room with correct fields', () => {
-      const room = placeRoom('tavern', { x: 3, z: 2 }, 90);
+      const cells = generateRoomCells(3, 2, 6, 6);
+      const room = placeRoom('tavern', cells);
       expect(room.type).toBe('tavern');
-      expect(room.position).toEqual({ x: 3, z: 2 });
-      expect(room.rotation).toBe(90);
+      expect(room.cells).toEqual(cells);
+      expect(room.furniture).toEqual([]);
       expect(room.level).toBe(1);
       expect(room.id).toBeTruthy();
     });
+  });
 
-    it('defaults rotation to 0', () => {
-      const room = placeRoom('workshop', { x: 0, z: 0 });
-      expect(room.rotation).toBe(0);
+  describe('MAX_ROOM_CELLS', () => {
+    it('is 100', () => {
+      expect(MAX_ROOM_CELLS).toBe(100);
     });
   });
 });
 
 describe('BuildModeSlice', () => {
   beforeEach(() => {
-    useGameStore.setState({ activeBuildType: null, buildRotation: 0 });
+    useGameStore.setState({ activeItem: null });
   });
 
-  it('startPlacement sets type and resets rotation', () => {
+  it('startPlacement sets activeItem with type new-room', () => {
     useGameStore.getState().startPlacement('tavern');
     const s = useGameStore.getState();
-    expect(s.activeBuildType).toBe('tavern');
-    expect(s.buildRotation).toBe(0);
+    expect(s.activeItem?.type).toBe('new-room');
+    expect(s.activeItem?.roomType).toBe('tavern');
+    expect(s.activeItem?.rotation).toBe(0);
   });
 
   it('rotatePlacement cycles through 0→90→180→270→0', () => {
@@ -173,22 +179,19 @@ describe('BuildModeSlice', () => {
     const rotate = useGameStore.getState().rotatePlacement;
 
     rotate();
-    expect(useGameStore.getState().buildRotation).toBe(90);
+    expect(useGameStore.getState().activeItem?.rotation).toBe(90);
     rotate();
-    expect(useGameStore.getState().buildRotation).toBe(180);
+    expect(useGameStore.getState().activeItem?.rotation).toBe(180);
     rotate();
-    expect(useGameStore.getState().buildRotation).toBe(270);
+    expect(useGameStore.getState().activeItem?.rotation).toBe(270);
     rotate();
-    expect(useGameStore.getState().buildRotation).toBe(0);
+    expect(useGameStore.getState().activeItem?.rotation).toBe(0);
   });
 
-  it('cancelPlacement clears type and rotation', () => {
+  it('cancelPlacement clears activeItem', () => {
     useGameStore.getState().startPlacement('infirmary');
     useGameStore.getState().rotatePlacement();
     useGameStore.getState().cancelPlacement();
-
-    const s = useGameStore.getState();
-    expect(s.activeBuildType).toBeNull();
-    expect(s.buildRotation).toBe(0);
+    expect(useGameStore.getState().activeItem).toBeNull();
   });
 });

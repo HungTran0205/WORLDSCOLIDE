@@ -12,7 +12,11 @@ describe('Game State Store', () => {
       gold: 100,
       guildHall: {
         level: 1,
-        rooms: [{ id: 'room-quest-board', type: 'quest-board', level: 1, position: { x: 0, z: 0 }, rotation: 0 }],
+        rooms: [{
+          id: 'room-guild-hall', type: 'guild-hall', level: 1,
+          cells: Array.from({ length: 36 }, (_, i) => ({ x: i % 6, z: Math.floor(i / 6) })),
+          furniture: [{ id: 'furniture-quest-board', type: 'quest-board', level: 1, position: { x: 2, z: 2 }, rotation: 0 }],
+        }],
         maxRooms: 3,
       },
       settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true },

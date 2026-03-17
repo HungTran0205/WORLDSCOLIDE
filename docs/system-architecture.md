@@ -305,91 +305,91 @@ User actions:
   - Delete: Remove slot from IndexedDB + refresh UI
 ```
 
-## Data Flow: Build Mode (Advanced v1.3)
+## Data Flow: Build Mode (Cell-Based v1.7)
 
 ### Overview
 
-Build Mode now supports both new placements and moving existing rooms with cancel/restore.
+Build Mode uses cell-based rooms with 3 modes: new-room, new-furniture, move-room.
 
 ```
 [Player clicks Build Mode toggle]
     ↓
-toggleBuildMode(true) → isBuildMode = true, grid visible, members hidden
+toggleBuildMode(true) → isBuildMode = true, dynamic grid visible, members hidden
     ↓
-[Player clicks existing room]
+[Player clicks existing room floor tile]
     ↓
-startMovingRoom(roomId, type, pos, rotation)
-  → activeItem = { type: 'existing', roomId, roomType, position, rotation, originalPosition, originalRotation }
-  → RoomMesh with roomId becomes invisible (rendering excluded)
+startMovingRoom(roomId, roomType, cells)
+  → activeItem = { type: 'move-room', roomId, roomType, rotation, originalCells }
+  → Room floor tiles hidden during move
     ↓
-OR [Player clicks room button to place new]
+OR [Player selects room type from Build Menu > Rooms tab]
     ↓
 startPlacement(roomType)
-  → activeItem = { type: 'new', roomType, rotation: 0 }
+  → activeItem = { type: 'new-room', roomType, rotation: 0 }
     ↓
-[BuildOverlay renders ghost preview]
+OR [Player selects furniture from Build Menu > Furniture tab]
     ↓
-[Player moves mouse, presses R, or clicks to place/drop]
+startFurniturePlacement(furnitureType, targetRoomId)
+  → activeItem = { type: 'new-furniture', furnitureType, targetRoomId, rotation: 0 }
     ↓
-Mouse Position: Raycasted from 3D → snapped to grid (0.5 cell offset)
+[BuildOverlay renders ghost preview — cells or furniture box]
     ↓
-GhostRoom Updates:
-  - Calculate rotated size: getRotatedSize(width, depth, rotation)
-  - Check collision: checkCollision(hall, x, z, w, h, excludeRoomId)
-    ↓ (if moving) excludeRoomId prevents self-collision
-  - Render green (valid) or red (invalid)
+Mouse Position: Raycasted from 3D → snapped to grid cell
     ↓
-[Player presses R]
+Validation:
+  new-room:  generateRoomCells(x,z,w,d) → checkCellOverlap + checkAdjacency
+  move-room: generateRoomCells(x,z,w,d) → checkCellOverlap(exclude) + checkAdjacency
+  new-furniture: canPlaceFurniture(room, type, pos, rotation)
     ↓
-rotatePlacement() → buildRotation cycles, activeItem.rotation updates
+Ghost renders green (valid) or red (invalid)
     ↓
-Ghost preview updates (size may swap if 90/270)
-    ↓
-[Player clicks or presses Escape/right-click]
+[Click to confirm | R to rotate | Esc/right-click to cancel]
     ↓
 If valid click:
-  NEW: placeRoom(type, {x,z}, rotation) → adds to hall.rooms, costs gold
-  EXISTING: updateRoom(roomId, newPos, rotation) → moves room, no cost
+  new-room: buildRoom(type, cells) → spends gold+items, creates room + autoPlaceCoreFurniture
+  move-room: update room.cells in store
+  new-furniture: spends gold+items, adds PlacedFurniture to room
   → activeItem = null
     ↓
-If Escape/right-click: cancelPlacement()
-  NEW: activeBuildType = null (no state change)
-  EXISTING: room position restored to originalPosition, rotation to originalRotation
-  → activeItem = null, RoomMesh becomes visible again
-    ↓
-[Player clicks Build Mode toggle to exit]
-    ↓
-toggleBuildMode(false) → isBuildMode = false, activeItem = null, grid hidden, members shown
+If cancel: cancelPlacement() → activeItem = null
 ```
 
 ### Placement Validation
 
 ```
-canPlaceRoom(hall, roomType, gold):
-  1. Check room capacity: hall.rooms.length < hall.maxRooms
-  2. Find RoomDefinition by type, get base cost
-  3. Check gold >= baseCost
+canPlaceRoom(guildHall, roomType, gold, inventory):
+  1. Check capacity: rooms.length < maxRooms
+  2. Check gold >= cost
+  3. Check inventory has required items
   4. Return { success, reason? }
 
-checkCollision(hall, x, z, width, depth, excludeRoomId?):
-  1. Boundary check: x >= 0, z >= 0, x+w <= 10, z+h <= 6
-  2. For each room in hall.rooms:
-     - Skip if excludeRoomId matches
-     - Get room bounds (with rotation): getRoomBounds(room)
-     - Check AABB overlap: rectsOverlap(proposed, existing)
-  3. Return true if collision, false if valid
+checkCellOverlap(rooms, newCells, excludeRoomId?):
+  1. Build Set of occupied cell keys from all rooms
+  2. Return true if any newCell is in occupied set
+
+checkAdjacency(rooms, newCells):
+  1. If first room (rooms.length === 0) → always valid
+  2. Check 4-directional neighbors of each newCell against occupied set
+  3. Return true if any neighbor found
+
+canPlaceFurniture(room, furnitureType, position, rotation):
+  1. Check allowedRooms restriction
+  2. Check maxPerRoom limit
+  3. Check furniture cells fit within room cells
+  4. Check no overlap with existing furniture
 ```
 
-### Rotation Mechanics
+### Furniture & Room Levels
 
 ```
-getRotatedSize(width, depth, rotation):
-  - 0° or 180°: return { w: width, h: depth }
-  - 90° or 270°: return { w: depth, h: width }  [axes swap]
-```
+autoPlaceCoreFurniture(room):
+  → Looks up RoomDefinition.coreFurniture → places at room center
 
-**Example**: Tavern (2×2) rotated 90° → still 2×2 (square, no visual change)
-**Example**: Training Room (2×1) rotated 90° → becomes 1×2 (tall instead of wide)
+upgradeCoreFurniture(room):
+  → Finds core furniture → checks upgradeCosts[level-1]
+  → Returns { room: upgraded, cost } or null if max level
+  → Room.level = coreFurniture.level (kept in sync)
+```
 
 ## Data Flow: Multi-Resource Loot & Inventory (NEW - v1.5)
 

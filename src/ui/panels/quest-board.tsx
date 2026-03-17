@@ -33,11 +33,11 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
     return all.filter((m) => m.status === 'idle');
   }, [founder, roster]);
 
-  // Determine max quest tier from highest-level quest-board room
+  // Determine max quest tier from quest-board furniture level inside guild-hall room
   const unlockedTiers = useMemo(() => {
-    const questBoards = guildHall.rooms.filter((r) => r.type === 'quest-board');
-    if (questBoards.length === 0) return ['F' as QuestTier];
-    const maxLevel = Math.max(...questBoards.map((r) => r.level));
+    const guildHallRoom = guildHall.rooms.find((r) => r.type === 'guild-hall');
+    const questBoardFurniture = guildHallRoom?.furniture.find((f) => f.type === 'quest-board');
+    const maxLevel = questBoardFurniture?.level ?? 1;
     const maxTier = QUEST_BOARD_TIER_BY_LEVEL[maxLevel] ?? 'F';
     const maxIdx = TIER_ORDER.indexOf(maxTier);
     return TIER_ORDER.slice(0, maxIdx + 1);

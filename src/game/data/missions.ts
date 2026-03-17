@@ -7,7 +7,7 @@ export const MISSIONS: Mission[] = [
     description: 'The outskirts forest is overrun with slimes. Clear them out.',
     zone: 'Outskirts Forest',
     durationMs: 60_000, travelTimeMs: 10_000,
-    goldRewardMin: 10, goldRewardMax: 20, expReward: 100,
+    goldRewardMin: 50, goldRewardMax: 100, expReward: 100,
     enemyIds: ['slime', 'slime', 'slime'], requiredMembers: 1, requiredLevel: 1,
   },
   {
@@ -15,7 +15,7 @@ export const MISSIONS: Mission[] = [
     description: 'A massive slime rules the cave depths. Defeat the Slime King.',
     zone: 'Crystal Cave',
     durationMs: 120_000, travelTimeMs: 10_000,
-    goldRewardMin: 30, goldRewardMax: 50, expReward: 200,
+    goldRewardMin: 50, goldRewardMax: 200, expReward: 200,
     enemyIds: ['slime', 'slime', 'slime-king'], requiredMembers: 1, requiredLevel: 3,
   },
   // E-Tier
@@ -24,7 +24,7 @@ export const MISSIONS: Mission[] = [
     description: 'A goblin camp threatens nearby trade routes. Raid and disband them.',
     zone: 'Dusty Plains',
     durationMs: 150_000, travelTimeMs: 15_000,
-    goldRewardMin: 40, goldRewardMax: 70, expReward: 275,
+    goldRewardMin: 50, goldRewardMax: 300, expReward: 275,
     enemyIds: ['goblin', 'goblin', 'goblin', 'goblin'], requiredMembers: 2, requiredLevel: 2,
   },
   {
@@ -32,7 +32,7 @@ export const MISSIONS: Mission[] = [
     description: 'A feral wolf pack stalks the highland trails. Hunt them down.',
     zone: 'Highland Trails',
     durationMs: 180_000, travelTimeMs: 15_000,
-    goldRewardMin: 50, goldRewardMax: 65, expReward: 300,
+    goldRewardMin: 50, goldRewardMax: 350, expReward: 300,
     enemyIds: ['wolf', 'wolf', 'wolf'], requiredMembers: 2, requiredLevel: 3,
   },
   // D-Tier
@@ -41,7 +41,7 @@ export const MISSIONS: Mission[] = [
     description: 'Orcs have fortified a mountain pass. Storm their stronghold.',
     zone: 'Iron Pass',
     durationMs: 300_000, travelTimeMs: 20_000,
-    goldRewardMin: 150, goldRewardMax: 250, expReward: 750,
+    goldRewardMin: 50, goldRewardMax: 450, expReward: 750,
     enemyIds: ['orc-warrior', 'orc-warrior', 'goblin', 'goblin'], requiredMembers: 3, requiredLevel: 5,
   },
 ];

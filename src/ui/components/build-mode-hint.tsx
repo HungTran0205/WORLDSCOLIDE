@@ -1,18 +1,31 @@
+/** Small overlay showing build mode controls — 3 modes: new-room, new-furniture, move-room */
+
 import { useGameStore } from '@/game/state/store';
 import { ROOM_DEFINITIONS } from '@/game/data/buildings';
+import { FURNITURE_DEFINITIONS } from '@/game/data/furniture';
 
-/** Small overlay showing build mode controls */
 export function BuildModeHint() {
   const isBuildMode = useGameStore((s) => s.isBuildMode);
-  const activeBuildType = useGameStore((s) => s.activeBuildType);
-  const buildRotation = useGameStore((s) => s.buildRotation);
   const activeItem = useGameStore((s) => s.activeItem);
 
   if (!isBuildMode) return null;
 
-  const isMoving = activeItem?.type === 'existing';
-  const def = activeBuildType ? ROOM_DEFINITIONS.find((r) => r.type === activeBuildType) : null;
-  const name = def?.name ?? activeBuildType;
+  let title = 'Build Mode';
+  let controls = 'Click a room to move it \u2022 Open Build menu for new rooms';
+
+  if (activeItem?.type === 'new-room') {
+    const def = ROOM_DEFINITIONS.find((r) => r.type === activeItem.roomType);
+    title = `Placing: ${def?.name ?? activeItem.roomType}`;
+    controls = `Click to place \u2022 R to rotate \u2022 Esc / Right-click to cancel`;
+  } else if (activeItem?.type === 'move-room') {
+    const def = ROOM_DEFINITIONS.find((r) => r.type === activeItem.roomType);
+    title = `Moving: ${def?.name ?? activeItem.roomType}`;
+    controls = `Click to drop \u2022 Esc / Right-click to cancel`;
+  } else if (activeItem?.type === 'new-furniture') {
+    const def = FURNITURE_DEFINITIONS.find((f) => f.type === activeItem.furnitureType);
+    title = `Placing: ${def?.name ?? activeItem.furnitureType}`;
+    controls = `Click to place \u2022 R to rotate \u2022 Esc / Right-click to cancel`;
+  }
 
   return (
     <div style={{
@@ -29,21 +42,9 @@ export function BuildModeHint() {
       zIndex: 100,
       textAlign: 'center',
     }}>
-      {activeBuildType ? (
-        <>
-          <strong>{isMoving ? 'Moving' : 'Placing'}: {name}</strong> ({buildRotation}&deg;)
-          <br />
-          <span style={{ color: '#aaa' }}>
-            Click to {isMoving ? 'drop' : 'place'} &bull; R to rotate &bull; Esc / Right-click to cancel
-          </span>
-        </>
-      ) : (
-        <>
-          <strong>Build Mode</strong>
-          <br />
-          <span style={{ color: '#aaa' }}>Click a room to move it &bull; Open Build menu for new rooms</span>
-        </>
-      )}
+      <strong>{title}</strong>
+      <br />
+      <span style={{ color: '#aaa' }}>{controls}</span>
     </div>
   );
 }

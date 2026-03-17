@@ -1,71 +1,94 @@
-import type { GuildHall, Room, RoomType, Rotation, InventoryState } from '@/game/state/game-state';
+/** Cell-based building system — placement, adjacency, world bounds */
+
+import type { Room, RoomType, GridCell, GuildHall, InventoryState } from '@/game/state/game-state';
 import type { ItemID } from '@/game/data/items';
 import { ROOM_DEFINITIONS } from '@/game/data/buildings';
 
-/** Guild hall grid dimensions (cells) */
-export const HALL_WIDTH = 10;
-export const HALL_DEPTH = 6;
+/** Maximum cells a single room may occupy */
+export const MAX_ROOM_CELLS = 100;
 
 export interface PlacementResult {
   success: boolean;
   reason?: string;
 }
 
-/** Get effective width/depth after rotation (90/270 swap axes) */
-export function getRotatedSize(width: number, depth: number, rotation: Rotation) {
-  if (rotation === 90 || rotation === 270) return { w: depth, h: width };
-  return { w: width, h: depth };
+/** Generate a rectangular block of cells from origin */
+export function generateRoomCells(
+  originX: number, originZ: number,
+  width: number, depth: number,
+): GridCell[] {
+  const cells: GridCell[] = [];
+  for (let x = originX; x < originX + width; x++) {
+    for (let z = originZ; z < originZ + depth; z++) {
+      cells.push({ x, z });
+    }
+  }
+  return cells;
 }
 
-/** AABB rectangle for a placed room on the grid */
-export interface RoomBounds {
-  x: number;
-  z: number;
-  w: number;
-  h: number;
+/** Build a Set<string> key from cell for O(1) lookup */
+function cellKey(cell: GridCell): string {
+  return `${cell.x},${cell.z}`;
 }
 
-/** Compute grid bounds for an existing room */
-export function getRoomBounds(room: Room): RoomBounds {
-  const def = ROOM_DEFINITIONS.find((r) => r.type === room.type);
-  if (!def) return { x: room.position.x, z: room.position.z, w: 1, h: 1 };
-  const { w, h } = getRotatedSize(def.width, def.depth, room.rotation);
-  return { x: room.position.x, z: room.position.z, w, h };
-}
-
-/** Check if two AABB rectangles overlap */
-function rectsOverlap(a: RoomBounds, b: RoomBounds): boolean {
-  return a.x < b.x + b.w && a.x + a.w > b.x && a.z < b.z + b.h && a.z + a.h > b.z;
-}
-
-/** Check if a proposed placement collides with existing rooms or exceeds hall bounds */
-export function checkCollision(
-  hall: GuildHall,
-  x: number,
-  z: number,
-  width: number,
-  depth: number,
-  excludeRoomId?: string,
-): boolean {
-  // Boundary check
-  if (x < 0 || z < 0 || x + width > HALL_WIDTH || z + depth > HALL_DEPTH) return true;
-
-  const proposed: RoomBounds = { x, z, w: width, h: depth };
-  for (const room of hall.rooms) {
+/** Collect all occupied cell keys across rooms */
+function getOccupiedCells(rooms: Room[], excludeRoomId?: string): Set<string> {
+  const occupied = new Set<string>();
+  for (const room of rooms) {
     if (excludeRoomId && room.id === excludeRoomId) continue;
-    if (rectsOverlap(proposed, getRoomBounds(room))) return true;
+    for (const cell of room.cells) {
+      occupied.add(cellKey(cell));
+    }
+  }
+  return occupied;
+}
+
+/** Check if any newCells overlap existing room cells */
+export function checkCellOverlap(
+  rooms: Room[], newCells: GridCell[], excludeRoomId?: string,
+): boolean {
+  const occupied = getOccupiedCells(rooms, excludeRoomId);
+  return newCells.some((c) => occupied.has(cellKey(c)));
+}
+
+/** Check if newCells are adjacent (4-directional) to at least one existing room cell */
+export function checkAdjacency(rooms: Room[], newCells: GridCell[]): boolean {
+  if (rooms.length === 0) return true; // First room always valid
+  const occupied = getOccupiedCells(rooms);
+  const DIRS = [{ x: 1, z: 0 }, { x: -1, z: 0 }, { x: 0, z: 1 }, { x: 0, z: -1 }];
+  for (const cell of newCells) {
+    for (const d of DIRS) {
+      if (occupied.has(cellKey({ x: cell.x + d.x, z: cell.z + d.z }))) return true;
+    }
   }
   return false;
 }
 
+/** Compute bounding box of all room cells */
+export function getWorldBounds(rooms: Room[]): {
+  minX: number; minZ: number; maxX: number; maxZ: number;
+} {
+  if (rooms.length === 0) return { minX: 0, minZ: 0, maxX: 6, maxZ: 6 };
+  let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity;
+  for (const room of rooms) {
+    for (const cell of room.cells) {
+      if (cell.x < minX) minX = cell.x;
+      if (cell.z < minZ) minZ = cell.z;
+      if (cell.x + 1 > maxX) maxX = cell.x + 1;
+      if (cell.z + 1 > maxZ) maxZ = cell.z + 1;
+    }
+  }
+  return { minX, minZ, maxX, maxZ };
+}
+
 /** Validate room can be placed (capacity, gold, items) */
 export function canPlaceRoom(
-  hall: GuildHall,
+  guildHall: GuildHall,
   roomType: RoomType,
   gold: number,
   inventory?: InventoryState,
 ): PlacementResult {
-  if (hall.rooms.length >= hall.maxRooms) {
+  if (guildHall.rooms.length >= guildHall.maxRooms) {
     return { success: false, reason: 'Max rooms reached. Upgrade guild hall.' };
   }
   const def = ROOM_DEFINITIONS.find((r) => r.type === roomType);
@@ -81,15 +104,18 @@ export function canPlaceRoom(
   return { success: true };
 }
 
-/** Create a new room at given grid position */
-export function placeRoom(
-  roomType: RoomType,
-  position: { x: number; z: number },
-  rotation: Rotation = 0,
-): Room {
-  return { id: crypto.randomUUID(), type: roomType, level: 1, position, rotation };
+/** Create a new room from cells (core furniture added by autoPlaceCoreFurniture) */
+export function placeRoom(roomType: RoomType, cells: GridCell[]): Room {
+  return {
+    id: crypto.randomUUID(),
+    type: roomType,
+    level: 1,
+    cells,
+    furniture: [],
+  };
 }
 
-export function removeRoom(hall: GuildHall, roomId: string): GuildHall {
-  return { ...hall, rooms: hall.rooms.filter((r) => r.id !== roomId) };
+/** Remove a room from the guild hall by ID */
+export function removeRoom(guildHall: GuildHall, roomId: string): GuildHall {
+  return { ...guildHall, rooms: guildHall.rooms.filter((r) => r.id !== roomId) };
 }

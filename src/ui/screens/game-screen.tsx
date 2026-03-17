@@ -74,7 +74,7 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
 
   const handleRoomClick = (roomType: RoomType) => {
     if (roomType === 'tavern') setActivePanel('tavern');
-    else if (roomType === 'quest-board') setActivePanel('quests');
+    else if (roomType === 'guild-hall') setActivePanel('quests');
   };
 
   return (

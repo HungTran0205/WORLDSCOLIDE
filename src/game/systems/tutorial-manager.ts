@@ -22,10 +22,10 @@ export const TUTORIAL_STEPS: TutorialStepConfig[] = [
   },
   {
     step: 'first-build',
-    message: 'Open the Build menu and check your Quest Board.',
+    message: 'Open the Build menu and build a new room for your guild.',
     highlightPanel: 'build',
     autoAdvance: true,
-    advanceCondition: (state) => state.guildHall.rooms.some((r) => r.type === 'quest-board'),
+    advanceCondition: (state) => state.guildHall.rooms.length > 1,
   },
   {
     step: 'first-quest',

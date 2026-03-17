@@ -1,5 +1,8 @@
 import type { StateCreator } from 'zustand';
-import type { GuildHall, GameSettings, TavernState, Member } from './game-state';
+import type { GuildHall, GameSettings, TavernState, Member, RoomType, GridCell } from './game-state';
+import { ROOM_DEFINITIONS } from '@/game/data/buildings';
+import { canPlaceRoom, placeRoom, generateRoomCells } from '@/game/systems/building-system';
+import { autoPlaceCoreFurniture, upgradeCoreFurniture } from '@/game/systems/furniture-system';
 
 export interface GuildSlice {
   guildName: string;
@@ -15,15 +18,23 @@ export interface GuildSlice {
   updateSettings: (partial: Partial<GameSettings>) => void;
   refreshTavern: (mercenaries: Member[]) => void;
   hireMercenary: (memberId: string) => void;
+  /** Place a new room: validates cost, creates room with core furniture, spends resources */
+  buildRoom: (type: RoomType, cells: GridCell[]) => boolean;
+  /** Upgrade a room's core furniture (= room level up), spends resources */
+  upgradeRoom: (roomId: string) => boolean;
 }
 
-const DEFAULT_GUILD_HALL: GuildHall = {
-  level: 1,
-  rooms: [
-    { id: 'room-quest-board', type: 'quest-board', level: 1, position: { x: 0, z: 0 }, rotation: 0 },
-  ],
-  maxRooms: 3,
-};
+/** Generate the default guild-hall room with cells and core furniture */
+function createDefaultGuildHall(): GuildHall {
+  const cells = generateRoomCells(0, 0, 6, 6);
+  const rawRoom = placeRoom('guild-hall', cells);
+  const roomWithCore = autoPlaceCoreFurniture({ ...rawRoom, id: 'room-guild-hall' });
+  return {
+    level: 1,
+    rooms: [roomWithCore],
+    maxRooms: 3,
+  };
+}
 
 const DEFAULT_SETTINGS: GameSettings = {
   musicVolume: 0.5,
@@ -40,7 +51,7 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
   guildName: '',
   guildLevel: 1,
   gold: 100,
-  guildHall: DEFAULT_GUILD_HALL,
+  guildHall: createDefaultGuildHall(),
   settings: DEFAULT_SETTINGS,
   tavern: DEFAULT_TAVERN,
 
@@ -76,7 +87,6 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
     set((s) => {
       const merc = s.tavern.availableMercenaries.find((m) => m.id === memberId);
       if (!merc) return {};
-      // Access full merged store state at runtime (set operates on full Zustand store)
       const fullState = s as GuildSlice & { roster: Member[] };
       return {
         tavern: {
@@ -86,4 +96,107 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
         roster: [...fullState.roster, merc],
       } as unknown as Partial<GuildSlice>;
     }),
+
+  buildRoom: (type, cells) => {
+    let success = false;
+    set((s) => {
+      // Access full store for inventory
+      const fullState = s as GuildSlice & { inventory: import('./game-state').InventoryState; consumeItems: (cost: Partial<Record<import('@/game/data/items').ItemID, number>>) => boolean; addGold: (amount: number) => void };
+      const validation = canPlaceRoom(s.guildHall, type, s.gold, fullState.inventory);
+      if (!validation.success) return s;
+
+      const def = ROOM_DEFINITIONS.find((r) => r.type === type);
+      if (!def) return s;
+
+      // Create room with auto-placed core furniture
+      const rawRoom = placeRoom(type, cells);
+      const roomWithCore = autoPlaceCoreFurniture(rawRoom);
+
+      // Spend gold
+      const newGold = s.gold - def.cost.gold;
+
+      // Consume items (check inside set for atomicity)
+      if (def.cost.items) {
+        const inv = fullState.inventory;
+        for (const [id, needed] of Object.entries(def.cost.items)) {
+          if (needed && needed > 0 && ((inv.items as Record<string, number>)[id] ?? 0) < needed) {
+            return s; // insufficient items
+          }
+        }
+        // Deduct items
+        const newItems = { ...inv.items };
+        for (const [id, needed] of Object.entries(def.cost.items)) {
+          if (needed && needed > 0) {
+            (newItems as Record<string, number>)[id] = ((newItems as Record<string, number>)[id] ?? 0) - needed;
+          }
+        }
+        success = true;
+        return {
+          gold: newGold,
+          inventory: { ...inv, items: newItems },
+          guildHall: { ...s.guildHall, rooms: [...s.guildHall.rooms, roomWithCore] },
+        } as unknown as Partial<GuildSlice>;
+      }
+
+      success = true;
+      return {
+        gold: newGold,
+        guildHall: { ...s.guildHall, rooms: [...s.guildHall.rooms, roomWithCore] },
+      };
+    });
+    return success;
+  },
+
+  upgradeRoom: (roomId) => {
+    let success = false;
+    set((s) => {
+      const fullState = s as GuildSlice & { inventory: import('./game-state').InventoryState };
+      const room = s.guildHall.rooms.find((r) => r.id === roomId);
+      if (!room) return s;
+
+      const result = upgradeCoreFurniture(room);
+      if (!result) return s; // max level
+
+      const { room: upgradedRoom, cost } = result;
+
+      // Validate gold
+      if (s.gold < (cost.gold ?? 0)) return s;
+
+      // Validate items
+      if (cost.items) {
+        const inv = fullState.inventory;
+        for (const [id, needed] of Object.entries(cost.items)) {
+          if (needed && needed > 0 && ((inv.items as Record<string, number>)[id] ?? 0) < needed) {
+            return s;
+          }
+        }
+        // Deduct items
+        const newItems = { ...inv.items };
+        for (const [id, needed] of Object.entries(cost.items)) {
+          if (needed && needed > 0) {
+            (newItems as Record<string, number>)[id] = ((newItems as Record<string, number>)[id] ?? 0) - needed;
+          }
+        }
+        success = true;
+        return {
+          gold: s.gold - (cost.gold ?? 0),
+          inventory: { ...inv, items: newItems },
+          guildHall: {
+            ...s.guildHall,
+            rooms: s.guildHall.rooms.map((r) => r.id === roomId ? upgradedRoom : r),
+          },
+        } as unknown as Partial<GuildSlice>;
+      }
+
+      success = true;
+      return {
+        gold: s.gold - (cost.gold ?? 0),
+        guildHall: {
+          ...s.guildHall,
+          rooms: s.guildHall.rooms.map((r) => r.id === roomId ? upgradedRoom : r),
+        },
+      };
+    });
+    return success;
+  },
 });

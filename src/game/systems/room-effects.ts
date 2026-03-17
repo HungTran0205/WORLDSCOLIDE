@@ -7,7 +7,7 @@ export interface RoomBonuses {
   visitorBonus: number;
 }
 
-/** Calculate combined bonuses from all rooms */
+/** Calculate combined bonuses from all rooms' furniture */
 export function calcRoomBonuses(rooms: Room[]): RoomBonuses {
   const bonuses: RoomBonuses = {
     upkeepReduction: 1.0,
@@ -17,16 +17,29 @@ export function calcRoomBonuses(rooms: Room[]): RoomBonuses {
   };
 
   for (const room of rooms) {
-    switch (room.type) {
-      case 'tavern':
-        bonuses.upkeepReduction *= 1 - 0.05 * room.level;
-        break;
-      case 'training-room':
-        bonuses.passiveExpPerDay += 10 * room.level;
-        break;
-      case 'infirmary':
-        bonuses.recoveryReduction += 1;
-        break;
+    for (const furniture of room.furniture) {
+      switch (furniture.type) {
+        // Core furniture: level-scaled bonuses
+        case 'bar-counter':
+          bonuses.upkeepReduction *= 1 - 0.05 * furniture.level;
+          break;
+        case 'training-dummy':
+          bonuses.passiveExpPerDay += 10 * furniture.level;
+          break;
+        case 'alchemy-table':
+          bonuses.recoveryReduction += furniture.level;
+          break;
+        // Upgrade furniture: flat bonuses
+        case 'wine-barrel':
+          bonuses.upkeepReduction *= 0.98;
+          break;
+        case 'medical-bed':
+          bonuses.recoveryReduction += 0.5;
+          break;
+        case 'reception-desk':
+          bonuses.visitorBonus += 1;
+          break;
+      }
     }
   }
 
