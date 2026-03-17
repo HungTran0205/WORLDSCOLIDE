@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand';
 import type { GuildHall, GameSettings, TavernState, Member, RoomType, GridCell } from './game-state';
 import { ROOM_DEFINITIONS } from '@/game/data/buildings';
-import { canPlaceRoom, placeRoom, generateRoomCells } from '@/game/systems/building-system';
+import { canPlaceRoom, placeRoom, generateRoomCells, checkCellOverlap, checkAdjacency } from '@/game/systems/building-system';
 import { autoPlaceCoreFurniture, upgradeCoreFurniture } from '@/game/systems/furniture-system';
 
 export interface GuildSlice {
@@ -104,6 +104,11 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
       const fullState = s as GuildSlice & { inventory: import('./game-state').InventoryState; consumeItems: (cost: Partial<Record<import('@/game/data/items').ItemID, number>>) => boolean; addGold: (amount: number) => void };
       const validation = canPlaceRoom(s.guildHall, type, s.gold, fullState.inventory);
       if (!validation.success) return s;
+
+      // Cell validation: no overlap + must be adjacent
+      if (cells.length === 0) return s;
+      if (checkCellOverlap(s.guildHall.rooms, cells)) return s;
+      if (!checkAdjacency(s.guildHall.rooms, cells)) return s;
 
       const def = ROOM_DEFINITIONS.find((r) => r.type === type);
       if (!def) return s;

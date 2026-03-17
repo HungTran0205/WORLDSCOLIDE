@@ -126,13 +126,25 @@ export function BuildOverlay() {
       const def = ROOM_DEFINITIONS.find((r) => r.type === item.roomType);
       if (!def) return;
       const newCells = generateRoomCells(ghostPos.x, ghostPos.z, def.defaultWidth, def.defaultDepth);
-      // Update room cells in place
+      // Update room cells + rebase furniture positions relative to new origin
       useGameStore.setState((s) => ({
         guildHall: {
           ...s.guildHall,
-          rooms: s.guildHall.rooms.map((r) =>
-            r.id === item.roomId ? { ...r, cells: newCells } : r,
-          ),
+          rooms: s.guildHall.rooms.map((r) => {
+            if (r.id !== item.roomId) return r;
+            const oldMinX = Math.min(...r.cells.map((c) => c.x));
+            const oldMinZ = Math.min(...r.cells.map((c) => c.z));
+            const dx = ghostPos.x - oldMinX;
+            const dz = ghostPos.z - oldMinZ;
+            return {
+              ...r,
+              cells: newCells,
+              furniture: r.furniture.map((f) => ({
+                ...f,
+                position: { x: f.position.x + dx, z: f.position.z + dz },
+              })),
+            };
+          }),
         },
       }));
       state.cancelPlacement();

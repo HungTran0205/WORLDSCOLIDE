@@ -21,7 +21,7 @@ export function calcRoomBonuses(rooms: Room[]): RoomBonuses {
       switch (furniture.type) {
         // Core furniture: level-scaled bonuses
         case 'bar-counter':
-          bonuses.upkeepReduction *= 1 - 0.05 * furniture.level;
+          bonuses.upkeepReduction *= Math.max(0.01, 1 - 0.05 * furniture.level);
           break;
         case 'training-dummy':
           bonuses.passiveExpPerDay += 10 * furniture.level;
