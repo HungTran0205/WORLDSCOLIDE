@@ -1,5 +1,4 @@
 import { useGameStore } from '@/game/state/store';
-import { selectAllMembers } from '@/game/state/selectors';
 import { GoldDisplay } from '@/ui/components/gold-display';
 import { ResourceBar } from '@/ui/components/resource-bar';
 import { SaveStatusBadge } from './save-status-badge';
@@ -7,6 +6,12 @@ import { PanelToggle, type PanelId } from './panel-toggle';
 import { formatGameTime } from '@/game/utils/format-game-time';
 import { calcTotalUpkeep } from '@/game/systems/upkeep-system';
 import '@/ui/styles/hud.css';
+
+/** Compute upkeep inside selector to return primitive (avoids new array ref → infinite re-render) */
+const selectDailyUpkeep = (s: { founder: import('@/game/state/game-state').Member | null; roster: import('@/game/state/game-state').Member[] }): number => {
+  const all = s.founder ? [s.founder, ...s.roster] : s.roster;
+  return calcTotalUpkeep(all);
+};
 
 interface HUDProps {
   activePanel: PanelId;
@@ -16,9 +21,11 @@ interface HUDProps {
 export function HUD({ activePanel, setActivePanel }: HUDProps) {
   const gold = useGameStore((s) => s.gold);
   const gameTime = useGameStore((s) => s.gameTime);
-  const allMembers = useGameStore(selectAllMembers);
+  const rosterCount = useGameStore((s) => s.roster.length);
+  const hasFounder = useGameStore((s) => s.founder !== null);
   const missionCount = useGameStore((s) => s.activeMissions.length);
-  const dailyUpkeep = calcTotalUpkeep(allMembers);
+  const dailyUpkeep = useGameStore(selectDailyUpkeep);
+  const memberCount = rosterCount + (hasFounder ? 1 : 0);
 
   return (
     <div className="hud-overlay">
@@ -27,7 +34,7 @@ export function HUD({ activePanel, setActivePanel }: HUDProps) {
         <GoldDisplay amount={gold} />
         <span className="hud-upkeep">Upkeep: {dailyUpkeep}g/day</span>
         <ResourceBar />
-        <span>Members: {allMembers.length}</span>
+        <span>Members: {memberCount}</span>
         <span>Missions: {missionCount}</span>
         <SaveStatusBadge />
       </div>
