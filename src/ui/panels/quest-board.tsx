@@ -1,16 +1,14 @@
-import { useState, useMemo, useEffect } from 'react';
-import type { ActiveMission, MissionPhase, QuestTier } from '@/game/state/game-state';
+import { useState, useMemo } from 'react';
+import type { QuestTier } from '@/game/state/game-state';
 import { useGameStore } from '@/game/state/store';
 import type { Mission } from '@/game/state/game-state';
 import { MISSIONS } from '@/game/data/missions';
-import { ENEMIES } from '@/game/data/enemies';
 import { getItemInfo } from '@/game/data/items';
+import { ENEMIES } from '@/game/data/enemies';
 import { validateDispatch, createActiveMission } from '@/game/systems/mission-dispatch';
 import { QUEST_BOARD_TIER_BY_LEVEL } from '@/game/data/buildings';
-import { ARRIVAL_TIMEOUT_MS } from '@/game/systems/mission-tick';
-import { MissionProgressBar } from '@/ui/components/mission-progress-bar';
 import { QuestDetailModal } from '@/ui/panels/quest-detail-modal';
-import { ArrivalModal } from '@/ui/panels/arrival-modal';
+import { ActiveMissionsList } from '@/ui/panels/active-missions-list';
 import { playSFX } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
 import '@/ui/styles/panels.css';
@@ -27,13 +25,16 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
   const guildHall = useGameStore((s) => s.guildHall);
   const gold = useGameStore((s) => s.gold);
   const activeMissions = useGameStore((s) => s.activeMissions);
+  const dispatchMission = useGameStore((s) => s.dispatchMission);
+  const spendGold = useGameStore((s) => s.spendGold);
+  const updateMemberStatus = useGameStore((s) => s.updateMemberStatus);
 
   const availableMembers = useMemo(() => {
     const all = founder ? [founder, ...roster] : roster;
     return all.filter((m) => m.status === 'idle');
   }, [founder, roster]);
 
-  // Determine max quest tier from quest-board furniture level inside guild-hall room
+  // Determine max quest tier from quest-board furniture level
   const unlockedTiers = useMemo(() => {
     const guildHallRoom = guildHall.rooms.find((r) => r.type === 'guild-hall');
     const questBoardFurniture = guildHallRoom?.furniture.find((f) => f.type === 'quest-board');
@@ -43,9 +44,6 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
     return TIER_ORDER.slice(0, maxIdx + 1);
   }, [guildHall]);
 
-  const dispatchMission = useGameStore((s) => s.dispatchMission);
-  const spendGold = useGameStore((s) => s.spendGold);
-  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [filterTier, setFilterTier] = useState<QuestTier | 'all'>('all');
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
 
@@ -53,27 +51,18 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
     (m) => (filterTier === 'all' || m.tier === filterTier) && unlockedTiers.includes(m.tier),
   );
 
-  const toggleMember = (id: string) => {
-    setSelectedMembers((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  };
-
-  const updateMemberStatus = useGameStore((s) => s.updateMemberStatus);
-
-  const handleDispatch = (mission: Mission) => {
-    if (selectedMembers.length < mission.requiredMembers) return;
-    const dispatched = selectedMembers;
-    const party = [...(founder ? [founder] : []), ...roster].filter((m) =>
-      dispatched.includes(m.id),
-    );
-    const validation = validateDispatch(mission, party, gold);
+  /** Dispatch from modal — receives selected member IDs */
+  const handleDispatchFromModal = (memberIds: string[]) => {
+    if (!selectedMission) return;
+    const allMembers = [...(founder ? [founder] : []), ...roster];
+    const party = allMembers.filter((m) => memberIds.includes(m.id));
+    const validation = validateDispatch(selectedMission, party, gold);
     if (!validation.valid) return;
     if (validation.mercenaryFee > 0 && !spendGold(validation.mercenaryFee)) return;
     const now = Date.now();
-    dispatchMission(createActiveMission(mission, dispatched, now));
-    dispatched.forEach((id) => updateMemberStatus(id, 'on-mission'));
-    setSelectedMembers([]);
+    dispatchMission(createActiveMission(selectedMission, memberIds, now));
+    memberIds.forEach((id) => updateMemberStatus(id, 'on-mission'));
+    setSelectedMission(null);
     playSFX(AUDIO.SFX_DISPATCH);
   };
 
@@ -122,42 +111,20 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
             Min Members: {mission.requiredMembers} | Lv.{mission.requiredLevel}+
           </div>
           <PotentialDrops enemyIds={mission.enemyIds} />
-          <button
-            className="panel-btn"
-            disabled={selectedMembers.length < mission.requiredMembers}
-            onClick={(e) => { e.stopPropagation(); handleDispatch(mission); }}
-          >
-            Dispatch ({selectedMembers.length}/{mission.requiredMembers}+)
-          </button>
         </div>
       ))}
 
-      {/* Quest detail modal */}
+      {/* Quest detail modal — self-contained with member selection */}
       {selectedMission && (
         <QuestDetailModal
+          key={selectedMission.id}
           mission={selectedMission}
-          canDispatch={selectedMembers.length >= selectedMission.requiredMembers}
-          selectedCount={selectedMembers.length}
-          onDispatch={() => { handleDispatch(selectedMission); setSelectedMission(null); }}
+          availableMembers={availableMembers}
+          gold={gold}
+          onDispatch={handleDispatchFromModal}
           onClose={() => setSelectedMission(null)}
         />
       )}
-
-      {/* Member selection */}
-      <h3 style={{ color: '#ffd700', marginTop: 16 }}>Select Members</h3>
-      {availableMembers.map((m) => (
-        <label
-          key={m.id}
-          style={{ display: 'flex', gap: 8, padding: 4, cursor: 'pointer' }}
-        >
-          <input
-            type="checkbox"
-            checked={selectedMembers.includes(m.id)}
-            onChange={() => toggleMember(m.id)}
-          />
-          <span>{m.name} (Lv.{m.level})</span>
-        </label>
-      ))}
 
       {/* Active missions */}
       {activeMissions.length > 0 && (
@@ -186,98 +153,5 @@ function PotentialDrops({ enemyIds }: { enemyIds: string[] }) {
     <div style={{ fontSize: '0.75rem', color: '#a8d8ea', marginTop: 2 }}>
       Drops: {dropNames.join(', ')}
     </div>
-  );
-}
-
-const PHASE_BADGE: Partial<Record<MissionPhase, string>> = {
-  traveling: '🚶 Traveling...',
-  arrived: '📍 Arrived!',
-  'in-combat': '⚔️ In Combat',
-};
-
-/** Live-updating active missions list with phase-aware progress */
-function ActiveMissionsList({ activeMissions }: { activeMissions: ActiveMission[] }) {
-  const [now, setNow] = useState(() => Date.now());
-  const [arrivalModalFor, setArrivalModalFor] = useState<string | null>(null);
-  const setCombatMode = useGameStore((s) => s.setCombatMode);
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const openArrival = (missionId: string) => setArrivalModalFor(missionId);
-  const closeArrival = () => setArrivalModalFor(null);
-
-  const handleCombatChoice = (missionId: string, mode: 'auto' | 'manual') => {
-    setCombatMode(missionId, mode);
-    closeArrival();
-  };
-
-  return (
-    <>
-      <h3 style={{ color: '#ffd700', marginTop: 16 }}>Active Missions</h3>
-      {activeMissions.map((am) => {
-        const missionData = MISSIONS.find((m) => m.id === am.missionId);
-        const badge = PHASE_BADGE[am.phase];
-        const isArrived = am.phase === 'arrived';
-        const arrivalSecs = isArrived && am.arrivalTime
-          ? Math.max(0, Math.ceil((am.arrivalTime + ARRIVAL_TIMEOUT_MS - now) / 1000))
-          : null;
-
-        return (
-          <div
-            key={am.missionId}
-            className="panel-section"
-            style={{ cursor: isArrived ? 'pointer' : 'default' }}
-            onClick={isArrived ? () => openArrival(am.missionId) : undefined}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <strong>{missionData?.name ?? am.missionId}</strong>
-              {badge && (
-                <span style={{ fontSize: '0.75rem', color: isArrived ? '#f39c12' : '#aaa' }}>
-                  {badge}
-                </span>
-              )}
-            </div>
-
-            {am.phase === 'traveling' && missionData && (
-              <MissionProgressBar
-                startTime={am.startTime}
-                endTime={am.startTime + missionData.travelTimeMs}
-                now={now}
-              />
-            )}
-            {isArrived && arrivalSecs !== null && (
-              <div style={{ fontSize: '0.8rem', color: '#f39c12', marginTop: 4 }}>
-                Auto-combat in {arrivalSecs}s — click to choose
-              </div>
-            )}
-            {am.phase === 'in-combat' && (
-              <div style={{ fontSize: '0.8rem', color: '#aaa', marginTop: 4 }}>Resolving...</div>
-            )}
-          </div>
-        );
-      })}
-
-      {arrivalModalFor && (() => {
-        const am = activeMissions.find((m) => m.missionId === arrivalModalFor);
-        const missionData = MISSIONS.find((m) => m.id === arrivalModalFor);
-        if (!am || !missionData || !am.arrivalTime) return null;
-        return (
-          <ArrivalModal
-            missionId={am.missionId}
-            missionName={missionData.name}
-            zone={missionData.zone ?? ''}
-            enemyIds={missionData.enemyIds}
-            arrivalTime={am.arrivalTime}
-            timeoutMs={ARRIVAL_TIMEOUT_MS}
-            onChooseManual={() => handleCombatChoice(am.missionId, 'manual')}
-            onChooseAuto={() => handleCombatChoice(am.missionId, 'auto')}
-            onClose={closeArrival}
-          />
-        );
-      })()}
-    </>
   );
 }

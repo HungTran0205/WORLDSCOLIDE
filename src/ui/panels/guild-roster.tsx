@@ -14,8 +14,10 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
   const founder = useGameStore((s) => s.founder);
   const roster = useGameStore((s) => s.roster);
   const activeMissions = useGameStore((s) => s.activeMissions);
+  const gold = useGameStore((s) => s.gold);
   const allocateStat = useGameStore((s) => s.allocateStat);
   const toggleAutoCast = useGameStore((s) => s.toggleAutoCast);
+  const inviteMercenary = useGameStore((s) => s.inviteMercenary);
   const removeMember = useGameStore((s) => s.removeMember);
 
   const members = useMemo(() => {
@@ -79,6 +81,13 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
             member={selectedMember}
             onAllocateStat={(stat) => allocateStat(selectedMember.id, stat as StatKey)}
             onToggleAutoCast={() => toggleAutoCast(selectedMember.id)}
+            onInviteMercenary={
+              selectedMember.rank === 'MERCENARY'
+                ? () => inviteMercenary(selectedMember.id)
+                : undefined
+            }
+            inviteCost={selectedMember.level * 100}
+            canAffordInvite={gold >= selectedMember.level * 100}
             onClose={() => setSelectedMemberId(null)}
           />
         </div>

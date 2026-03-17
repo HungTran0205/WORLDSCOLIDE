@@ -57,6 +57,17 @@
   border-color: #ffd700;
 }
 
+.hud-clock {
+  color: #ddd;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.hud-upkeep {
+  color: #e74c3c;
+  font-size: 0.85rem;
+}
+
 .gold-display {
   color: #ffd700;
   font-weight: bold;

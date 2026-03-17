@@ -22,6 +22,8 @@ export interface GuildSlice {
   buildRoom: (type: RoomType, cells: GridCell[]) => boolean;
   /** Upgrade a room's core furniture (= room level up), spends resources */
   upgradeRoom: (roomId: string) => boolean;
+  /** Invite a mercenary to become an official guild member (cost: level * 100g) */
+  inviteMercenary: (memberId: string) => boolean;
 }
 
 /** Generate the default guild-hall room with cells and core furniture */
@@ -148,6 +150,27 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
         gold: newGold,
         guildHall: { ...s.guildHall, rooms: [...s.guildHall.rooms, roomWithCore] },
       };
+    });
+    return success;
+  },
+
+  inviteMercenary: (memberId) => {
+    let success = false;
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[] };
+      const member = fullState.roster.find((m) => m.id === memberId);
+      if (!member || member.rank !== 'MERCENARY') return s;
+
+      const cost = member.level * 100;
+      if (s.gold < cost) return s;
+
+      success = true;
+      return {
+        gold: s.gold - cost,
+        roster: fullState.roster.map((m) =>
+          m.id === memberId ? { ...m, rank: 'MEMBER' as const } : m
+        ),
+      } as unknown as Partial<GuildSlice>;
     });
     return success;
   },

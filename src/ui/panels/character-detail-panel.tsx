@@ -7,6 +7,9 @@ interface CharacterDetailPanelProps {
   member: Member;
   onAllocateStat: (stat: StatKey) => void;
   onToggleAutoCast: () => void;
+  onInviteMercenary?: () => void;
+  inviteCost?: number;
+  canAffordInvite?: boolean;
   onClose: () => void;
 }
 
@@ -19,7 +22,7 @@ const CIV_COLORS: Record<string, string> = {
 };
 
 /** Character detail split-view — avatar, equipment, skill, talents */
-export function CharacterDetailPanel({ member, onAllocateStat, onToggleAutoCast, onClose }: CharacterDetailPanelProps) {
+export function CharacterDetailPanel({ member, onAllocateStat, onToggleAutoCast, onInviteMercenary, inviteCost, canAffordInvite, onClose }: CharacterDetailPanelProps) {
   const expNeeded = expToNextLevel(member.level);
   const expPct = Math.min(100, Math.floor((member.exp / expNeeded) * 100));
   const civColor = CIV_COLORS[member.civilization] ?? '#666';
@@ -64,6 +67,17 @@ export function CharacterDetailPanel({ member, onAllocateStat, onToggleAutoCast,
             <div style={{ width: `${expPct}%`, height: '100%', background: '#67b8e3' }} />
           </div>
         </div>
+        {/* Invite mercenary button */}
+        {isMercenary && onInviteMercenary && (
+          <button
+            className="panel-btn"
+            disabled={!canAffordInvite}
+            onClick={onInviteMercenary}
+            style={{ marginTop: 8 }}
+          >
+            Invite to Guild ({inviteCost}g)
+          </button>
+        )}
       </div>
 
       {/* Box 2: Equipment (placeholder) */}

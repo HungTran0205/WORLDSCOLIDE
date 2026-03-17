@@ -1,17 +1,19 @@
 /**
- * Quest detail modal — shows full mission info with enemy preview and dispatch button.
+ * Quest detail modal — self-contained: mission info + member selection + dispatch.
  * Rendered as an overlay on top of the quest board.
  */
 
-import type { Mission } from '@/game/state/game-state';
+import { useState, useMemo } from 'react';
+import type { Member, Mission } from '@/game/state/game-state';
 import { ENEMIES } from '@/game/data/enemies';
+import { autoAssignMembers } from '@/game/utils/auto-assign-members';
 import '@/ui/styles/panels.css';
 
 interface QuestDetailModalProps {
   mission: Mission;
-  canDispatch: boolean;
-  selectedCount: number;
-  onDispatch: () => void;
+  availableMembers: Member[];
+  gold: number;
+  onDispatch: (memberIds: string[]) => void;
   onClose: () => void;
 }
 
@@ -24,9 +26,32 @@ function getEnemyPreview(enemyIds: string[]) {
   });
 }
 
-export function QuestDetailModal({ mission, canDispatch, selectedCount, onDispatch, onClose }: QuestDetailModalProps) {
+export function QuestDetailModal({ mission, availableMembers, gold, onDispatch, onClose }: QuestDetailModalProps) {
   const enemies = getEnemyPreview(mission.enemyIds);
   const durationMin = Math.round(mission.durationMs / 60000);
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+
+  const toggleMember = (id: string) => {
+    setSelectedMembers((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const handleAutoAssign = () => {
+    setSelectedMembers(autoAssignMembers(availableMembers, mission));
+  };
+
+  const canDispatch = selectedMembers.length >= mission.requiredMembers;
+
+  // Calculate mercenary fee if any merc is selected
+  const mercFee = useMemo(() => {
+    const hasMerc = availableMembers
+      .filter((m) => selectedMembers.includes(m.id))
+      .some((m) => m.rank === 'MERCENARY');
+    return hasMerc ? Math.floor(mission.goldRewardMin * 0.5) : 0;
+  }, [availableMembers, selectedMembers, mission.goldRewardMin]);
+
+  const canAffordFee = gold >= mercFee;
 
   return (
     <div className="confirm-dialog-overlay" onClick={onClose}>
@@ -65,15 +90,63 @@ export function QuestDetailModal({ mission, canDispatch, selectedCount, onDispat
           <div><span style={{ color: '#aaa' }}>Members: </span>{mission.requiredMembers}+ Lv.{mission.requiredLevel}+</div>
         </div>
 
+        {/* Party Selection */}
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: '0.8rem', color: '#ffd700', marginBottom: 4 }}>
+            Select Party ({selectedMembers.length}/{mission.requiredMembers}+)
+          </div>
+          <div style={{ maxHeight: 160, overflowY: 'auto' }}>
+            {availableMembers.map((m) => (
+              <label
+                key={m.id}
+                style={{ display: 'flex', gap: 8, padding: '3px 0', cursor: 'pointer', alignItems: 'center', fontSize: '0.85rem' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedMembers.includes(m.id)}
+                  onChange={() => toggleMember(m.id)}
+                  disabled={m.level < mission.requiredLevel}
+                />
+                <span style={{ color: m.level < mission.requiredLevel ? '#e74c3c' : '#ddd' }}>
+                  {m.name} Lv.{m.level}
+                </span>
+                {m.rank === 'MERCENARY' && (
+                  <span style={{ fontSize: '0.65rem', color: '#f0a500', border: '1px solid #f0a500', padding: '0 3px', borderRadius: 3 }}>
+                    MERC
+                  </span>
+                )}
+                {m.level < mission.requiredLevel && (
+                  <span style={{ fontSize: '0.7rem', color: '#e74c3c' }}>Underleveled</span>
+                )}
+              </label>
+            ))}
+            {availableMembers.length === 0 && (
+              <div style={{ fontSize: '0.8rem', color: '#666' }}>No idle members available</div>
+            )}
+          </div>
+          {mercFee > 0 && (
+            <div style={{ fontSize: '0.75rem', color: canAffordFee ? '#f0a500' : '#e74c3c', marginTop: 4 }}>
+              Mercenary fee: {mercFee}g {!canAffordFee && '(insufficient gold)'}
+            </div>
+          )}
+        </div>
+
         {/* Actions */}
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             className="panel-btn"
-            disabled={!canDispatch}
-            onClick={onDispatch}
+            onClick={handleAutoAssign}
+            style={{ flex: 0, width: 'auto', padding: '8px 12px', fontSize: '0.8rem' }}
+          >
+            Auto Assign
+          </button>
+          <button
+            className="panel-btn"
+            disabled={!canDispatch || (mercFee > 0 && !canAffordFee)}
+            onClick={() => onDispatch(selectedMembers)}
             style={{ flex: 1 }}
           >
-            Dispatch ({selectedCount}/{mission.requiredMembers}+)
+            Dispatch ({selectedMembers.length}/{mission.requiredMembers}+)
           </button>
           <button className="panel-btn" onClick={onClose} style={{ flex: 0, width: 'auto', padding: '8px 16px' }}>
             Close
