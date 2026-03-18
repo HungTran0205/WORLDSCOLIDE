@@ -83,6 +83,8 @@ export function processMissionTick(store: GameStore, now: number): MissionTickEv
             store.updateMemberStatus(memberId, 'idle');
           }
           store.completeMission(active.missionId);
+          // Only survivors get mission credit
+          store.incrementMissionsCompleted(result.survivors);
         } else {
           store.failMission(active.missionId);
         }

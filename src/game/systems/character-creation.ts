@@ -16,7 +16,8 @@ export function createFounder(name: string, stats: Stats): Member {
     injuredUntil: null,
     civilization: 'Viet',
     isFounder: true,
-    rank: 'MEMBER',
+    rank: 'COMMANDER',
+    missionsCompleted: 0,
   };
 }
 
@@ -41,6 +42,7 @@ export function generateRecruit(guildLevel: number): Member {
     injuredUntil: null,
     civilization: civ,
     isFounder: false,
-    rank: 'MEMBER',
+    rank: 'RECRUIT',
+    missionsCompleted: 0,
   };
 }

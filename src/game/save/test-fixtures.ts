@@ -18,7 +18,8 @@ export const VALID_MEMBER: Member = {
   injuredUntil: null,
   civilization: 'human',
   isFounder: true,
-  rank: 'MEMBER',
+  rank: 'COMMANDER',
+  missionsCompleted: 0,
 };
 
 export const VALID_ROSTER_MEMBER: Member = {
@@ -33,7 +34,8 @@ export const VALID_ROSTER_MEMBER: Member = {
   injuredUntil: null,
   civilization: 'elf',
   isFounder: false,
-  rank: 'MEMBER',
+  rank: 'RECRUIT',
+  missionsCompleted: 0,
 };
 
 /** Generate a 6x6 grid of cells starting at (0,0) */
@@ -109,7 +111,7 @@ export const VALID_METADATA: SaveSlotMetadata = {
 };
 
 export const VALID_SAVE_ENVELOPE: SaveEnvelope = {
-  version: 7,
+  version: 8,
   savedAt: Date.now(),
   metadata: VALID_METADATA,
   gameState: VALID_GAME_SAVE_DATA,

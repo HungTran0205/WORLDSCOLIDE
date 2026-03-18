@@ -139,6 +139,25 @@ Create an engaging idle RPG where players build and manage a thriving guild, rec
 - Upkeep and missions reconciled on return
 - No duplicate rewards or state corruption
 
+#### FR-10: Guild Rank System (NEW - v1.8)
+- **FR-10.1**: Members advance through 5-tier hierarchy: RECRUIT → MEMBER → VETERAN → OFFICER → COMMANDER
+- **FR-10.2**: Mercenary rank exists outside hierarchy (orthogonal, non-promotable)
+- **FR-10.3**: Each rank provides upkeep modifier (0.8x to 1.3x) + EXP bonus (0% to 20%)
+- **FR-10.4**: Promotion requires level + missions completed + gold cost
+- **FR-10.5**: Player initiates promotion (click button, deducts gold atomically)
+- **FR-10.6**: Promotion criteria scale per tier (e.g., RECRUIT→MEMBER: Lvl 3, 5 missions, 200g)
+- **FR-10.7**: Per-member `missionsCompleted` counter tracks promotion eligibility
+- **FR-10.8**: Save migration v7→v8 auto-seeds `missionsCompleted = level * 2`, resets ranks to RECRUIT
+
+**Acceptance Criteria**:
+- Rank badges display correctly with tier-appropriate colors
+- Upkeep calculation applies rank.upkeepModifier multiplier
+- Mission EXP applies rank.expBonusPct bonus on reward distribution
+- Promotion UI shows eligibility (disabled if criteria unmet)
+- Promotion atomic (gold deducted iff rank changes successfully)
+- Save migration transparent; old saves load with correct ranks
+- MERCENARY members unpromotable (UI shows lock icon)
+
 ### Non-Functional Requirements (NFR)
 
 #### NFR-1: Performance
@@ -270,8 +289,9 @@ Create an engaging idle RPG where players build and manage a thriving guild, rec
 | Phase 2: Guild Hall | Complete | — | Room placement, effects, building |
 | Phase 3: Character System | Complete | — | Founder, roster, recruitment |
 | Phase 4: Save System v1 | Complete | 2026-03-15 | Multi-slot, validation, title screen |
-| Phase 5: Polish & Launch | In Progress | TBD | Bug fixes, performance, localization |
-| Phase 6: Post-Launch | Planned | TBD | New civilizations, seasonal quests, leaderboards |
+| Phase 5: Guild Rank System | Complete | 2026-03-18 | 5-tier promotion, perks, UI (v1.8) |
+| Phase 6: Polish & Launch | In Progress | TBD | Bug fixes, performance, localization |
+| Phase 7: Post-Launch | Planned | TBD | New civilizations, seasonal quests, leaderboards |
 
 ## Success Criteria (Acceptance Tests)
 
@@ -298,16 +318,28 @@ Create an engaging idle RPG where players build and manage a thriving guild, rec
 - [ ] Upkeep deducted for offline duration
 - [ ] State synced correctly on app return
 
+### Guild Rank System (v1.8)
+- [ ] All 5 ranks + Mercenary tier correctly defined
+- [ ] Upkeep modifier applied per rank (0.8x to 1.3x)
+- [ ] EXP bonus applied per rank (0% to 20%)
+- [ ] Promotion eligibility check: level + missions + gold
+- [ ] Promotion UI shows requirements + button (disabled if unmet)
+- [ ] Promotion atomic: gold deducted iff rank updates
+- [ ] missionsCompleted counter incremented on mission completion
+- [ ] Rank badges render with correct colors
+- [ ] Save migration v7→v8 auto-runs (transparent to user)
+- [ ] MERCENARY members stay MERCENARY + unpromotable
+
 ### Code Quality
 - [ ] ESLint: 0 errors, minor warnings documented
 - [ ] TypeScript: strict mode, 0 compilation errors
-- [ ] Tests: 80%+ coverage for save system
+- [ ] Tests: 80%+ coverage for save system + rank system
 - [ ] Performance: save/load < 100ms
 
 ### Localization
 - [ ] All title screen strings translated to Vietnamese
-- [ ] Save dialog strings translated
-- [ ] Status messages localized
+- [ ] Rank labels translated (RECRUIT, MEMBER, etc.)
+- [ ] Promotion requirement strings localized
 - [ ] i18next integration tested
 
 ## Risk Assessment

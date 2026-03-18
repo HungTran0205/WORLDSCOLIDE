@@ -1,4 +1,5 @@
 import { useGameStore } from '@/game/state/store';
+import { RankBadge } from '@/ui/components/rank-badge';
 import '@/ui/styles/panels.css';
 
 interface TavernPanelProps {
@@ -33,9 +34,7 @@ export function TavernPanel({ onClose }: TavernPanelProps) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <strong>
               {merc.name}
-              <span style={{ fontSize: '0.7rem', color: '#f0a500', marginLeft: 6, border: '1px solid #f0a500', padding: '1px 4px', borderRadius: 3 }}>
-                MERC
-              </span>
+              <RankBadge rank={merc.rank} />
             </strong>
             <span style={{ fontSize: '0.8rem', color: '#aaa' }}>Lv.{merc.level} | {merc.civilization}</span>
           </div>

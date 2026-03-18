@@ -24,7 +24,9 @@ export interface Skill {
 
 export type MemberStatus = 'idle' | 'on-mission' | 'injured' | 'training';
 
-export type MemberRank = 'MEMBER' | 'MERCENARY';
+/** Guild hierarchy ranks (promotable). MERCENARY is orthogonal — not in hierarchy. */
+export type GuildRank = 'RECRUIT' | 'MEMBER' | 'VETERAN' | 'OFFICER' | 'COMMANDER';
+export type MemberRank = GuildRank | 'MERCENARY';
 
 export interface Member {
   id: string;
@@ -39,6 +41,7 @@ export interface Member {
   civilization: string;
   isFounder: boolean;
   rank: MemberRank;
+  missionsCompleted: number;
 }
 
 export interface TavernState {

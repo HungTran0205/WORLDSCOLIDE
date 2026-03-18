@@ -50,6 +50,7 @@ export function generateMercenaries(count: number): Member[] {
       civilization: civ,
       isFounder: false,
       rank: 'MERCENARY' as const,
+      missionsCompleted: 0,
     };
   });
 }

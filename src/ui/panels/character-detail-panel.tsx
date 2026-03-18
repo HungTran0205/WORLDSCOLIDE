@@ -1,5 +1,7 @@
 import type { Member, StatKey } from '@/game/state/game-state';
 import { StatBar } from '@/ui/components/stat-bar';
+import { RankBadge } from '@/ui/components/rank-badge';
+import { RankPromotionSection } from '@/ui/components/rank-promotion-section';
 import { STAT_KEYS } from '@/game/systems/stat-allocation';
 import { expToNextLevel } from '@/game/systems/leveling-system';
 
@@ -10,6 +12,8 @@ interface CharacterDetailPanelProps {
   onInviteMercenary?: () => void;
   inviteCost?: number;
   canAffordInvite?: boolean;
+  onPromote?: () => void;
+  canAffordPromote?: boolean;
   onClose: () => void;
 }
 
@@ -22,7 +26,7 @@ const CIV_COLORS: Record<string, string> = {
 };
 
 /** Character detail split-view — avatar, equipment, skill, talents */
-export function CharacterDetailPanel({ member, onAllocateStat, onToggleAutoCast, onInviteMercenary, inviteCost, canAffordInvite, onClose }: CharacterDetailPanelProps) {
+export function CharacterDetailPanel({ member, onAllocateStat, onToggleAutoCast, onInviteMercenary, inviteCost, canAffordInvite, onPromote, canAffordPromote, onClose }: CharacterDetailPanelProps) {
   const expNeeded = expToNextLevel(member.level);
   const expPct = Math.min(100, Math.floor((member.exp / expNeeded) * 100));
   const civColor = CIV_COLORS[member.civilization] ?? '#666';
@@ -48,12 +52,7 @@ export function CharacterDetailPanel({ member, onAllocateStat, onToggleAutoCast,
         </div>
         <div style={{ color: member.isFounder ? '#ffd700' : '#ddd', fontSize: '1.1rem', fontWeight: 600 }}>
           {member.name}
-          {isMercenary && (
-            <span style={{
-              fontSize: '0.65rem', color: '#f0a500', marginLeft: 6,
-              border: '1px solid #f0a500', padding: '1px 4px', borderRadius: 3,
-            }}>MERC</span>
-          )}
+          <RankBadge rank={member.rank} />
         </div>
         <div style={{ fontSize: '0.8rem', color: '#aaa', marginTop: 4 }}>
           Lv.{member.level} | {member.civilization}
@@ -79,6 +78,11 @@ export function CharacterDetailPanel({ member, onAllocateStat, onToggleAutoCast,
           </button>
         )}
       </div>
+
+      {/* Box: Rank & Promotion (non-mercenary only) */}
+      {!isMercenary && (
+        <RankPromotionSection member={member} onPromote={onPromote} canAffordPromote={canAffordPromote} />
+      )}
 
       {/* Box 2: Equipment (placeholder) */}
       <div className="panel-section">

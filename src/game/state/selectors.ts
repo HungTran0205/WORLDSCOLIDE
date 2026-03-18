@@ -1,5 +1,6 @@
 import type { GameStore } from './store';
 import type { Member, QuestTier } from './game-state';
+import { calcTotalUpkeep } from '@/game/systems/upkeep-system';
 
 /** Members not on mission, not injured */
 export const selectAvailableMembers = (s: GameStore): Member[] => {
@@ -12,11 +13,10 @@ export const selectAllMembers = (s: GameStore): Member[] => {
   return s.founder ? [s.founder, ...s.roster] : s.roster;
 };
 
-/** Total daily upkeep cost: 10 gold per member per game-day */
-const UPKEEP_PER_MEMBER = 10;
+/** Total daily upkeep cost — rank-aware, mercenaries excluded */
 export const selectTotalUpkeep = (s: GameStore): number => {
-  const count = s.roster.length + (s.founder ? 1 : 0);
-  return count * UPKEEP_PER_MEMBER;
+  const all = s.founder ? [s.founder, ...s.roster] : s.roster;
+  return calcTotalUpkeep(all);
 };
 
 /** Whether guild can afford next upkeep */

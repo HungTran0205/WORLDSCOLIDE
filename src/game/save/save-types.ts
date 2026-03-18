@@ -14,7 +14,7 @@ import type {
 } from '@/game/state/game-state';
 
 /** Increment when game state shape changes; add a migration in save-migrations.ts */
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 
 /** Metadata shown on title-screen save slot cards */
 export interface SaveSlotMetadata {

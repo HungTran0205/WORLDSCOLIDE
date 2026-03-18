@@ -18,6 +18,8 @@ const TUTORIAL_STEPS = [
 
 const STAT_KEYS: (keyof Stats)[] = ['STR', 'END', 'INT', 'DEX', 'CHA', 'LCK', 'AGI'];
 
+const VALID_RANKS = ['RECRUIT', 'MEMBER', 'VETERAN', 'OFFICER', 'COMMANDER', 'MERCENARY'];
+
 const VALID_ROTATIONS = [0, 90, 180, 270];
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -40,7 +42,12 @@ function isValidMember(v: unknown): v is Member {
     typeof v.unallocatedPoints === 'number' &&
     typeof v.civilization === 'string' &&
     typeof v.isFounder === 'boolean' &&
-    typeof v.status === 'string'
+    typeof v.status === 'string' &&
+    typeof v.rank === 'string' &&
+    VALID_RANKS.includes(v.rank as string) &&
+    typeof v.missionsCompleted === 'number' &&
+    (v.missionsCompleted as number) >= 0 &&
+    Number.isFinite(v.missionsCompleted as number)
   );
 }
 
@@ -167,23 +174,23 @@ export function validateAndMigrate(raw: unknown): ValidationResult {
     return { ok: false, errors: ['Invalid save file structure'] };
   }
 
-  // CRITICAL: Version check BEFORE structural validation
-  // This prevents confusing validation errors for old saves
-  if (typeof parsed.version === 'number' && parsed.version < SAVE_VERSION) {
+  // Reject saves too old to migrate (< v7)
+  if (typeof parsed.version === 'number' && parsed.version < 7) {
     return { ok: false, errors: ['Save data is from an older incompatible version. Please start a new game.'] };
   }
 
-  // Structural check
-  if (!isValidSaveEnvelope(parsed)) {
-    return { ok: false, errors: ['Invalid save file structure'] };
-  }
-
-  // Version migration (handles future version check)
+  // Run migration BEFORE structural validation — v7 saves won't have
+  // missionsCompleted yet, so structural check would fail on unmigrated data
   let migrated: SaveEnvelope;
   try {
-    migrated = migrateSave(parsed);
+    migrated = migrateSave(parsed as SaveEnvelope);
   } catch (e) {
     return { ok: false, errors: [(e as Error).message] };
+  }
+
+  // Structural check on migrated data
+  if (!isValidSaveEnvelope(migrated)) {
+    return { ok: false, errors: ['Invalid save file structure'] };
   }
 
   // Semantic checks

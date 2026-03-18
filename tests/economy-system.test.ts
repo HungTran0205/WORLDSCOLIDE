@@ -11,15 +11,16 @@ function makeMember(level: number, isFounder = false): Member {
     stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 },
     unallocatedPoints: 0, skill: null, status: 'idle',
     injuredUntil: null, civilization: 'Viet', isFounder,
+    rank: isFounder ? 'COMMANDER' : 'MEMBER', missionsCompleted: 0,
   };
 }
 
 describe('Upkeep System', () => {
   it('should calculate member upkeep based on level', () => {
-    expect(calcMemberUpkeep(1)).toBe(5);
-    expect(calcMemberUpkeep(5)).toBeGreaterThan(5);
+    expect(calcMemberUpkeep(1, 'MEMBER')).toBe(5);
+    expect(calcMemberUpkeep(5, 'MEMBER')).toBeGreaterThan(5);
     // Higher level = more upkeep
-    expect(calcMemberUpkeep(10)).toBeGreaterThan(calcMemberUpkeep(5));
+    expect(calcMemberUpkeep(10, 'MEMBER')).toBeGreaterThan(calcMemberUpkeep(5, 'MEMBER'));
   });
 
   it('should calculate total upkeep for all members', () => {

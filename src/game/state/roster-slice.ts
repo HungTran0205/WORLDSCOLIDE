@@ -1,6 +1,7 @@
 import type { StateCreator } from 'zustand';
-import type { Member, MemberStatus, StatKey, Stats } from './game-state';
+import type { Member, MemberStatus, StatKey, Stats, GuildRank } from './game-state';
 import { expToNextLevel, LEVEL_UP_BONUS_POINTS } from '@/game/systems/leveling-system';
+import { GUILD_RANKS } from '@/game/data/ranks';
 
 const ALL_STATS: StatKey[] = ['STR', 'END', 'INT', 'DEX', 'CHA', 'LCK', 'AGI'];
 
@@ -25,9 +26,18 @@ export interface RosterSlice {
   toggleAutoCast: (memberId: string) => void;
   allocateStat: (memberId: string, stat: StatKey) => void;
   addMemberExp: (memberId: string, exp: number) => void;
+  /** Increment missionsCompleted counter for given member IDs */
+  incrementMissionsCompleted: (memberIds: string[]) => void;
 }
 
-function applyExpGain(member: Member, exp: number): Member {
+function applyExpGain(member: Member, rawExp: number): Member {
+  // Apply rank EXP bonus (mercenaries get 0% bonus)
+  let exp = rawExp;
+  if (member.rank !== 'MERCENARY') {
+    const bonus = GUILD_RANKS[member.rank as GuildRank]?.perks.expBonusPct ?? 0;
+    exp = Math.floor(rawExp * (1 + bonus / 100));
+  }
+
   let newExp = member.exp + exp;
   let newLevel = member.level;
   let newPoints = member.unallocatedPoints;
@@ -117,5 +127,19 @@ export const createRosterSlice: StateCreator<RosterSlice> = (set) => ({
         return { founder: applyExpGain(s.founder, exp) };
       }
       return { roster: updateMember(s.roster, memberId, (m) => applyExpGain(m, exp)) };
+    }),
+
+  incrementMissionsCompleted: (memberIds) =>
+    set((s) => {
+      const idSet = new Set(memberIds);
+      const updatedFounder = s.founder && idSet.has(s.founder.id)
+        ? { ...s.founder, missionsCompleted: s.founder.missionsCompleted + 1 }
+        : s.founder;
+      return {
+        founder: updatedFounder,
+        roster: s.roster.map((m) =>
+          idSet.has(m.id) ? { ...m, missionsCompleted: m.missionsCompleted + 1 } : m
+        ),
+      };
     }),
 });

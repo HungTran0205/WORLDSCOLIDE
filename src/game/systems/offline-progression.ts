@@ -2,18 +2,24 @@ import type { ActiveMission } from '@/game/state/game-state';
 import type { GameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
 import { resolveMission, type MissionResult } from './mission-resolver';
+import { calcTotalUpkeep } from './upkeep-system';
 import { ARRIVAL_TIMEOUT_MS } from './mission-tick';
+
+export interface OfflineMissionOutcome {
+  result: MissionResult;
+  /** IDs of members who survived — caller uses these to increment missionsCompleted */
+  survivorIds: string[];
+}
 
 export interface OfflineReport {
   elapsedMs: number;
   gameDaysCharged: number;
   upkeepCharged: number;
   missionsCompleted: number;
-  missionResults: MissionResult[];
+  missionOutcomes: OfflineMissionOutcome[];
 }
 
 const GAME_DAY_REAL_MS = 4 * 60 * 60 * 1000; // 4 real hours = 1 game day
-const UPKEEP_PER_MEMBER = 10;
 const MAX_OFFLINE_GAME_DAYS = 30;
 
 /** Process offline progression when game loads after being away */
@@ -27,18 +33,19 @@ export function processOfflineTime(
   if (elapsedMs < 60_000) {
     return {
       goldDelta: 0,
-      report: { elapsedMs: 0, gameDaysCharged: 0, upkeepCharged: 0, missionsCompleted: 0, missionResults: [] },
+      report: { elapsedMs: 0, gameDaysCharged: 0, upkeepCharged: 0, missionsCompleted: 0, missionOutcomes: [] },
     };
   }
 
-  const gameDaysElapsed = Math.min(MAX_OFFLINE_GAME_DAYS, Math.floor(elapsedMs / GAME_DAY_REAL_MS));
-  const memberCount = state.roster.length + (state.founder ? 1 : 0);
-  const upkeepCharged = gameDaysElapsed * memberCount * UPKEEP_PER_MEMBER;
-
   const allMembers = state.founder ? [state.founder, ...state.roster] : state.roster;
 
+  const gameDaysElapsed = Math.min(MAX_OFFLINE_GAME_DAYS, Math.floor(elapsedMs / GAME_DAY_REAL_MS));
+  // Use actual rank-based upkeep instead of hardcoded flat rate
+  const dailyUpkeep = calcTotalUpkeep(allMembers);
+  const upkeepCharged = gameDaysElapsed * dailyUpkeep;
+
   // Resolve missions that fully expired offline (past travel + 30s arrival timeout)
-  const missionResults: MissionResult[] = [];
+  const missionOutcomes: OfflineMissionOutcome[] = [];
   let goldFromMissions = 0;
 
   for (const active of state.activeMissions as ActiveMission[]) {
@@ -50,11 +57,15 @@ export function processOfflineTime(
 
     const members = allMembers.filter((m) => active.memberIds.includes(m.id));
     const result = resolveMission(missionData, members);
-    missionResults.push(result);
 
     if (result.outcome !== 'full-wipe') {
       goldFromMissions += result.goldEarned;
     }
+
+    missionOutcomes.push({
+      result,
+      survivorIds: result.outcome !== 'full-wipe' ? result.survivors : [],
+    });
   }
 
   return {
@@ -63,8 +74,8 @@ export function processOfflineTime(
       elapsedMs,
       gameDaysCharged: gameDaysElapsed,
       upkeepCharged,
-      missionsCompleted: missionResults.length,
-      missionResults,
+      missionsCompleted: missionOutcomes.filter((o) => o.result.outcome !== 'full-wipe').length,
+      missionOutcomes,
     },
   };
 }

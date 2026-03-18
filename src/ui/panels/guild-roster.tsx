@@ -3,6 +3,7 @@ import { useGameStore } from '@/game/state/store';
 import { RosterListItem } from '@/ui/components/roster-list-item';
 import { CharacterDetailPanel } from '@/ui/panels/character-detail-panel';
 import { MISSIONS } from '@/game/data/missions';
+import { canPromote } from '@/game/data/ranks';
 import type { StatKey } from '@/game/state/game-state';
 import '@/ui/styles/panels.css';
 
@@ -18,6 +19,7 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
   const allocateStat = useGameStore((s) => s.allocateStat);
   const toggleAutoCast = useGameStore((s) => s.toggleAutoCast);
   const inviteMercenary = useGameStore((s) => s.inviteMercenary);
+  const promoteMember = useGameStore((s) => s.promoteMember);
   const removeMember = useGameStore((s) => s.removeMember);
 
   const members = useMemo(() => {
@@ -88,6 +90,12 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
             }
             inviteCost={selectedMember.level * 100}
             canAffordInvite={gold >= selectedMember.level * 100}
+            onPromote={
+              selectedMember.rank !== 'MERCENARY'
+                ? () => promoteMember(selectedMember.id)
+                : undefined
+            }
+            canAffordPromote={canPromote(selectedMember, gold)}
             onClose={() => setSelectedMemberId(null)}
           />
         </div>

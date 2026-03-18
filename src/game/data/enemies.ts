@@ -28,7 +28,9 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     stats: { STR: 3, END: 2, INT: 1, DEX: 1, CHA: 0, LCK: 1, AGI: 2 },
     skill: null,
     abilities: [],
-    loot: [{ itemId: 'SLIME_GEL', chance: 0.75, min: 1, max: 2 }],
+    loot: [{ itemId: 'SLIME_GEL', chance: 0.75, min: 1, max: 2 }
+          ,{ itemId: 'WOOD', chance: 0.15, min: 1, max: 2 },
+    ],
   },
   goblin: {
     id: 'goblin',

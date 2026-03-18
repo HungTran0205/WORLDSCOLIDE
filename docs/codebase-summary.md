@@ -86,6 +86,22 @@ src/
 - **Progression**: EXP curves (1.35x scaling), stat allocation, 100 levels
 - **Classes**: 3 archetypes per civilization
 
+### Guild Rank System (NEW - v1.8)
+- **5-Tier Hierarchy**: RECRUIT → MEMBER → VETERAN → OFFICER → COMMANDER (promotable)
+- **Orthogonal Rank**: MERCENARY outside hierarchy (not promotable)
+- **Rank Perks**:
+  - Upkeep modifier (0.8x to 1.3x cost)
+  - EXP bonus on mission rewards (0% to 20%)
+- **Promotion Requirements**: Min level + missions completed + gold cost
+- **Per-Member Tracking**: `missionsCompleted` counter for promotion eligibility
+- **Player-Initiated Promotion**: Click to promote eligible member (costs gold)
+- **Promotion Criteria** (example: RECRUIT → MEMBER):
+  - Level ≥ 3, missions completed ≥ 5, cost 200g
+  - VETERAN: Level ≥ 8, 20 missions, 800g
+  - OFFICER: Level ≥ 15, 50 missions, 2500g
+  - COMMANDER: Level ≥ 25, 100 missions, 8000g
+- **Save Migration v7 → v8**: Auto-seed `missionsCompleted = level * 2`, all non-MERCENARY ranks set to RECRUIT
+
 ### Quest System & Mission Phase State Machine (NEW)
 - **7-Tier Progression**: F, E, D, C, B, A, S ranks
 - **Phase State Machine**: `traveling → arrived → in-combat → completed/failed`
@@ -137,6 +153,61 @@ src/
 - **Keys**: Game UI, panel headers, button labels, system messages
 - **Title Screen**: Slot display, action buttons, messages
 - **Save/Import Dialogs**: User-facing feedback
+
+## Recent Changes (Guild Rank System — v1.8)
+
+### 5-Tier Rank Hierarchy (NEW - Major Feature)
+- **Rank Progression**: RECRUIT → MEMBER → VETERAN → OFFICER → COMMANDER (5 tiers)
+- **Orthogonal Mercenary Rank**: MERCENARY unpromotable, tracked separately
+- **Rank Perks**:
+  - **Upkeep Modifier**: RECRUIT (0.8x) to COMMANDER (1.3x) cost scaling
+  - **EXP Bonus**: RECRUIT (0%) to COMMANDER (20%) mission reward multiplier
+- **Promotion Criteria**:
+  - **RECRUIT→MEMBER**: Lvl ≥3, 5 missions, 200g
+  - **MEMBER→VETERAN**: Lvl ≥8, 20 missions, 800g
+  - **VETERAN→OFFICER**: Lvl ≥15, 50 missions, 2500g
+  - **OFFICER→COMMANDER**: Lvl ≥25, 100 missions, 8000g
+- **Player-Initiated Promotion**: Click button in character detail panel (deducts gold atomically)
+
+### Per-Member Mission Counter (NEW)
+- **`missionsCompleted` Field**: Tracks lifetime mission participations (not mission count per se)
+- **Incremented On**: Every mission completion (even if full-wipe) for survivor filtering
+- **Promotion Requirement**: Must meet missions completed threshold to promote
+- **Save Migration**: Seeded as `level * 2` for v7→v8 migration
+
+### Rank UI Components (NEW)
+- **rank-badge.tsx**: Color-coded badge (gray/blue/green/purple/gold for ranks)
+- **rank-promotion-section.tsx**: Shows next rank requirements + promote button (disabled if ineligible)
+- **Integration**: Added to character-detail-panel.tsx in roster view
+
+### Upkeep & EXP Calculation Updates (ENHANCED)
+- **Daily Upkeep**: Member cost multiplied by `rankDef.upkeepModifier` per rank
+- **Mission EXP**: Base reward multiplied by `1 + (rankDef.expBonusPct / 100)` per rank
+- **Calculation Points**: `processMissionTick()` applies bonuses on reward distribution
+
+### Save Migration v7 → v8 (TRANSPARENT)
+- **Version Bump**: `SAVE_VERSION` incremented to 8
+- **Auto-Migration**: `migrateV7toV8()` runs on load
+  - Adds `missionsCompleted: 0` to all characters
+  - All non-MERCENARY members reset to RECRUIT rank
+  - Seeds `missionsCompleted = level * 2` heuristic for relevance
+  - MERCENARY members unchanged (stay MERCENARY)
+- **Backward Compatibility**: Old saves load with correct rank hierarchy + mission counters
+
+**Key Files (New)**:
+- `src/game/data/ranks.ts` — GUILD_RANKS definitions, getNextRank(), promotion requirement checks
+- `src/ui/components/rank-badge.tsx` — Rank display component
+- `src/ui/components/rank-promotion-section.tsx` — Promotion UI + eligibility logic
+- `src/game/save/save-migrations.ts` — migrateV7toV8() migration function
+
+**Key Files (Modified)**:
+- `roster-slice.ts` — Added `promoteMember()` action, member.rank + member.missionsCompleted fields
+- `mission-tick.ts` — Increments member.missionsCompleted on completion
+- `mission-resolver.ts` — Apply rank.expBonusPct multiplier to survivor EXP
+- `economy-system.ts` — Calculate daily upkeep with rank.upkeepModifier scaling
+- `character-detail-panel.tsx` — Integrated rank-promotion-section component
+- `save-types.ts` — Updated SAVE_VERSION to 8
+- `guild-upgrade-system.ts` — Added member promotion utilities (canPromote, meetsPromotionRequirements)
 
 ## Recent Changes (Roster Management & Combat Enhancements — v1.6)
 

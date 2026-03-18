@@ -3,6 +3,7 @@ import type { Member } from '@/game/state/game-state';
 import { StatBar } from './stat-bar';
 import { STAT_KEYS } from '@/game/systems/stat-allocation';
 import { expToNextLevel } from '@/game/systems/leveling-system';
+import { RankBadge } from './rank-badge';
 
 interface MemberCardProps {
   member: Member;
@@ -53,11 +54,7 @@ export function MemberCard({ member, onAllocateStat, activeMissionName }: Member
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
         <strong style={{ color: member.isFounder ? '#ffd700' : '#87ceeb' }}>
           {member.name}
-          {isMercenary && (
-            <span style={{ fontSize: '0.7rem', color: '#f0a500', marginLeft: 6, border: '1px solid #f0a500', padding: '1px 4px', borderRadius: 3 }}>
-              MERC
-            </span>
-          )}
+          <RankBadge rank={member.rank} />
         </strong>
         <span style={{ fontSize: '0.8rem', color: '#aaa' }}>
           Lv.{member.level} | {member.civilization}

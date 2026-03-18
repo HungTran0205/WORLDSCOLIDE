@@ -1,8 +1,9 @@
 import type { StateCreator } from 'zustand';
-import type { GuildHall, GameSettings, TavernState, Member, RoomType, GridCell } from './game-state';
+import type { GuildHall, GameSettings, TavernState, Member, RoomType, GridCell, GuildRank } from './game-state';
 import { ROOM_DEFINITIONS } from '@/game/data/buildings';
 import { canPlaceRoom, placeRoom, generateRoomCells, checkCellOverlap, checkAdjacency } from '@/game/systems/building-system';
 import { autoPlaceCoreFurniture, upgradeCoreFurniture } from '@/game/systems/furniture-system';
+import { GUILD_RANKS, getNextRank } from '@/game/data/ranks';
 
 export interface GuildSlice {
   guildName: string;
@@ -24,6 +25,8 @@ export interface GuildSlice {
   upgradeRoom: (roomId: string) => boolean;
   /** Invite a mercenary to become an official guild member (cost: level * 100g) */
   inviteMercenary: (memberId: string) => boolean;
+  /** Promote a guild member to next rank. Costs gold. Returns success. */
+  promoteMember: (memberId: string) => boolean;
 }
 
 /** Generate the default guild-hall room with cells and core furniture */
@@ -168,8 +171,47 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
       return {
         gold: s.gold - cost,
         roster: fullState.roster.map((m) =>
-          m.id === memberId ? { ...m, rank: 'MEMBER' as const } : m
+          m.id === memberId ? { ...m, rank: 'RECRUIT' as const } : m
         ),
+      } as unknown as Partial<GuildSlice>;
+    });
+    return success;
+  },
+
+  promoteMember: (memberId) => {
+    let success = false;
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null };
+
+      // Find member (could be founder or roster)
+      const member = fullState.founder?.id === memberId
+        ? fullState.founder
+        : fullState.roster.find((m) => m.id === memberId);
+      if (!member || member.rank === 'MERCENARY') return s;
+
+      // Block promotion while on-mission or injured
+      if (member.status === 'on-mission' || member.status === 'injured') return s;
+
+      const currentRank = member.rank as GuildRank;
+      const def = GUILD_RANKS[currentRank];
+      if (!def?.promotion) return s; // already max rank
+
+      const req = def.promotion;
+      if (member.level < req.minLevel || member.missionsCompleted < req.minMissionsCompleted) return s;
+      if (s.gold < req.goldCost) return s;
+
+      const nextRank = getNextRank(currentRank);
+      if (!nextRank) return s;
+
+      success = true;
+      const promoted = { ...member, rank: nextRank };
+
+      if (fullState.founder?.id === memberId) {
+        return { gold: s.gold - req.goldCost, founder: promoted } as unknown as Partial<GuildSlice>;
+      }
+      return {
+        gold: s.gold - req.goldCost,
+        roster: fullState.roster.map((m) => m.id === memberId ? promoted : m),
       } as unknown as Partial<GuildSlice>;
     });
     return success;

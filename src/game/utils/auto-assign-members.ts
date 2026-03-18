@@ -1,6 +1,7 @@
 /** Auto-assign best-fit idle members for a mission */
 
-import type { Member, Mission } from '@/game/state/game-state';
+import type { Member, Mission, GuildRank } from '@/game/state/game-state';
+import { GUILD_RANKS } from '@/game/data/ranks';
 
 /** Sum all stat values for ranking */
 function statTotal(m: Member): number {
@@ -19,7 +20,11 @@ export function autoAssignMembers(
   const eligible = availableMembers
     .filter((m) => m.status === 'idle' && m.level >= mission.requiredLevel);
 
+  // Rank desc, then level desc, then stat total desc
   const sorted = [...eligible].sort((a, b) => {
+    const rankA = GUILD_RANKS[a.rank as GuildRank]?.order ?? 0;
+    const rankB = GUILD_RANKS[b.rank as GuildRank]?.order ?? 0;
+    if (rankB !== rankA) return rankB - rankA;
     if (b.level !== a.level) return b.level - a.level;
     return statTotal(b) - statTotal(a);
   });

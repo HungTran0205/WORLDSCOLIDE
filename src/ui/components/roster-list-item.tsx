@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Member } from '@/game/state/game-state';
 import { expToNextLevel } from '@/game/systems/leveling-system';
+import { RankBadge } from './rank-badge';
 
 interface RosterListItemProps {
   member: Member;
@@ -88,12 +89,7 @@ export function RosterListItem({ member, isSelected, activeMissionName, onClick 
           }}>
             {member.name}
           </span>
-          {member.rank === 'MERCENARY' && (
-            <span style={{
-              fontSize: '0.6rem', color: '#f0a500',
-              border: '1px solid #f0a500', padding: '0 3px', borderRadius: 2,
-            }}>MERC</span>
-          )}
+          <RankBadge rank={member.rank} />
         </div>
         {/* Thin EXP bar */}
         <div style={{

@@ -455,6 +455,47 @@ ResourceBar component:
   4. Update on every inventory change (loot earned, building cost)
 ```
 
+## Data Flow: Guild Rank System (NEW - v1.8)
+
+### Promotion Check & Execution
+
+```
+canPromote(member, gold):
+  1. If rank === 'COMMANDER' or 'MERCENARY' → return false
+  2. nextRank = getNextRank(member.rank)
+  3. reqs = GUILD_RANKS[nextRank].promotion
+  4. return member.level >= reqs.minLevel &&
+           member.missionsCompleted >= reqs.minMissionsCompleted &&
+           gold >= reqs.goldCost
+
+promoteMember(memberId, goldCost):
+  1. Validate checks pass
+  2. Atomically: deductGold(goldCost), member.rank = nextRank
+  3. Emit notification + SFX, update UI
+```
+
+### Upkeep & EXP Calculation
+
+```
+Daily upkeep = sum of:
+  - UPKEEP_PER_MEMBER * member.rank.upkeepModifier per member
+  - UPKEEP_PER_ROOM per building
+
+Mission reward EXP = baseExp * (1 + member.rank.expBonusPct/100)
+  - Applied per survivor on mission completion
+  - ++member.missionsCompleted for next promotion check
+```
+
+### Save Migration v7 → v8
+
+```
+On load:
+  - Add missionsCompleted = 0 to all members
+  - Non-MERCENARY: reset to RECRUIT, seed missionsCompleted = level * 2
+  - MERCENARY: unchanged, seed missionsCompleted = level * 2
+  - Version: 7 → 8 (transparent to user)
+```
+
 ### Room Bounds Calculation
 
 ```
@@ -477,12 +518,15 @@ getRoomBounds(room: Room):
 - Treasury (gold)
 - Inventory (8 item types with quantities)
 
-### Roster Slice (ENHANCED - v1.6)
+### Roster Slice (ENHANCED - v1.6, v1.8)
 - Array of members with stats, EXP, levels, class
 - Equipment (armor, weapons)
 - Status tracking (idle/injured/active)
 - `autoCastEnabled: Record<memberId, boolean>` — Per-member auto-cast toggle state
 - `toggleAutoCast(memberId)` — Toggle auto-cast for member in combat
+- `rank: MemberRank` — Member rank (RECRUIT | MEMBER | VETERAN | OFFICER | COMMANDER | MERCENARY)
+- `missionsCompleted: number` — Lifetime mission count (for promotion eligibility)
+- `promoteMember(memberId, goldCost)` — Advance rank + deduct gold
 
 ### Mission Slice
 - Active missions
@@ -571,10 +615,12 @@ getRoomBounds(room: Room):
 | `char-creation.tsx` | Stat allocation (50 points) |
 | `settings-panel.tsx` | Audio/lang toggle, import/export, return to title |
 
-### `/ui/components/roster/` — Roster Components (NEW - v1.6)
+### `/ui/components/roster/` — Roster Components (NEW - v1.6, v1.8)
 | File | Purpose |
 |------|---------|
 | `roster-list-item.tsx` | Compact member card component (condensed UI) — NEW v1.6 |
+| `rank-badge.tsx` | Rank display with color coding (RECRUIT/MEMBER/VETERAN/OFFICER/COMMANDER/MERCENARY) — NEW v1.8 |
+| `rank-promotion-section.tsx` | Promotion UI with eligibility check + button (in character detail panel) — NEW v1.8 |
 
 ### `/ui/styles/` — Styling
 | File | Purpose |
@@ -620,6 +666,11 @@ getRoomBounds(room: Room):
 | `loot-roller.ts` | Pure functions: rollLoot(enemy) generates drops, mergeLoot(drops[]) combines |
 | `/workers/game-loop.worker.ts` | Web Worker: 1s tick heartbeat |
 
+### `/game/systems/` — Rank System (NEW - v1.8)
+| File | Purpose |
+|------|---------|
+| `guild-upgrade-system.ts` | Member promotion utilities (canPromote, meetsPromotionRequirements) |
+
 ### `/game/data/` — Static Data
 | File | Purpose |
 |------|---------|
@@ -629,6 +680,7 @@ getRoomBounds(room: Room):
 | `characters.ts` | 80+ hero templates |
 | `buildings.ts` | Room definitions (type, name, cost: ResourceCost, width/depth, effect) |
 | `items.ts` | Item registry (8 types: names, stack limits) |
+| `ranks.ts` | Rank definitions (RECRUIT→COMMANDER + MERCENARY), perks, promotion requirements |
 
 ### `/ui/hooks/` — Custom React Hooks
 | File | Purpose |

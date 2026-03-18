@@ -10,7 +10,7 @@ function makeMember(id: string, status: Member['status'] = 'on-mission'): Member
     id, name: id, level: 5, exp: 0,
     stats: { STR: 10, END: 10, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 },
     unallocatedPoints: 0, skill: null, status, injuredUntil: null,
-    civilization: 'human', isFounder: false, rank: 'MEMBER',
+    civilization: 'human', isFounder: false, rank: 'MEMBER', missionsCompleted: 0,
   };
 }
 
@@ -76,6 +76,7 @@ function makeStore(
       calls.push(`setInjured:${id}:${until}`);
     }),
     pushMissionResult: vi.fn(() => { calls.push('pushResult'); }),
+    incrementMissionsCompleted: vi.fn((ids: string[]) => { calls.push(`incrementMissions:${ids.join(',')}`); }),
   } as unknown as GameStore & { calls: string[] };
 }
 

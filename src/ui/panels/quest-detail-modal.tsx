@@ -7,6 +7,7 @@ import { useState, useMemo } from 'react';
 import type { Member, Mission } from '@/game/state/game-state';
 import { ENEMIES } from '@/game/data/enemies';
 import { autoAssignMembers } from '@/game/utils/auto-assign-members';
+import { RankBadge } from '@/ui/components/rank-badge';
 import '@/ui/styles/panels.css';
 
 interface QuestDetailModalProps {
@@ -110,11 +111,7 @@ export function QuestDetailModal({ mission, availableMembers, gold, onDispatch, 
                 <span style={{ color: m.level < mission.requiredLevel ? '#e74c3c' : '#ddd' }}>
                   {m.name} Lv.{m.level}
                 </span>
-                {m.rank === 'MERCENARY' && (
-                  <span style={{ fontSize: '0.65rem', color: '#f0a500', border: '1px solid #f0a500', padding: '0 3px', borderRadius: 3 }}>
-                    MERC
-                  </span>
-                )}
+                <RankBadge rank={m.rank} />
                 {m.level < mission.requiredLevel && (
                   <span style={{ fontSize: '0.7rem', color: '#e74c3c' }}>Underleveled</span>
                 )}
