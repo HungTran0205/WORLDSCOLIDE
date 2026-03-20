@@ -455,6 +455,124 @@ ResourceBar component:
   4. Update on every inventory change (loot earned, building cost)
 ```
 
+## Data Flow: Civilization System (NEW - v1.9 Milestone 2)
+
+### Civilization Selection & Stat Bonus Application
+
+```
+Character Creation UI
+    ↓ Player selects civilization
+selectCivilization(civId)
+    ↓
+Character.civId = civId (founder or new member)
+    ↓
+CIV_CONFIG[civId] lookup:
+  - name: "Linh Sơn" | "Đế Quốc" | "Thiên Lữ"
+  - statBonuses: { STR: +X, ... }
+  - archetypes: ['Warrior', 'Mage', 'Rogue']
+  - heroes: { 'Warrior': [...], 'Mage': [...], 'Rogue': [...] }
+    ↓
+applyCivBonuses(character, civId):
+  1. Get CIV_CONFIG[civId].statBonuses
+  2. For each stat bonus: character.stats[stat] += bonus
+  3. Return updated character
+    ↓
+Character created with civ-adjusted stats
+    ↓
+Save includes civId field (save migration v8→v9)
+    ↓
+UI renders civ-badge component alongside member card
+```
+
+### Civilization Display & Filtering
+
+```
+Guild Roster Panel:
+    ↓
+Render all members with civ-badge (emblem + name)
+    ↓
+Filter Option: "Show all civilizations"
+    ↓
+User clicks civilization filter
+    ↓
+roster.filter(m => m.civId === selectedCivId)
+    ↓
+Filtered roster re-renders
+    ↓
+Quest board respects civ filter for mission recommendations
+```
+
+### Character Detail Panel Integration
+
+```
+User clicks member in roster
+    ↓
+character-detail-panel opens
+    ↓
+Display:
+  - Civilization name + emblem (civ-badge)
+  - Applied stat bonuses from CIV_CONFIG
+  - Archetype (Warrior/Mage/Rogue per civ)
+  - Combat passive ability description (next section)
+```
+
+## Data Flow: Combat Passives System (NEW - v1.9 Milestone 2)
+
+### Passive Ability Application During Combat
+
+```
+resolveMission(mission, members) called:
+    ↓
+For each member:
+  1. Look up member.civId
+  2. Get CIV_CONFIG[civId].passive
+     - Son The (Linh Sơn): +20% max HP per level
+     - Dien The Chi Huy (Đế Quốc): +30% EXP gain
+     - Tinh Lo (Thiên Lữ): +15% dodge rate
+    ↓
+Combat Simulation:
+  Passive Type 1 - HP Bonus (Son The):
+    - maxHP = baseHP * (1 + 0.2 * level)
+    - Applied at combat start
+    ↓
+  Passive Type 2 - Dodge Bonus (Tinh Lo):
+    - dodgeChance += 0.15
+    - Checked during damage calculation
+    - If random < dodgeChance: damage = 0, emit "dodge" event
+    ↓
+  Passive Type 3 - EXP Bonus (Dien The Chi Huy):
+    - Applied post-mission to survivors only
+    ↓
+Mission Resolution:
+  expReward = baseExp * (1 + member.rank.expBonusPct/100)
+  if member.civId === 'DE_QUC':  // Đế Quốc
+    expReward *= 1.3  // Dien The Chi Huy bonus
+    ↓
+Result.expPerMember includes passive bonus
+    ↓
+Notification shows: "Gained +XXX EXP (includes Dien The Chi Huy bonus)"
+```
+
+### Passive Display in UI
+
+```
+character-detail-panel:
+    ↓
+Section: "Combat Passive"
+    ↓
+Display:
+  - Passive name (e.g., "Son The")
+  - Civilization (Linh Sơn, etc.)
+  - Bonus description with value
+  - When it applies (combat start, during dmg, post-mission)
+    ↓
+roster-list-item:
+    ↓
+Small badge indicator: "Passive: +20% HP"
+    ↓
+Hover tooltip shows full passive description
+```
+
 ## Data Flow: Guild Rank System (NEW - v1.8)
 
 ### Promotion Check & Execution
@@ -593,6 +711,7 @@ getRoomBounds(room: Room):
 |------|---------|
 | `build-mode-hint.tsx` | HUD hint overlay displaying placement controls (R, Escape, Click) |
 | `resource-bar.tsx` | HUD resource display showing Wood/Stone/Iron quantities |
+| `civ-badge.tsx` | Civilization emblem + name display component — NEW v1.9 |
 | Other components | Stat bars, cards, buttons, dialogs |
 
 ### `/ui/components/` — Reusable Components
@@ -606,13 +725,13 @@ getRoomBounds(room: Room):
 ### `/ui/panels/` — Collapsible Panels
 | File | Purpose |
 |------|---------|
-| `quest-board.tsx` | Dispatch missions, track progress with member count "(selected/min+)" display |
+| `quest-board.tsx` | Dispatch missions, track progress with member count "(selected/min+)" display, quest chain badges, civ filter |
 | `quest-detail-modal.tsx` | Modal showing quest info + party composition + multi-member rewards breakdown |
-| `guild-roster.tsx` | Compact member list with character detail panel (NEW v1.6) |
-| `character-detail-panel.tsx` | Left-side detail panel (avatar, equipment, auto-cast toggle, stats) — NEW v1.6 |
+| `guild-roster.tsx` | Compact member list with character detail panel (NEW v1.6), civ badges, civilization filtering |
+| `character-detail-panel.tsx` | Left-side detail panel (avatar, equipment, auto-cast toggle, stats, civ info, passives) — NEW v1.6, ENHANCED v1.9 |
 | `build-menu.tsx` | Room selection UI (enter placement mode instead of direct placement) |
 | `combat-view.tsx` | Combat log + tick-by-tick simulation details |
-| `char-creation.tsx` | Stat allocation (50 points) |
+| `char-creation.tsx` | Stat allocation (50 points), civilization selector — ENHANCED v1.9 |
 | `settings-panel.tsx` | Audio/lang toggle, import/export, return to title |
 
 ### `/ui/components/roster/` — Roster Components (NEW - v1.6, v1.8)
@@ -642,7 +761,7 @@ getRoomBounds(room: Room):
 | `store.ts` | Combined store with all slices |
 | `game-slice.ts` | Active guild, clock, combat log |
 | `guild-slice.ts` | Buildings, rooms, treasury, upkeep, inventory |
-| `roster-slice.ts` | Members, stats, EXP, levels, status |
+| `roster-slice.ts` | Members, stats, EXP, levels, status, civId (ENHANCED v1.9) |
 | `mission-slice.ts` | Active missions, timers, rewards, rewards queue |
 | `combat-slice.ts` | Current combat, turns, damage log |
 | `save-status-slice.ts` | Auto-save status (idle/saving/saved/error) |
@@ -654,11 +773,12 @@ getRoomBounds(room: Room):
 | File | Purpose |
 |------|---------|
 | `combat-system.ts` | Damage calculation, turn simulation |
+| `combat-passives.ts` | Passive ability definitions (Son The, Dien The Chi Huy, Tinh Lo), application logic during combat |
 | `economy-system.ts` | Gold, upkeep, debt |
 | `mission-system.ts` | Quest dispatch, timers |
 | `mission-tick.ts` | Phase state machine: processMissionTick (advancing traveling→arrived→in-combat→completed/failed), MissionTickEvent emission |
-| `mission-resolver.ts` | resolveMission: combat sim + reward calc (EXP divided by party size) + loot generation |
-| `combat-simulator.ts` | Combat simulation with skill cooldown (attackIntervalMs * 2) + auto-cast logic |
+| `mission-resolver.ts` | resolveMission: combat sim + reward calc (EXP divided by party size + passive bonuses) + loot generation |
+| `combat-simulator.ts` | Combat simulation with skill cooldown (attackIntervalMs * 2) + auto-cast logic + passive application |
 | `mission-dispatch.ts` | Dispatch mission, set initial phase to 'traveling' |
 | `mission-board.ts` | Quest listing & dispatch UI logic |
 | `leveling-system.ts` | EXP, levels, stat growth |
@@ -674,10 +794,11 @@ getRoomBounds(room: Room):
 ### `/game/data/` — Static Data
 | File | Purpose |
 |------|---------|
-| `enemies.ts` | Enemy templates by tier (includes lootRules) |
-| `missions.ts` | Quest definitions, rewards, duration |
-| `skills.ts` | Ability data |
-| `characters.ts` | 80+ hero templates |
+| `civilization-config.ts` | CIV_CONFIG: 3 civilizations (Linh Sơn, Đế Quốc, Thiên Lữ), stat bonuses, archetype classes, hero rosters per archetype |
+| `enemies.ts` | 15 enemy templates by tier (F/E/D), includes lootRules, special abilities (stun-attack, enrage, heal-ally) |
+| `missions.ts` | 22 quest definitions (F/E/D tiers), quest chains, gate bosses, rewards, duration |
+| `skills.ts` | 7 skills grouped by SKILLS_BY_ARCHETYPE (Warrior/Mage/Rogue per civ), cooldown, damage, range |
+| `characters.ts` | 80+ hero templates per civilization |
 | `buildings.ts` | Room definitions (type, name, cost: ResourceCost, width/depth, effect) |
 | `items.ts` | Item registry (8 types: names, stack limits) |
 | `ranks.ts` | Rank definitions (RECRUIT→COMMANDER + MERCENARY), perks, promotion requirements |
@@ -690,8 +811,14 @@ getRoomBounds(room: Room):
 ### `/i18n/` — Localization
 | File | Purpose |
 |------|---------|
-| `vi.json` | Vietnamese translations (default locale) |
+| `vi.json` | Vietnamese translations (default locale), includes Milestone 2 strings (civilizations, passives, new missions) |
 | `index.ts` | i18next setup |
+
+### `/audio/` — Audio Management
+| File | Purpose |
+|------|---------|
+| `audio-manager.ts` | Audio key registry + Howler.js management, includes 6 new keys (v1.9): BGM_COMBAT, SFX_CRIT, SFX_DODGE, SFX_DEATH, SFX_SKILL, SFX_RECRUIT |
+| `audio-keys.ts` | Enum of all audio keys |
 
 ## Key Architectural Decisions
 

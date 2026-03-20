@@ -2,8 +2,156 @@
 
 All notable changes to Worlds Collide are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
-**Current Version**: 1.6
-**Release Date**: 2026-03-16 (Roster Management & Combat Enhancements)
+**Current Version**: 1.9
+**Release Date**: 2026-03-21 (Milestone 2 Vertical Slice)
+
+---
+
+## [1.9] — 2026-03-21 (Milestone 2 Vertical Slice)
+
+### Added
+
+#### Civilizations System (Major Feature)
+- **3 Civilizations**: Linh Sơn, Đế Quốc, Thiên Lữ (complete replacement)
+- **CIV_CONFIG**: Single source of truth for civilization data
+  - Each civ defines stat bonuses, archetype classes, unique hero rosters
+- **Character Creation**: Founder and members assigned to civilizations
+  - Stat bonuses applied automatically on creation via `applyCivBonuses()`
+  - Visual selector in character creation UI
+- **Civ Badge Component**: Visual emblem + name display across UI
+- **Roster Filtering**: Members can be filtered/sorted by civilization
+
+#### Combat Passives (Major Feature)
+- **3 Exclusive Passive Abilities**:
+  - **Son The (Linh Sơn)**: +20% max HP per level
+  - **Dien The Chi Huy (Đế Quốc)**: +30% EXP gain from missions
+  - **Tinh Lo (Thiên Lữ)**: +15% dodge rate in combat
+- **Passive Integration**: Automatically applied during combat simulation
+- **UI Display**: Passive descriptions in character detail + roster panels
+- **Combat Calculation**: Passives modify HP, dodge chance, and EXP rewards
+
+#### Skills Expansion (Major Feature)
+- **7 Skills Total** (up from 1)
+- **Archetype-Based Organization**: `SKILLS_BY_ARCHETYPE` groups skills per class
+- **Skill Variety**: Warrior, Mage, Rogue variants per civilization
+- **Combat System**: Skill cooldown, mana, damage scaling, range
+- **UI Display**: Full skill cards in character detail panel
+
+#### Enemy Expansion (Major Feature)
+- **15 Enemy Types** (up from 5)
+  - F tier: 5 enemies
+  - E tier: 5 enemies
+  - D tier: 5 enemies
+- **New Abilities**:
+  - **Stun-attack**: Disables target for 1 turn
+  - **Enrage**: Increases self damage by 50% for duration
+  - **Heal-ally**: Restores HP to nearby enemies
+- **Smart AI**: Enemies select targets strategically + use abilities tactically
+- **Diverse Loot Tables**: Each enemy drops unique items + materials
+
+#### Mission Expansion (Major Feature)
+- **22 Total Missions** (up from 5)
+  - F tier: 8 missions
+  - E tier: 7 missions
+  - D tier: 7 missions
+- **2 Gate Bosses**: One-time elite challenges blocking tier progression
+- **1 Quest Chain**: Multi-mission narrative story with escalating rewards
+- **Mission Variety**: Standard combat, boss encounters, elite gates, story chains
+- **Reward Scaling**: Gold + EXP adjust for difficulty tier + quest type
+- **Travel Times**: Recalibrated per tier (F=10s, E=15s, D=20s)
+
+#### Audio System Expansion (Major Feature)
+- **6 New Audio Keys**:
+  - `BGM_COMBAT`: Combat background music
+  - `SFX_CRIT`: Critical hit sound effect
+  - `SFX_DODGE`: Dodge/miss sound effect
+  - `SFX_DEATH`: Enemy defeat sound effect
+  - `SFX_SKILL`: Skill usage sound effect
+  - `SFX_RECRUIT`: Character recruitment sound effect
+- **Integration**: Sounds triggered during combat, recruitment, abilities
+- **Audio Manager**: New keys registered in audio-manager.ts
+
+### Changed
+
+#### Character Creation
+- **New Field**: `civId: string` on all members (founder + roster)
+- **Founder Creation**: Includes civilization selector
+- **Stat Bonuses**: Applied based on selected civilization
+- **UI Update**: Character creation flow includes civ selection step
+
+#### Combat Simulation
+- **Passive Application**: Son The, Dien The Chi Huy, Tinh Lo checked during combat
+- **Damage Calculation**: Passives modify damage, dodge, and other formulas
+- **EXP Calculation**: Dien The Chi Huy bonus applied to mission rewards
+- **HP Calculation**: Son The bonus affects max HP + healing
+
+#### Roster & UI
+- **Civ Badges**: All member displays show civilization emblem
+- **Filter Options**: Roster can filter by civilization
+- **Character Detail**: Shows applied passives + civ bonuses
+- **Quest Board**: Displays civilization-specific quest chains
+
+#### Mission System
+- **Quest Chain Tracking**: Multi-mission story lines with progression
+- **Gate Boss Logic**: One-time bosses unlock higher tiers on completion
+- **Mission Variety**: Expanded enemy combinations per mission
+- **Reward Scaling**: Adjusted for new mission count + difficulty tier
+
+### Fixed
+
+#### Civilization Representation
+- **Fixed**: Old civilizations (Viet/Nordic/Saharan) replaced with lore-appropriate alternatives
+- **Fixed**: No way to distinguish member civilizations in UI (now shows badges)
+- **Fixed**: Stat bonuses not applied at character creation (now automatic via CIV_CONFIG)
+
+#### Gameplay Progression
+- **Fixed**: Limited mission variety (5 missions) → now 22 missions with quest chains
+- **Fixed**: Limited enemy types (5) → now 15 enemies with special abilities
+- **Fixed**: No audio feedback for combat actions → 6 new sound effects added
+- **Fixed**: Skills limited to 1 type → now 7 skills organized by archetype
+
+### Save Migration v8 → v9
+
+- **Version Bump**: `SAVE_VERSION` incremented from 8 to 9
+- **Auto-Migration**: `migrateV8toV9()` runs on load
+  - Add `civId: string` field to all members
+  - Map old civilization names to new IDs (if exists)
+  - Ensure founder has valid civId assignment
+- **Backward Compatibility**: Old v8 saves load with default civ assignments
+- **Transparent**: No user interaction required
+
+### Performance
+
+- **Civilization Config**: O(1) lookup via CIV_CONFIG[civId]
+- **Passive Application**: O(1) per passive during combat calc (simple multipliers)
+- **Mission Filtering**: O(n) per filter (n = mission count, ~22)
+- **Audio Keys**: No performance impact (enum-based registration)
+
+### Testing
+
+- **Civilization Tests**: CIV_CONFIG structure, stat bonus application
+- **Passive Tests**: Son The, Dien The Chi Huy, Tinh Lo stat modifications
+- **Mission Tests**: Quest chain progression, gate boss unlocks
+- **Enemy Tests**: 15 types + abilities, loot generation
+- **Audio Tests**: New keys registered, sound playback
+- **Full Test Suite**: All systems passing with new features
+
+### Documentation
+
+- Updated `codebase-summary.md` with Milestone 2 features
+- Updated `system-architecture.md` with civilization + passive data flows
+- Updated `project-changelog.md` (this entry) with v1.9 features
+- Updated `development-roadmap.md` Milestone 2 complete status
+
+### Known Issues
+
+None identified in v1.9 release. All civilization, passive, skill, enemy, mission, and audio features tested and working.
+
+### Limitations
+
+- Passives fixed per civilization (no customization)
+- Quest chains linear (cannot skip chapters)
+- Gate bosses must be defeated sequentially per tier
 
 ---
 
@@ -482,13 +630,16 @@ See `v0-archive-changelog.md` for historical entries (v0.1 through v1.2)
 | 1.4 | 2026-03-16 | Structures Utility — mercenary system, tavern, quest tier gating | Complete |
 | 1.5 | 2026-03-16 | Inventory & Multi-Resource Economy — items, loot, building costs | Complete |
 | 1.6 | 2026-03-16 | Roster Management & Combat Enhancements | Complete |
-| 1.7+ | TBD | Post-launch updates | Planned |
+| 1.7 | 2026-03-16 | Guild Rank System — 5-tier hierarchy, promotion mechanics | Complete |
+| 1.8 | 2026-03-16 | Save Migration & Enhanced Rank System (v7→v8) | Complete |
+| 1.9 | 2026-03-21 | Milestone 2 Vertical Slice — Civilizations, Passives, 22 Missions, 15 Enemies, 7 Skills | Complete |
+| 2.0+ | TBD | Post-launch updates | Planned |
 
 See `v0-archive-changelog.md` for v0.1-v1.2 history.
 
 ---
 
-**Last Updated**: 2026-03-16 (v1.6 Roster Management & Combat Enhancements)
+**Last Updated**: 2026-03-21 (v1.9 Milestone 2 Vertical Slice)
 **Maintained By**: Documentation Team
 **Next Review**: 2026-03-22 (weekly) / 2026-04-15 (milestone)
 

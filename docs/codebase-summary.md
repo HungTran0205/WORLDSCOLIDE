@@ -21,19 +21,19 @@
 ```
 src/
 ├── game/                    # Core game logic & state
-│   ├── state/              # Zustand store + slices (game, guild, roster, mission, combat, save-status)
-│   ├── systems/            # Game simulation (combat, leveling, economy, missions, building)
+│   ├── state/              # Zustand store + slices (game, guild, roster, mission, combat, save-status, inventory, build-mode)
+│   ├── systems/            # Game simulation (combat, leveling, economy, missions, building, combat-passives)
 │   │   └── workers/        # Web Worker game loop for offline progression
-│   ├── data/               # Static data (enemies, missions, skills, buildings, characters)
+│   ├── data/               # Static data (enemies, missions, skills, buildings, characters, civilization-config)
 │   └── save/               # Persistence layer (3-slot IndexedDB + JSON import/export)
 ├── scene/                  # React Three Fiber 3D guild hall scene
 ├── ui/                     # User interface
 │   ├── screens/            # Full-screen views (title screen with slot selection)
 │   ├── panels/             # Collapsible UI panels (quest board, roster, build, combat, settings)
 │   ├── hud/                # Heads-up display overlay + panel toggle bar + save status badge
-│   ├── components/         # Reusable UI components (stat bars, cards, dialogs)
+│   ├── components/         # Reusable UI components (stat bars, cards, dialogs, civ-badge)
 │   └── styles/             # CSS for panels, HUD, and screens
-├── audio/                  # Howler.js audio manager + sound key enums
+├── audio/                  # Howler.js audio manager + sound key enums (6 new keys)
 ├── i18n/                   # i18next localization (Vietnamese default)
 └── main.tsx               # Application entry point
 ```
@@ -153,6 +153,96 @@ src/
 - **Keys**: Game UI, panel headers, button labels, system messages
 - **Title Screen**: Slot display, action buttons, messages
 - **Save/Import Dialogs**: User-facing feedback
+
+## Recent Changes (Milestone 2 Vertical Slice — v1.9)
+
+### Civilizations System (NEW - Complete Overhaul)
+- **3 Civilizations**: Linh Sơn, Đế Quốc, Thiên Lữ (replacing old Viet/Nordic/Saharan)
+- **CIV_CONFIG**: Single source of truth in `src/game/data/civilization-config.ts`
+  - Each civ: name, description, stat bonuses, archetype classes, hero roster (per class)
+  - Stat bonuses applied at creation via `applyCivBonuses(founder, civId)`
+- **Character Creation**: Civ selector integrated in founder creation UI
+- **Civ Badge Component**: `civ-badge.tsx` displays civilization emblem + name
+- **Roster Filter**: Quest board + roster show civ badges for filtering/identification
+- **Save Migration v8→v9**: Transparent civ name remapping for old saves
+
+### Combat Passives System (NEW - 3 Exclusive Abilities)
+- **Son The (Linh Sơn)**: +20% max HP per level
+- **Dien The Chi Huy (Đế Quốc)**: +30% EXP gain from missions
+- **Tinh Lo (Thiên Lữ)**: +15% dodge rate in combat
+- **Passive Application**: Automatically applied based on member's civilization
+- **Combat Integration**: Passives checked during combat simulation + damage calculation
+- **Display**: Passive abilities shown in character detail panel + roster list items
+
+### Skills Expansion (NEW - 7 Total, was 1)
+- **7 Skills Total**: Grouped by archetype via `SKILLS_BY_ARCHETYPE`
+- **Each Archetype**: Has dedicated skill set (Warrior, Mage, Rogue variants per civ)
+- **Skill Data**: Includes cooldown, damage scaling, range, mana cost
+- **Combat Behavior**: Auto-cast + manual cast supported (existing system)
+- **Display**: Skill cards in character detail panel with full stats
+
+### Enemy Expansion (NEW - 15 Enemy Types, was 5)
+- **15 Total Enemy Types**: Spread across F-D tiers
+- **New Abilities**:
+  - Stun-attack: Disables target for 1 turn
+  - Enrage: Increases self damage by 50% temporarily
+  - Heal-ally: Restores HP to nearby enemies
+- **AI Behavior**: Smart target selection + ability usage during combat sim
+- **Loot Tables**: Each enemy has distinct loot rules (items + materials)
+- **Balance**: Progressive difficulty scaling per tier
+
+### Mission Expansion (NEW - 22 Total Missions, was 5)
+- **22 Total Missions**: F tier (8), E tier (7), D tier (7)
+- **2 Gate Bosses**: One-time challenge missions blocking tier progression
+- **1 Quest Chain**: Multi-mission narrative story line with escalating rewards
+- **Mission Variety**:
+  - Standard combat missions (1-3 enemies)
+  - Boss encounters (single powerful enemy)
+  - Gate bosses (elite challenge)
+  - Quest chain steps (tied together with lore)
+- **Rewards**: Gold + EXP + items scale by difficulty + quest type
+- **Travel Times**: Adjusted for new difficulty tiers
+
+### UI Enhancements (NEW - Civ-Aware Components)
+- **Quest Board**: Shows civ filter + quest chain badges for multi-mission sets
+- **Roster View**: Civ badges + passive ability displays per member
+- **Character Detail**: Full passive ability description + stat bonuses from civ
+- **Mission List**: Quest chain indicators + gate boss markers
+
+### Audio System Expansion (NEW - 6 New Keys)
+- **BGM_COMBAT**: Combat background music
+- **SFX_CRIT**: Critical hit sound effect
+- **SFX_DODGE**: Dodge/miss sound effect
+- **SFX_DEATH**: Enemy defeat sound effect
+- **SFX_SKILL**: Skill usage sound effect
+- **SFX_RECRUIT**: Character recruitment sound effect
+
+### Save Migration v8→v9 (TRANSPARENT)
+- **Version Bump**: `SAVE_VERSION` incremented to 9
+- **Auto-Migration**: `migrateV8toV9()` runs on load
+  - Remap old civ names (if exists) to new civilization IDs
+  - Add `civId: string` field to all members
+  - Ensure founder has valid civId
+- **Backward Compatibility**: Old saves load seamlessly with civ assignments
+
+**Key Files (New)**:
+- `src/game/data/civilization-config.ts` — CIV_CONFIG definitions, archetype classes, hero rosters per civ
+- `src/game/systems/combat-passives.ts` — Passive ability definitions + application logic
+- `src/ui/components/civ-badge.tsx` — Civilization display component
+- `src/game/data/enemies.ts` — 15 enemy definitions with abilities + loot tables (updated)
+- `src/game/data/missions.ts` — 22 mission definitions + quest chains + gate bosses (updated)
+- `src/game/data/skills.ts` — 7 skills grouped by archetype (updated)
+
+**Key Files (Modified)**:
+- `character-creation.tsx` — Added civ selector UI
+- `quest-board.tsx` — Filter by civ + show quest chain badges
+- `guild-roster.tsx` — Display civ badges + sort by civilization
+- `character-detail-panel.tsx` — Show passive abilities + civ bonuses
+- `combat-simulator.ts` — Apply passives during combat calculation
+- `save-migrations.ts` — Added migrateV8toV9() function
+- `save-types.ts` — Updated SAVE_VERSION to 9
+- `audio-manager.ts` — 6 new audio keys registered
+- `roster-slice.ts` — Added civId field to members
 
 ## Recent Changes (Guild Rank System — v1.8)
 

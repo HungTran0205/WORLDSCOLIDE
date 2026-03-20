@@ -1,8 +1,8 @@
 # Development Roadmap
 
-**Last Updated**: 2026-03-16
-**Current Phase**: Phase 5 In Progress (Roster Management v1.6 Complete)
-**Overall Progress**: ~85% Complete
+**Last Updated**: 2026-03-21
+**Current Phase**: Phase 5 In Progress (Milestone 2 Vertical Slice v1.9 Complete)
+**Overall Progress**: ~90% Complete
 
 ---
 
@@ -13,7 +13,7 @@
 [PHASE 2: Guild Hall]          ████████████████████ 100% COMPLETE
 [PHASE 3: Characters & NPCs]   ████████████████████ 100% COMPLETE
 [PHASE 4: Save System v1]      ████████████████████ 100% COMPLETE
-[PHASE 5: Polish & Launch]     ████████████████░░░░ 85% IN PROGRESS
+[PHASE 5: Polish & Launch]     ██████████████████░░ 90% IN PROGRESS
 [PHASE 6: Post-Launch]         ░░░░░░░░░░░░░░░░░░░░ 0% PLANNED
 ```
 
@@ -148,7 +148,7 @@
 
 ## Phase 5: Polish & Launch (IN PROGRESS)
 
-**Status**: 🟡 IN PROGRESS (80% complete)
+**Status**: 🟡 IN PROGRESS (90% complete)
 **Target Completion**: 2026-03-30
 **Duration**: ~2 weeks
 
@@ -163,7 +163,17 @@
 - [x] Resource loot and cost integration tests (full suite passing)
 - [x] Roster Management & Combat Enhancements — Multi-member dispatch, skill cooldown, auto-cast, compact UI (v1.6 released)
 - [x] Roster UI refactor + character detail panel (new components)
-- [x] Documentation updated (codebase-summary, system-architecture, changelog, roadmap)
+- [x] Guild Rank System — 5-tier hierarchy with promotion mechanics (v1.7/v1.8 released)
+- [x] Rank system integration tests + save migration (v7→v8)
+- [x] Milestone 2 Vertical Slice — Civilizations, Combat Passives, 22 Missions, 15 Enemies, 7 Skills, Audio Expansion (v1.9 released)
+- [x] Civilization system with CIV_CONFIG, stat bonuses, character creation integration
+- [x] Combat passives (Son The, Dien The Chi Huy, Tinh Lo) implemented + tested
+- [x] Mission expansion (22 total) with quest chains + gate bosses
+- [x] Enemy expansion (15 types) with stun-attack, enrage, heal-ally abilities
+- [x] Skills expansion (7 total) grouped by archetype per civilization
+- [x] Audio system expanded (6 new keys: BGM_COMBAT, SFX_CRIT, SFX_DODGE, SFX_DEATH, SFX_SKILL, SFX_RECRUIT)
+- [x] Save migration v8→v9 + full test suite passing
+- [x] Documentation updated (Milestone 2 features in all docs)
 
 ### Current Tasks
 - [ ] Performance optimization (target <100ms saves)
@@ -185,9 +195,9 @@
 
 | Week | Tasks | Target |
 |------|-------|--------|
-| Week 1 (03/15-03/21) | Build Mode v2+v3 complete, advanced features, mercenary system (v1.4), testing | 80% complete ✅ |
-| Week 2 (03/22-03/28) | Performance optimization, accessibility, i18n, final docs, bug fixes | 90% complete (on track) |
-| Week 3 (03/29-03/30) | Launch decision, final build | 100% complete |
+| Week 1 (03/15-03/21) | Build Mode v2+v3, mercenary system, inventory, roster mgmt, guild ranks, Milestone 2 complete | 90% complete ✅ |
+| Week 2 (03/22-03/28) | Performance optimization, accessibility, i18n, final docs, bug fixes | 95% complete (on track) |
+| Week 3 (03/29-03/30) | Launch decision, final build, release prep | 100% complete |
 
 ### Success Criteria for Phase 5
 - [ ] All critical bugs fixed (0 P0/P1 issues)
@@ -248,7 +258,9 @@
 | Phase 5 Checkpoint 3 | 2026-03-16 | ✅ Done | Structures Utility v1.4 (mercenary system), 25/25 tests passing |
 | Phase 5 Checkpoint 4 | 2026-03-16 | ✅ Done | Inventory & Multi-Resource Economy v1.5, full test suite passing |
 | Phase 5 Checkpoint 5 | 2026-03-16 | ✅ Done | Roster Management v1.6 (multi-member dispatch, skill cooldown, auto-cast, UI) |
-| Phase 5 Complete | 2026-03-30 | 🟡 Expected | Performance optimization, accessibility, launch decision |
+| Phase 5 Checkpoint 6 | 2026-03-16 | ✅ Done | Guild Rank System v1.7-v1.8 (5-tier hierarchy, promotion mechanics, save migration) |
+| Phase 5 Milestone 2 | 2026-03-21 | ✅ Done | Civilizations system, 3 combat passives, 7 skills, 22 missions, 15 enemies, 6 audio keys |
+| Phase 5 Complete | 2026-03-30 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
 | Phase 6 Start | 2026-04-15 | 📋 Planned | Post-launch content |
 
 ---
@@ -387,4 +399,4 @@ Documentation automatically updated when:
 - Significant scope changes
 - Resource allocation changes
 
-**Last Updated**: 2026-03-15 by docs-manager
+**Last Updated**: 2026-03-21 by docs-manager (Milestone 2 Vertical Slice Complete)
