@@ -39,7 +39,7 @@ describe('migrateSave', () => {
 
   it('migrates v7 → v8: bumps version', () => {
     const result = migrateSave(makeV7Envelope() as any);
-    expect(result.version).toBe(8);
+    expect(result.version).toBe(9); // v7 now chains through v8→v9
   });
 
   it('migrates v7 → v8: founder gets COMMANDER rank', () => {
@@ -77,6 +77,30 @@ describe('migrateSave', () => {
     const tavMerc = (result.gameState as any).tavern.availableMercenaries[0];
     expect(tavMerc.rank).toBe('MERCENARY');
     expect(tavMerc.missionsCompleted).toBe(4); // level 2 * 2
+  });
+
+  // v8→v9 civilization remap tests
+  it('migrates v8→v9: remaps Viet to LinhSon', () => {
+    const result = migrateSave(makeV7Envelope() as any);
+    expect((result.gameState as any).founder.civilization).toBe('LinhSon');
+  });
+
+  it('migrates v8→v9: remaps Nordic to DeQuoc', () => {
+    const result = migrateSave(makeV7Envelope() as any);
+    const newbie = (result.gameState as any).roster.find((m: any) => m.id === 'r1');
+    expect(newbie.civilization).toBe('DeQuoc');
+  });
+
+  it('migrates v8→v9: remaps Saharan to ThienLu', () => {
+    const result = migrateSave(makeV7Envelope() as any);
+    const vet = (result.gameState as any).roster.find((m: any) => m.id === 'r2');
+    expect(vet.civilization).toBe('ThienLu');
+  });
+
+  it('migrates v8→v9: tavern mercenaries also remapped', () => {
+    const result = migrateSave(makeV7Envelope() as any);
+    const tavMerc = (result.gameState as any).tavern.availableMercenaries[0];
+    expect(tavMerc.civilization).toBe('DeQuoc');
   });
 
   it('throws for version higher than SAVE_VERSION', () => {

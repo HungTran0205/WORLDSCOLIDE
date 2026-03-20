@@ -4,6 +4,7 @@ import { RosterListItem } from '@/ui/components/roster-list-item';
 import { CharacterDetailPanel } from '@/ui/panels/character-detail-panel';
 import { MISSIONS } from '@/game/data/missions';
 import { canPromote } from '@/game/data/ranks';
+import { CIVILIZATIONS, CIV_CONFIG } from '@/game/data/civilization-config';
 import type { StatKey } from '@/game/state/game-state';
 import '@/ui/styles/panels.css';
 
@@ -22,10 +23,15 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
   const promoteMember = useGameStore((s) => s.promoteMember);
   const removeMember = useGameStore((s) => s.removeMember);
 
-  const members = useMemo(() => {
-    return founder ? [founder, ...roster] : roster;
-  }, [founder, roster]);
+  const [civFilter, setCivFilter] = useState<string>('all');
 
+  const members = useMemo(() => {
+    const all = founder ? [founder, ...roster] : roster;
+    if (civFilter === 'all') return all;
+    return all.filter((m) => m.civilization === civFilter);
+  }, [founder, roster, civFilter]);
+
+  const totalCount = (founder ? 1 : 0) + roster.length;
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const selectedMember = useMemo(
     () => members.find((m) => m.id === selectedMemberId) ?? null,
@@ -48,9 +54,19 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
       {/* Roster list — right side (standard panel position) */}
       <div className="panel-overlay">
         <h2>
-          Guild Roster ({members.length})
+          Guild Roster ({totalCount})
           <button className="panel-close-btn" onClick={onClose}>Close</button>
         </h2>
+
+        {/* Civ filter */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: 8, flexWrap: 'wrap' }}>
+          <button className="panel-btn" style={{ width: 'auto', padding: '3px 8px', fontSize: '0.75rem', marginTop: 0 }} onClick={() => setCivFilter('all')}>All</button>
+          {CIVILIZATIONS.map((civ) => (
+            <button key={civ} className="panel-btn" style={{ width: 'auto', padding: '3px 8px', fontSize: '0.75rem', marginTop: 0, opacity: civFilter === civ ? 1 : 0.6 }} onClick={() => setCivFilter(civ)}>
+              {CIV_CONFIG[civ].displayName}
+            </button>
+          ))}
+        </div>
 
         {members.map((member) => (
           <div key={member.id}>

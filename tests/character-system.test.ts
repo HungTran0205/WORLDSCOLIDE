@@ -59,13 +59,14 @@ describe('Stat Allocation', () => {
 describe('Character Creation', () => {
   it('should create founder with correct stats', () => {
     const stats = { STR: 10, END: 10, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 10 };
-    const founder = createFounder('TestHero', stats);
+    const founder = createFounder('TestHero', stats, 'LinhSon');
     expect(founder.name).toBe('TestHero');
     expect(founder.isFounder).toBe(true);
     expect(founder.level).toBe(1);
-    expect(founder.civilization).toBe('Viet');
+    expect(founder.civilization).toBe('LinhSon');
     expect(founder.skill).not.toBeNull();
-    expect(totalAllocated(founder.stats)).toBe(50);
+    // Civ bonuses apply: END*1.2=12, DEX*1.1=5, STR*1.1=11 → total > 50
+    expect(totalAllocated(founder.stats)).toBeGreaterThanOrEqual(50);
   });
 
   it('should generate recruit within guild level cap', () => {

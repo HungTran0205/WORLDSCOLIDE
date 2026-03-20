@@ -21,63 +21,109 @@ export interface EnemyTemplate {
 }
 
 export const ENEMIES: Record<string, EnemyTemplate> = {
+  // --- Level 1 ---
   slime: {
-    id: 'slime',
-    name: 'Slime',
-    level: 1,
+    id: 'slime', name: 'Slime', level: 1,
     stats: { STR: 3, END: 2, INT: 1, DEX: 1, CHA: 0, LCK: 1, AGI: 2 },
-    skill: null,
-    abilities: [],
-    loot: [{ itemId: 'SLIME_GEL', chance: 0.75, min: 1, max: 2 }
-          ,{ itemId: 'WOOD', chance: 0.15, min: 1, max: 2 },
-    ],
+    skill: null, abilities: [],
+    loot: [{ itemId: 'SLIME_GEL', chance: 0.75, min: 1, max: 2 }, { itemId: 'WOOD', chance: 0.15, min: 1, max: 2 }],
   },
+  'forest-spider': {
+    id: 'forest-spider', name: 'Forest Spider', level: 1,
+    stats: { STR: 4, END: 2, INT: 1, DEX: 3, CHA: 0, LCK: 1, AGI: 4 },
+    skill: null, abilities: [{ type: 'poison-attack', chance: 0.10 }],
+    loot: [{ itemId: 'SLIME_GEL', chance: 0.5, min: 1, max: 1 }],
+  },
+
+  // --- Level 2 ---
   goblin: {
-    id: 'goblin',
-    name: 'Goblin',
-    level: 2,
+    id: 'goblin', name: 'Goblin', level: 2,
     stats: { STR: 6, END: 4, INT: 2, DEX: 5, CHA: 0, LCK: 3, AGI: 5 },
-    skill: null,
-    abilities: [{ type: 'poison-attack', chance: 0.15 }],
-    loot: [
-      { itemId: 'GOBLIN_EAR', chance: 0.8, min: 1, max: 1 },
-      { itemId: 'WOOD', chance: 0.15, min: 1, max: 2 },
-    ],
+    skill: null, abilities: [{ type: 'poison-attack', chance: 0.15 }],
+    loot: [{ itemId: 'GOBLIN_EAR', chance: 0.8, min: 1, max: 1 }, { itemId: 'WOOD', chance: 0.15, min: 1, max: 2 }],
   },
+  bandit: {
+    id: 'bandit', name: 'Bandit', level: 2,
+    stats: { STR: 5, END: 5, INT: 2, DEX: 4, CHA: 1, LCK: 2, AGI: 4 },
+    skill: null, abilities: [],
+    loot: [{ itemId: 'GOBLIN_EAR', chance: 0.4, min: 1, max: 1 }, { itemId: 'IRON_ORE', chance: 0.2, min: 1, max: 1 }],
+  },
+  'cave-bat': {
+    id: 'cave-bat', name: 'Cave Bat', level: 2,
+    stats: { STR: 3, END: 2, INT: 1, DEX: 6, CHA: 0, LCK: 2, AGI: 8 },
+    skill: null, abilities: [],
+    loot: [{ itemId: 'BOAR_PELT', chance: 0.3, min: 1, max: 1 }],
+  },
+
+  // --- Level 3 ---
   wolf: {
-    id: 'wolf',
-    name: 'Wolf',
-    level: 3,
+    id: 'wolf', name: 'Wolf', level: 3,
     stats: { STR: 8, END: 5, INT: 1, DEX: 4, CHA: 0, LCK: 2, AGI: 7 },
-    skill: null,
-    abilities: [],
-    loot: [
-      { itemId: 'WOLF_FANG', chance: 0.4, min: 1, max: 1 },
-      { itemId: 'BOAR_PELT', chance: 0.3, min: 1, max: 1 },
-    ],
+    skill: null, abilities: [],
+    loot: [{ itemId: 'WOLF_FANG', chance: 0.4, min: 1, max: 1 }, { itemId: 'BOAR_PELT', chance: 0.3, min: 1, max: 1 }],
   },
-  'orc-warrior': {
-    id: 'orc-warrior',
-    name: 'Orc Warrior',
-    level: 5,
-    stats: { STR: 12, END: 15, INT: 2, DEX: 3, CHA: 0, LCK: 2, AGI: 3 },
-    skill: null,
-    abilities: [],
-    loot: [
-      { itemId: 'ORC_TUSK', chance: 0.35, min: 1, max: 1 },
-      { itemId: 'IRON_ORE', chance: 0.25, min: 1, max: 3 },
-    ],
+  'wild-boar': {
+    id: 'wild-boar', name: 'Wild Boar', level: 3,
+    stats: { STR: 7, END: 10, INT: 1, DEX: 2, CHA: 0, LCK: 1, AGI: 3 },
+    skill: null, abilities: [{ type: 'enrage', chance: 0.15 }],
+    loot: [{ itemId: 'BOAR_PELT', chance: 0.6, min: 1, max: 2 }, { itemId: 'WOOD', chance: 0.2, min: 1, max: 1 }],
   },
   'slime-king': {
-    id: 'slime-king',
-    name: 'Slime King',
-    level: 3,
+    id: 'slime-king', name: 'Slime King', level: 3,
     stats: { STR: 8, END: 20, INT: 3, DEX: 2, CHA: 0, LCK: 5, AGI: 2 },
-    skill: null,
-    abilities: [],
-    loot: [
-      { itemId: 'SLIME_GEL', chance: 1.0, min: 2, max: 4 },
-      { itemId: 'STONE', chance: 0.5, min: 1, max: 2 },
-    ],
+    skill: null, abilities: [],
+    loot: [{ itemId: 'SLIME_GEL', chance: 1.0, min: 2, max: 4 }, { itemId: 'STONE', chance: 0.5, min: 1, max: 2 }],
+  },
+
+  // --- Level 4 (boss: queen-spider) ---
+  'goblin-shaman': {
+    id: 'goblin-shaman', name: 'Goblin Shaman', level: 4,
+    stats: { STR: 4, END: 6, INT: 8, DEX: 3, CHA: 2, LCK: 3, AGI: 4 },
+    skill: null, abilities: [{ type: 'heal-ally', chance: 0.20 }],
+    loot: [{ itemId: 'GOBLIN_EAR', chance: 0.6, min: 1, max: 1 }, { itemId: 'STONE', chance: 0.3, min: 1, max: 2 }],
+  },
+  'queen-spider': {
+    id: 'queen-spider', name: 'Queen Spider', level: 4,
+    stats: { STR: 9, END: 15, INT: 3, DEX: 5, CHA: 0, LCK: 3, AGI: 5 },
+    skill: null, abilities: [{ type: 'poison-attack', chance: 0.30 }],
+    loot: [{ itemId: 'SLIME_GEL', chance: 1.0, min: 2, max: 3 }, { itemId: 'IRON_ORE', chance: 0.4, min: 1, max: 2 }],
+  },
+
+  // --- Level 5 ---
+  'orc-warrior': {
+    id: 'orc-warrior', name: 'Orc Warrior', level: 5,
+    stats: { STR: 12, END: 15, INT: 2, DEX: 3, CHA: 0, LCK: 2, AGI: 3 },
+    skill: null, abilities: [],
+    loot: [{ itemId: 'ORC_TUSK', chance: 0.35, min: 1, max: 1 }, { itemId: 'IRON_ORE', chance: 0.25, min: 1, max: 3 }],
+  },
+  'dire-wolf': {
+    id: 'dire-wolf', name: 'Dire Wolf', level: 5,
+    stats: { STR: 11, END: 10, INT: 1, DEX: 6, CHA: 0, LCK: 3, AGI: 8 },
+    skill: null, abilities: [{ type: 'stun-attack', chance: 0.10 }],
+    loot: [{ itemId: 'WOLF_FANG', chance: 0.7, min: 1, max: 2 }],
+  },
+
+  // --- Level 6 ---
+  'orc-berserker': {
+    id: 'orc-berserker', name: 'Orc Berserker', level: 6,
+    stats: { STR: 14, END: 10, INT: 1, DEX: 4, CHA: 0, LCK: 2, AGI: 5 },
+    skill: null, abilities: [{ type: 'enrage', chance: 0.25 }],
+    loot: [{ itemId: 'ORC_TUSK', chance: 0.5, min: 1, max: 1 }, { itemId: 'IRON_ORE', chance: 0.3, min: 1, max: 2 }],
+  },
+
+  // --- Level 7 ---
+  'stone-golem': {
+    id: 'stone-golem', name: 'Stone Golem', level: 7,
+    stats: { STR: 14, END: 25, INT: 1, DEX: 1, CHA: 0, LCK: 1, AGI: 1 },
+    skill: null, abilities: [],
+    loot: [{ itemId: 'STONE', chance: 0.9, min: 2, max: 3 }, { itemId: 'IRON_ORE', chance: 0.4, min: 1, max: 2 }],
+  },
+
+  // --- Level 8 (boss: warlord-grok) ---
+  'warlord-grok': {
+    id: 'warlord-grok', name: 'Warlord Grok', level: 8,
+    stats: { STR: 18, END: 22, INT: 3, DEX: 5, CHA: 2, LCK: 3, AGI: 4 },
+    skill: null, abilities: [{ type: 'enrage', chance: 0.20 }, { type: 'stun-attack', chance: 0.15 }],
+    loot: [{ itemId: 'ORC_TUSK', chance: 1.0, min: 2, max: 3 }, { itemId: 'IRON_ORE', chance: 0.6, min: 2, max: 4 }],
   },
 };

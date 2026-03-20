@@ -160,6 +160,8 @@ function getEventClass(event: CombatEvent): string {
     case 'death': return 'combat-log__event--death';
     case 'victory': case 'wipe': return 'combat-log__event--victory';
     case 'skill-use': return 'combat-log__event--skill';
+    case 'dodge': return 'combat-log__event--dodge';
+    case 'heal': return 'combat-log__event--heal';
     default: return '';
   }
 }
@@ -176,6 +178,10 @@ function formatEvent(event: CombatEvent, getName: (id: string) => string): strin
       return `${getName(event.targetId)} takes ${event.damage} ${event.effect} dmg`;
     case 'death':
       return `${getName(event.entityId)} is defeated!`;
+    case 'dodge':
+      return `${getName(event.targetId)} dodges ${getName(event.attackerId)}'s attack!`;
+    case 'heal':
+      return `${getName(event.healerId)} heals ${getName(event.targetId)} for ${event.amount} HP`;
     case 'victory':
       return 'Victory!';
     case 'wipe':

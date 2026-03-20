@@ -1,11 +1,12 @@
 /**
  * Mercenary generation — creates randomized mercenaries for the Tavern pool.
- * Reuses civilization + archetype data from characters.ts.
+ * Reuses civilization + archetype data from civilization-config.ts.
  */
 
 import { nanoid } from 'nanoid';
 import type { Member, Stats } from '@/game/state/game-state';
-import { CIVILIZATIONS, NAME_POOLS, ARCHETYPES } from '@/game/data/characters';
+import { ARCHETYPES } from '@/game/data/characters';
+import { CIVILIZATIONS, CIV_CONFIG, applyCivBonuses } from '@/game/data/civilization-config';
 
 const BASE_STAT = 5;
 const STAT_POINTS = 20; // total points to distribute per mercenary
@@ -32,17 +33,19 @@ function rollWeightedStats(weights: Record<string, number>): Stats {
 export function generateMercenaries(count: number): Member[] {
   return Array.from({ length: count }, () => {
     const civ = CIVILIZATIONS[Math.floor(Math.random() * CIVILIZATIONS.length)];
-    const names = NAME_POOLS[civ];
+    const names = CIV_CONFIG[civ].namePool;
     const name = names[Math.floor(Math.random() * names.length)];
     const archetype = ARCHETYPES[Math.floor(Math.random() * ARCHETYPES.length)];
     const level = Math.floor(Math.random() * 3) + 1; // Lv1–3
+    const baseStats = rollWeightedStats(archetype.weights);
+    const stats = applyCivBonuses(baseStats, civ);
 
     return {
       id: nanoid(),
       name,
       level,
       exp: 0,
-      stats: rollWeightedStats(archetype.weights),
+      stats,
       unallocatedPoints: 0,
       skill: null,
       status: 'idle' as const,

@@ -1,5 +1,5 @@
 /**
- * Character creation screen — name founder, distribute stats, name guild.
+ * Character creation screen — choose civ, name founder, distribute stats, name guild.
  * Accepts slotId + onComplete callback; parent handles save + navigation.
  */
 
@@ -9,6 +9,8 @@ import { createFounder } from '@/game/systems/character-creation';
 import { STAT_KEYS, INITIAL_STAT_POINTS, createEmptyStats } from '@/game/systems/stat-allocation';
 import { initAudio, playBGM } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
+import { CivSelector } from '@/ui/components/civ-selector';
+import type { Civilization } from '@/game/data/civilization-config';
 import type { Stats, StatKey } from '@/game/state/game-state';
 import '@/ui/styles/panels.css';
 
@@ -22,6 +24,7 @@ export function CharCreation({ onComplete }: CharCreationProps) {
   const setTutorialStep = useGameStore((s) => s.setTutorialStep);
   const setGuildName = useGameStore((s) => s.setGuildName);
 
+  const [selectedCiv, setSelectedCiv] = useState<Civilization | null>(null);
   const [name, setName] = useState('');
   const [guildName, setGuildNameLocal] = useState('');
   const [stats, setStats] = useState<Stats>(createEmptyStats());
@@ -40,94 +43,76 @@ export function CharCreation({ onComplete }: CharCreationProps) {
   };
 
   const handleConfirm = () => {
-    if (!name.trim() || remaining > 0) return;
-    const founder = createFounder(name.trim(), stats);
+    if (!name.trim() || remaining > 0 || !selectedCiv) return;
+    const founder = createFounder(name.trim(), stats, selectedCiv);
     setFounder(founder);
     if (guildName.trim()) setGuildName(guildName.trim());
     setTutorialStep('sandbox-intro');
 
-    // Init audio on first user interaction
     initAudio();
     playBGM(AUDIO.BGM_GUILD);
-
-    // Delegate save + navigation to parent
     onComplete();
   };
 
   return (
     <div className="char-creation-overlay">
       <h1>Worlds Collide</h1>
-      <p style={{ marginBottom: 16, color: '#aaa' }}>Create your guild founder</p>
+      <p style={{ marginBottom: 16, color: '#aaa' }}>Choose your civilization</p>
 
-      <input
-        type="text"
-        placeholder="Character name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        maxLength={20}
-      />
-      <input
-        type="text"
-        placeholder="Guild name"
-        value={guildName}
-        onChange={(e) => setGuildNameLocal(e.target.value)}
-        maxLength={24}
-      />
+      <CivSelector selectedCiv={selectedCiv} onSelect={setSelectedCiv} />
 
-      <p style={{ margin: '12px 0', color: remaining > 0 ? '#ffd700' : '#4caf50' }}>
-        Points remaining: {remaining}
-      </p>
+      {selectedCiv && (
+        <>
+          <div style={{ marginTop: 20, display: 'flex', gap: 12, maxWidth: 600, width: '100%' }}>
+            <input
+              type="text" placeholder="Character name"
+              value={name} onChange={(e) => setName(e.target.value)} maxLength={20}
+              style={{ flex: 1 }}
+            />
+            <input
+              type="text" placeholder="Guild name"
+              value={guildName} onChange={(e) => setGuildNameLocal(e.target.value)} maxLength={24}
+              style={{ flex: 1 }}
+            />
+          </div>
 
-      <div className="stat-allocation-grid">
-        {STAT_KEYS.map((stat) => (
-          <StatRow
-            key={stat}
-            stat={stat}
-            value={stats[stat]}
-            canAdd={remaining > 0}
-            onAdd={() => handleAllocate(stat, 1)}
-            onRemove={() => handleAllocate(stat, -1)}
-          />
-        ))}
-      </div>
+          <p style={{ margin: '12px 0', color: remaining > 0 ? '#ffd700' : '#4caf50' }}>
+            Points remaining: {remaining}
+          </p>
 
-      <button
-        className="panel-btn"
-        style={{ maxWidth: 300, marginTop: 24 }}
-        disabled={!name.trim() || remaining > 0}
-        onClick={handleConfirm}
-      >
-        Begin Adventure
-      </button>
+          <div className="stat-allocation-grid">
+            {STAT_KEYS.map((stat) => (
+              <StatRow
+                key={stat} stat={stat} value={stats[stat]}
+                canAdd={remaining > 0}
+                onAdd={() => handleAllocate(stat, 1)}
+                onRemove={() => handleAllocate(stat, -1)}
+              />
+            ))}
+          </div>
+
+          <button
+            className="panel-btn"
+            style={{ maxWidth: 300, marginTop: 24 }}
+            disabled={!name.trim() || remaining > 0}
+            onClick={handleConfirm}
+          >
+            Begin Adventure
+          </button>
+        </>
+      )}
     </div>
   );
 }
 
-function StatRow({
-  stat,
-  value,
-  canAdd,
-  onAdd,
-  onRemove,
-}: {
-  stat: StatKey;
-  value: number;
-  canAdd: boolean;
-  onAdd: () => void;
-  onRemove: () => void;
+function StatRow({ stat, value, canAdd, onAdd, onRemove }: {
+  stat: StatKey; value: number; canAdd: boolean; onAdd: () => void; onRemove: () => void;
 }) {
   return (
     <>
       <span>{stat}</span>
       <div style={{ height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3 }}>
-        <div
-          style={{
-            width: `${Math.min(100, value)}%`,
-            height: '100%',
-            background: '#ffd700',
-            borderRadius: 3,
-          }}
-        />
+        <div style={{ width: `${Math.min(100, value)}%`, height: '100%', background: '#ffd700', borderRadius: 3 }} />
       </div>
       <span style={{ textAlign: 'center' }}>{value}</span>
       <div style={{ display: 'flex', gap: 2 }}>

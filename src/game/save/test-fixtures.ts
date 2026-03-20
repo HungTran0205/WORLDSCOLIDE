@@ -16,7 +16,7 @@ export const VALID_MEMBER: Member = {
   skill: null,
   status: 'idle',
   injuredUntil: null,
-  civilization: 'human',
+  civilization: 'LinhSon',
   isFounder: true,
   rank: 'COMMANDER',
   missionsCompleted: 0,
@@ -32,7 +32,7 @@ export const VALID_ROSTER_MEMBER: Member = {
   skill: null,
   status: 'idle',
   injuredUntil: null,
-  civilization: 'elf',
+  civilization: 'DeQuoc',
   isFounder: false,
   rank: 'RECRUIT',
   missionsCompleted: 0,
@@ -111,7 +111,7 @@ export const VALID_METADATA: SaveSlotMetadata = {
 };
 
 export const VALID_SAVE_ENVELOPE: SaveEnvelope = {
-  version: 8,
+  version: 9,
   savedAt: Date.now(),
   metadata: VALID_METADATA,
   gameState: VALID_GAME_SAVE_DATA,

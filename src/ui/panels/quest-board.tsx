@@ -47,8 +47,13 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
   const [filterTier, setFilterTier] = useState<QuestTier | 'all'>('all');
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
 
+  const completedMissions = useGameStore((s) => s.completedMissions);
+
   const filteredMissions = MISSIONS.filter(
-    (m) => (filterTier === 'all' || m.tier === filterTier) && unlockedTiers.includes(m.tier),
+    (m) =>
+      (filterTier === 'all' || m.tier === filterTier) &&
+      unlockedTiers.includes(m.tier) &&
+      (!m.prerequisiteId || completedMissions.includes(m.prerequisiteId)),
   );
 
   /** Dispatch from modal — receives selected member IDs */
@@ -103,6 +108,12 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
           onClick={() => setSelectedMission(mission)}
         >
           <strong>{mission.name}</strong>
+          {mission.isBossGate && (
+            <span className="quest-badge quest-badge--gate">GATE</span>
+          )}
+          {mission.chainId && (
+            <span className="quest-badge quest-badge--chain">Chain</span>
+          )}
           <span style={{ float: 'right', color: '#ffd700' }}>Tier {mission.tier}</span>
           <div style={{ fontSize: '0.8rem', color: '#aaa', marginTop: 4 }}>
             Duration: {Math.round(mission.durationMs / 60000)}min |

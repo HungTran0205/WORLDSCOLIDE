@@ -1,13 +1,8 @@
 import type { StatKey } from '@/game/state/game-state';
 
-export const CIVILIZATIONS = ['Viet', 'Nordic', 'Saharan'] as const;
-export type Civilization = (typeof CIVILIZATIONS)[number];
-
-export const NAME_POOLS: Record<Civilization, string[]> = {
-  Viet: ['Minh', 'Lan', 'Duc', 'Hoa', 'Tuan', 'Mai'],
-  Nordic: ['Erik', 'Freya', 'Bjorn', 'Sigrid', 'Ragnar', 'Astrid'],
-  Saharan: ['Amara', 'Kofi', 'Zuri', 'Jabari', 'Nia', 'Kwame'],
-};
+// Re-export civilization data from single source of truth
+export { CIVILIZATIONS, CIV_CONFIG, applyCivBonuses } from './civilization-config';
+export type { Civilization } from './civilization-config';
 
 export interface ArchetypeProfile {
   name: string;

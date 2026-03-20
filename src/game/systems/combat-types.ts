@@ -1,4 +1,5 @@
 import type { Stats, Skill } from '@/game/state/game-state';
+import type { PassiveState } from './combat-passives';
 
 export interface CombatEntity {
   id: string;
@@ -14,6 +15,9 @@ export interface CombatEntity {
   skillCooldownUntil: number;
   statusEffects: ActiveEffect[];
   abilities: EnemyAbility[];
+  civilization?: string;
+  passiveState?: PassiveState;
+  baseStats?: Stats;
 }
 
 export interface ActiveEffect {
@@ -21,10 +25,11 @@ export interface ActiveEffect {
   ticksRemaining: number;
 }
 
-export interface EnemyAbility {
-  type: 'poison-attack';
-  chance: number;
-}
+export type EnemyAbility =
+  | { type: 'poison-attack'; chance: number }
+  | { type: 'stun-attack'; chance: number }
+  | { type: 'enrage'; chance: number }
+  | { type: 'heal-ally'; chance: number };
 
 export interface CombatTick {
   time: number;
@@ -37,6 +42,8 @@ export type CombatEvent =
   | { type: 'effect-applied'; targetId: string; effect: string }
   | { type: 'effect-tick'; targetId: string; effect: string; damage: number }
   | { type: 'death'; entityId: string }
+  | { type: 'dodge'; attackerId: string; targetId: string }
+  | { type: 'heal'; healerId: string; targetId: string; amount: number }
   | { type: 'victory' }
   | { type: 'wipe' };
 

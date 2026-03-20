@@ -262,6 +262,15 @@ input[type="range"] {
   color: #4a90d9;
 }
 
+/* Quest badges */
+.quest-badge { font-size: 0.65rem; padding: 1px 5px; border-radius: 3px; margin-left: 6px; }
+.quest-badge--gate { background: #e74c3c33; color: #e74c3c; border: 1px solid #e74c3c55; }
+.quest-badge--chain { background: #9b59b633; color: #9b59b6; border: 1px solid #9b59b655; }
+
+/* Combat log: dodge + heal */
+.combat-log__event--dodge { color: #7fffd4; font-style: italic; }
+.combat-log__event--heal { color: #2ecc71; }
+
 .combat-summary {
   display: grid;
   grid-template-columns: 1fr 1fr;

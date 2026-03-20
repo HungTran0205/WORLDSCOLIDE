@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import type { Member } from '@/game/state/game-state';
 import { expToNextLevel } from '@/game/systems/leveling-system';
+import { getCivColor } from '@/game/data/civilization-config';
 import { RankBadge } from './rank-badge';
+import { CivBadge } from './civ-badge';
 
 interface RosterListItemProps {
   member: Member;
@@ -24,18 +26,12 @@ const STATUS_LABELS: Record<string, string> = {
   training: 'Training',
 };
 
-const CIV_COLORS: Record<string, string> = {
-  Human: '#4a90d9',
-  Orc: '#2ecc71',
-  Elf: '#9b59b6',
-};
-
 /** Compact roster row — shows avatar, name, level, EXP bar, status badge */
 export function RosterListItem({ member, isSelected, activeMissionName, onClick }: RosterListItemProps) {
   const expNeeded = expToNextLevel(member.level);
   const expPct = Math.min(100, Math.floor((member.exp / expNeeded) * 100));
   const statusColor = STATUS_COLORS[member.status] ?? '#aaa';
-  const civColor = CIV_COLORS[member.civilization] ?? '#666';
+  const civColor = getCivColor(member.civilization);
 
   // Refresh injury countdown
   const [now, setNow] = useState(() => Date.now());
@@ -74,9 +70,8 @@ export function RosterListItem({ member, isSelected, activeMissionName, onClick 
         width: 36, height: 36, borderRadius: 6,
         background: civColor, flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: '0.7rem', color: '#fff', fontWeight: 'bold',
       }}>
-        {member.civilization.slice(0, 2).toUpperCase()}
+        <CivBadge civilization={member.civilization} />
       </div>
 
       {/* Name + EXP bar */}

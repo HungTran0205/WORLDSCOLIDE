@@ -5,7 +5,6 @@
 
 import type { SaveEnvelope, GameSaveData, SaveSlotMetadata } from './save-types';
 import type { Stats, Member, GuildHall, Room, PlacedFurniture } from '@/game/state/game-state';
-import { SAVE_VERSION } from './save-types';
 import { migrateSave } from './save-migrations';
 
 /** Maximum cells a single room may occupy (matches building-system constant) */
@@ -183,7 +182,7 @@ export function validateAndMigrate(raw: unknown): ValidationResult {
   // missionsCompleted yet, so structural check would fail on unmigrated data
   let migrated: SaveEnvelope;
   try {
-    migrated = migrateSave(parsed as SaveEnvelope);
+    migrated = migrateSave(parsed as unknown as SaveEnvelope);
   } catch (e) {
     return { ok: false, errors: [(e as Error).message] };
   }

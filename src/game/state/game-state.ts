@@ -68,6 +68,10 @@ export interface Mission {
   enemyIds: string[];
   requiredMembers: number;
   requiredLevel: number;
+  chainId?: string;
+  chainOrder?: number;
+  prerequisiteId?: string;
+  isBossGate?: boolean;
 }
 
 export interface ActiveMission {

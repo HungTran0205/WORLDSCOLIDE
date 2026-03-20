@@ -2,6 +2,9 @@ import type { Member, StatKey } from '@/game/state/game-state';
 import { StatBar } from '@/ui/components/stat-bar';
 import { RankBadge } from '@/ui/components/rank-badge';
 import { RankPromotionSection } from '@/ui/components/rank-promotion-section';
+import { CivBadge } from '@/ui/components/civ-badge';
+import { getCivColor, CIV_CONFIG } from '@/game/data/civilization-config';
+import type { Civilization } from '@/game/data/civilization-config';
 import { STAT_KEYS } from '@/game/systems/stat-allocation';
 import { expToNextLevel } from '@/game/systems/leveling-system';
 
@@ -19,17 +22,12 @@ interface CharacterDetailPanelProps {
 
 const EQUIPMENT_SLOTS = ['Head', 'Armor', 'Pants', 'Boots', 'Weapon'] as const;
 
-const CIV_COLORS: Record<string, string> = {
-  Human: '#4a90d9',
-  Orc: '#2ecc71',
-  Elf: '#9b59b6',
-};
-
 /** Character detail split-view — avatar, equipment, skill, talents */
 export function CharacterDetailPanel({ member, onAllocateStat, onToggleAutoCast, onInviteMercenary, inviteCost, canAffordInvite, onPromote, canAffordPromote, onClose }: CharacterDetailPanelProps) {
   const expNeeded = expToNextLevel(member.level);
   const expPct = Math.min(100, Math.floor((member.exp / expNeeded) * 100));
-  const civColor = CIV_COLORS[member.civilization] ?? '#666';
+  const civColor = getCivColor(member.civilization);
+  const civConfig = CIV_CONFIG[member.civilization as Civilization];
   const isMercenary = member.rank === 'MERCENARY';
 
   return (
@@ -45,10 +43,9 @@ export function CharacterDetailPanel({ member, onAllocateStat, onToggleAutoCast,
         <div style={{
           width: 96, height: 96, borderRadius: 12, margin: '0 auto 10px',
           background: civColor, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '1.8rem', color: '#fff', fontWeight: 'bold',
           border: member.isFounder ? '2px solid #ffd700' : '2px solid rgba(255,255,255,0.2)',
         }}>
-          {member.civilization.slice(0, 2).toUpperCase()}
+          <CivBadge civilization={member.civilization} size="md" />
         </div>
         <div style={{ color: member.isFounder ? '#ffd700' : '#ddd', fontSize: '1.1rem', fontWeight: 600 }}>
           {member.name}
@@ -78,6 +75,25 @@ export function CharacterDetailPanel({ member, onAllocateStat, onToggleAutoCast,
           </button>
         )}
       </div>
+
+      {/* Box: Civ Passive */}
+      {civConfig && (
+        <div className="panel-section">
+          <div style={{ color: '#ffd700', fontSize: '0.85rem', marginBottom: 4 }}>
+            {civConfig.passive.name}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: '#aaa' }}>
+            {civConfig.passive.description}
+          </div>
+          <div style={{ fontSize: '0.7rem', marginTop: 4, display: 'flex', gap: 6 }}>
+            {civConfig.statBonuses.map((b) => (
+              <span key={b.stat} style={{ color: b.multiplier >= 1.2 ? '#9b59b6' : '#2ecc71' }}>
+                {b.stat}{b.multiplier >= 1.2 ? '++' : '+'}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Box: Rank & Promotion (non-mercenary only) */}
       {!isMercenary && (
