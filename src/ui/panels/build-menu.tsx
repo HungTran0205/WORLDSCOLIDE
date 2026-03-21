@@ -4,26 +4,14 @@ import { useState } from 'react';
 import { useGameStore } from '@/game/state/store';
 import { ROOM_DEFINITIONS, type ResourceCost } from '@/game/data/buildings';
 import { FURNITURE_DEFINITIONS } from '@/game/data/furniture';
-import { getItemInfo } from '@/game/data/items';
 import { getUpgradeCost } from '@/game/systems/guild-upgrade-system';
 import { canPlaceRoom } from '@/game/systems/building-system';
 import { upgradeCoreFurniture } from '@/game/systems/furniture-system';
+import { GameIcon } from '@/ui/components/game-icon';
+import { CostDisplay } from '@/ui/components/cost-display';
 import type { RoomType } from '@/game/state/game-state';
 import '@/ui/styles/panels.css';
 
-/** Format a ResourceCost for display, e.g. "200 G + 10 Wood" */
-function formatCost(cost: ResourceCost): string {
-  const parts: string[] = [];
-  if (cost.gold > 0) parts.push(`${cost.gold} G`);
-  if (cost.items) {
-    for (const [id, amount] of Object.entries(cost.items)) {
-      if (amount && amount > 0) {
-        parts.push(`${amount} ${getItemInfo(id as import('@/game/data/items').ItemID).name}`);
-      }
-    }
-  }
-  return parts.length > 0 ? parts.join(' + ') : 'Free';
-}
 
 interface BuildMenuProps { onClose: () => void; }
 
@@ -96,14 +84,19 @@ function RoomsTab({ onClose }: { onClose: () => void }) {
           const check = canPlaceRoom(guildHall, def.type, gold, inventory);
           return (
             <div key={def.type} className="panel-section">
-              <strong>{def.name}</strong>
-              <div style={{ fontSize: '0.8rem', color: '#aaa' }}>
-                {def.description} ({def.defaultWidth}x{def.defaultDepth})
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <GameIcon category="room" id={def.type} size={48} fallbackText={def.name.slice(0, 2)} />
+                <div>
+                  <strong>{def.name}</strong>
+                  <div style={{ fontSize: '0.8rem', color: '#aaa' }}>
+                    {def.description} ({def.defaultWidth}x{def.defaultDepth})
+                  </div>
+                </div>
               </div>
               <button className="panel-btn"
                 disabled={!canBuildMore || !check.success}
                 onClick={() => handleSelectRoom(def.type)}>
-                Place ({formatCost(def.cost)})
+                Place (<CostDisplay cost={def.cost} />)
               </button>
             </div>
           );
@@ -114,12 +107,15 @@ function RoomsTab({ onClose }: { onClose: () => void }) {
         const upgrade = upgradeCoreFurniture(room);
         return (
           <div key={room.id} className="panel-section">
-            <strong>{room.type.replace(/-/g, ' ')}</strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <GameIcon category="room" id={room.type} size={36} fallbackText={room.type.slice(0, 2)} />
+              <strong style={{ textTransform: 'capitalize' }}>{room.type.replace(/-/g, ' ')}</strong>
+            </div>
             <span style={{ float: 'right', fontSize: '0.8rem' }}>Lv.{room.level}</span>
             {upgrade && (
               <button className="panel-btn" style={{ marginTop: 4 }}
                 onClick={() => upgradeRoom(room.id)}>
-                Upgrade Core ({formatCost(upgrade.cost)})
+                Upgrade Core (<CostDisplay cost={upgrade.cost} />)
               </button>
             )}
           </div>
@@ -168,16 +164,21 @@ function FurnitureTab({ onClose }: { onClose: () => void }) {
             const atMax = def.maxPerRoom !== undefined && count >= def.maxPerRoom;
             return (
               <div key={def.type} className="panel-section">
-                <strong>{def.name}</strong>
-                {def.maxPerRoom && (
-                  <span style={{ float: 'right', fontSize: '0.8rem', color: '#aaa' }}>
-                    {count}/{def.maxPerRoom}
-                  </span>
-                )}
-                <div style={{ fontSize: '0.8rem', color: '#aaa' }}>{def.description}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <GameIcon category="furniture" id={def.type} size={32} fallbackText={def.name.slice(0, 2)} />
+                  <div style={{ flex: 1 }}>
+                    <strong>{def.name}</strong>
+                    {def.maxPerRoom && (
+                      <span style={{ float: 'right', fontSize: '0.8rem', color: '#aaa' }}>
+                        {count}/{def.maxPerRoom}
+                      </span>
+                    )}
+                    <div style={{ fontSize: '0.8rem', color: '#aaa' }}>{def.description}</div>
+                  </div>
+                </div>
                 <button className="panel-btn" disabled={atMax}
                   onClick={() => handlePlace(def.type)}>
-                  Place ({formatCost(def.cost)})
+                  Place (<CostDisplay cost={def.cost} />)
                 </button>
               </div>
             );

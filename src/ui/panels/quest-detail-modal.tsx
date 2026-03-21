@@ -8,6 +8,7 @@ import type { Member, Mission } from '@/game/state/game-state';
 import { ENEMIES } from '@/game/data/enemies';
 import { autoAssignMembers } from '@/game/utils/auto-assign-members';
 import { RankBadge } from '@/ui/components/rank-badge';
+import { GameIcon } from '@/ui/components/game-icon';
 import '@/ui/styles/panels.css';
 
 interface QuestDetailModalProps {
@@ -60,7 +61,7 @@ export function QuestDetailModal({ mission, availableMembers, gold, onDispatch, 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <strong style={{ color: '#ffd700', fontSize: '1.1rem' }}>{mission.name}</strong>
-          <span className="quest-detail-modal__tier">Tier {mission.tier}</span>
+          <GameIcon category="badge" id={mission.tier} size={40} fallbackText={mission.tier} alt={`Tier ${mission.tier}`} />
         </div>
 
         {/* Zone + description */}

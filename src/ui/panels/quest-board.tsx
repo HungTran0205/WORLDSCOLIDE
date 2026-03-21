@@ -9,6 +9,7 @@ import { validateDispatch, createActiveMission } from '@/game/systems/mission-di
 import { QUEST_BOARD_TIER_BY_LEVEL } from '@/game/data/buildings';
 import { QuestDetailModal } from '@/ui/panels/quest-detail-modal';
 import { ActiveMissionsList } from '@/ui/panels/active-missions-list';
+import { GameIcon } from '@/ui/components/game-icon';
 import { playSFX } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
 import '@/ui/styles/panels.css';
@@ -91,10 +92,10 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
           <button
             key={tier}
             className="panel-btn"
-            style={{ width: 'auto', padding: '4px 8px', fontSize: '0.8rem' }}
+            style={{ width: 'auto', padding: '4px 6px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center' }}
             onClick={() => setFilterTier(tier)}
           >
-            {tier}
+            <GameIcon category="badge" id={tier} size={28} fallbackText={tier} />
           </button>
         ))}
       </div>
@@ -114,7 +115,9 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
           {mission.chainId && (
             <span className="quest-badge quest-badge--chain">Chain</span>
           )}
-          <span style={{ float: 'right', color: '#ffd700' }}>Tier {mission.tier}</span>
+          <span style={{ float: 'right' }}>
+            <GameIcon category="badge" id={mission.tier} size={36} fallbackText={mission.tier} alt={`Tier ${mission.tier}`} />
+          </span>
           <div style={{ fontSize: '0.8rem', color: '#aaa', marginTop: 4 }}>
             Duration: {Math.round(mission.durationMs / 60000)}min |
             Gold: {mission.goldRewardMin}-{mission.goldRewardMax} |
@@ -147,22 +150,32 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
 
 /** Show unique potential item drops for a mission's enemies */
 function PotentialDrops({ enemyIds }: { enemyIds: string[] }) {
-  const dropNames = useMemo(() => {
+  const drops = useMemo(() => {
     const seen = new Set<string>();
+    const result: { id: string; name: string }[] = [];
     for (const eid of enemyIds) {
       const enemy = ENEMIES[eid];
       if (!enemy) continue;
       for (const rule of enemy.loot) {
-        seen.add(getItemInfo(rule.itemId).name);
+        if (!seen.has(rule.itemId)) {
+          seen.add(rule.itemId);
+          result.push({ id: rule.itemId, name: getItemInfo(rule.itemId).name });
+        }
       }
     }
-    return [...seen];
+    return result;
   }, [enemyIds]);
 
-  if (dropNames.length === 0) return null;
+  if (drops.length === 0) return null;
   return (
-    <div style={{ fontSize: '0.75rem', color: '#a8d8ea', marginTop: 2 }}>
-      Drops: {dropNames.join(', ')}
+    <div style={{ fontSize: '0.75rem', color: '#a8d8ea', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+      Drops:
+      {drops.map((d) => (
+        <span key={d.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+          <GameIcon category="item" id={d.id} size={14} fallbackText={d.name.slice(0, 2)} />
+          {d.name}
+        </span>
+      ))}
     </div>
   );
 }

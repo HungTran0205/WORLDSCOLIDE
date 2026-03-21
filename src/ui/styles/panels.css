@@ -277,3 +277,10 @@ input[type="range"] {
   gap: 8px;
   margin-bottom: 12px;
 }
+
+/* Pixel-art icon rendering — safety net for crisp scaling */
+img[src*="sprites/icons"] {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges; /* Firefox fallback */
+  vertical-align: middle;
+}

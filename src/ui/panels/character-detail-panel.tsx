@@ -3,6 +3,7 @@ import { StatBar } from '@/ui/components/stat-bar';
 import { RankBadge } from '@/ui/components/rank-badge';
 import { RankPromotionSection } from '@/ui/components/rank-promotion-section';
 import { CivBadge } from '@/ui/components/civ-badge';
+import { GameIcon } from '@/ui/components/game-icon';
 import { getCivColor, CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
 import { STAT_KEYS } from '@/game/systems/stat-allocation';
@@ -44,9 +45,11 @@ export function CharacterDetailPanel({ member, onAllocateStat, onToggleAutoCast,
           width: 96, height: 96, borderRadius: 12, margin: '0 auto 10px',
           background: civColor, display: 'flex', alignItems: 'center', justifyContent: 'center',
           border: member.isFounder ? '2px solid #ffd700' : '2px solid rgba(255,255,255,0.2)',
+          fontSize: '1.8rem', color: '#fff', fontWeight: 'bold',
         }}>
-          <CivBadge civilization={member.civilization} size="md" />
+          {member.name.slice(0, 2)}
         </div>
+        <CivBadge civilization={member.civilization} size="md" />
         <div style={{ color: member.isFounder ? '#ffd700' : '#ddd', fontSize: '1.1rem', fontWeight: 600 }}>
           {member.name}
           <RankBadge rank={member.rank} />
@@ -127,7 +130,10 @@ export function CharacterDetailPanel({ member, onAllocateStat, onToggleAutoCast,
         {member.skill ? (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#4a90d9', fontSize: '0.9rem' }}>{member.skill.name}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#4a90d9', fontSize: '0.9rem' }}>
+                <GameIcon category="skill" id={member.skill.id} size={20} fallbackText={member.skill.name.slice(0, 2)} />
+                {member.skill.name}
+              </span>
               <span style={{ color: '#aaa', fontSize: '0.75rem' }}>
                 {member.skill.damageMultiplier}x DMG
               </span>

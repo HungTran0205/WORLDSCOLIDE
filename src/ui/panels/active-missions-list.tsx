@@ -6,6 +6,7 @@ import { useGameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
 import { ARRIVAL_TIMEOUT_MS } from '@/game/systems/mission-tick';
 import { MissionProgressBar } from '@/ui/components/mission-progress-bar';
+import { GameIcon } from '@/ui/components/game-icon';
 import { ArrivalModal } from '@/ui/panels/arrival-modal';
 
 const PHASE_BADGE: Partial<Record<MissionPhase, string>> = {
@@ -55,7 +56,10 @@ export function ActiveMissionsList({ activeMissions }: ActiveMissionsListProps) 
             onClick={isArrived ? () => openArrival(am.missionId) : undefined}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <strong>{missionData?.name ?? am.missionId}</strong>
+              <strong style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {missionData && <GameIcon category="badge" id={missionData.tier} size={18} fallbackText={missionData.tier} />}
+                {missionData?.name ?? am.missionId}
+              </strong>
               {badge && (
                 <span style={{ fontSize: '0.75rem', color: isArrived ? '#f39c12' : '#aaa' }}>
                   {badge}

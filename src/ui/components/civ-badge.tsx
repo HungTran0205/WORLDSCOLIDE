@@ -1,9 +1,11 @@
 /**
- * Reusable civilization badge — shows short name on colored background.
+ * Reusable civilization badge — shows emblem icon with optional text label.
+ * Falls back to colored text abbreviation if icon fails.
  */
 
 import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
+import { GameIcon } from './game-icon';
 
 interface CivBadgeProps {
   civilization: string;
@@ -16,17 +18,22 @@ export function CivBadge({ civilization, size = 'sm' }: CivBadgeProps) {
     return <span style={{ color: '#666', fontSize: '0.65rem' }}>{civilization.slice(0, 2)}</span>;
   }
 
-  const px = size === 'sm' ? '0.65rem' : '0.8rem';
+  const iconSize = size === 'sm' ? 16 : 20;
   return (
-    <span style={{
-      background: config.colors.secondary,
-      color: config.colors.text,
-      padding: '1px 4px',
-      borderRadius: 3,
-      fontSize: px,
-      fontWeight: 'bold',
-    }}>
-      {config.shortName}
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <GameIcon
+        category="emblem"
+        id={civilization}
+        size={iconSize}
+        fallbackText={config.shortName}
+        fallbackColor={config.colors.text}
+        alt={config.displayName}
+      />
+      {size === 'md' && (
+        <span style={{ fontSize: '0.8rem', color: config.colors.text, fontWeight: 'bold' }}>
+          {config.shortName}
+        </span>
+      )}
     </span>
   );
 }

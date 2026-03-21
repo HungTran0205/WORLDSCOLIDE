@@ -78,6 +78,7 @@
   display: flex;
   gap: 12px;
   font-size: 0.85rem;
+  align-items: center;
 }
 
 .resource-item {

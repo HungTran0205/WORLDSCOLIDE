@@ -1,5 +1,7 @@
 import { useGameStore } from '@/game/state/store';
 import { RankBadge } from '@/ui/components/rank-badge';
+import { CivBadge } from '@/ui/components/civ-badge';
+import { GameIcon } from '@/ui/components/game-icon';
 import '@/ui/styles/panels.css';
 
 interface TavernPanelProps {
@@ -36,10 +38,17 @@ export function TavernPanel({ onClose }: TavernPanelProps) {
               {merc.name}
               <RankBadge rank={merc.rank} />
             </strong>
-            <span style={{ fontSize: '0.8rem', color: '#aaa' }}>Lv.{merc.level} | {merc.civilization}</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.8rem', color: '#aaa' }}>
+              Lv.{merc.level} | <CivBadge civilization={merc.civilization} />
+            </span>
           </div>
-          <div style={{ fontSize: '0.8rem', color: '#aaa', marginBottom: 8 }}>
-            STR {merc.stats.STR} | END {merc.stats.END} | INT {merc.stats.INT} | DEX {merc.stats.DEX} | AGI {merc.stats.AGI}
+          <div style={{ display: 'flex', gap: 8, fontSize: '0.8rem', color: '#aaa', marginBottom: 8, alignItems: 'center' }}>
+            {(['STR', 'END', 'INT', 'DEX', 'AGI'] as const).map((stat) => (
+              <span key={stat} style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                <GameIcon category="stat" id={stat} size={12} fallbackText={stat} />
+                {merc.stats[stat]}
+              </span>
+            ))}
           </div>
           <button
             className="panel-btn"

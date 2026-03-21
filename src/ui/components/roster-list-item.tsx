@@ -3,7 +3,7 @@ import type { Member } from '@/game/state/game-state';
 import { expToNextLevel } from '@/game/systems/leveling-system';
 import { getCivColor } from '@/game/data/civilization-config';
 import { RankBadge } from './rank-badge';
-import { CivBadge } from './civ-badge';
+import { GameIcon } from './game-icon';
 
 interface RosterListItemProps {
   member: Member;
@@ -65,13 +65,17 @@ export function RosterListItem({ member, isSelected, activeMissionName, onClick 
         transition: 'background 0.15s',
       }}
     >
-      {/* Avatar placeholder */}
-      <div style={{
-        width: 36, height: 36, borderRadius: 6,
-        background: civColor, flexShrink: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <CivBadge civilization={member.civilization} />
+      {/* Avatar placeholder + civ emblem */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: 6,
+          background: civColor,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '0.7rem', color: '#fff', fontWeight: 'bold',
+        }}>
+          {member.name.slice(0, 2)}
+        </div>
+        <GameIcon category="emblem" id={member.civilization} size={14} />
       </div>
 
       {/* Name + EXP bar */}
@@ -106,10 +110,12 @@ export function RosterListItem({ member, isSelected, activeMissionName, onClick 
       {/* Status + unallocated indicator */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
         <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 3,
           fontSize: '0.65rem', padding: '2px 6px', borderRadius: 3,
           background: `${statusColor}22`, color: statusColor,
           border: `1px solid ${statusColor}55`, whiteSpace: 'nowrap',
         }}>
+          <GameIcon category="status" id={member.status} size={14} fallbackText="" />
           {statusLabel}
         </span>
         {member.unallocatedPoints > 0 && (
