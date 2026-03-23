@@ -6,6 +6,14 @@
 import type { Stats, StatKey } from '@/game/state/game-state';
 
 export type Civilization = 'LinhSon' | 'DeQuoc' | 'ThienLu';
+
+/** Civ-specific archetype identifiers matching sprite folder names */
+export type CivArchetype =
+  | 'warrior' | 'scout'         // LinhSon
+  | 'engineer' | 'scholar'      // DeQuoc
+  | 'dualblade' | 'philosopher'; // ThienLu
+
+export type Gender = 'M' | 'F';
 export const CIVILIZATIONS: readonly Civilization[] = ['LinhSon', 'DeQuoc', 'ThienLu'];
 
 export interface CivStatBonus {
@@ -25,6 +33,7 @@ export interface CivConfig {
   shortName: string;     // 2-char badge abbreviation
   description: string;   // 1-2 sentence flavor text
   role: string;          // gameplay role summary
+  archetypes: CivArchetype[];  // civ-specific archetypes (2 per civ)
   statBonuses: CivStatBonus[];
   passive: CivPassiveDefinition;
   colors: {
@@ -43,6 +52,7 @@ export const CIV_CONFIG: Record<Civilization, CivConfig> = {
     shortName: 'LS',
     description: 'Chiến binh cổ đại bám rễ vào núi rừng, bền bỉ như đá, trung thành với tổ tiên.',
     role: 'Tank / Defender',
+    archetypes: ['warrior', 'scout'],
     statBonuses: [
       { stat: 'END', multiplier: 1.2 },
       { stat: 'DEX', multiplier: 1.1 },
@@ -70,6 +80,7 @@ export const CIV_CONFIG: Record<Civilization, CivConfig> = {
     shortName: 'ĐQ',
     description: 'Nền văn minh hiện đại tái sinh thành đế chế điện-hơi nước-kính thép.',
     role: 'Tactician / Support-DPS',
+    archetypes: ['engineer', 'scholar'],
     statBonuses: [
       { stat: 'CHA', multiplier: 1.2 },
       { stat: 'INT', multiplier: 1.1 },
@@ -97,6 +108,7 @@ export const CIV_CONFIG: Record<Civilization, CivConfig> = {
     shortName: 'TL',
     description: 'Du mục thần bí sống theo sao trời, mang theo cả bầu trời trong bước chân.',
     role: 'Skirmisher / Mystic Ranger',
+    archetypes: ['dualblade', 'philosopher'],
     statBonuses: [
       { stat: 'AGI', multiplier: 1.2 },
       { stat: 'INT', multiplier: 1.1 },

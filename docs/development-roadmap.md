@@ -1,8 +1,8 @@
 # Development Roadmap
 
-**Last Updated**: 2026-03-21
-**Current Phase**: Phase 5 In Progress (Milestone 2 Vertical Slice v1.9 Complete)
-**Overall Progress**: ~90% Complete
+**Last Updated**: 2026-03-23
+**Current Phase**: Phase 5 In Progress (Milestone 4 Sprite Animation v1.11 Complete)
+**Overall Progress**: ~92% Complete
 
 ---
 
@@ -13,7 +13,7 @@
 [PHASE 2: Guild Hall]          ████████████████████ 100% COMPLETE
 [PHASE 3: Characters & NPCs]   ████████████████████ 100% COMPLETE
 [PHASE 4: Save System v1]      ████████████████████ 100% COMPLETE
-[PHASE 5: Polish & Launch]     ██████████████████░░ 90% IN PROGRESS
+[PHASE 5: Polish & Launch]     ███████████████████░ 92% IN PROGRESS
 [PHASE 6: Post-Launch]         ░░░░░░░░░░░░░░░░░░░░ 0% PLANNED
 ```
 
@@ -174,14 +174,22 @@
 - [x] Audio system expanded (6 new keys: BGM_COMBAT, SFX_CRIT, SFX_DODGE, SFX_DEATH, SFX_SKILL, SFX_RECRUIT)
 - [x] Save migration v8→v9 + full test suite passing
 - [x] Documentation updated (Milestone 2 features in all docs)
+- [x] Icon Asset Integration — 60 pixel-art icons across 9 categories, convention-based path resolution (v1.10 released)
+- [x] GameIcon component + CostDisplay extraction + 13-file UI integration
+- [x] Icon system documentation + codebase summary updated
+- [x] Character Sprite Animation — 12 civ-specific sprite sets, animated walking frames, movement AI, direction tracking (v1.11 released)
+- [x] SpriteAnimator component + sprite-path-resolver utility + member-layer enhancement
+- [x] Archetype/gender fields added to Member interface, fallback support for old saves
+- [x] Convention-based sprite folder structure (TS/DQ/TL prefixes, 8 walking frames per direction)
 
 ### Current Tasks
+- [x] Character sprite animation system (v1.11 complete)
 - [ ] Performance optimization (target <100ms saves)
-- [ ] Comprehensive testing (combat, economy, offline progression)
+- [ ] Comprehensive testing (combat, economy, offline progression, sprite rendering)
 - [ ] Bug fixes from testing phase
-- [ ] UI/UX polish (animations, transitions)
+- [ ] UI/UX polish (animations, transitions, sprite-related polish)
 - [ ] Accessibility audit (WCAG AA compliance)
-- [ ] Localization review (Vietnamese strings)
+- [ ] Localization review (Vietnamese strings, archetype names)
 - [ ] Launch checklist & go/no-go decision
 
 ### Planned Deliverables
@@ -260,6 +268,8 @@
 | Phase 5 Checkpoint 5 | 2026-03-16 | ✅ Done | Roster Management v1.6 (multi-member dispatch, skill cooldown, auto-cast, UI) |
 | Phase 5 Checkpoint 6 | 2026-03-16 | ✅ Done | Guild Rank System v1.7-v1.8 (5-tier hierarchy, promotion mechanics, save migration) |
 | Phase 5 Milestone 2 | 2026-03-21 | ✅ Done | Civilizations system, 3 combat passives, 7 skills, 22 missions, 15 enemies, 6 audio keys |
+| Phase 5 Milestone 3 | 2026-03-21 | ✅ Done | Icon asset integration (60 pixel-art icons, 9 categories, convention-based resolution) |
+| Phase 5 Milestone 4 | 2026-03-23 | ✅ Done | Character sprite animation (12 civ-specific sprite sets, 4-directional walking, movement AI) |
 | Phase 5 Complete | 2026-03-30 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
 | Phase 6 Start | 2026-04-15 | 📋 Planned | Post-launch content |
 

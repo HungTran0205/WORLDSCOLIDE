@@ -39,6 +39,8 @@ export interface Member {
   status: MemberStatus;
   injuredUntil: number | null;
   civilization: string;
+  archetype?: string;   // CivArchetype — maps to sprite folder (missing in old saves)
+  gender?: 'M' | 'F';  // maps to sprite folder suffix (missing in old saves)
   isFounder: boolean;
   rank: MemberRank;
   missionsCompleted: number;

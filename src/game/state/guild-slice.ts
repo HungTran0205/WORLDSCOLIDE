@@ -30,7 +30,7 @@ export interface GuildSlice {
 }
 
 /** Generate the default guild-hall room with cells and core furniture */
-function createDefaultGuildHall(): GuildHall {
+export function createDefaultGuildHall(): GuildHall {
   const cells = generateRoomCells(0, 0, 6, 6);
   const rawRoom = placeRoom('guild-hall', cells);
   const roomWithCore = autoPlaceCoreFurniture({ ...rawRoom, id: 'room-guild-hall' });

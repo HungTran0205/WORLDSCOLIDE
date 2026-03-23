@@ -1,9 +1,12 @@
 import { Billboard, Text } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { useGameStore } from '@/game/state/store';
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import type { Group } from 'three';
 import type { Member, GridCell } from '@/game/state/game-state';
+import { SpriteAnimator } from './sprite-animator';
+import { getSpritePath, getDirectionFromMovement } from './sprite-path-resolver';
+import type { SpriteDirection } from './sprite-path-resolver';
 
 /** Collect all cell centers from all rooms as walkable positions */
 function getAllCellCenters(rooms: { cells: GridCell[] }[]): { x: number; z: number }[] {
@@ -25,10 +28,12 @@ function MemberSprite({ member, index }: { member: Member; index: number }) {
   const ref = useRef<Group>(null);
   const targetRef = useRef<{ x: number; z: number } | null>(null);
   const waitRef = useRef(0);
+  const directionRef = useRef<SpriteDirection>('south');
+  const isMovingRef = useRef(false);
   const rooms = useGameStore((s) => s.guildHall.rooms);
   const cells = useMemo(() => getAllCellCenters(rooms), [rooms]);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, delta) => {
     if (!ref.current || cells.length === 0) return;
     const pos = ref.current.position;
 
@@ -36,7 +41,7 @@ function MemberSprite({ member, index }: { member: Member; index: number }) {
     if (!targetRef.current || waitRef.current <= 0) {
       const idx = seededIndex(clock.elapsedTime * 100 + index * 37, cells.length);
       targetRef.current = cells[idx];
-      waitRef.current = 2 + index * 0.5; // seconds before picking next target
+      waitRef.current = 2 + index * 0.5;
     }
 
     const target = targetRef.current;
@@ -45,13 +50,15 @@ function MemberSprite({ member, index }: { member: Member; index: number }) {
     const dist = Math.sqrt(dx * dx + dz * dz);
 
     if (dist < 0.15) {
-      // Arrived — countdown to next target
-      waitRef.current -= 1 / 60; // ~60fps approximation
+      isMovingRef.current = false;
+      waitRef.current -= delta;
     } else {
-      // Move toward target
-      const speed = 0.015;
-      pos.x += (dx / dist) * speed;
-      pos.z += (dz / dist) * speed;
+      isMovingRef.current = true;
+      directionRef.current = getDirectionFromMovement(dx, dz);
+      // Delta-time based movement (frame-rate independent)
+      const speed = 0.9; // units per second
+      pos.x += (dx / dist) * speed * delta;
+      pos.z += (dz / dist) * speed * delta;
     }
   });
 
@@ -60,16 +67,22 @@ function MemberSprite({ member, index }: { member: Member; index: number }) {
     ? cells[index % cells.length]
     : { x: 3, z: 3 };
 
+  // Resolve sprite path with fallbacks for old saves missing archetype/gender
+  const archetype = member.archetype ?? 'warrior';
+  const gender = member.gender ?? 'M';
+  const basePath = getSpritePath(member.civilization, archetype, gender);
+
   return (
     <group ref={ref} position={[startPos.x, 0.75, startPos.z]}>
       <Billboard>
-        <mesh>
-          <planeGeometry args={[0.8, 1.2]} />
-          <meshBasicMaterial color={member.isFounder ? '#FFD700' : '#87CEEB'} />
-        </mesh>
+        <SpriteAnimator
+          basePath={basePath}
+          directionRef={directionRef}
+          isMovingRef={isMovingRef}
+        />
       </Billboard>
-      <Billboard position={[0, 0.8, 0]}>
-        <Text fontSize={0.15} color="white" anchorY="bottom">
+      <Billboard position={[0, 0.7, 0]}>
+        <Text fontSize={0.15} color="white" anchorY="bottom" outlineWidth={0.02} outlineColor="black">
           {member.name}
         </Text>
       </Billboard>
@@ -82,11 +95,20 @@ export function MemberLayer() {
   const isBuildMode = useGameStore((s) => s.isBuildMode);
   const founder = useGameStore((s) => s.founder);
   const roster = useGameStore((s) => s.roster);
+  const invalidate = useThree((s) => s.invalidate);
 
   const idleMembers = useMemo(() => {
     const all = founder ? [founder, ...roster] : roster;
     return all.filter((m) => m.status === 'idle');
   }, [founder, roster]);
+
+  // Drive render loop at 20fps only when members are visible (demand mode)
+  const hasMembers = !isBuildMode && idleMembers.length > 0;
+  useEffect(() => {
+    if (!hasMembers) return;
+    const interval = setInterval(invalidate, 1000 / 20);
+    return () => clearInterval(interval);
+  }, [hasMembers, invalidate]);
 
   if (isBuildMode) return null;
 

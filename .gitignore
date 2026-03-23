@@ -76,6 +76,9 @@ ck.md
 # Hook diagnostics logs
 .claude/hooks/.logs/
 
+# MCP config (contains API keys)
+.mcp.json
+
 # Gemini CLI settings (symlink to .claude/.mcp.json)
 .gemini/settings.json
 .claude/settings.bak.json

@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { CharCreation } from '@/ui/panels/char-creation';
 import { TitleScreen } from '@/ui/screens/title-screen';
 import { GameScreen } from '@/ui/screens/game-screen';
-import { useGameStore } from '@/game/state/store';
+import { useGameStore, resetGameState } from '@/game/state/store';
 import { saveManager } from '@/game/save/save-manager';
 import { deleteSlot, loadBackup, saveSlot } from '@/game/save/save-storage';
 import { getActiveSlotId, setActiveSlotId, clearActiveSlotId } from '@/game/save/active-slot-storage';
@@ -69,8 +69,9 @@ export function App() {
     setAppScreen('game');
   }, []);
 
-  /** New Game: set slot -> go to char creation */
+  /** New Game: reset store -> set slot -> go to char creation */
   const handleNewGame = useCallback((slotId: number) => {
+    resetGameState();
     saveManager.setActiveSlot(slotId);
     setActiveSlot(slotId);
     setAppScreen('char-creation');

@@ -5,8 +5,9 @@
 
 import { nanoid } from 'nanoid';
 import type { Member, Stats } from '@/game/state/game-state';
-import { ARCHETYPES } from '@/game/data/characters';
+import { CIV_ARCHETYPE_PROFILES } from '@/game/data/characters';
 import { CIVILIZATIONS, CIV_CONFIG, applyCivBonuses } from '@/game/data/civilization-config';
+import type { CivArchetype } from '@/game/data/civilization-config';
 
 const BASE_STAT = 5;
 const STAT_POINTS = 20; // total points to distribute per mercenary
@@ -33,11 +34,13 @@ function rollWeightedStats(weights: Record<string, number>): Stats {
 export function generateMercenaries(count: number): Member[] {
   return Array.from({ length: count }, () => {
     const civ = CIVILIZATIONS[Math.floor(Math.random() * CIVILIZATIONS.length)];
-    const names = CIV_CONFIG[civ].namePool;
+    const civConfig = CIV_CONFIG[civ];
+    const names = civConfig.namePool;
     const name = names[Math.floor(Math.random() * names.length)];
-    const archetype = ARCHETYPES[Math.floor(Math.random() * ARCHETYPES.length)];
+    const civArchetype = civConfig.archetypes[Math.floor(Math.random() * civConfig.archetypes.length)];
+    const profile = CIV_ARCHETYPE_PROFILES[civArchetype as CivArchetype];
     const level = Math.floor(Math.random() * 3) + 1; // Lv1–3
-    const baseStats = rollWeightedStats(archetype.weights);
+    const baseStats = rollWeightedStats(profile.weights);
     const stats = applyCivBonuses(baseStats, civ);
 
     return {
@@ -51,6 +54,8 @@ export function generateMercenaries(count: number): Member[] {
       status: 'idle' as const,
       injuredUntil: null,
       civilization: civ,
+      archetype: civArchetype,
+      gender: (Math.random() < 0.5 ? 'M' : 'F') as const,
       isFounder: false,
       rank: 'MERCENARY' as const,
       missionsCompleted: 0,

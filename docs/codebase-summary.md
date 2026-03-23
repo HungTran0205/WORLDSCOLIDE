@@ -31,7 +31,8 @@ src/
 │   ├── screens/            # Full-screen views (title screen with slot selection)
 │   ├── panels/             # Collapsible UI panels (quest board, roster, build, combat, settings)
 │   ├── hud/                # Heads-up display overlay + panel toggle bar + save status badge
-│   ├── components/         # Reusable UI components (stat bars, cards, dialogs, civ-badge)
+│   ├── components/         # Reusable UI components (stat bars, cards, dialogs, civ-badge, game-icon, cost-display, rank-badge)
+│   ├── utils/              # Utility functions (icon-paths for convention-based icon resolution)
 │   └── styles/             # CSS for panels, HUD, and screens
 ├── audio/                  # Howler.js audio manager + sound key enums (6 new keys)
 ├── i18n/                   # i18next localization (Vietnamese default)
@@ -153,6 +154,74 @@ src/
 - **Keys**: Game UI, panel headers, button labels, system messages
 - **Title Screen**: Slot display, action buttons, messages
 - **Save/Import Dialogs**: User-facing feedback
+
+## Recent Changes (Character Sprite Animation — v1.11)
+
+### Animated Sprite System (NEW - Civ-Specific Visuals)
+- **SpriteAnimator Component**: R3F animated sprite with 4 directional walking frames (8 frames each, 10 FPS)
+- **Convention-Based Path Resolution**: Single utility (`sprite-path-resolver.ts`) maps (civilization, archetype, gender) → sprite folder path
+- **Sprite Folder Structure**: `/sprites/characters/{PREFIX}-{ARCHETYPE}-{GENDER}/animations/walking-8-frames/{direction}/frame_XXX.png`
+- **Civ Prefix Mapping**: TS (LinhSon), DQ (DeQuoc), TL (ThienLu) — differs from CIV_CONFIG.shortName
+- **12 Character Sprite Sets**: 3 civilizations × 2 archetypes × 2 genders (warrior/scout, engineer/scholar, dualblade/philosopher)
+- **Direction Detection**: Calculated from movement delta (dx, dz) → north/south/east/west
+- **Member Movement AI**: Random walk between room cell centers at 0.9 units/sec, idle between moves
+- **Billboard Rendering**: Sprites always face camera, use NearestFilter for crisp pixel art
+- **Texture Caching**: Three.js auto-caches by URL, reuses sheets across member instances
+
+**Key Files (New)**:
+- `src/scene/sprite-animator.tsx` — Animated sprite component with frame cycling
+- `src/scene/sprite-path-resolver.ts` — Path resolution + direction detection
+- `src/scene/member-layer.tsx` — ENHANCED: Replaced colored rectangles with animated sprite billboards, added movement AI
+
+**Key Files (Modified)**:
+- `game-state.ts` — Member interface: added optional `archetype` and `gender` fields
+- `civilization-config.ts` — Added CivArchetype type (6 archetypes), Gender type, archetype arrays per civ — ENHANCED v1.11
+- `character-creation.ts` — Sets archetype + gender from civ selection
+- `mercenary-generator.ts` — Randomly assigns archetype + gender during recruitment
+
+### Zero Breaking Changes
+- Sprite system fully additive (visual enhancement only)
+- Fallback to 'warrior'/'M' for old saves missing archetype/gender
+- No data model breaking changes (new fields are optional)
+
+## Recent Changes (Icon Asset Integration — v1.10)
+
+### Pixel-Art Icon System (NEW - Asset Integration)
+- **60 AI-Generated Icons**: Pixel-art assets integrated across 9 categories (stat, skill, item, room, furniture, badge, rank, emblem, status)
+- **Convention-Based Path Resolution**: Single utility (`icon-paths.ts`) maps entity (category, id) → file path under `/sprites/icons/`
+- **ID-to-Filename Overrides**: Explicit remapping handles naming inconsistencies (UPPER_SNAKE → kebab, PascalCase → kebab, etc.)
+- **Icon Categories**:
+  - `stat` (icon-{name}.png) — Character stats (STR, AGI, INT, etc.)
+  - `skill` (icon-{name}.png) — Abilities per archetype
+  - `item` (icon-{name}.png) — Loot items (wood, stone, iron-ore, etc.)
+  - `room` (icon-room-{name}.png) — Guild hall rooms
+  - `furniture` (icon-furn-{name}.png) — Room furnishings
+  - `badge` (badge-{name}.png) — Mission tier badges (F, E, D, C, B, A, S)
+  - `rank` (badge-{name}.png) — Guild ranks (recruit, member, veteran, officer, commander, mercenary)
+  - `emblem` (emblem-{name}.png) — Civilization emblems (linh-son, de-quoc, thien-lu)
+  - `status` (status-{name}.png) — Character status (idle, injured, active)
+- **GameIcon Component**: Reusable `<GameIcon>` with size control + graceful text fallback on image load failure
+- **CostDisplay Component**: Extracted component rendering ResourceCost with item icons + quantities
+- **UI Integration**: Icons now appear in 13 files including quest board, roster, build menu, character detail, tavern, combat log, mission list, badges
+
+**Key Files (New)**:
+- `src/ui/utils/icon-paths.ts` — Convention resolver, ID_TO_FILENAME overrides, category prefixes
+- `src/ui/components/game-icon.tsx` — Icon component with fallback + pixelated rendering
+- `src/ui/components/cost-display.tsx` — Resource cost display with icons
+
+**Key Files (Modified)**:
+- `civ-badge.tsx`, `rank-badge.tsx` — Now use GameIcon for emblem/rank visuals
+- `stat-bar.tsx`, `resource-bar.tsx` — Icons display next to values
+- `roster-list-item.tsx`, `character-detail-panel.tsx` — Stat icons + skill icons
+- `build-menu.tsx` — Cost display with item icons
+- `quest-board.tsx`, `quest-detail-modal.tsx` — Tier badges + quest icons
+- `active-missions-list.tsx`, `tavern-panel.tsx` — Mission + recruitment icons
+- `panels.css`, `hud.css` — Icon sizing + layout support
+
+### Zero Breaking Changes
+- All icon integration is additive (rendering enhancement only)
+- No data file changes — convention-based mapping keeps asset logic separated
+- Existing text fallbacks ensure compatibility if icons unavailable
 
 ## Recent Changes (Milestone 2 Vertical Slice — v1.9)
 

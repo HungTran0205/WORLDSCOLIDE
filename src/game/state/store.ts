@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { createClockSlice, type ClockSlice } from './clock-slice';
-import { createGuildSlice, type GuildSlice } from './guild-slice';
+import { createGuildSlice, createDefaultGuildHall, type GuildSlice } from './guild-slice';
 import { createRosterSlice, type RosterSlice } from './roster-slice';
 import { createMissionSlice, type MissionSlice } from './mission-slice';
 import { createSaveStatusSlice, type SaveStatusSlice } from './save-status-slice';
@@ -20,3 +20,25 @@ export const useGameStore = create<GameStore>()((...a) => ({
   ...createBuildModeSlice(...a),
   ...createInventorySlice(...a),
 }));
+
+/** Reset all game data to fresh-game defaults (preserves action functions) */
+export function resetGameState(): void {
+  useGameStore.setState({
+    gameTime: 0,
+    realTimeLastTick: Date.now(),
+    guildName: '',
+    guildLevel: 1,
+    gold: 100,
+    guildHall: createDefaultGuildHall(),
+    settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true },
+    tavern: { lastRefreshTime: 0, availableMercenaries: [] },
+    founder: null,
+    roster: [],
+    activeMissions: [],
+    completedMissions: [],
+    tutorialStep: 'char-creation' as const,
+    pendingResults: [],
+    currentCombatReplay: null,
+    inventory: { items: {} },
+  });
+}

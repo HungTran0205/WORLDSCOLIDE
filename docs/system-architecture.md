@@ -391,6 +391,107 @@ upgradeCoreFurniture(room):
   → Room.level = coreFurniture.level (kept in sync)
 ```
 
+## Data Flow: Character Sprite Animation (NEW - v1.11)
+
+### Sprite Path Resolution
+
+```
+Member (archetype, gender, civilization)
+    ↓
+getSpritePath(civ, archetype, gender):
+  1. Look up CIV_SPRITE_PREFIX[civ] (TS=LinhSon, DQ=DeQuoc, TL=ThienLu)
+  2. Build path: /sprites/characters/{PREFIX}-{ARCH}-{GENDER}
+     → Example: /sprites/characters/TS-WARRIOR-M
+    ↓
+Returns base path for sprite folder
+```
+
+### Sprite Animation System
+
+```
+SpriteAnimator Component (basePath, directionRef, isMovingRef):
+  1. Load all 32 texture paths (4 directions × 8 frames)
+     → Uses convention: {basePath}/animations/walking-8-frames/{dir}/frame_0XX.png
+  2. Setup animation cycle: 10 FPS (frame updates every 100ms)
+  3. On each frame (useFrame):
+     → Read directionRef + isMovingRef (MutableRefObjects)
+     → Calculate current frame index: (direction, elapsed time)
+     → Render textured plane with current frame
+  4. Textures use NearestFilter for crisp pixel-art rendering
+  5. Three.js auto-caches textures by URL (sheets reused across instances)
+```
+
+### Member Layer Integration
+
+```
+MemberLayer renders all members:
+  1. For each member: create MemberSprite component
+  2. Initialize directional movement tracking:
+     → directionRef: tracks current facing (north/south/east/west)
+     → isMovingRef: tracks idle vs. walking state
+  3. On each frame:
+     → Pick random walkable cell center as movement target
+     → Move toward target (delta-time based, 0.9 units/sec)
+     → Calculate direction from movement delta (dx, dz)
+     → Update directionRef for sprite animator
+  4. At arrival:
+     → Set isMovingRef = false (idle animation)
+     → Wait 2-3 seconds before picking new target
+  5. Wrap each sprite in Billboard component (faces camera always)
+```
+
+### Archetype & Gender Support
+
+```
+Character Model (game-state.ts Member interface):
+  - archetype: CivArchetype | undefined (warrior, scout, engineer, etc.)
+  - gender: 'M' | 'F' | undefined
+  - civilization: Civilization
+
+Fallback Strategy:
+  - archetype defaults to 'warrior' if missing (old saves)
+  - gender defaults to 'M' if missing (old saves)
+  - Ensures backward compatibility with pre-v1.11 saves
+```
+
+### Sprite Folder Structure
+
+```
+/sprites/characters/
+├── TS-WARRIOR-M/           # LinhSon Warrior Male
+│   └── animations/walking-8-frames/
+│       ├── north/          # 8 walking frames facing north
+│       ├── south/          # 8 walking frames facing south
+│       ├── east/           # 8 walking frames facing east
+│       └── west/           # 8 walking frames facing west
+├── TS-WARRIOR-F/           # LinhSon Warrior Female
+├── TS-SCOUT-M/             # LinhSon Scout Male
+├── TS-SCOUT-F/             # LinhSon Scout Female
+├── DQ-ENGINEER-M/          # DeQuoc Engineer Male
+├── DQ-ENGINEER-F/
+├── DQ-SCHOLAR-M/           # DeQuoc Scholar Male
+├── DQ-SCHOLAR-F/
+├── TL-DUALBLADE-M/         # ThienLu DualBlade Male
+├── TL-DUALBLADE-F/
+├── TL-PHILOSOPHER-M/       # ThienLu Philosopher Male
+└── TL-PHILOSOPHER-F/
+```
+
+Total: 12 character sprite sets (3 civs × 2 archetypes × 2 genders)
+
+### Direction Detection
+
+```
+getDirectionFromMovement(dx, dz):
+  1. Compare absolute values of dx and dz
+  2. If |dx| > |dz|:
+     → Return 'east' if dx > 0, else 'west'
+  3. Else:
+     → Return 'south' if dz > 0, else 'north'
+
+  Result: 4-directional facing based on movement vector
+```
+
 ## Data Flow: Multi-Resource Loot & Inventory (NEW - v1.5)
 
 ### Mission Loot Generation
@@ -636,10 +737,12 @@ getRoomBounds(room: Room):
 - Treasury (gold)
 - Inventory (8 item types with quantities)
 
-### Roster Slice (ENHANCED - v1.6, v1.8)
+### Roster Slice (ENHANCED - v1.6, v1.8, v1.11)
 - Array of members with stats, EXP, levels, class
 - Equipment (armor, weapons)
 - Status tracking (idle/injured/active)
+- `archetype: CivArchetype | undefined` — Character archetype per civ (warrior, scout, engineer, etc.) — NEW v1.11
+- `gender: 'M' | 'F' | undefined` — Character gender for sprite selection — NEW v1.11
 - `autoCastEnabled: Record<memberId, boolean>` — Per-member auto-cast toggle state
 - `toggleAutoCast(memberId)` — Toggle auto-cast for member in combat
 - `rank: MemberRank` — Member rank (RECRUIT | MEMBER | VETERAN | OFFICER | COMMANDER | MERCENARY)
@@ -710,8 +813,10 @@ getRoomBounds(room: Room):
 | File | Purpose |
 |------|---------|
 | `build-mode-hint.tsx` | HUD hint overlay displaying placement controls (R, Escape, Click) |
-| `resource-bar.tsx` | HUD resource display showing Wood/Stone/Iron quantities |
+| `resource-bar.tsx` | HUD resource display showing Wood/Stone/Iron quantities with item icons |
 | `civ-badge.tsx` | Civilization emblem + name display component — NEW v1.9 |
+| `game-icon.tsx` | Reusable icon renderer with size control + text fallback — NEW v1.10 |
+| `cost-display.tsx` | Resource cost display with item icons — NEW v1.10 |
 | Other components | Stat bars, cards, buttons, dialogs |
 
 ### `/ui/components/` — Reusable Components
@@ -720,6 +825,8 @@ getRoomBounds(room: Room):
 | `confirm-dialog.tsx` | Delete/overwrite confirmation dialogs |
 | `mission-progress-bar.tsx` | Progress fill % for active missions |
 | `mission-notification.tsx` | Individual toast notification |
+| `stat-bar.tsx` | Character stat bar with icon display |
+| `rank-badge.tsx` | Rank display with icon + color coding |
 | Other UI components | Stat bars, cards, buttons |
 
 ### `/ui/panels/` — Collapsible Panels
@@ -737,9 +844,14 @@ getRoomBounds(room: Room):
 ### `/ui/components/roster/` — Roster Components (NEW - v1.6, v1.8)
 | File | Purpose |
 |------|---------|
-| `roster-list-item.tsx` | Compact member card component (condensed UI) — NEW v1.6 |
-| `rank-badge.tsx` | Rank display with color coding (RECRUIT/MEMBER/VETERAN/OFFICER/COMMANDER/MERCENARY) — NEW v1.8 |
+| `roster-list-item.tsx` | Compact member card component (condensed UI, with stat/skill icons) — NEW v1.6, ENHANCED v1.10 |
+| `rank-badge.tsx` | Rank display with icon + color coding (RECRUIT/MEMBER/VETERAN/OFFICER/COMMANDER/MERCENARY) — NEW v1.8, ENHANCED v1.10 |
 | `rank-promotion-section.tsx` | Promotion UI with eligibility check + button (in character detail panel) — NEW v1.8 |
+
+### `/ui/utils/` — Utility Functions (NEW - v1.10)
+| File | Purpose |
+|------|---------|
+| `icon-paths.ts` | Convention-based icon path resolver: maps (category, id) → `/sprites/icons/{prefix}-{filename}.png` with ID-to-filename overrides |
 
 ### `/ui/styles/` — Styling
 | File | Purpose |
@@ -753,7 +865,10 @@ getRoomBounds(room: Room):
 |------|---------|
 | `guild-hall.tsx` | Guild hall room rendering with dynamic dimensions and rotation |
 | `build-overlay.tsx` | Build mode overlay: grid lines, ghost preview, raycasting, placement controls |
-| Other scene files | Camera, lighting, sprites, world setup |
+| `sprite-animator.tsx` | Animated sprite component: loads walking frames, cycles at 10 FPS, supports 4 directions — NEW v1.11 |
+| `sprite-path-resolver.ts` | Convention-based sprite path resolution: (civ, archetype, gender) → `/sprites/characters/{PREFIX}-{ARCH}-{GENDER}` — NEW v1.11 |
+| `member-layer.tsx` | Renders all guild members as animated sprite billboards, handles movement AI + direction tracking — ENHANCED v1.11 |
+| Other scene files | Camera, lighting, world setup |
 
 ### `/game/state/` — Zustand Store
 | File | Purpose |
@@ -794,7 +909,7 @@ getRoomBounds(room: Room):
 ### `/game/data/` — Static Data
 | File | Purpose |
 |------|---------|
-| `civilization-config.ts` | CIV_CONFIG: 3 civilizations (Linh Sơn, Đế Quốc, Thiên Lữ), stat bonuses, archetype classes, hero rosters per archetype |
+| `civilization-config.ts` | CIV_CONFIG: 3 civilizations (Linh Sơn, Đế Quốc, Thiên Lữ), stat bonuses, CivArchetype types (6 total: warrior, scout, engineer, scholar, dualblade, philosopher), hero rosters, colors, name pools — ENHANCED v1.11 |
 | `enemies.ts` | 15 enemy templates by tier (F/E/D), includes lootRules, special abilities (stun-attack, enrage, heal-ally) |
 | `missions.ts` | 22 quest definitions (F/E/D tiers), quest chains, gate bosses, rewards, duration |
 | `skills.ts` | 7 skills grouped by SKILLS_BY_ARCHETYPE (Warrior/Mage/Rogue per civ), cooldown, damage, range |
@@ -892,6 +1007,96 @@ getRoomBounds(room: Room):
 | Import + validate | <100ms | On-demand |
 
 **Result**: Save operations do not block UI (async).
+
+## Icon Asset System (NEW - v1.10)
+
+### Architecture
+
+The icon system uses **convention-based path resolution** to map game entities → pixel-art assets without data-file changes.
+
+```
+GameIcon(category='stat', id='STR')
+    ↓
+getIconPath('stat', 'STR')
+    ↓
+ID_TO_FILENAME override check → 'str' (lowercase)
+    ↓
+PREFIX['stat'] = 'icon'
+    ↓
+/sprites/icons/icon-str.png
+    ↓
+GameIcon component renders <img> with fallback
+```
+
+### Categories & Prefixes
+
+| Category | File Prefix | Example Path | Use Case |
+|----------|------------|--------------|----------|
+| `stat` | `icon-` | `/sprites/icons/icon-str.png` | Character stats (STR, AGI, INT, DEF, VIT, LCK, WIS) |
+| `skill` | `icon-` | `/sprites/icons/icon-slash.png` | Ability/skill icons per archetype |
+| `item` | `icon-` | `/sprites/icons/icon-wood.png` | Loot items (wood, stone, iron-ore, etc.) |
+| `room` | `icon-room-` | `/sprites/icons/icon-room-tavern.png` | Guild hall rooms |
+| `furniture` | `icon-furn-` | `/sprites/icons/icon-furn-quest-board.png` | Room furnishings |
+| `badge` | `badge-` | `/sprites/icons/badge-d.png` | Mission tier badges (F, E, D, C, B, A, S) |
+| `rank` | `badge-` | `/sprites/icons/badge-veteran.png` | Guild ranks |
+| `emblem` | `emblem-` | `/sprites/icons/emblem-linh-son.png` | Civilization emblems |
+| `status` | `status-` | `/sprites/icons/status-injured.png` | Character status (idle, injured, active) |
+
+### ID-to-Filename Overrides
+
+The `ID_TO_FILENAME` map in `icon-paths.ts` handles naming inconsistencies:
+
+```typescript
+// ItemID UPPER_SNAKE → kebab
+WOOD: 'wood', STONE: 'stone', IRON_ORE: 'iron-ore', ...
+
+// Civilization PascalCase → kebab
+LinhSon: 'linh-son', DeQuoc: 'de-quoc', ThienLu: 'thien-lu'
+
+// GuildRank UPPER → lowercase
+RECRUIT: 'recruit', MEMBER: 'member', VETERAN: 'veteran', ...
+
+// Edge case: training-room → training (omit "-room")
+'training-room': 'training'
+```
+
+### GameIcon Component
+
+```typescript
+<GameIcon
+  category="stat"
+  id="STR"
+  size={24}
+  fallbackText="S"      // Shown if image fails to load
+  fallbackColor="#666"
+/>
+```
+
+**Features:**
+- Graceful fallback to text abbreviation if image unavailable
+- Pixelated rendering preserves pixel-art aesthetic
+- Size control via `size` prop (width/height in px)
+- Error state tracking prevents infinite load loops
+
+### UI Integration
+
+Icons appear in 13 components across the UI:
+
+- **Quest Board**: Mission tier badges
+- **Roster**: Member stat icons, rank badges
+- **Character Detail**: Stat breakdown, skill icons, passive emblems
+- **Build Menu**: Room/furniture icons, cost display with item icons
+- **Tavern**: Character card icons
+- **Combat Log**: Ability icons, damage types
+- **HUD**: Resource bar item icons
+- **Mission List**: Quest chain icons, status badges
+
+### Zero Data File Changes
+
+- All icon mapping lives in `icon-paths.ts`
+- No changes to game state data files
+- No inventory, mission, or enemy data modified
+- Icons purely rendering enhancement (additive feature)
 
 ## Browser Compatibility
 
