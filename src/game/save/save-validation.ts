@@ -4,11 +4,8 @@
  */
 
 import type { SaveEnvelope, GameSaveData, SaveSlotMetadata } from './save-types';
-import type { Stats, Member, GuildHall, Room, PlacedFurniture } from '@/game/state/game-state';
+import type { Stats, Member, GuildHall, PlacedFurniture } from '@/game/state/game-state';
 import { migrateSave } from './save-migrations';
-
-/** Maximum cells a single room may occupy (matches building-system constant) */
-const MAX_ROOM_CELLS = 100;
 
 const TUTORIAL_STEPS = [
   'char-creation', 'sandbox-intro', 'first-build',
@@ -66,18 +63,12 @@ function isValidPlacedFurniture(v: unknown): v is PlacedFurniture {
   );
 }
 
-function isValidRoom(v: unknown): v is Room {
+function isValidFloorTile(v: unknown): boolean {
   if (!isRecord(v)) return false;
   return (
-    typeof v.id === 'string' &&
-    typeof v.type === 'string' &&
-    typeof v.level === 'number' &&
-    Array.isArray(v.cells) &&
-    v.cells.length > 0 &&
-    v.cells.length <= MAX_ROOM_CELLS &&
-    v.cells.every(isValidGridCell) &&
-    Array.isArray(v.furniture) &&
-    v.furniture.every(isValidPlacedFurniture)
+    typeof v.x === 'number' &&
+    typeof v.z === 'number' &&
+    typeof v.color === 'string'
   );
 }
 
@@ -85,9 +76,10 @@ function isValidGuildHall(v: unknown): v is GuildHall {
   if (!isRecord(v)) return false;
   return (
     typeof v.level === 'number' &&
-    Array.isArray(v.rooms) &&
-    v.rooms.every(isValidRoom) &&
-    typeof v.maxRooms === 'number'
+    Array.isArray(v.floorTiles) &&
+    v.floorTiles.every(isValidFloorTile) &&
+    Array.isArray(v.furniture) &&
+    v.furniture.every(isValidPlacedFurniture)
   );
 }
 
@@ -149,6 +141,9 @@ export function validateSemantics(data: GameSaveData): string[] {
   }
   if (!TUTORIAL_STEPS.includes(data.tutorialStep as typeof TUTORIAL_STEPS[number])) {
     errors.push(`invalid tutorialStep: ${data.tutorialStep}`);
+  }
+  if (data.guildHall.floorTiles.length === 0) {
+    errors.push('guildHall must have at least 1 floor tile');
   }
   return errors;
 }

@@ -1,8 +1,8 @@
 # Development Roadmap
 
 **Last Updated**: 2026-03-23
-**Current Phase**: Phase 5 In Progress (Milestone 4 Sprite Animation v1.11 Complete)
-**Overall Progress**: ~92% Complete
+**Current Phase**: Phase 5 In Progress (Milestone 5 Building System Refactor v1.10 Complete)
+**Overall Progress**: ~95% Complete
 
 ---
 
@@ -13,7 +13,7 @@
 [PHASE 2: Guild Hall]          ████████████████████ 100% COMPLETE
 [PHASE 3: Characters & NPCs]   ████████████████████ 100% COMPLETE
 [PHASE 4: Save System v1]      ████████████████████ 100% COMPLETE
-[PHASE 5: Polish & Launch]     ███████████████████░ 92% IN PROGRESS
+[PHASE 5: Polish & Launch]     █████████████████████ 95% IN PROGRESS
 [PHASE 6: Post-Launch]         ░░░░░░░░░░░░░░░░░░░░ 0% PLANNED
 ```
 
@@ -270,6 +270,7 @@
 | Phase 5 Milestone 2 | 2026-03-21 | ✅ Done | Civilizations system, 3 combat passives, 7 skills, 22 missions, 15 enemies, 6 audio keys |
 | Phase 5 Milestone 3 | 2026-03-21 | ✅ Done | Icon asset integration (60 pixel-art icons, 9 categories, convention-based resolution) |
 | Phase 5 Milestone 4 | 2026-03-23 | ✅ Done | Character sprite animation (12 civ-specific sprite sets, 4-directional walking, movement AI) |
+| Phase 5 Milestone 5 | 2026-03-23 | ✅ Done | Building System Refactor (tile-based architecture, floor tiles, guild-level furniture, save migration v9→v10) |
 | Phase 5 Complete | 2026-03-30 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
 | Phase 6 Start | 2026-04-15 | 📋 Planned | Post-launch content |
 

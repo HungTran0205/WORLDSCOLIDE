@@ -3,14 +3,9 @@ import { Canvas } from '@react-three/fiber';
 import { GuildHall } from './guild-hall';
 import { MemberLayer } from './member-layer';
 import { CameraController } from './camera-controller';
-import type { RoomType } from '@/game/state/game-state';
-
-interface WorldProps {
-  onRoomClick?: (roomType: RoomType) => void;
-}
 
 /** Main 3D world — isometric guild hall view */
-export function World({ onRoomClick }: WorldProps) {
+export function World() {
   return (
     <Canvas
       frameloop="demand"
@@ -25,7 +20,7 @@ export function World({ onRoomClick }: WorldProps) {
 
       <CameraController />
       <Suspense fallback={null}>
-        <GuildHall onRoomClick={onRoomClick} />
+        <GuildHall />
         <MemberLayer />
       </Suspense>
     </Canvas>

@@ -5,7 +5,6 @@
 
 import { useState, useEffect } from 'react';
 import { World } from '@/scene/world';
-import type { RoomType } from '@/game/state/game-state';
 import { HUD } from '@/ui/hud/hud';
 import { QuestBoard } from '@/ui/panels/quest-board';
 import { GuildRoster } from '@/ui/panels/guild-roster';
@@ -72,14 +71,9 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   // Start game tick loop (missions, injuries, clock, tavern refresh)
   useGameTickLoop();
 
-  const handleRoomClick = (roomType: RoomType) => {
-    if (roomType === 'tavern') setActivePanel('tavern');
-    else if (roomType === 'guild-hall') setActivePanel('quests');
-  };
-
   return (
     <>
-      <World onRoomClick={handleRoomClick} />
+      <World />
       <HUD activePanel={activePanel} setActivePanel={setActivePanel} />
       {activePanel === 'quests' && <QuestBoard onClose={() => setActivePanel(null)} />}
       {activePanel === 'roster' && <GuildRoster onClose={() => setActivePanel(null)} />}

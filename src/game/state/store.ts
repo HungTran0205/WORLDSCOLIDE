@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { createClockSlice, type ClockSlice } from './clock-slice';
-import { createGuildSlice, createDefaultGuildHall, type GuildSlice } from './guild-slice';
+import { createGuildSlice, createDefaultFloor, type GuildSlice } from './guild-slice';
 import { createRosterSlice, type RosterSlice } from './roster-slice';
 import { createMissionSlice, type MissionSlice } from './mission-slice';
 import { createSaveStatusSlice, type SaveStatusSlice } from './save-status-slice';
@@ -29,7 +29,7 @@ export function resetGameState(): void {
     guildName: '',
     guildLevel: 1,
     gold: 100,
-    guildHall: createDefaultGuildHall(),
+    guildHall: createDefaultFloor(),
     settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true },
     tavern: { lastRefreshTime: 0, availableMercenaries: [] },
     founder: null,

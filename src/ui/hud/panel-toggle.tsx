@@ -1,4 +1,5 @@
 import { useGameStore } from '@/game/state/store';
+import type { FurnitureType } from '@/game/state/game-state';
 import '@/ui/styles/hud.css';
 
 export type PanelId = 'quests' | 'roster' | 'build' | 'combat' | 'settings' | 'tavern' | null;
@@ -6,7 +7,7 @@ export type PanelId = 'quests' | 'roster' | 'build' | 'combat' | 'settings' | 't
 const PANELS = [
   { id: 'quests' as const, label: 'Quests' },
   { id: 'roster' as const, label: 'Roster' },
-  { id: 'tavern' as const, label: 'Tavern', requiresRoom: 'tavern' as const },
+  { id: 'tavern' as const, label: 'Tavern', requiresFurniture: 'bar-counter' as FurnitureType },
   { id: 'build' as const, label: 'Build' },
   { id: 'settings' as const, label: 'Settings' },
 ];
@@ -17,13 +18,13 @@ interface PanelToggleProps {
 }
 
 export function PanelToggle({ activePanel, setActivePanel }: PanelToggleProps) {
-  const rooms = useGameStore((s) => s.guildHall.rooms);
-  const builtRoomTypes = new Set(rooms.map((r) => r.type));
+  const furniture = useGameStore((s) => s.guildHall.furniture);
+  const placedTypes = new Set(furniture.map((f) => f.type));
 
   return (
     <div className="panel-toggle-bar">
       {PANELS
-        .filter((p) => !p.requiresRoom || builtRoomTypes.has(p.requiresRoom))
+        .filter((p) => !p.requiresFurniture || placedTypes.has(p.requiresFurniture))
         .map((p) => (
           <button
             key={p.id}

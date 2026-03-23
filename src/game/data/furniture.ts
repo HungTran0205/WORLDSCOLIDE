@@ -1,6 +1,6 @@
 /** Furniture definitions — 5 core + 3 upgrade items (no decorative in this version) */
 
-import type { FurnitureType, FurnitureCategory, RoomType } from '@/game/state/game-state';
+import type { FurnitureType, FurnitureCategory } from '@/game/state/game-state';
 import type { ResourceCost } from './buildings';
 
 export interface FurnitureDefinition {
@@ -15,18 +15,17 @@ export interface FurnitureDefinition {
   width: number;
   /** Depth in cells */
   depth: number;
-  /** Which room types this furniture can be placed in */
-  allowedRooms: RoomType[] | 'any';
+  /** Max instances per guild (core = 1) */
+  maxPerGuild?: number;
   effect?: string;
-  maxPerRoom?: number;
 }
 
 export const FURNITURE_DEFINITIONS: FurnitureDefinition[] = [
-  // === Core furniture (1 per room, auto-placed, upgradeable) ===
+  // === Core furniture (1 per guild, upgradeable) ===
   {
     type: 'quest-board', name: 'Quest Board', description: 'Displays available quests',
     category: 'core', cost: { gold: 0 }, width: 1, depth: 1,
-    allowedRooms: ['guild-hall'], effect: 'mission-access', maxPerRoom: 1,
+    maxPerGuild: 1, effect: 'mission-access',
     upgradeCosts: [
       { gold: 500 },
       { gold: 2000, items: { WOOD: 10 } },
@@ -37,7 +36,7 @@ export const FURNITURE_DEFINITIONS: FurnitureDefinition[] = [
   {
     type: 'bar-counter', name: 'Bar Counter', description: 'Serves drinks to reduce upkeep',
     category: 'core', cost: { gold: 0 }, width: 2, depth: 1,
-    allowedRooms: ['tavern'], effect: 'upkeep-reduction', maxPerRoom: 1,
+    maxPerGuild: 1, effect: 'upkeep-reduction',
     upgradeCosts: [
       { gold: 300 },
       { gold: 1500, items: { WOOD: 8 } },
@@ -47,7 +46,7 @@ export const FURNITURE_DEFINITIONS: FurnitureDefinition[] = [
   {
     type: 'alchemy-table', name: 'Alchemy Table', description: 'Brews healing potions',
     category: 'core', cost: { gold: 0 }, width: 2, depth: 1,
-    allowedRooms: ['infirmary'], effect: 'recovery-reduction', maxPerRoom: 1,
+    maxPerGuild: 1, effect: 'recovery-reduction',
     upgradeCosts: [
       { gold: 400 },
       { gold: 2000, items: { STONE: 10 } },
@@ -57,7 +56,7 @@ export const FURNITURE_DEFINITIONS: FurnitureDefinition[] = [
   {
     type: 'workbench', name: 'Workbench', description: 'Crafting station (future)',
     category: 'core', cost: { gold: 0 }, width: 2, depth: 1,
-    allowedRooms: ['workshop'], effect: 'crafting', maxPerRoom: 1,
+    maxPerGuild: 1, effect: 'crafting',
     upgradeCosts: [
       { gold: 500, items: { IRON_ORE: 5 } },
       { gold: 2500, items: { IRON_ORE: 15 } },
@@ -66,7 +65,7 @@ export const FURNITURE_DEFINITIONS: FurnitureDefinition[] = [
   {
     type: 'training-dummy', name: 'Training Dummy', description: 'Provides passive EXP',
     category: 'core', cost: { gold: 0 }, width: 1, depth: 1,
-    allowedRooms: ['training-room'], effect: 'passive-exp', maxPerRoom: 1,
+    maxPerGuild: 1, effect: 'passive-exp',
     upgradeCosts: [
       { gold: 300, items: { WOOD: 5 } },
       { gold: 1500, items: { WOOD: 10, IRON_ORE: 5 } },
@@ -74,32 +73,25 @@ export const FURNITURE_DEFINITIONS: FurnitureDefinition[] = [
     ],
   },
 
-  // === Upgrade furniture (purchasable, room-specific) ===
+  // === Upgrade furniture (purchasable, multiple allowed) ===
   {
     type: 'reception-desk', name: 'Reception Desk', description: '+1 visitor bonus',
     category: 'upgrade', cost: { gold: 100 }, width: 2, depth: 1,
-    allowedRooms: ['guild-hall'], effect: 'visitor-bonus', maxPerRoom: 1,
+    maxPerGuild: 1, effect: 'visitor-bonus',
   },
   {
     type: 'wine-barrel', name: 'Wine Barrel', description: '2% additional upkeep reduction',
     category: 'upgrade', cost: { gold: 80 }, width: 1, depth: 1,
-    allowedRooms: ['tavern'], effect: 'upkeep-reduction-bonus', maxPerRoom: 3,
+    maxPerGuild: 3, effect: 'upkeep-reduction-bonus',
   },
   {
     type: 'medical-bed', name: 'Medical Bed', description: '+0.5 recovery reduction',
     category: 'upgrade', cost: { gold: 120, items: { WOOD: 5 } }, width: 1, depth: 2,
-    allowedRooms: ['infirmary'], effect: 'recovery-bonus', maxPerRoom: 2,
+    maxPerGuild: 2, effect: 'recovery-bonus',
   },
 ];
 
 /** Get furniture definition by type */
 export function getFurnitureDefinition(type: FurnitureType): FurnitureDefinition | undefined {
   return FURNITURE_DEFINITIONS.find((f) => f.type === type);
-}
-
-/** Get the core furniture type for a given room type */
-export function getCoreFurnitureType(roomType: RoomType): FurnitureType | undefined {
-  return FURNITURE_DEFINITIONS.find(
-    (f) => f.category === 'core' && f.allowedRooms !== 'any' && f.allowedRooms.includes(roomType),
-  )?.type;
 }

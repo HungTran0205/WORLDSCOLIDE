@@ -37,8 +37,7 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
 
   // Determine max quest tier from quest-board furniture level
   const unlockedTiers = useMemo(() => {
-    const guildHallRoom = guildHall.rooms.find((r) => r.type === 'guild-hall');
-    const questBoardFurniture = guildHallRoom?.furniture.find((f) => f.type === 'quest-board');
+    const questBoardFurniture = guildHall.furniture.find((f) => f.type === 'quest-board');
     const maxLevel = questBoardFurniture?.level ?? 1;
     const maxTier = QUEST_BOARD_TIER_BY_LEVEL[maxLevel] ?? 'F';
     const maxIdx = TIER_ORDER.indexOf(maxTier);

@@ -305,90 +305,147 @@ User actions:
   - Delete: Remove slot from IndexedDB + refresh UI
 ```
 
-## Data Flow: Build Mode (Cell-Based v1.7)
+## Data Flow: Build Mode (Tile-Based Refactor v1.10)
 
 ### Overview
 
-Build Mode uses cell-based rooms with 3 modes: new-room, new-furniture, move-room.
+Build Mode refactored from room-based to tile-based architecture. GuildHall now has:
+- **floorTiles: FloorTile[]** — Individual colored tiles (5g each, click-to-paint mode)
+- **furniture: PlacedFurniture[]** — Flat guild-level array (validated against floor tiles + guild level unlocks)
+
+Build Menu has 2 tabs:
+1. **Floor Tab** — Color palette (paint/erase floor tiles)
+2. **Furniture Tab** — All furniture with guild level gating
 
 ```
 [Player clicks Build Mode toggle]
     ↓
-toggleBuildMode(true) → isBuildMode = true, dynamic grid visible, members hidden
+toggleBuildMode(true) → isBuildMode = true, grid visible, members hidden
     ↓
-[Player clicks existing room floor tile]
+Build Menu: Floor Tab selected (default)
     ↓
-startMovingRoom(roomId, roomType, cells)
-  → activeItem = { type: 'move-room', roomId, roomType, rotation, originalCells }
-  → Room floor tiles hidden during move
+[Player selects color + enters paint mode]
     ↓
-OR [Player selects room type from Build Menu > Rooms tab]
+startFloorTilePlacement(color)
+  → activeItem = { type: 'floor-tile', color }
     ↓
-startPlacement(roomType)
-  → activeItem = { type: 'new-room', roomType, rotation: 0 }
+[Mouse over grid → shows preview cell]
     ↓
-OR [Player selects furniture from Build Menu > Furniture tab]
+[Click cell to paint tile (5g per tile)]
+  → placeFloorTile(x, z, color) validates + deducts gold
+  → Adds to floorTiles[] array
     ↓
-startFurniturePlacement(furnitureType, targetRoomId)
-  → activeItem = { type: 'new-furniture', furnitureType, targetRoomId, rotation: 0 }
+OR [Player clicks erase mode]
     ↓
-[BuildOverlay renders ghost preview — cells or furniture box]
+startErasePlacement()
+  → activeItem = { type: 'erase-tile' }
+    ↓
+[Click tile to erase (blocked if furniture occupies)]
+  → eraseFloorTile(x, z) checks furniture coverage
+  → Removes from floorTiles[] if clear
+    ↓
+OR [Player clicks Build Menu > Furniture tab]
+    ↓
+[Shows all furniture with guild level unlock badges]
+    ↓
+[Click furniture type to select (if unlocked)]
+    ↓
+startFurniturePlacement(furnitureType)
+  → activeItem = { type: 'furniture', furnitureType, rotation: 0 }
+    ↓
+[BuildOverlay renders ghost preview — 1x1 box with rotation guides]
     ↓
 Mouse Position: Raycasted from 3D → snapped to grid cell
     ↓
 Validation:
-  new-room:  generateRoomCells(x,z,w,d) → checkCellOverlap + checkAdjacency
-  move-room: generateRoomCells(x,z,w,d) → checkCellOverlap(exclude) + checkAdjacency
-  new-furniture: canPlaceFurniture(room, type, pos, rotation)
+  1. Cell has floor tile underneath (mandatory)
+  2. Furniture type unlocked at current guild level
+  3. No furniture overlap at target position
+  4. Cost check (gold + items)
     ↓
 Ghost renders green (valid) or red (invalid)
     ↓
-[Click to confirm | R to rotate | Esc/right-click to cancel]
+[Click to place | R to rotate | Esc to cancel]
     ↓
 If valid click:
-  new-room: buildRoom(type, cells) → spends gold+items, creates room + autoPlaceCoreFurniture
-  move-room: update room.cells in store
-  new-furniture: spends gold+items, adds PlacedFurniture to room
+  → placeFurniture(type, pos, rotation) creates PlacedFurniture
+  → Spends gold + items, adds to guild.furniture[] (flat)
   → activeItem = null
     ↓
-If cancel: cancelPlacement() → activeItem = null
+If cancel: → activeItem = null
 ```
 
-### Placement Validation
+### Floor Tile System (NEW)
 
 ```
-canPlaceRoom(guildHall, roomType, gold, inventory):
-  1. Check capacity: rooms.length < maxRooms
-  2. Check gold >= cost
-  3. Check inventory has required items
-  4. Return { success, reason? }
+FloorTile = { x: number, z: number, color: string }
 
-checkCellOverlap(rooms, newCells, excludeRoomId?):
-  1. Build Set of occupied cell keys from all rooms
-  2. Return true if any newCell is in occupied set
+placeFloorTile(x, z, color):
+  1. Check gold >= 5g (FLOOR_TILE_COST)
+  2. Check tile not already occupied
+  3. If valid: deduct 5g, add tile to floorTiles[]
+  4. Return success
 
-checkAdjacency(rooms, newCells):
-  1. If first room (rooms.length === 0) → always valid
-  2. Check 4-directional neighbors of each newCell against occupied set
-  3. Return true if any neighbor found
+eraseFloorTile(x, z):
+  1. Find tile at (x, z)
+  2. Check no furniture occupies this cell
+     → canEraseCell(x, z) validates
+  3. If clear: remove from floorTiles[]
+  4. Return success
 
-canPlaceFurniture(room, furnitureType, position, rotation):
-  1. Check allowedRooms restriction
-  2. Check maxPerRoom limit
-  3. Check furniture cells fit within room cells
-  4. Check no overlap with existing furniture
+canEraseCell(x, z):
+  → Checks furniture[] array for any piece occupying (x, z)
+  → Returns true if cell clear (safe to erase)
 ```
 
-### Furniture & Room Levels
+### Furniture Placement & Validation (REFACTORED)
 
 ```
-autoPlaceCoreFurniture(room):
-  → Looks up RoomDefinition.coreFurniture → places at room center
+PlacedFurniture = {
+  id: string,
+  type: FurnitureType,
+  level: number,
+  position: { x, z },
+  rotation: Rotation
+}
 
-upgradeCoreFurniture(room):
-  → Finds core furniture → checks upgradeCosts[level-1]
-  → Returns { room: upgraded, cost } or null if max level
-  → Room.level = coreFurniture.level (kept in sync)
+placeFurniture(type, position, rotation):
+  1. Check floor tile exists at position
+  2. Check guild.level >= FurnitureDefinition.unlockedAtLevel
+  3. Check guild furniture count < max guild limit
+  4. Check resource cost (gold + items)
+  5. If valid: create PlacedFurniture, add to guild.furniture[]
+  6. Return success
+
+canPlaceFurnitureOnFloor(position):
+  1. Find floorTile at position in guild.floorTiles
+  2. Return true if tile exists, false otherwise
+  3. (Furniture must be placed on floor, not empty cells)
+
+removeFurniture(furnitureId):
+  → Removes by ID from guild.furniture[] (flat structure)
+  → No room-specific lookups (guild-level array)
+```
+
+### Furniture Effects (RENAMED from room-effects.ts)
+
+```
+calcFurnitureBonuses(guild):
+  → Renamed from calcRoomBonuses() in furniture-effects.ts
+  → Iterates guild.furniture[] array (not rooms)
+  → Each furniture type has passive + active effects
+  → Example: quest-board increases mission reward by 10%
+  → Example: tavern-counter shows tavern panel when placed
+  → Returns aggregated { expBonus, goldBonus, statBonuses }
+```
+
+### Tutorial First-Build Step
+
+```
+Old: Check rooms.length > 1
+New: Check floorTiles.length > 36 (6x6 grid fully painted)
+  → Encourages player to paint floor before furniture
+  → Unlocks furniture placement tutorial step
 ```
 
 ## Data Flow: Character Sprite Animation (NEW - v1.11)
@@ -528,22 +585,30 @@ addItems(items: ItemQuantityMap):
   2. Atomic update to guild state
 ```
 
-### Building Cost Integration
+### Building Cost Integration (REFACTORED)
 
 ```
-canPlaceRoom(hall, roomType, playerGold, playerInventory):
-  1. Find RoomDefinition for roomType
-  2. Extract cost: { gold: X, items: { WOOD: Y, ... } }
-  3. Check: playerGold >= gold AND
-           for each item: playerInventory[item] >= required qty
-  4. Return { success: bool, reason?: string }
+Floor Tile Costs:
+  - Fixed cost: 5g per tile
+  - No item costs (floor only)
 
-placeRoom(type, position, rotation):
-  1. Validate via canPlaceRoom()
-  2. Deduct gold: guild.gold -= cost.gold
-  3. Deduct items: consumeItems(cost.items)
-  4. If either fails: transaction rolls back
-  5. If both succeed: add Room to guild.halls[0].rooms
+Furniture Costs (from FurnitureDefinition):
+  - cost: { gold: X, items: { WOOD: Y, ... } }
+  - Validated against guild inventory + gold
+
+placeFloorTile(x, z, color):
+  1. Check gold >= 5 (FLOOR_TILE_COST)
+  2. Check cell not occupied
+  3. Deduct 5g, add tile to guild.floorTiles[]
+
+placeFurniture(type, position, rotation):
+  1. Validate floor tile exists at position
+  2. Find FurnitureDefinition for type
+  3. Check guild.level >= unlockedAtLevel
+  4. Extract cost: { gold: X, items: { ... } }
+  5. Check: playerGold >= cost.gold AND inventory sufficient
+  6. If valid: deduct gold + items, add PlacedFurniture to guild.furniture[]
+  7. Return success/reason
 ```
 
 ### Resource Bar HUD

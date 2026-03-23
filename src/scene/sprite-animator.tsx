@@ -43,7 +43,7 @@ export function SpriteAnimator({
   basePath,
   directionRef,
   isMovingRef,
-  size = [1.0, 1.0],
+  size = [2.1, 2.1],
 }: SpriteAnimatorProps) {
   const frameIndexRef = useRef(0);
   const elapsedRef = useRef(0);

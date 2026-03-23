@@ -86,8 +86,6 @@ export interface ActiveMission {
   combatMode: 'auto' | 'manual' | null;
 }
 
-export type RoomType = 'guild-hall' | 'tavern' | 'workshop' | 'training-room' | 'infirmary';
-
 export type Rotation = 0 | 90 | 180 | 270;
 
 export interface GridCell {
@@ -98,16 +96,16 @@ export interface GridCell {
 export type FurnitureCategory = 'core' | 'upgrade';
 
 export type FurnitureType =
-  // Core (1 per room, upgradeable -> room level)
-  | 'quest-board'      // guild-hall core
-  | 'bar-counter'      // tavern core
-  | 'alchemy-table'    // infirmary core
-  | 'workbench'        // workshop core
-  | 'training-dummy'   // training-room core
-  // Upgrade (purchasable, room-specific)
-  | 'reception-desk'   // guild-hall upgrade
-  | 'wine-barrel'      // tavern upgrade
-  | 'medical-bed';     // infirmary upgrade
+  // Core (1 per guild, upgradeable)
+  | 'quest-board'
+  | 'bar-counter'
+  | 'alchemy-table'
+  | 'workbench'
+  | 'training-dummy'
+  // Upgrade (purchasable, placeable multiple times)
+  | 'reception-desk'
+  | 'wine-barrel'
+  | 'medical-bed';
 
 export interface PlacedFurniture {
   id: string;
@@ -117,18 +115,32 @@ export interface PlacedFurniture {
   rotation: Rotation;
 }
 
-export interface Room {
-  id: string;
-  type: RoomType;
-  level: number;
-  cells: GridCell[];
-  furniture: PlacedFurniture[];
+/** Preset floor tile colors for the build palette */
+export const FLOOR_TILE_COLORS = [
+  { id: 'gold', name: 'Gold', hex: '#DAA520' },
+  { id: 'wood-brown', name: 'Wood', hex: '#8B4513' },
+  { id: 'steel-blue', name: 'Steel', hex: '#4682B4' },
+  { id: 'slate', name: 'Slate', hex: '#708090' },
+  { id: 'stone', name: 'Stone', hex: '#A0A0A0' },
+  { id: 'crimson', name: 'Crimson', hex: '#FF6347' },
+  { id: 'forest', name: 'Forest', hex: '#2E8B57' },
+  { id: 'ivory', name: 'Ivory', hex: '#FFFFF0' },
+  { id: 'obsidian', name: 'Obsidian', hex: '#1C1C1C' },
+  { id: 'royal-blue', name: 'Royal', hex: '#4169E1' },
+] as const;
+
+export type FloorTileColorId = typeof FLOOR_TILE_COLORS[number]['id'];
+
+export interface FloorTile {
+  x: number;
+  z: number;
+  color: string;
 }
 
 export interface GuildHall {
   level: number;
-  rooms: Room[];
-  maxRooms: number;
+  floorTiles: FloorTile[];
+  furniture: PlacedFurniture[];
 }
 
 export type TutorialStep =

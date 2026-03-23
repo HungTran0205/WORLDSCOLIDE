@@ -3,20 +3,16 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useGameStore } from '@/game/state/store';
 import { useRef, useMemo, useEffect } from 'react';
 import type { Group } from 'three';
-import type { Member, GridCell } from '@/game/state/game-state';
+import type { Member } from '@/game/state/game-state';
+import { CIV_CONFIG } from '@/game/data/civilization-config';
+import type { Civilization } from '@/game/data/civilization-config';
 import { SpriteAnimator } from './sprite-animator';
 import { getSpritePath, getDirectionFromMovement } from './sprite-path-resolver';
 import type { SpriteDirection } from './sprite-path-resolver';
 
-/** Collect all cell centers from all rooms as walkable positions */
-function getAllCellCenters(rooms: { cells: GridCell[] }[]): { x: number; z: number }[] {
-  const centers: { x: number; z: number }[] = [];
-  for (const room of rooms) {
-    for (const cell of room.cells) {
-      centers.push({ x: cell.x + 0.5, z: cell.z + 0.5 });
-    }
-  }
-  return centers;
+/** Collect all cell centers from floor tiles as walkable positions */
+function getAllCellCenters(tiles: { x: number; z: number }[]): { x: number; z: number }[] {
+  return tiles.map((t) => ({ x: t.x + 0.5, z: t.z + 0.5 }));
 }
 
 /** Deterministic pseudo-random from seed (avoid Math.random in render) */
@@ -30,8 +26,8 @@ function MemberSprite({ member, index }: { member: Member; index: number }) {
   const waitRef = useRef(0);
   const directionRef = useRef<SpriteDirection>('south');
   const isMovingRef = useRef(false);
-  const rooms = useGameStore((s) => s.guildHall.rooms);
-  const cells = useMemo(() => getAllCellCenters(rooms), [rooms]);
+  const floorTiles = useGameStore((s) => s.guildHall.floorTiles);
+  const cells = useMemo(() => getAllCellCenters(floorTiles), [floorTiles]);
 
   useFrame(({ clock }, delta) => {
     if (!ref.current || cells.length === 0) return;
@@ -68,12 +64,13 @@ function MemberSprite({ member, index }: { member: Member; index: number }) {
     : { x: 3, z: 3 };
 
   // Resolve sprite path with fallbacks for old saves missing archetype/gender
-  const archetype = member.archetype ?? 'warrior';
+  const civConfig = CIV_CONFIG[member.civilization as Civilization];
+  const archetype = member.archetype ?? civConfig?.archetypes[0] ?? 'warrior';
   const gender = member.gender ?? 'M';
   const basePath = getSpritePath(member.civilization, archetype, gender);
 
   return (
-    <group ref={ref} position={[startPos.x, 0.75, startPos.z]}>
+    <group ref={ref} position={[startPos.x, 1.05, startPos.z]}>
       <Billboard>
         <SpriteAnimator
           basePath={basePath}
@@ -81,8 +78,8 @@ function MemberSprite({ member, index }: { member: Member; index: number }) {
           isMovingRef={isMovingRef}
         />
       </Billboard>
-      <Billboard position={[0, 0.7, 0]}>
-        <Text fontSize={0.15} color="white" anchorY="bottom" outlineWidth={0.02} outlineColor="black">
+      <Billboard position={[0, 1.3, 0]}>
+        <Text fontSize={0.2} color="white" anchorY="bottom" outlineWidth={0.025} outlineColor="black">
           {member.name}
         </Text>
       </Billboard>
@@ -109,6 +106,11 @@ export function MemberLayer() {
     const interval = setInterval(invalidate, 1000 / 20);
     return () => clearInterval(interval);
   }, [hasMembers, invalidate]);
+
+  // Force one re-render when idle member list changes (e.g. dispatch removes a member)
+  useEffect(() => {
+    invalidate();
+  }, [idleMembers.length, invalidate]);
 
   if (isBuildMode) return null;
 

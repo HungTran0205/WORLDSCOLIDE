@@ -2,8 +2,181 @@
 
 All notable changes to Worlds Collide are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
-**Current Version**: 1.9
-**Release Date**: 2026-03-21 (Milestone 2 Vertical Slice)
+**Current Version**: 1.10
+**Release Date**: 2026-03-23 (Building System Refactor — Tile-Based Architecture)
+
+---
+
+## [1.10] — 2026-03-23 (Building System Refactor — Tile-Based Architecture)
+
+### Major Refactor
+
+#### Removed Room/RoomType Abstraction (Breaking Change)
+- **Removed**: Fixed 6x6 room blocks with RoomType classification
+- **Removed**: Room placement UI + room movement mechanics
+- **Removed**: Room-specific panel access (onRoomClick obsolete)
+- **Removed**: Multi-room grid cells logic (replaced with flat tile array)
+- **Impact**: Saves v9→v10 migration required (compresses rooms → tiles+furniture)
+
+#### New Floor Tile System (Major Feature)
+- **FloorTile Array**: `guild.floorTiles: FloorTile[]` — Individual colored tiles at (x, z)
+- **Paint Mode**: Click-to-paint color palette (5g per tile)
+- **Erase Mode**: Click-to-erase tiles (blocked if furniture occupies)
+- **Default Floor**: 6x6 gold floor auto-created on new games (36 tiles = #DAA520 color)
+- **No Adjacency**: Tiles placed freely (no adjacency requirement, unlike rooms)
+- **Cost**: 5g per tile (FLOOR_TILE_COST constant)
+
+#### Refactored Furniture System (Major Feature)
+- **Guild-Level Array**: `guild.furniture: PlacedFurniture[]` — Flat list (not nested per room)
+- **New PlacedFurniture**: `{ id, type, level, position: { x, z }, rotation }`
+- **Floor Validation**: Furniture must have floor tile underneath (mandatory)
+- **Guild Level Unlock**: Each furniture type has `unlockedAtLevel` gate
+- **Max Per Guild**: Each furniture type has max count limit (at guild level, not per-room)
+- **No Per-Room Nesting**: Furniture tracked at guild level, not scoped to rooms
+- **Placement Cost**: Validates gold + items from FurnitureDefinition.cost
+
+#### Build Menu Refactor (UI Update)
+- **Floor Tab**: Color palette for paint/erase modes
+  - Shows current floor tile count
+  - Color selector + paint/erase toggle buttons
+- **Furniture Tab**: All furniture with level unlock badges
+  - Filtered by guild.level >= unlockedAtLevel
+  - Click to select → shows ghost preview at cursor
+- **No Room Selection**: Rooms tab removed entirely
+
+#### Build Overlay Changes (UI Update)
+- **3 Modes**: floor-tile (paint), erase-tile (erase), furniture (place)
+- **Ghost Preview**: Shows single cell for tiles, 1x1 box for furniture
+- **Validation Color**: Green (valid) / Red (invalid)
+  - Floor tile: checks cell not occupied
+  - Erase: checks furniture not occupying
+  - Furniture: checks floor exists + level unlocked + no overlap + cost OK
+
+#### Furniture Effects Renamed (File Refactor)
+- **Renamed**: `room-effects.ts` → `furniture-effects.ts`
+- **Function Rename**: `calcRoomBonuses()` → `calcFurnitureBonuses()`
+- **Logic Change**: Iterates `guild.furniture[]` (flat) instead of `guild.rooms[]`
+- **Bonus Application**: Same bonus logic, applied from furniture array now
+- **Example Effects**:
+  - quest-board: +10% mission gold reward
+  - tavern-counter: shows tavern panel when placed (not when room exists)
+  - training: +5% combat EXP
+
+#### Tutorial First-Build Step
+- **Old Trigger**: `rooms.length > 1` (place 2+ rooms)
+- **New Trigger**: `floorTiles.length > 36` (paint full 6x6 grid)
+- **Progression**: Paint floor → unlock furniture placement tutorial
+
+#### Panel Access Changes (Breaking)
+- **Removed**: onRoomClick handlers (no room objects to click)
+- **Panel Access Method**: HUD toggle bar buttons only
+  - Quest Board → Button in HUD
+  - Roster → Button in HUD
+  - Build → Button in HUD
+  - Tavern → Appears when bar-counter furniture placed (furniture effect trigger)
+- **No Direct 3D Interaction**: Panels accessed only via HUD buttons, not by clicking scene objects
+
+#### Save Migration v9 → v10 (Complex)
+- **Version Bump**: `SAVE_VERSION` incremented from 9 to 10
+- **Auto-Migration**: `migrateV9toV10()` runs on load
+  - Flattens `guild.rooms[]` into `guild.floorTiles[]` + `guild.furniture[]`
+  - For each room: generates tiles covering room bounds with room color
+  - For each room's furniture: copies to guild.furniture[] with absolute position
+  - Adjusts furniture positions from room-relative to guild-absolute
+  - Clears old `rooms` field
+- **Position Recalculation**: Room bounds (x, z, width, depth) → individual tile (x, z) positions
+- **Backward Compatibility**: v9 saves load with transparent migration (auto-triggered)
+- **Data Loss**: None (all room data recoverable from tiles + furniture array)
+
+### Changed
+
+#### Guild State (guild-slice.ts)
+- **Removed Fields**: `guildHall.rooms: Room[]`
+- **New Fields**: `guildHall.floorTiles: FloorTile[]`, `guildHall.furniture: PlacedFurniture[]`
+- **New Actions**:
+  - `placeFloorTile(x, z, color)` — Paint a tile (5g cost)
+  - `eraseFloorTile(x, z)` — Erase if no furniture
+  - `placeFurniture(type, pos, rotation)` — Place furniture (validates floor + cost)
+  - `removeFurniture(furnitureId)` — Remove by ID from flat array
+  - `upgradeFurniture(furnitureId)` — Level up furniture
+
+#### Build Mode Slice (build-mode-slice.ts)
+- **Removed**: `startMovingRoom()`, `startPlacement()` (room-centric)
+- **New**: `startFloorTilePlacement(color)`, `startErasePlacement()`
+- **Updated**: `startFurniturePlacement()` — No longer takes targetRoomId
+- **activeItem Type**: Changed from `'new-room' | 'move-room' | 'new-furniture'` to `'floor-tile' | 'erase-tile' | 'furniture'`
+
+#### Validation Systems (building-system.ts)
+- **Removed**: `checkCellOverlap()`, `checkAdjacency()`, `generateRoomCells()`
+- **New**: `canPlaceFurnitureOnFloor()` — Checks floor tile exists at position
+- **Removed**: `canPlaceRoom()` (room placement logic gone)
+- **Removed**: Room collision + adjacency checking (not applicable to tiles)
+
+#### 3D Scene Rendering (guild-hall.tsx)
+- **Removed**: RoomMesh components (no rooms to render)
+- **New**: FloorTileMesh components (individual tiles with colors)
+- **Simplified**: No room collision visualization needed
+- **Grid Visualization**: Still shows grid cells during build mode (unchanged)
+
+#### Furniture System (furniture-system.ts)
+- **Removed**: Per-room furniture placement logic
+- **New**: Guild-level furniture validation (`canPlaceFurnitureOnFloor()`)
+- **Function**: `placeFurniture()` now operates on flat guild.furniture[]
+
+### Fixed
+
+#### Build Mode UX
+- **Fixed**: Complex room placement mechanics replaced with simple tile painting
+- **Fixed**: No way to customize floor appearance (now fully paintable)
+- **Fixed**: Panels required clicking scene objects (now HUD buttons only)
+
+#### Furniture System
+- **Fixed**: Furniture tied to rooms (now guild-level, more flexible)
+- **Fixed**: Max furniture limits per-room (now per-guild)
+- **Fixed**: Furniture level != room level (decoupled: furniture has own level)
+
+### Performance
+
+- **Tile Storage**: O(1) lookup by (x, z) key (can add Set if >1000 tiles)
+- **Furniture Storage**: O(n) linear scan where n = furniture count (typically <50)
+- **Placement Validation**: O(m) where m = furniture count (checking floor coverage)
+- **Migration v9→v10**: One-time cost, no ongoing impact
+
+### Testing
+
+- **New Test Coverage**:
+  - Floor tile placement (cost, color, occupied check)
+  - Floor tile erase (furniture blocking)
+  - Furniture placement on floor (floor requirement)
+  - Furniture removal + upgrades
+  - Save migration v9→v10 (flattening correctness)
+- **Test Count**: Full suite passing (tile + furniture + migration tests)
+
+### Documentation
+
+- Updated `system-architecture.md` with new build mode data flow (tile-based)
+- Updated `codebase-summary.md` with FloorTile + PlacedFurniture structures
+- Updated `project-changelog.md` (this entry) with v1.10 refactor details
+- Renamed documentation references from rooms to tiles/furniture throughout
+
+### Known Issues
+
+None identified in v1.10 release. Floor tile painting, furniture placement, and save migration all tested and working.
+
+### Limitations
+
+- Tile painting is click-by-click (no drag-to-paint mode in v1.10)
+- Furniture cannot be moved after placement (remove + re-place)
+- No visual grid cell highlighting during paint (just preview color)
+
+### Breaking Changes
+
+- **Removed**: Room/RoomType abstraction entirely
+- **Removed**: onRoomClick event handlers
+- **Removed**: Room placement UI + room movement
+- **Removed**: Room-scoped furniture system
+- **Save Incompatibility**: v9 saves auto-migrate to v10 (transparent, one-time)
+- **Code Incompatibility**: Any room-referencing systems must update to use tiles/furniture
 
 ---
 
@@ -633,14 +806,15 @@ See `v0-archive-changelog.md` for historical entries (v0.1 through v1.2)
 | 1.7 | 2026-03-16 | Guild Rank System — 5-tier hierarchy, promotion mechanics | Complete |
 | 1.8 | 2026-03-16 | Save Migration & Enhanced Rank System (v7→v8) | Complete |
 | 1.9 | 2026-03-21 | Milestone 2 Vertical Slice — Civilizations, Passives, 22 Missions, 15 Enemies, 7 Skills | Complete |
+| 1.10 | 2026-03-23 | Building System Refactor — Tile-Based Architecture (rooms → tiles+furniture) | Complete |
 | 2.0+ | TBD | Post-launch updates | Planned |
 
 See `v0-archive-changelog.md` for v0.1-v1.2 history.
 
 ---
 
-**Last Updated**: 2026-03-21 (v1.9 Milestone 2 Vertical Slice)
+**Last Updated**: 2026-03-23 (v1.10 Building System Refactor)
 **Maintained By**: Documentation Team
-**Next Review**: 2026-03-22 (weekly) / 2026-04-15 (milestone)
+**Next Review**: 2026-03-24 (weekly) / 2026-04-15 (milestone)
 
 For detailed file changes and historical information on v1.3-v1.6, see `v0-archive-changelog.md`.

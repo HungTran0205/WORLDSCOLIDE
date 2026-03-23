@@ -88,10 +88,85 @@ function migrateV8toV9(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+/** v9→v10: Remove rooms, flatten to floorTiles + furniture at guild level */
+function migrateV9toV10(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+  const guildHall = gs.guildHall as AnyRecord;
+
+  // If already migrated (has floorTiles), skip
+  if (Array.isArray(guildHall.floorTiles)) {
+    return { ...envelope, version: 10 };
+  }
+
+  const rooms = (guildHall.rooms as AnyRecord[]) ?? [];
+  const floorTiles: AnyRecord[] = [];
+  const furniture: AnyRecord[] = [];
+
+  // Room type → floor color mapping (hardcoded since ROOM_DEFINITIONS is removed)
+  const ROOM_COLORS: Record<string, string> = {
+    'guild-hall': '#DAA520',
+    'tavern': '#8B4513',
+    'training-room': '#4682B4',
+    'workshop': '#708090',
+    'infirmary': '#FF6347',
+  };
+
+  const seenTiles = new Set<string>();
+  for (const room of rooms) {
+    const color = ROOM_COLORS[room.type as string] ?? '#DAA520';
+    const cells = (room.cells as AnyRecord[]) ?? [];
+    const roomFurniture = (room.furniture as AnyRecord[]) ?? [];
+
+    // Flatten cells → floor tiles with room's color (deduplicate overlapping rooms)
+    for (const cell of cells) {
+      const key = `${cell.x},${cell.z}`;
+      if (!seenTiles.has(key)) {
+        seenTiles.add(key);
+        floorTiles.push({ x: cell.x, z: cell.z, color });
+      }
+    }
+
+    // Move furniture up to guild level (positions already world coords)
+    furniture.push(...roomFurniture);
+  }
+
+  // Fallback: if no rooms existed, create default 6x6 gold floor + quest-board
+  if (floorTiles.length === 0) {
+    for (let x = 0; x < 6; x++) {
+      for (let z = 0; z < 6; z++) {
+        floorTiles.push({ x, z, color: '#DAA520' });
+      }
+    }
+    furniture.push({
+      id: crypto.randomUUID(),
+      type: 'quest-board',
+      level: 1,
+      position: { x: 3, z: 3 },
+      rotation: 0,
+    });
+  }
+
+  const migratedGuildHall = {
+    level: guildHall.level ?? 1,
+    floorTiles,
+    furniture,
+  };
+
+  return {
+    ...envelope,
+    version: 10,
+    gameState: {
+      ...gs,
+      guildHall: migratedGuildHall,
+    } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
   8: migrateV8toV9,
+  9: migrateV9toV10,
 };
 
 /**

@@ -1,8 +1,10 @@
 import type { StateCreator } from 'zustand';
-import type { GuildHall, GameSettings, TavernState, Member, RoomType, GridCell, GuildRank } from './game-state';
-import { ROOM_DEFINITIONS } from '@/game/data/buildings';
-import { canPlaceRoom, placeRoom, generateRoomCells, checkCellOverlap, checkAdjacency } from '@/game/systems/building-system';
-import { autoPlaceCoreFurniture, upgradeCoreFurniture } from '@/game/systems/furniture-system';
+import type { GuildHall, GameSettings, TavernState, Member, FloorTile, PlacedFurniture, GridCell, Rotation, FurnitureType, GuildRank } from './game-state';
+import type { InventoryState } from './game-state';
+import { FLOOR_TILE_COST } from '@/game/data/buildings';
+import { getFurnitureDefinition } from '@/game/data/furniture';
+import { checkTileAdjacency, isCellOccupiedByFurniture } from '@/game/systems/building-system';
+import { canPlaceFurnitureOnFloor } from '@/game/systems/furniture-system';
 import { GUILD_RANKS, getNextRank } from '@/game/data/ranks';
 
 export interface GuildSlice {
@@ -19,26 +21,38 @@ export interface GuildSlice {
   updateSettings: (partial: Partial<GameSettings>) => void;
   refreshTavern: (mercenaries: Member[]) => void;
   hireMercenary: (memberId: string) => void;
-  /** Place a new room: validates cost, creates room with core furniture, spends resources */
-  buildRoom: (type: RoomType, cells: GridCell[]) => boolean;
-  /** Upgrade a room's core furniture (= room level up), spends resources */
-  upgradeRoom: (roomId: string) => boolean;
+  /** Place a single floor tile at position with color. Costs 5g. */
+  placeFloorTile: (x: number, z: number, color: string) => boolean;
+  /** Erase a floor tile. Blocked if furniture occupies that cell. */
+  eraseFloorTile: (x: number, z: number) => boolean;
+  /** Place furniture at position. Validates floor coverage + guild level unlock. */
+  placeFurniture: (furnitureType: FurnitureType, position: GridCell, rotation: Rotation) => boolean;
+  /** Remove furniture by ID. */
+  removeFurniture: (furnitureId: string) => boolean;
+  /** Upgrade a core furniture piece (= level up). Spends resources. */
+  upgradeFurniture: (furnitureId: string) => boolean;
   /** Invite a mercenary to become an official guild member (cost: level * 100g) */
   inviteMercenary: (memberId: string) => boolean;
   /** Promote a guild member to next rank. Costs gold. Returns success. */
   promoteMember: (memberId: string) => boolean;
 }
 
-/** Generate the default guild-hall room with cells and core furniture */
-export function createDefaultGuildHall(): GuildHall {
-  const cells = generateRoomCells(0, 0, 6, 6);
-  const rawRoom = placeRoom('guild-hall', cells);
-  const roomWithCore = autoPlaceCoreFurniture({ ...rawRoom, id: 'room-guild-hall' });
-  return {
+/** Generate the default 6x6 gold floor + quest-board at center */
+export function createDefaultFloor(): GuildHall {
+  const floorTiles: FloorTile[] = [];
+  for (let x = 0; x < 6; x++) {
+    for (let z = 0; z < 6; z++) {
+      floorTiles.push({ x, z, color: '#DAA520' });
+    }
+  }
+  const furniture: PlacedFurniture[] = [{
+    id: crypto.randomUUID(),
+    type: 'quest-board',
     level: 1,
-    rooms: [roomWithCore],
-    maxRooms: 3,
-  };
+    position: { x: 3, z: 3 },
+    rotation: 0,
+  }];
+  return { level: 1, floorTiles, furniture };
 }
 
 const DEFAULT_SETTINGS: GameSettings = {
@@ -56,7 +70,7 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
   guildName: '',
   guildLevel: 1,
   gold: 100,
-  guildHall: createDefaultGuildHall(),
+  guildHall: createDefaultFloor(),
   settings: DEFAULT_SETTINGS,
   tavern: DEFAULT_TAVERN,
 
@@ -79,7 +93,7 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
   upgradeGuild: () =>
     set((s) => ({
       guildLevel: s.guildLevel + 1,
-      guildHall: { ...s.guildHall, maxRooms: s.guildHall.maxRooms + 1 },
+      guildHall: { ...s.guildHall },
     })),
 
   updateSettings: (partial) =>
@@ -102,38 +116,62 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
       } as unknown as Partial<GuildSlice>;
     }),
 
-  buildRoom: (type, cells) => {
+  placeFloorTile: (x, z, color) => {
     let success = false;
     set((s) => {
-      // Access full store for inventory
-      const fullState = s as GuildSlice & { inventory: import('./game-state').InventoryState; consumeItems: (cost: Partial<Record<import('@/game/data/items').ItemID, number>>) => boolean; addGold: (amount: number) => void };
-      const validation = canPlaceRoom(s.guildHall, type, s.gold, fullState.inventory);
+      if (s.guildHall.floorTiles.some((t) => t.x === x && t.z === z)) return s;
+      if (!checkTileAdjacency(s.guildHall.floorTiles, x, z)) return s;
+      if (s.gold < FLOOR_TILE_COST) return s;
+      success = true;
+      return {
+        gold: s.gold - FLOOR_TILE_COST,
+        guildHall: {
+          ...s.guildHall,
+          floorTiles: [...s.guildHall.floorTiles, { x, z, color }],
+        },
+      };
+    });
+    return success;
+  },
+
+  eraseFloorTile: (x, z) => {
+    let success = false;
+    set((s) => {
+      if (isCellOccupiedByFurniture(s.guildHall.furniture, x, z)) return s;
+      if (s.guildHall.floorTiles.length <= 1) return s;
+      const exists = s.guildHall.floorTiles.some((t) => t.x === x && t.z === z);
+      if (!exists) return s;
+      success = true;
+      return {
+        guildHall: {
+          ...s.guildHall,
+          floorTiles: s.guildHall.floorTiles.filter((t) => !(t.x === x && t.z === z)),
+        },
+      };
+    });
+    return success;
+  },
+
+  placeFurniture: (furnitureType, position, rotation) => {
+    let success = false;
+    set((s) => {
+      const validation = canPlaceFurnitureOnFloor(
+        s.guildHall, furnitureType, position, rotation, s.guildLevel,
+      );
       if (!validation.success) return s;
 
-      // Cell validation: no overlap + must be adjacent
-      if (cells.length === 0) return s;
-      if (checkCellOverlap(s.guildHall.rooms, cells)) return s;
-      if (!checkAdjacency(s.guildHall.rooms, cells)) return s;
+      const def = getFurnitureDefinition(furnitureType);
+      if (!def || s.gold < def.cost.gold) return s;
 
-      const def = ROOM_DEFINITIONS.find((r) => r.type === type);
-      if (!def) return s;
-
-      // Create room with auto-placed core furniture
-      const rawRoom = placeRoom(type, cells);
-      const roomWithCore = autoPlaceCoreFurniture(rawRoom);
-
-      // Spend gold
-      const newGold = s.gold - def.cost.gold;
-
-      // Consume items (check inside set for atomicity)
+      // Consume items if needed
       if (def.cost.items) {
+        const fullState = s as GuildSlice & { inventory: InventoryState };
         const inv = fullState.inventory;
         for (const [id, needed] of Object.entries(def.cost.items)) {
           if (needed && needed > 0 && ((inv.items as Record<string, number>)[id] ?? 0) < needed) {
-            return s; // insufficient items
+            return s;
           }
         }
-        // Deduct items
         const newItems = { ...inv.items };
         for (const [id, needed] of Object.entries(def.cost.items)) {
           if (needed && needed > 0) {
@@ -141,17 +179,101 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
           }
         }
         success = true;
+        const newFurniture: PlacedFurniture = {
+          id: crypto.randomUUID(), type: furnitureType,
+          level: 1, position, rotation,
+        };
         return {
-          gold: newGold,
+          gold: s.gold - def.cost.gold,
           inventory: { ...inv, items: newItems },
-          guildHall: { ...s.guildHall, rooms: [...s.guildHall.rooms, roomWithCore] },
+          guildHall: {
+            ...s.guildHall,
+            furniture: [...s.guildHall.furniture, newFurniture],
+          },
+        } as unknown as Partial<GuildSlice>;
+      }
+
+      success = true;
+      const newFurniture: PlacedFurniture = {
+        id: crypto.randomUUID(), type: furnitureType,
+        level: 1, position, rotation,
+      };
+      return {
+        gold: s.gold - def.cost.gold,
+        guildHall: {
+          ...s.guildHall,
+          furniture: [...s.guildHall.furniture, newFurniture],
+        },
+      };
+    });
+    return success;
+  },
+
+  removeFurniture: (furnitureId) => {
+    let success = false;
+    set((s) => {
+      const exists = s.guildHall.furniture.some((f) => f.id === furnitureId);
+      if (!exists) return s;
+      success = true;
+      return {
+        guildHall: {
+          ...s.guildHall,
+          furniture: s.guildHall.furniture.filter((f) => f.id !== furnitureId),
+        },
+      };
+    });
+    return success;
+  },
+
+  upgradeFurniture: (furnitureId) => {
+    let success = false;
+    set((s) => {
+      const furniture = s.guildHall.furniture.find((f) => f.id === furnitureId);
+      if (!furniture) return s;
+      const def = getFurnitureDefinition(furniture.type);
+      if (!def?.upgradeCosts) return s;
+      const nextIdx = furniture.level - 1;
+      if (nextIdx >= def.upgradeCosts.length) return s;
+      const cost = def.upgradeCosts[nextIdx];
+      if (s.gold < (cost.gold ?? 0)) return s;
+
+      // Validate + deduct items
+      if (cost.items) {
+        const fullState = s as GuildSlice & { inventory: InventoryState };
+        const inv = fullState.inventory;
+        for (const [id, needed] of Object.entries(cost.items)) {
+          if (needed && needed > 0 && ((inv.items as Record<string, number>)[id] ?? 0) < needed) {
+            return s;
+          }
+        }
+        const newItems = { ...inv.items };
+        for (const [id, needed] of Object.entries(cost.items)) {
+          if (needed && needed > 0) {
+            (newItems as Record<string, number>)[id] = ((newItems as Record<string, number>)[id] ?? 0) - needed;
+          }
+        }
+        success = true;
+        return {
+          gold: s.gold - (cost.gold ?? 0),
+          inventory: { ...inv, items: newItems },
+          guildHall: {
+            ...s.guildHall,
+            furniture: s.guildHall.furniture.map((f) =>
+              f.id === furnitureId ? { ...f, level: f.level + 1 } : f,
+            ),
+          },
         } as unknown as Partial<GuildSlice>;
       }
 
       success = true;
       return {
-        gold: newGold,
-        guildHall: { ...s.guildHall, rooms: [...s.guildHall.rooms, roomWithCore] },
+        gold: s.gold - (cost.gold ?? 0),
+        guildHall: {
+          ...s.guildHall,
+          furniture: s.guildHall.furniture.map((f) =>
+            f.id === furnitureId ? { ...f, level: f.level + 1 } : f,
+          ),
+        },
       };
     });
     return success;
@@ -171,7 +293,7 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
       return {
         gold: s.gold - cost,
         roster: fullState.roster.map((m) =>
-          m.id === memberId ? { ...m, rank: 'RECRUIT' as const } : m
+          m.id === memberId ? { ...m, rank: 'RECRUIT' as const } : m,
         ),
       } as unknown as Partial<GuildSlice>;
     });
@@ -183,18 +305,16 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
     set((s) => {
       const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null };
 
-      // Find member (could be founder or roster)
       const member = fullState.founder?.id === memberId
         ? fullState.founder
         : fullState.roster.find((m) => m.id === memberId);
       if (!member || member.rank === 'MERCENARY') return s;
 
-      // Block promotion while on-mission or injured
       if (member.status === 'on-mission' || member.status === 'injured') return s;
 
       const currentRank = member.rank as GuildRank;
       const def = GUILD_RANKS[currentRank];
-      if (!def?.promotion) return s; // already max rank
+      if (!def?.promotion) return s;
 
       const req = def.promotion;
       if (member.level < req.minLevel || member.missionsCompleted < req.minMissionsCompleted) return s;
@@ -213,59 +333,6 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
         gold: s.gold - req.goldCost,
         roster: fullState.roster.map((m) => m.id === memberId ? promoted : m),
       } as unknown as Partial<GuildSlice>;
-    });
-    return success;
-  },
-
-  upgradeRoom: (roomId) => {
-    let success = false;
-    set((s) => {
-      const fullState = s as GuildSlice & { inventory: import('./game-state').InventoryState };
-      const room = s.guildHall.rooms.find((r) => r.id === roomId);
-      if (!room) return s;
-
-      const result = upgradeCoreFurniture(room);
-      if (!result) return s; // max level
-
-      const { room: upgradedRoom, cost } = result;
-
-      // Validate gold
-      if (s.gold < (cost.gold ?? 0)) return s;
-
-      // Validate items
-      if (cost.items) {
-        const inv = fullState.inventory;
-        for (const [id, needed] of Object.entries(cost.items)) {
-          if (needed && needed > 0 && ((inv.items as Record<string, number>)[id] ?? 0) < needed) {
-            return s;
-          }
-        }
-        // Deduct items
-        const newItems = { ...inv.items };
-        for (const [id, needed] of Object.entries(cost.items)) {
-          if (needed && needed > 0) {
-            (newItems as Record<string, number>)[id] = ((newItems as Record<string, number>)[id] ?? 0) - needed;
-          }
-        }
-        success = true;
-        return {
-          gold: s.gold - (cost.gold ?? 0),
-          inventory: { ...inv, items: newItems },
-          guildHall: {
-            ...s.guildHall,
-            rooms: s.guildHall.rooms.map((r) => r.id === roomId ? upgradedRoom : r),
-          },
-        } as unknown as Partial<GuildSlice>;
-      }
-
-      success = true;
-      return {
-        gold: s.gold - (cost.gold ?? 0),
-        guildHall: {
-          ...s.guildHall,
-          rooms: s.guildHall.rooms.map((r) => r.id === roomId ? upgradedRoom : r),
-        },
-      };
     });
     return success;
   },

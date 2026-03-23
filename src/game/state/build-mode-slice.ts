@@ -1,20 +1,16 @@
 import type { StateCreator } from 'zustand';
-import type { RoomType, Rotation, FurnitureType, GridCell } from './game-state';
+import type { Rotation, FurnitureType } from './game-state';
 
-/** 3 build modes: new-room | new-furniture | move-room */
-export type BuildItemType = 'new-room' | 'new-furniture' | 'move-room';
+/** 3 build modes: floor-tile | erase-tile | furniture */
+export type BuildItemType = 'floor-tile' | 'erase-tile' | 'furniture';
 
-/** Active item being placed or moved in build mode */
+/** Active item being placed in build mode */
 export interface ActiveBuildItem {
   type: BuildItemType;
-  roomType?: RoomType;
   furnitureType?: FurnitureType;
-  targetRoomId?: string;
   rotation: Rotation;
-  /** ID of room being moved (only for move-room) */
-  roomId?: string;
-  /** Original cells saved for cancel (only for move-room) */
-  originalCells?: GridCell[];
+  /** Hex color for floor-tile paint mode */
+  selectedColor: string;
 }
 
 export interface BuildModeSlice {
@@ -24,9 +20,9 @@ export interface BuildModeSlice {
   activeItem: ActiveBuildItem | null;
 
   toggleBuildMode: (on: boolean) => void;
-  startPlacement: (type: RoomType) => void;
-  startMovingRoom: (roomId: string, roomType: RoomType, cells: GridCell[]) => void;
-  startFurniturePlacement: (furnitureType: FurnitureType, targetRoomId: string) => void;
+  startFloorPaint: (color: string) => void;
+  startFloorErase: () => void;
+  startFurniturePlacement: (furnitureType: FurnitureType) => void;
   rotatePlacement: () => void;
   cancelPlacement: () => void;
 }
@@ -40,28 +36,22 @@ export const createBuildModeSlice: StateCreator<BuildModeSlice> = (set) => ({
   toggleBuildMode: (on) =>
     set({ isBuildMode: on, activeItem: null }),
 
-  startPlacement: (type) =>
+  startFloorPaint: (color) =>
     set({
       isBuildMode: true,
-      activeItem: { type: 'new-room', roomType: type, rotation: 0 },
+      activeItem: { type: 'floor-tile', rotation: 0, selectedColor: color },
     }),
 
-  startMovingRoom: (roomId, roomType, cells) =>
+  startFloorErase: () =>
     set({
       isBuildMode: true,
-      activeItem: {
-        type: 'move-room',
-        roomType,
-        rotation: 0,
-        roomId,
-        originalCells: cells.map((c) => ({ ...c })),
-      },
+      activeItem: { type: 'erase-tile', rotation: 0, selectedColor: '' },
     }),
 
-  startFurniturePlacement: (furnitureType, targetRoomId) =>
+  startFurniturePlacement: (furnitureType) =>
     set({
       isBuildMode: true,
-      activeItem: { type: 'new-furniture', furnitureType, targetRoomId, rotation: 0 },
+      activeItem: { type: 'furniture', furnitureType, rotation: 0, selectedColor: '' },
     }),
 
   rotatePlacement: () =>

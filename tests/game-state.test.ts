@@ -12,12 +12,8 @@ describe('Game State Store', () => {
       gold: 100,
       guildHall: {
         level: 1,
-        rooms: [{
-          id: 'room-guild-hall', type: 'guild-hall', level: 1,
-          cells: Array.from({ length: 36 }, (_, i) => ({ x: i % 6, z: Math.floor(i / 6) })),
-          furniture: [{ id: 'furniture-quest-board', type: 'quest-board', level: 1, position: { x: 2, z: 2 }, rotation: 0 }],
-        }],
-        maxRooms: 3,
+        floorTiles: Array.from({ length: 36 }, (_, i) => ({ x: i % 6, z: Math.floor(i / 6), color: '#DAA520' })),
+        furniture: [{ id: 'furniture-quest-board', type: 'quest-board', level: 1, position: { x: 2, z: 2 }, rotation: 0 }],
       },
       settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true },
       founder: null,
@@ -62,7 +58,7 @@ describe('Game State Store', () => {
       useGameStore.getState().upgradeGuild();
       const state = useGameStore.getState();
       expect(state.guildLevel).toBe(2);
-      expect(state.guildHall.maxRooms).toBe(4);
+      expect(state.guildHall.level).toBe(1); // guildHall.level unchanged, guildLevel incremented
     });
   });
 
@@ -147,7 +143,7 @@ describe('Game State Store', () => {
       const json = JSON.stringify(data);
       const parsed = JSON.parse(json);
       expect(parsed.gold).toBe(data.gold);
-      expect(parsed.guildHall.rooms.length).toBe(data.guildHall.rooms.length);
+      expect(parsed.guildHall.floorTiles.length).toBe(data.guildHall.floorTiles.length);
       expect(parsed.tutorialStep).toBe(data.tutorialStep);
     });
   });

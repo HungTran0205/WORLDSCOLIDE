@@ -1,22 +1,20 @@
-/** Build menu — 2-tab layout: Rooms | Furniture */
+/** Build menu — 2-tab layout: Floor | Furniture */
 
 import { useState } from 'react';
 import { useGameStore } from '@/game/state/store';
-import { ROOM_DEFINITIONS, type ResourceCost } from '@/game/data/buildings';
+import { FLOOR_TILE_COLORS } from '@/game/state/game-state';
+import type { FurnitureType } from '@/game/state/game-state';
+import { FLOOR_TILE_COST, GUILD_UPGRADES, getUnlockedFurniture } from '@/game/data/buildings';
 import { FURNITURE_DEFINITIONS } from '@/game/data/furniture';
 import { getUpgradeCost } from '@/game/systems/guild-upgrade-system';
-import { canPlaceRoom } from '@/game/systems/building-system';
-import { upgradeCoreFurniture } from '@/game/systems/furniture-system';
 import { GameIcon } from '@/ui/components/game-icon';
 import { CostDisplay } from '@/ui/components/cost-display';
-import type { RoomType } from '@/game/state/game-state';
 import '@/ui/styles/panels.css';
-
 
 interface BuildMenuProps { onClose: () => void; }
 
 export function BuildMenu({ onClose }: BuildMenuProps) {
-  const [activeTab, setActiveTab] = useState<'rooms' | 'furniture'>('rooms');
+  const [activeTab, setActiveTab] = useState<'floor' | 'furniture'>('floor');
 
   return (
     <div className="panel-overlay">
@@ -25,37 +23,87 @@ export function BuildMenu({ onClose }: BuildMenuProps) {
         <button className="panel-close-btn" onClick={onClose}>Close</button>
       </h2>
       <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
-        {(['rooms', 'furniture'] as const).map((tab) => (
+        {(['floor', 'furniture'] as const).map((tab) => (
           <button key={tab} className="panel-btn" onClick={() => setActiveTab(tab)}
             style={{ opacity: activeTab === tab ? 1 : 0.5 }}>
-            {tab === 'rooms' ? 'Rooms' : 'Furniture'}
+            {tab === 'floor' ? 'Floor' : 'Furniture'}
           </button>
         ))}
       </div>
-      {activeTab === 'rooms' && <RoomsTab onClose={onClose} />}
+      {activeTab === 'floor' && <FloorTab onClose={onClose} />}
       {activeTab === 'furniture' && <FurnitureTab onClose={onClose} />}
     </div>
   );
 }
 
-function RoomsTab({ onClose }: { onClose: () => void }) {
+function FloorTab({ onClose }: { onClose: () => void }) {
+  const gold = useGameStore((s) => s.gold);
+  const floorTiles = useGameStore((s) => s.guildHall.floorTiles);
+  const startFloorPaint = useGameStore((s) => s.startFloorPaint);
+  const startFloorErase = useGameStore((s) => s.startFloorErase);
+  const [selectedColor, setSelectedColor] = useState(FLOOR_TILE_COLORS[0].hex);
+
+  const handlePaint = () => {
+    startFloorPaint(selectedColor);
+    onClose();
+  };
+  const handleErase = () => {
+    startFloorErase();
+    onClose();
+  };
+
+  return (
+    <>
+      <div className="panel-section">
+        <strong>Floor Tiles</strong>
+        <div style={{ fontSize: '0.8rem', color: '#aaa' }}>
+          Total: {floorTiles.length} tiles &bull; Cost: {FLOOR_TILE_COST}G per tile
+        </div>
+      </div>
+
+      <h3 style={{ color: '#ffd700' }}>Color</h3>
+      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 12 }}>
+        {FLOOR_TILE_COLORS.map((c) => (
+          <button key={c.id}
+            title={c.name}
+            onClick={() => setSelectedColor(c.hex)}
+            style={{
+              width: 32, height: 32,
+              background: c.hex,
+              border: selectedColor === c.hex ? '3px solid #ffd700' : '2px solid #555',
+              borderRadius: 4, cursor: 'pointer',
+            }}
+          />
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button className="panel-btn" onClick={handlePaint}
+          disabled={gold < FLOOR_TILE_COST}>
+          Paint ({FLOOR_TILE_COST}G/tile)
+        </button>
+        <button className="panel-btn" onClick={handleErase}
+          style={{ background: '#8B0000' }}>
+          Erase
+        </button>
+      </div>
+    </>
+  );
+}
+
+function FurnitureTab({ onClose }: { onClose: () => void }) {
+  const guildLevel = useGameStore((s) => s.guildLevel);
   const guildHall = useGameStore((s) => s.guildHall);
   const gold = useGameStore((s) => s.gold);
-  const inventory = useGameStore((s) => s.inventory);
-  const guildLevel = useGameStore((s) => s.guildLevel);
+  const startFurniturePlacement = useGameStore((s) => s.startFurniturePlacement);
+  const upgradeFurniture = useGameStore((s) => s.upgradeFurniture);
   const upgradeGuild = useGameStore((s) => s.upgradeGuild);
   const spendGold = useGameStore((s) => s.spendGold);
-  const startPlacement = useGameStore((s) => s.startPlacement);
-  const upgradeRoom = useGameStore((s) => s.upgradeRoom);
-
-  const existingTypes = new Set(guildHall.rooms.map((r) => r.type));
-  const canBuildMore = guildHall.rooms.length < guildHall.maxRooms;
+  const unlockedTypes = getUnlockedFurniture(guildLevel);
   const upgradeCost = getUpgradeCost(guildLevel);
 
-  const handleSelectRoom = (type: RoomType) => {
-    const check = canPlaceRoom(guildHall, type, gold, inventory);
-    if (!check.success) return;
-    startPlacement(type);
+  const handlePlace = (type: FurnitureType) => {
+    startFurniturePlacement(type);
     onClose();
   };
 
@@ -67,9 +115,6 @@ function RoomsTab({ onClose }: { onClose: () => void }) {
     <>
       <div className="panel-section">
         <strong>Guild Level: {guildLevel}</strong>
-        <div style={{ fontSize: '0.8rem', color: '#aaa' }}>
-          Rooms: {guildHall.rooms.length}/{guildHall.maxRooms}
-        </div>
         <button className="panel-btn"
           disabled={gold < upgradeCost || upgradeCost === Infinity}
           onClick={handleUpgradeGuild}>
@@ -77,126 +122,61 @@ function RoomsTab({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      <h3 style={{ color: '#ffd700', marginTop: 16 }}>Available Rooms</h3>
-      {ROOM_DEFINITIONS
-        .filter((def) => !existingTypes.has(def.type))
-        .map((def) => {
-          const check = canPlaceRoom(guildHall, def.type, gold, inventory);
-          return (
-            <div key={def.type} className="panel-section">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <GameIcon category="room" id={def.type} size={48} fallbackText={def.name.slice(0, 2)} />
-                <div>
-                  <strong>{def.name}</strong>
-                  <div style={{ fontSize: '0.8rem', color: '#aaa' }}>
-                    {def.description} ({def.defaultWidth}x{def.defaultDepth})
-                  </div>
-                </div>
+      <h3 style={{ color: '#ffd700' }}>Available</h3>
+      {FURNITURE_DEFINITIONS.map((def) => {
+        const unlocked = unlockedTypes.includes(def.type);
+        const count = guildHall.furniture.filter((f) => f.type === def.type).length;
+        const atMax = def.maxPerGuild !== undefined && count >= def.maxPerGuild;
+        const placed = guildHall.furniture.find((f) => f.type === def.type);
+
+        return (
+          <div key={def.type} className="panel-section" style={{ opacity: unlocked ? 1 : 0.4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <GameIcon category="furniture" id={def.type} size={32} fallbackText={def.name.slice(0, 2)} />
+              <div style={{ flex: 1 }}>
+                <strong>{def.name}</strong>
+                {def.category === 'core' && ' \u2605'}
+                {def.maxPerGuild && (
+                  <span style={{ float: 'right', fontSize: '0.8rem', color: '#aaa' }}>
+                    {count}/{def.maxPerGuild}
+                  </span>
+                )}
+                <div style={{ fontSize: '0.8rem', color: '#aaa' }}>{def.description}</div>
               </div>
-              <button className="panel-btn"
-                disabled={!canBuildMore || !check.success}
-                onClick={() => handleSelectRoom(def.type)}>
+            </div>
+
+            {/* Place button */}
+            {!atMax && unlocked && (
+              <button className="panel-btn" onClick={() => handlePlace(def.type)}
+                disabled={gold < def.cost.gold}>
                 Place (<CostDisplay cost={def.cost} />)
               </button>
-            </div>
-          );
-        })}
+            )}
 
-      <h3 style={{ color: '#ffd700', marginTop: 16 }}>Current Rooms</h3>
-      {guildHall.rooms.map((room) => {
-        const upgrade = upgradeCoreFurniture(room);
-        return (
-          <div key={room.id} className="panel-section">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <GameIcon category="room" id={room.type} size={36} fallbackText={room.type.slice(0, 2)} />
-              <strong style={{ textTransform: 'capitalize' }}>{room.type.replace(/-/g, ' ')}</strong>
-            </div>
-            <span style={{ float: 'right', fontSize: '0.8rem' }}>Lv.{room.level}</span>
-            {upgrade && (
-              <button className="panel-btn" style={{ marginTop: 4 }}
-                onClick={() => upgradeRoom(room.id)}>
-                Upgrade Core (<CostDisplay cost={upgrade.cost} />)
-              </button>
+            {/* Upgrade button for placed core furniture */}
+            {def.category === 'core' && placed && def.upgradeCosts && (
+              (() => {
+                const nextIdx = placed.level - 1;
+                if (nextIdx >= def.upgradeCosts!.length) return null;
+                const cost = def.upgradeCosts![nextIdx];
+                return (
+                  <button className="panel-btn" style={{ marginTop: 4 }}
+                    onClick={() => upgradeFurniture(placed.id)}>
+                    Upgrade Lv.{placed.level}&rarr;{placed.level + 1} (<CostDisplay cost={cost} />)
+                  </button>
+                );
+              })()
+            )}
+
+            {/* Locked indicator */}
+            {!unlocked && (
+              <div style={{ fontSize: '0.75rem', color: '#ff6347' }}>
+                Locked &mdash; Guild Lv.{GUILD_UPGRADES.find((u) => u.unlockedFurniture.includes(def.type))?.level} needed
+              </div>
             )}
           </div>
         );
       })}
-    </>
-  );
-}
-
-function FurnitureTab({ onClose }: { onClose: () => void }) {
-  const guildHall = useGameStore((s) => s.guildHall);
-  const startFurniturePlacement = useGameStore((s) => s.startFurniturePlacement);
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
-
-  const selectedRoom = guildHall.rooms.find((r) => r.id === selectedRoomId);
-  const upgradeFurniture = FURNITURE_DEFINITIONS.filter((f) => {
-    if (f.category !== 'upgrade') return false;
-    if (!selectedRoom) return false;
-    return f.allowedRooms === 'any' || f.allowedRooms.includes(selectedRoom.type);
-  });
-
-  const handlePlace = (furnitureType: import('@/game/state/game-state').FurnitureType) => {
-    if (!selectedRoomId) return;
-    startFurniturePlacement(furnitureType, selectedRoomId);
-    onClose();
-  };
-
-  return (
-    <>
-      <h3 style={{ color: '#ffd700' }}>Select Room</h3>
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 12 }}>
-        {guildHall.rooms.map((room) => (
-          <button key={room.id} className="panel-btn"
-            style={{ opacity: selectedRoomId === room.id ? 1 : 0.5 }}
-            onClick={() => setSelectedRoomId(room.id)}>
-            {room.type.replace(/-/g, ' ')}
-          </button>
-        ))}
-      </div>
-
-      {selectedRoom && upgradeFurniture.length > 0 && (
-        <>
-          <h3 style={{ color: '#ffd700' }}>Available Furniture</h3>
-          {upgradeFurniture.map((def) => {
-            const count = selectedRoom.furniture.filter((f) => f.type === def.type).length;
-            const atMax = def.maxPerRoom !== undefined && count >= def.maxPerRoom;
-            return (
-              <div key={def.type} className="panel-section">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <GameIcon category="furniture" id={def.type} size={32} fallbackText={def.name.slice(0, 2)} />
-                  <div style={{ flex: 1 }}>
-                    <strong>{def.name}</strong>
-                    {def.maxPerRoom && (
-                      <span style={{ float: 'right', fontSize: '0.8rem', color: '#aaa' }}>
-                        {count}/{def.maxPerRoom}
-                      </span>
-                    )}
-                    <div style={{ fontSize: '0.8rem', color: '#aaa' }}>{def.description}</div>
-                  </div>
-                </div>
-                <button className="panel-btn" disabled={atMax}
-                  onClick={() => handlePlace(def.type)}>
-                  Place (<CostDisplay cost={def.cost} />)
-                </button>
-              </div>
-            );
-          })}
-        </>
-      )}
-
-      {selectedRoom && upgradeFurniture.length === 0 && (
-        <div style={{ color: '#aaa', fontSize: '0.85rem' }}>
-          No upgrade furniture available for this room type.
-        </div>
-      )}
-
-      {!selectedRoom && (
-        <div style={{ color: '#aaa', fontSize: '0.85rem' }}>
-          Select a room to see available furniture.
-        </div>
-      )}
     </>
   );
 }

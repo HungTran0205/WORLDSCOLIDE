@@ -1,6 +1,6 @@
 /**
  * Shared test fixtures for save system unit tests.
- * All fixtures match current game-state.ts types (v7 cell-based rooms).
+ * v9 envelope used for migration testing; VALID_GUILD_HALL matches v10 schema.
  */
 
 import type { Member, GuildHall, GameSettings, ActiveMission } from '@/game/state/game-state';
@@ -42,33 +42,27 @@ export const VALID_ROSTER_MEMBER: Member = {
   missionsCompleted: 0,
 };
 
-/** Generate a 6x6 grid of cells starting at (0,0) */
-function makeCells(ox = 0, oz = 0, w = 6, d = 6) {
-  const cells = [];
+/** Generate a 6x6 grid of floor tiles starting at (0,0) */
+function makeTiles(ox = 0, oz = 0, w = 6, d = 6, color = '#DAA520') {
+  const tiles = [];
   for (let x = ox; x < ox + w; x++) {
     for (let z = oz; z < oz + d; z++) {
-      cells.push({ x, z });
+      tiles.push({ x, z, color });
     }
   }
-  return cells;
+  return tiles;
 }
 
 export const VALID_GUILD_HALL: GuildHall = {
   level: 1,
-  rooms: [{
-    id: 'room-guild-hall',
-    type: 'guild-hall',
+  floorTiles: makeTiles(0, 0, 6, 6),
+  furniture: [{
+    id: 'furniture-quest-board',
+    type: 'quest-board',
     level: 1,
-    cells: makeCells(0, 0, 6, 6),
-    furniture: [{
-      id: 'furniture-quest-board',
-      type: 'quest-board',
-      level: 1,
-      position: { x: 2, z: 2 },
-      rotation: 0,
-    }],
+    position: { x: 2, z: 2 },
+    rotation: 0,
   }],
-  maxRooms: 3,
 };
 
 export const VALID_SETTINGS: GameSettings = {

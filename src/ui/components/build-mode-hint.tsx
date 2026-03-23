@@ -1,7 +1,6 @@
-/** Small overlay showing build mode controls — 3 modes: new-room, new-furniture, move-room */
+/** Small overlay showing build mode controls — 3 modes: floor-tile, erase-tile, furniture */
 
 import { useGameStore } from '@/game/state/store';
-import { ROOM_DEFINITIONS } from '@/game/data/buildings';
 import { FURNITURE_DEFINITIONS } from '@/game/data/furniture';
 
 export function BuildModeHint() {
@@ -11,20 +10,18 @@ export function BuildModeHint() {
   if (!isBuildMode) return null;
 
   let title = 'Build Mode';
-  let controls = 'Click a room to move it \u2022 Open Build menu for new rooms';
+  let controls = 'Open Build menu to paint floors or place furniture';
 
-  if (activeItem?.type === 'new-room') {
-    const def = ROOM_DEFINITIONS.find((r) => r.type === activeItem.roomType);
-    title = `Placing: ${def?.name ?? activeItem.roomType}`;
-    controls = `Click to place \u2022 R to rotate \u2022 Esc / Right-click to cancel`;
-  } else if (activeItem?.type === 'move-room') {
-    const def = ROOM_DEFINITIONS.find((r) => r.type === activeItem.roomType);
-    title = `Moving: ${def?.name ?? activeItem.roomType}`;
-    controls = `Click to drop \u2022 Esc / Right-click to cancel`;
-  } else if (activeItem?.type === 'new-furniture') {
+  if (activeItem?.type === 'floor-tile') {
+    title = 'Painting Floor';
+    controls = 'Click to paint \u2022 Esc to stop';
+  } else if (activeItem?.type === 'erase-tile') {
+    title = 'Erasing Floor';
+    controls = 'Click to erase \u2022 Esc to stop';
+  } else if (activeItem?.type === 'furniture') {
     const def = FURNITURE_DEFINITIONS.find((f) => f.type === activeItem.furnitureType);
     title = `Placing: ${def?.name ?? activeItem.furnitureType}`;
-    controls = `Click to place \u2022 R to rotate \u2022 Esc / Right-click to cancel`;
+    controls = 'Click to place \u2022 R to rotate \u2022 Esc / Right-click to cancel';
   }
 
   return (
