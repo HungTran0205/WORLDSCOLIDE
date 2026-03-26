@@ -67,6 +67,14 @@ export function processMissionTick(store: GameStore, now: number): MissionTickEv
       }
 
       case 'in-combat': {
+        // Manual combat handled by arena — skip if arena is active
+        // If arena is NOT active (e.g. page reload), fall through to auto-resolve
+        if (active.combatMode === 'manual' && store.gameScene === 'combat-arena') break;
+        // Force auto-resolve for stale manual combats (browser closed mid-fight)
+        if (active.combatMode === 'manual') {
+          active.combatMode = 'auto';
+        }
+
         // Resolve synchronously — combat sim is a pure, fast function
         const allMembers = store.founder ? [store.founder, ...store.roster] : store.roster;
         const members = allMembers.filter((m) => active.memberIds.includes(m.id));

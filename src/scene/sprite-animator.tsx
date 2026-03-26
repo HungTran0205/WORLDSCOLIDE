@@ -1,32 +1,25 @@
 /**
- * Sprite animation component — loads walking frame PNGs and cycles through them
- * based on movement direction. Uses Billboard for camera-facing display.
- *
- * Textures use NearestFilter for crisp pixel art rendering.
- * Three.js caches textures by URL, so same archetype+gender share texture refs.
- *
- * Accepts MutableRefObjects for direction/isMoving to avoid stale-prop issues
- * (MemberSprite never re-renders, so plain props would be permanently baked).
+ * Guild hall sprite animator — uses sprite atlas for zero texture binding cost.
+ * Walk atlas: 4 dirs × 8 frames = 32 frames in 8-col grid.
+ * Animation selects frames via UV offset (no material.map swap, no needsUpdate).
  */
 
-import { useRef, useMemo, useEffect } from 'react';
+import { useRef, useMemo } from 'react';
 import { useLoader, useFrame } from '@react-three/fiber';
-import { TextureLoader, NearestFilter, SRGBColorSpace, MeshBasicMaterial } from 'three';
+import { TextureLoader, NearestFilter, SRGBColorSpace } from 'three';
 import type { MutableRefObject } from 'react';
+import type { MeshBasicMaterial } from 'three';
 import type { SpriteDirection } from './sprite-path-resolver';
 import { getWalkingFramePath } from './sprite-path-resolver';
+import { buildAtlasFromTextures, setAtlasFrame } from './sprite-atlas';
+import type { SpriteAtlas } from './sprite-atlas';
 
 const DIRECTIONS: SpriteDirection[] = ['north', 'south', 'east', 'west'];
 const FRAME_COUNT = 8;
 const ANIMATION_FPS = 10;
 
-/** Direction → start index in the flat textures array */
-const DIR_OFFSET: Record<SpriteDirection, number> = {
-  north: 0,
-  south: FRAME_COUNT,
-  east: FRAME_COUNT * 2,
-  west: FRAME_COUNT * 3,
-};
+/** Direction → row in the atlas (8-col × 4-row grid) */
+const DIR_ROW: Record<SpriteDirection, number> = { north: 0, south: 1, east: 2, west: 3 };
 
 interface SpriteAnimatorProps {
   basePath: string;
@@ -35,80 +28,54 @@ interface SpriteAnimatorProps {
   size?: [number, number];
 }
 
-/**
- * Animated sprite mesh — displays walking animation frames as a textured plane.
- * Must be wrapped in <Suspense> (already done in world.tsx).
- */
-export function SpriteAnimator({
-  basePath,
-  directionRef,
-  isMovingRef,
-  size = [2.1, 2.1],
-}: SpriteAnimatorProps) {
+export function SpriteAnimator({ basePath, directionRef, isMovingRef, size = [2.1, 2.1] }: SpriteAnimatorProps) {
   const frameIndexRef = useRef(0);
   const elapsedRef = useRef(0);
-
-  // Build all 32 texture paths (4 dirs × 8 frames) in stable order
-  const allPaths = useMemo(() => {
-    const paths: string[] = [];
-    for (const dir of DIRECTIONS) {
-      for (let i = 0; i < FRAME_COUNT; i++) {
-        paths.push(getWalkingFramePath(basePath, dir, i));
-      }
-    }
-    return paths;
-  }, [basePath]);
-
-  // Batch-load all textures (Suspense handles async)
-  const allTextures = useLoader(TextureLoader, allPaths);
-
-  // Apply pixel art settings to each texture once on load
-  useEffect(() => {
-    for (const tex of allTextures) {
-      tex.magFilter = NearestFilter;
-      tex.minFilter = NearestFilter;
-      tex.colorSpace = SRGBColorSpace;
-    }
-  }, [allTextures]);
-
-  // Cycle animation frames via useFrame (no React re-renders)
   const materialRef = useRef<MeshBasicMaterial>(null);
 
+  /* Build atlas from loaded textures (same load as before, but packed once) */
+  const allPaths = useMemo(() => {
+    const p: string[] = [];
+    for (const dir of DIRECTIONS) {
+      for (let i = 0; i < FRAME_COUNT; i++) p.push(getWalkingFramePath(basePath, dir, i));
+    }
+    return p;
+  }, [basePath]);
+
+  const allTextures = useLoader(TextureLoader, allPaths);
+
+  const atlas = useMemo<SpriteAtlas>(() => {
+    for (const t of allTextures) {
+      t.magFilter = NearestFilter;
+      t.minFilter = NearestFilter;
+      t.colorSpace = SRGBColorSpace;
+    }
+    return buildAtlasFromTextures(allTextures, FRAME_COUNT);
+  }, [allTextures]);
+
+  /* Animation loop — only updates UV uniforms, no texture swap */
   useFrame((_, delta) => {
     if (!materialRef.current) return;
 
     if (isMovingRef.current) {
       elapsedRef.current += delta;
       if (elapsedRef.current >= 1 / ANIMATION_FPS) {
-        elapsedRef.current -= 1 / ANIMATION_FPS; // subtract instead of reset to avoid drift
+        elapsedRef.current -= 1 / ANIMATION_FPS;
         frameIndexRef.current = (frameIndexRef.current + 1) % FRAME_COUNT;
       }
     } else {
-      // Idle: reset to frame 0
       frameIndexRef.current = 0;
       elapsedRef.current = 0;
     }
 
-    const texIndex = DIR_OFFSET[directionRef.current] + frameIndexRef.current;
-    const tex = allTextures[texIndex];
-    if (tex && materialRef.current.map !== tex) {
-      materialRef.current.map = tex;
-      materialRef.current.needsUpdate = true;
-    }
+    const atlasIdx = DIR_ROW[directionRef.current] * FRAME_COUNT + frameIndexRef.current;
+    setAtlasFrame(atlas, atlasIdx);
   });
-
-  // Initial texture: south frame 0 (idle default)
-  const initialTex = allTextures[DIR_OFFSET.south];
 
   return (
     <mesh>
       <planeGeometry args={size} />
-      <meshBasicMaterial
-        ref={materialRef}
-        map={initialTex}
-        transparent
-        alphaTest={0.1}
-      />
+      <meshBasicMaterial ref={materialRef} map={atlas.texture} transparent alphaTest={0.1} />
     </mesh>
   );
 }

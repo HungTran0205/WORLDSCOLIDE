@@ -18,6 +18,8 @@ export interface EnemyTemplate {
   skill: Skill | null;
   abilities: EnemyAbility[];
   loot: LootRule[];
+  /** Sprite folder name under /sprites/enemies/ (e.g. 'slime') */
+  spriteId?: string;
 }
 
 export const ENEMIES: Record<string, EnemyTemplate> = {
@@ -27,12 +29,14 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     stats: { STR: 3, END: 2, INT: 1, DEX: 1, CHA: 0, LCK: 1, AGI: 2 },
     skill: null, abilities: [],
     loot: [{ itemId: 'SLIME_GEL', chance: 0.75, min: 1, max: 2 }, { itemId: 'WOOD', chance: 0.15, min: 1, max: 2 }],
+    spriteId: 'slime',
   },
   'forest-spider': {
     id: 'forest-spider', name: 'Forest Spider', level: 1,
     stats: { STR: 4, END: 2, INT: 1, DEX: 3, CHA: 0, LCK: 1, AGI: 4 },
     skill: null, abilities: [{ type: 'poison-attack', chance: 0.10 }],
     loot: [{ itemId: 'SLIME_GEL', chance: 0.5, min: 1, max: 1 }],
+    spriteId: 'forest-spider',
   },
 
   // --- Level 2 ---
@@ -41,18 +45,21 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     stats: { STR: 6, END: 4, INT: 2, DEX: 5, CHA: 0, LCK: 3, AGI: 5 },
     skill: null, abilities: [{ type: 'poison-attack', chance: 0.15 }],
     loot: [{ itemId: 'GOBLIN_EAR', chance: 0.8, min: 1, max: 1 }, { itemId: 'WOOD', chance: 0.15, min: 1, max: 2 }],
+    spriteId: 'goblin',
   },
   bandit: {
     id: 'bandit', name: 'Bandit', level: 2,
     stats: { STR: 5, END: 5, INT: 2, DEX: 4, CHA: 1, LCK: 2, AGI: 4 },
     skill: null, abilities: [],
     loot: [{ itemId: 'GOBLIN_EAR', chance: 0.4, min: 1, max: 1 }, { itemId: 'IRON_ORE', chance: 0.2, min: 1, max: 1 }],
+    spriteId: 'bandit',
   },
   'cave-bat': {
     id: 'cave-bat', name: 'Cave Bat', level: 2,
     stats: { STR: 3, END: 2, INT: 1, DEX: 6, CHA: 0, LCK: 2, AGI: 8 },
     skill: null, abilities: [],
     loot: [{ itemId: 'BOAR_PELT', chance: 0.3, min: 1, max: 1 }],
+    spriteId: 'cave-bat',
   },
 
   // --- Level 3 ---
@@ -61,18 +68,21 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     stats: { STR: 8, END: 5, INT: 1, DEX: 4, CHA: 0, LCK: 2, AGI: 7 },
     skill: null, abilities: [],
     loot: [{ itemId: 'WOLF_FANG', chance: 0.4, min: 1, max: 1 }, { itemId: 'BOAR_PELT', chance: 0.3, min: 1, max: 1 }],
+    spriteId: 'wolf',
   },
   'wild-boar': {
     id: 'wild-boar', name: 'Wild Boar', level: 3,
     stats: { STR: 7, END: 10, INT: 1, DEX: 2, CHA: 0, LCK: 1, AGI: 3 },
     skill: null, abilities: [{ type: 'enrage', chance: 0.15 }],
     loot: [{ itemId: 'BOAR_PELT', chance: 0.6, min: 1, max: 2 }, { itemId: 'WOOD', chance: 0.2, min: 1, max: 1 }],
+    spriteId: 'wild-boar',
   },
   'slime-king': {
     id: 'slime-king', name: 'Slime King', level: 3,
     stats: { STR: 8, END: 20, INT: 3, DEX: 2, CHA: 0, LCK: 5, AGI: 2 },
     skill: null, abilities: [],
     loot: [{ itemId: 'SLIME_GEL', chance: 1.0, min: 2, max: 4 }, { itemId: 'STONE', chance: 0.5, min: 1, max: 2 }],
+    spriteId: 'slime',
   },
 
   // --- Level 4 (boss: queen-spider) ---
@@ -81,12 +91,14 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     stats: { STR: 4, END: 6, INT: 8, DEX: 3, CHA: 2, LCK: 3, AGI: 4 },
     skill: null, abilities: [{ type: 'heal-ally', chance: 0.20 }],
     loot: [{ itemId: 'GOBLIN_EAR', chance: 0.6, min: 1, max: 1 }, { itemId: 'STONE', chance: 0.3, min: 1, max: 2 }],
+    spriteId: 'goblin-shaman',
   },
   'queen-spider': {
     id: 'queen-spider', name: 'Queen Spider', level: 4,
     stats: { STR: 9, END: 15, INT: 3, DEX: 5, CHA: 0, LCK: 3, AGI: 5 },
     skill: null, abilities: [{ type: 'poison-attack', chance: 0.30 }],
     loot: [{ itemId: 'SLIME_GEL', chance: 1.0, min: 2, max: 3 }, { itemId: 'IRON_ORE', chance: 0.4, min: 1, max: 2 }],
+    spriteId: 'queen-spider',
   },
 
   // --- Level 5 ---
@@ -95,12 +107,14 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     stats: { STR: 12, END: 15, INT: 2, DEX: 3, CHA: 0, LCK: 2, AGI: 3 },
     skill: null, abilities: [],
     loot: [{ itemId: 'ORC_TUSK', chance: 0.35, min: 1, max: 1 }, { itemId: 'IRON_ORE', chance: 0.25, min: 1, max: 3 }],
+    spriteId: 'orc-warrior',
   },
   'dire-wolf': {
     id: 'dire-wolf', name: 'Dire Wolf', level: 5,
     stats: { STR: 11, END: 10, INT: 1, DEX: 6, CHA: 0, LCK: 3, AGI: 8 },
     skill: null, abilities: [{ type: 'stun-attack', chance: 0.10 }],
     loot: [{ itemId: 'WOLF_FANG', chance: 0.7, min: 1, max: 2 }],
+    spriteId: 'dire-wolf',
   },
 
   // --- Level 6 ---
@@ -109,6 +123,7 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     stats: { STR: 14, END: 10, INT: 1, DEX: 4, CHA: 0, LCK: 2, AGI: 5 },
     skill: null, abilities: [{ type: 'enrage', chance: 0.25 }],
     loot: [{ itemId: 'ORC_TUSK', chance: 0.5, min: 1, max: 1 }, { itemId: 'IRON_ORE', chance: 0.3, min: 1, max: 2 }],
+    spriteId: 'orc-berserker',
   },
 
   // --- Level 7 ---
@@ -117,6 +132,7 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     stats: { STR: 14, END: 25, INT: 1, DEX: 1, CHA: 0, LCK: 1, AGI: 1 },
     skill: null, abilities: [],
     loot: [{ itemId: 'STONE', chance: 0.9, min: 2, max: 3 }, { itemId: 'IRON_ORE', chance: 0.4, min: 1, max: 2 }],
+    spriteId: 'stone-golem',
   },
 
   // --- Level 8 (boss: warlord-grok) ---
@@ -125,5 +141,6 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     stats: { STR: 18, END: 22, INT: 3, DEX: 5, CHA: 2, LCK: 3, AGI: 4 },
     skill: null, abilities: [{ type: 'enrage', chance: 0.20 }, { type: 'stun-attack', chance: 0.15 }],
     loot: [{ itemId: 'ORC_TUSK', chance: 1.0, min: 2, max: 3 }, { itemId: 'IRON_ORE', chance: 0.6, min: 2, max: 4 }],
+    spriteId: 'warlord-grok',
   },
 };

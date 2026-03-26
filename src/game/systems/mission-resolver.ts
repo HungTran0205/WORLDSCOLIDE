@@ -20,6 +20,41 @@ function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+/** Create MissionResult from an externally-provided CombatResult (arena engine) */
+export function resolveMissionWithResult(
+  mission: Mission,
+  members: Member[],
+  combatResult: CombatResult,
+): MissionResult {
+  let goldEarned = 0;
+  let expPerMember = 0;
+  let lootEarned: Partial<Record<ItemID, number>> = {};
+
+  if (combatResult.outcome !== 'full-wipe') {
+    goldEarned = randomInt(mission.goldRewardMin, mission.goldRewardMax);
+    expPerMember = Math.max(1, Math.floor(mission.expReward / members.length));
+    const avgLck = members.reduce((s, m) => s + m.stats.LCK, 0) / members.length;
+    goldEarned = Math.floor(goldEarned * (1 + avgLck * 0.01));
+
+    const lootRolls = mission.enemyIds
+      .map((id) => ENEMIES[id])
+      .filter(Boolean)
+      .map((enemy) => rollLoot(enemy.loot));
+    lootEarned = mergeLoot(...lootRolls);
+  }
+
+  return {
+    missionId: mission.id,
+    outcome: combatResult.outcome,
+    goldEarned,
+    expPerMember,
+    survivors: combatResult.survivors,
+    injured: combatResult.injured,
+    combatResult,
+    lootEarned,
+  };
+}
+
 /** Resolve a mission by running combat simulation and calculating rewards */
 export function resolveMission(mission: Mission, members: Member[]): MissionResult {
   if (members.length === 0) {

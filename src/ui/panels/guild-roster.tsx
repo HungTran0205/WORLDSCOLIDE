@@ -6,6 +6,7 @@ import { MISSIONS } from '@/game/data/missions';
 import { canPromote } from '@/game/data/ranks';
 import { CIVILIZATIONS, CIV_CONFIG } from '@/game/data/civilization-config';
 import type { StatKey } from '@/game/state/game-state';
+import { ConfirmDialog } from '@/ui/components/confirm-dialog';
 import '@/ui/styles/panels.css';
 
 interface GuildRosterProps {
@@ -24,6 +25,7 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
   const removeMember = useGameStore((s) => s.removeMember);
 
   const [civFilter, setCivFilter] = useState<string>('all');
+  const [releaseTarget, setReleaseTarget] = useState<string | null>(null);
 
   const members = useMemo(() => {
     const all = founder ? [founder, ...roster] : roster;
@@ -80,7 +82,7 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
               <button
                 className="panel-btn"
                 style={{ fontSize: '0.75rem', padding: '4px 8px', marginTop: 0, marginBottom: 8 }}
-                onClick={() => { removeMember(member.id); setSelectedMemberId(null); }}
+                onClick={() => setReleaseTarget(member.id)}
               >
                 Release
               </button>
@@ -115,6 +117,15 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
             onClose={() => setSelectedMemberId(null)}
           />
         </div>
+      )}
+      {releaseTarget && (
+        <ConfirmDialog
+          message={`Release ${members.find((m) => m.id === releaseTarget)?.name ?? 'this member'}? This cannot be undone.`}
+          confirmLabel="Release"
+          danger
+          onConfirm={() => { removeMember(releaseTarget); setReleaseTarget(null); setSelectedMemberId(null); }}
+          onCancel={() => setReleaseTarget(null)}
+        />
       )}
     </>
   );

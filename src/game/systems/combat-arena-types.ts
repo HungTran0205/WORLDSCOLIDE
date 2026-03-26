@@ -22,14 +22,14 @@ export type ArenaPhase = 'idle' | 'prep' | 'fighting' | 'result';
 /** 6-slot formation: indices 0-2 = front row, 3-5 = back row */
 export type Formation = (string | null)[];
 
-/** Attack range constants by archetype category */
+/** Attack range constants — melee (1.5) vs ranged (5.0) */
 export const ARCHETYPE_RANGE: Record<string, number> = {
   warrior: 1.5,
-  scout: 2.0,
-  dualblade: 2.0,
+  dualblade: 1.5,
+  engineer: 1.5,
+  scout: 5.0,
   scholar: 5.0,
   philosopher: 5.0,
-  engineer: 5.0,
 };
 
 /** Default move speed (units per second) */

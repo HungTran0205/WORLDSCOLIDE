@@ -27,6 +27,23 @@ export function getWalkingFramePath(basePath: string, direction: SpriteDirection
   return `${basePath}/animations/walking-8-frames/${direction}/frame_${padded}.png`;
 }
 
+/** Build path to a character attack animation frame */
+export function getAttackFramePath(basePath: string, direction: SpriteDirection, frame: number): string {
+  const padded = String(frame).padStart(3, '0');
+  return `${basePath}/animations/attack/${direction}/frame_${padded}.png`;
+}
+
+/** Build path to an enemy animation frame (west direction only on disk) */
+export function getEnemyAnimFramePath(spriteId: string, anim: string, frame: number): string {
+  const padded = String(frame).padStart(3, '0');
+  return `/sprites/enemies/${spriteId}/animations/${anim}/west/frame_${padded}.png`;
+}
+
+/** @deprecated Use getEnemyAnimFramePath(spriteId, 'walk', frame) */
+export function getEnemyWalkFramePath(spriteId: string, frame: number): string {
+  return getEnemyAnimFramePath(spriteId, 'walk', frame);
+}
+
 /** Determine sprite direction from movement delta (isometric camera at [10,10,10]) */
 export function getDirectionFromMovement(dx: number, dz: number): SpriteDirection {
   if (Math.abs(dx) > Math.abs(dz)) {

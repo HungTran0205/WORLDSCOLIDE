@@ -18,6 +18,18 @@ export interface CombatEntity {
   civilization?: string;
   passiveState?: PassiveState;
   baseStats?: Stats;
+
+  // Spatial fields (used by real-time arena, absent in auto-resolve)
+  position?: { x: number; z: number };
+  targetId?: string | null;
+  attackRange?: number;
+  moveSpeed?: number;
+  animState?: 'idle' | 'walking' | 'attacking' | 'skill' | 'hit' | 'dead';
+  facingRight?: boolean;
+  archetype?: string;
+  gender?: 'M' | 'F';
+  /** Enemy sprite folder name (e.g. 'slime') */
+  spriteId?: string;
 }
 
 export interface ActiveEffect {
@@ -37,8 +49,8 @@ export interface CombatTick {
 }
 
 export type CombatEvent =
-  | { type: 'auto-attack'; attackerId: string; targetId: string; damage: number }
-  | { type: 'skill-use'; attackerId: string; targetId: string; damage: number; skillName: string }
+  | { type: 'auto-attack'; attackerId: string; targetId: string; damage: number; isCrit?: boolean }
+  | { type: 'skill-use'; attackerId: string; targetId: string; damage: number; skillName: string; isCrit?: boolean }
   | { type: 'effect-applied'; targetId: string; effect: string }
   | { type: 'effect-tick'; targetId: string; effect: string; damage: number }
   | { type: 'death'; entityId: string }

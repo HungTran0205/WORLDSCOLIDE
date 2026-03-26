@@ -8,7 +8,6 @@ import { ENEMIES } from '@/game/data/enemies';
 import { validateDispatch, createActiveMission } from '@/game/systems/mission-dispatch';
 import { QUEST_BOARD_TIER_BY_LEVEL } from '@/game/data/buildings';
 import { QuestDetailModal } from '@/ui/panels/quest-detail-modal';
-import { ActiveMissionsList } from '@/ui/panels/active-missions-list';
 import { GameIcon } from '@/ui/components/game-icon';
 import { playSFX } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
@@ -25,7 +24,6 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
   const roster = useGameStore((s) => s.roster);
   const guildHall = useGameStore((s) => s.guildHall);
   const gold = useGameStore((s) => s.gold);
-  const activeMissions = useGameStore((s) => s.activeMissions);
   const dispatchMission = useGameStore((s) => s.dispatchMission);
   const spendGold = useGameStore((s) => s.spendGold);
   const updateMemberStatus = useGameStore((s) => s.updateMemberStatus);
@@ -139,10 +137,6 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
         />
       )}
 
-      {/* Active missions */}
-      {activeMissions.length > 0 && (
-        <ActiveMissionsList activeMissions={activeMissions} />
-      )}
     </div>
   );
 }

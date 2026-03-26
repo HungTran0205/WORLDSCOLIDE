@@ -115,18 +115,18 @@ export interface PlacedFurniture {
   rotation: Rotation;
 }
 
-/** Preset floor tile colors for the build palette */
+/** Preset floor tile colors for the build palette (texture auto-detected from hex) */
 export const FLOOR_TILE_COLORS = [
-  { id: 'gold', name: 'Gold', hex: '#DAA520' },
-  { id: 'wood-brown', name: 'Wood', hex: '#8B4513' },
-  { id: 'steel-blue', name: 'Steel', hex: '#4682B4' },
+  { id: 'gold', name: 'Oak Wood', hex: '#DAA520' },
+  { id: 'wood-brown', name: 'Dark Wood', hex: '#8B4513' },
+  { id: 'steel-blue', name: 'Blue Stone', hex: '#4682B4' },
   { id: 'slate', name: 'Slate', hex: '#708090' },
   { id: 'stone', name: 'Stone', hex: '#A0A0A0' },
-  { id: 'crimson', name: 'Crimson', hex: '#FF6347' },
-  { id: 'forest', name: 'Forest', hex: '#2E8B57' },
-  { id: 'ivory', name: 'Ivory', hex: '#FFFFF0' },
+  { id: 'crimson', name: 'Red Cement', hex: '#FF6347' },
+  { id: 'forest', name: 'Green Cement', hex: '#2E8B57' },
+  { id: 'ivory', name: 'White Cement', hex: '#FFFFF0' },
   { id: 'obsidian', name: 'Obsidian', hex: '#1C1C1C' },
-  { id: 'royal-blue', name: 'Royal', hex: '#4169E1' },
+  { id: 'royal-blue', name: 'Marble', hex: '#4169E1' },
 ] as const;
 
 export type FloorTileColorId = typeof FLOOR_TILE_COLORS[number]['id'];
@@ -142,6 +142,8 @@ export interface GuildHall {
   floorTiles: FloorTile[];
   furniture: PlacedFurniture[];
 }
+
+export type GameScene = 'guild-hall' | 'combat-arena';
 
 export type TutorialStep =
   | 'char-creation'

@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { World } from '@/scene/world';
+import { CombatArenaCanvas } from '@/scene/combat-arena';
 import { HUD } from '@/ui/hud/hud';
 import { QuestBoard } from '@/ui/panels/quest-board';
 import { GuildRoster } from '@/ui/panels/guild-roster';
@@ -15,6 +16,10 @@ import { SettingsPanel } from '@/ui/panels/settings-panel';
 import { GameOverOverlay } from '@/ui/panels/game-over-overlay';
 import { BuildModeHint } from '@/ui/components/build-mode-hint';
 import { MissionNotification } from '@/ui/components/mission-notification';
+import { ActiveMissionsList } from '@/ui/panels/active-missions-list';
+import { CombatPrepPanel } from '@/ui/panels/combat-prep-panel';
+import { CombatSkillHotbar } from '@/ui/panels/combat-skill-hotbar';
+import { CombatResultOverlay } from '@/ui/panels/combat-result-overlay';
 import { useGameTickLoop } from '@/ui/hooks/use-game-tick-loop';
 import { useGameStore } from '@/game/state/store';
 import type { PanelId } from '@/ui/hud/panel-toggle';
@@ -54,6 +59,8 @@ interface GameScreenProps {
 export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   const [activePanel, setActivePanel] = useState<PanelId>(null);
   const currentCombatReplay = useGameStore((s) => s.currentCombatReplay);
+  const gameScene = useGameStore((s) => s.gameScene);
+  const arenaPhase = useGameStore((s) => s.arenaPhase);
 
   // Auto-open combat panel when manual combat replay is set
   useEffect(() => {
@@ -73,23 +80,40 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
 
   return (
     <>
-      <World />
-      <HUD activePanel={activePanel} setActivePanel={setActivePanel} />
-      {activePanel === 'quests' && <QuestBoard onClose={() => setActivePanel(null)} />}
-      {activePanel === 'roster' && <GuildRoster onClose={() => setActivePanel(null)} />}
-      {activePanel === 'tavern' && <TavernPanel onClose={() => setActivePanel(null)} />}
-      {activePanel === 'build' && <BuildMenu onClose={() => setActivePanel(null)} />}
-      {activePanel === 'combat' && <CombatView onClose={() => setActivePanel(null)} />}
-      {activePanel === 'settings' && (
-        <SettingsPanel
-          onClose={() => setActivePanel(null)}
-          onReturnToTitle={onReturnToTitle}
-        />
+      {/* Scene switching: guild-hall vs combat-arena */}
+      {gameScene === 'guild-hall' && <World />}
+      {gameScene === 'combat-arena' && <CombatArenaCanvas />}
+
+      {/* HUD + panels (only in guild-hall) */}
+      {gameScene === 'guild-hall' && (
+        <>
+          <HUD activePanel={activePanel} setActivePanel={setActivePanel} />
+          {activePanel === 'quests' && <QuestBoard onClose={() => setActivePanel(null)} />}
+          {activePanel === 'roster' && <GuildRoster onClose={() => setActivePanel(null)} />}
+          {activePanel === 'tavern' && <TavernPanel onClose={() => setActivePanel(null)} />}
+          {activePanel === 'build' && <BuildMenu onClose={() => setActivePanel(null)} />}
+          {activePanel === 'combat' && <CombatView onClose={() => setActivePanel(null)} />}
+          {activePanel === 'settings' && (
+            <SettingsPanel
+              onClose={() => setActivePanel(null)}
+              onReturnToTitle={onReturnToTitle}
+            />
+          )}
+          <BuildModeHint />
+          <BuildModeToggle />
+        </>
       )}
+
+      {/* Always visible regardless of scene */}
+      <ActiveMissionsList />
       <MissionNotification />
-      <BuildModeHint />
-      <BuildModeToggle />
-      {isGameOver && <GameOverOverlay onReturnToTitle={onReturnToTitle} />}
+
+      {/* Combat arena UI overlays */}
+      {gameScene === 'combat-arena' && arenaPhase === 'prep' && <CombatPrepPanel />}
+      {gameScene === 'combat-arena' && arenaPhase === 'fighting' && <CombatSkillHotbar />}
+      {gameScene === 'combat-arena' && arenaPhase === 'result' && <CombatResultOverlay />}
+
+      {isGameOver && gameScene === 'guild-hall' && <GameOverOverlay onReturnToTitle={onReturnToTitle} />}
     </>
   );
 }

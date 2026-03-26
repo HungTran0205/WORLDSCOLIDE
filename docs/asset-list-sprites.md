@@ -657,12 +657,8 @@
 
 ```json
 {
-  "id": "slime",
-  "type": "enemy-sprite",
   "name": "Slime",
   "level": 1,
-  "boss": false,
-  "resolution": "48x48",
   "body": "amorphous blob shape, round, jiggly (2-frame wobble), translucent body with darker core nucleus visible inside",
   "features": "2 simple dot eyes (white with black pupil), no mouth, small bubbles on surface (3-4 dots)",
   "colorPattern": {
@@ -670,16 +666,12 @@
     "core": "#3d6b1f (darker green nucleus)",
     "highlight": "#b8e986 (light green top highlight)",
     "shadow": "#2d5016 (dark green bottom shadow)"
-  },
-  "animation_hint": "idle wobble, squish vertically (2 frames)",
-  "loot_visual": "drops gel puddle on defeat"
+  }
 }
 ```
 
 ```json
 {
-  "id": "forest-spider",
-  "type": "enemy-sprite",
   "name": "Forest Spider",
   "level": 1,
   "boss": false,
@@ -692,9 +684,7 @@
     "eyes": "#ff3333 (red, glowing)",
     "legs": "#5c4033 (medium brown)",
     "venom_drip": "#90ee90 (pale green)"
-  },
-  "animation_hint": "legs shuffle, mandibles twitch",
-  "special_visual": "poison-attack: green venom projectile arc"
+  }
 }
 ```
 
@@ -702,12 +692,7 @@
 
 ```json
 {
-  "id": "goblin",
-  "type": "enemy-sprite",
   "name": "Goblin",
-  "level": 2,
-  "boss": false,
-  "resolution": "48x48",
   "body": "small humanoid (3/4 height of player), hunched posture, wiry build",
   "features": "large pointed ears, bulging yellow eyes, sharp-toothed grin, long crooked nose, patchy leather scraps as armor",
   "clothing": "ragged loincloth, one shoulder strap, crude belt with stolen trinkets",
@@ -717,20 +702,13 @@
     "eyes": "#ffdd33 (yellow)",
     "clothing": "#5c4033 (dirty brown leather)",
     "weapon": "#8b7355 (rusty iron)"
-  },
-  "animation_hint": "bouncing on feet, weapon swaying",
-  "special_visual": "poison-attack: throws venom pouch (green arc)"
+  }
 }
 ```
 
 ```json
 {
-  "id": "bandit",
-  "type": "enemy-sprite",
   "name": "Bandit",
-  "level": 2,
-  "boss": false,
-  "resolution": "48x48",
   "body": "human-sized, lean build, hunched aggressive stance",
   "features": "face obscured by cloth mask (only eyes visible), stubble on chin, scar across bridge of nose",
   "clothing": "dark hooded cloak (torn hem), leather vest over dirty shirt, belt with coin purse, wrapped boots",
@@ -748,12 +726,7 @@
 
 ```json
 {
-  "id": "cave-bat",
-  "type": "enemy-sprite",
   "name": "Cave Bat",
-  "level": 2,
-  "boss": false,
-  "resolution": "48x48",
   "body": "small winged creature, wingspan wider than body, membrane wings with visible finger bones",
   "features": "large pointed ears, tiny red eyes, open mouth showing fangs, fur tuft on chest",
   "colorPattern": {
@@ -761,10 +734,9 @@
     "wing_membrane": "#4a4a6a (slightly lighter purple-grey, translucent feel)",
     "eyes": "#ff4444 (red pinpoints)",
     "ears_inner": "#8b6080 (pinkish-purple)"
-  },
-  "animation_hint": "flapping wings (2-frame cycle), hovering in place",
-  "special_visual": "none — fast AGI represented by blur trail"
+  }
 }
+"animation_hint": "flapping wings (2-frame cycle), hovering in place",
 ```
 
 ### Level 3
@@ -815,13 +787,8 @@
 
 ```json
 {
-  "id": "slime-king",
-  "type": "enemy-sprite",
   "name": "Slime King",
-  "level": 3,
-  "boss": false,
-  "resolution": "48x48",
-  "body": "larger slime (1.5x normal slime), crown embedded in gel body, smaller slime satellites orbit (2 tiny)",
+  "body": "larger slime , crown embedded in gel body, smaller slime satellites orbit (2 tiny)",
   "features": "angry angled eyes (V-shaped brow), jagged mouth line, golden crown half-submerged in body, denser/less translucent than normal slime",
   "colorPattern": {
     "body": "#50a030 (deeper green than normal slime)",
@@ -830,9 +797,8 @@
     "highlight": "#8ed860 (top shine)",
     "eyes": "#ffffff (white, angry)"
   },
-  "animation_hint": "slower wobble than slime, crown bobs, satellite slimes orbit",
-  "special_visual": "none — tanky (high END)"
 }
+ "animation_hint": "slower wobble than slime, crown bobs, satellite slimes orbit",
 ```
 
 ### Level 4

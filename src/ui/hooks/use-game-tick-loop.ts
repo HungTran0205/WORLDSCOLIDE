@@ -20,6 +20,9 @@ export function useGameTickLoop() {
   const handleTick = useCallback((now: number) => {
     const store = useGameStore.getState();
 
+    // Pause game tick during combat arena to prevent injury recovery, tavern refresh, etc.
+    if (store.gameScene === 'combat-arena') return;
+
     // Advance game clock
     store.tickClock(now);
 

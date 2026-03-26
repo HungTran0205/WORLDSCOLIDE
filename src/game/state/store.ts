@@ -7,8 +7,9 @@ import { createSaveStatusSlice, type SaveStatusSlice } from './save-status-slice
 import { createNotificationSlice, type NotificationSlice } from './notification-slice';
 import { createBuildModeSlice, type BuildModeSlice } from './build-mode-slice';
 import { createInventorySlice, type InventorySlice } from './inventory-slice';
+import { createCombatArenaSlice, type CombatArenaSlice } from './combat-arena-slice';
 
-export type GameStore = ClockSlice & GuildSlice & RosterSlice & MissionSlice & SaveStatusSlice & NotificationSlice & BuildModeSlice & InventorySlice;
+export type GameStore = ClockSlice & GuildSlice & RosterSlice & MissionSlice & SaveStatusSlice & NotificationSlice & BuildModeSlice & InventorySlice & CombatArenaSlice;
 
 export const useGameStore = create<GameStore>()((...a) => ({
   ...createClockSlice(...a),
@@ -19,6 +20,7 @@ export const useGameStore = create<GameStore>()((...a) => ({
   ...createNotificationSlice(...a),
   ...createBuildModeSlice(...a),
   ...createInventorySlice(...a),
+  ...createCombatArenaSlice(...a),
 }));
 
 /** Reset all game data to fresh-game defaults (preserves action functions) */
@@ -40,5 +42,15 @@ export function resetGameState(): void {
     pendingResults: [],
     currentCombatReplay: null,
     inventory: { items: {} },
+    // Combat arena defaults
+    gameScene: 'guild-hall' as const,
+    arenaPhase: 'idle' as const,
+    arenaMissionId: null,
+    formation: [null, null, null, null, null, null],
+    arenaEntities: [],
+    arenaTime: 0,
+    speedMultiplier: 1,
+    recentEvents: [],
+    arenaResult: null,
   });
 }

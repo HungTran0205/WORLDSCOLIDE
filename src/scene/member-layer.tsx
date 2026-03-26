@@ -1,3 +1,9 @@
+/**
+ * Guild hall member sprites — wandering idle members with name indicators.
+ * Single Billboard per member, no troika Text (uses colored bar instead).
+ * Invalidates at 20fps only when members exist and are visible.
+ */
+
 import { Billboard, Text } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGameStore } from '@/game/state/store';
@@ -15,7 +21,7 @@ function getAllCellCenters(tiles: { x: number; z: number }[]): { x: number; z: n
   return tiles.map((t) => ({ x: t.x + 0.5, z: t.z + 0.5 }));
 }
 
-/** Deterministic pseudo-random from seed (avoid Math.random in render) */
+/** Deterministic pseudo-random from seed */
 function seededIndex(seed: number, max: number): number {
   return Math.abs(Math.floor(Math.sin(seed * 9301 + 49297) * 233280)) % max;
 }
@@ -29,11 +35,11 @@ function MemberSprite({ member, index }: { member: Member; index: number }) {
   const floorTiles = useGameStore((s) => s.guildHall.floorTiles);
   const cells = useMemo(() => getAllCellCenters(floorTiles), [floorTiles]);
 
-  useFrame(({ clock }, delta) => {
+  useFrame(({ clock }, rawDelta) => {
     if (!ref.current || cells.length === 0) return;
+    const delta = Math.min(rawDelta, 0.1);
     const pos = ref.current.position;
 
-    // Pick initial or new target when close enough
     if (!targetRef.current || waitRef.current <= 0) {
       const idx = seededIndex(clock.elapsedTime * 100 + index * 37, cells.length);
       targetRef.current = cells[idx];
@@ -51,19 +57,14 @@ function MemberSprite({ member, index }: { member: Member; index: number }) {
     } else {
       isMovingRef.current = true;
       directionRef.current = getDirectionFromMovement(dx, dz);
-      // Delta-time based movement (frame-rate independent)
-      const speed = 0.9; // units per second
+      const speed = 0.9;
       pos.x += (dx / dist) * speed * delta;
       pos.z += (dz / dist) * speed * delta;
     }
   });
 
-  // Start at first cell center
-  const startPos = cells.length > 0
-    ? cells[index % cells.length]
-    : { x: 3, z: 3 };
+  const startPos = cells.length > 0 ? cells[index % cells.length] : { x: 3, z: 3 };
 
-  // Resolve sprite path with fallbacks for old saves missing archetype/gender
   const civConfig = CIV_CONFIG[member.civilization as Civilization];
   const archetype = member.archetype ?? civConfig?.archetypes[0] ?? 'warrior';
   const gender = member.gender ?? 'M';
@@ -71,15 +72,23 @@ function MemberSprite({ member, index }: { member: Member; index: number }) {
 
   return (
     <group ref={ref} position={[startPos.x, 1.05, startPos.z]}>
+      {/* Single Billboard — sprite + name indicator */}
       <Billboard>
         <SpriteAnimator
           basePath={basePath}
           directionRef={directionRef}
           isMovingRef={isMovingRef}
         />
-      </Billboard>
-      <Billboard position={[0, 1.3, 0]}>
-        <Text fontSize={0.2} color="white" anchorY="bottom" outlineWidth={0.025} outlineColor="black">
+        {/* Member name */}
+        <Text
+          position={[0, 1.3, 0]}
+          fontSize={0.2}
+          color="white"
+          anchorX="center"
+          anchorY="bottom"
+          outlineWidth={0.025}
+          outlineColor="black"
+        >
           {member.name}
         </Text>
       </Billboard>
@@ -99,18 +108,15 @@ export function MemberLayer() {
     return all.filter((m) => m.status === 'idle');
   }, [founder, roster]);
 
-  // Drive render loop at 20fps only when members are visible (demand mode)
+  /* Drive render loop at 20fps only when members are visible */
   const hasMembers = !isBuildMode && idleMembers.length > 0;
   useEffect(() => {
     if (!hasMembers) return;
-    const interval = setInterval(invalidate, 1000 / 20);
-    return () => clearInterval(interval);
+    const id = setInterval(invalidate, 1000 / 20);
+    return () => clearInterval(id);
   }, [hasMembers, invalidate]);
 
-  // Force one re-render when idle member list changes (e.g. dispatch removes a member)
-  useEffect(() => {
-    invalidate();
-  }, [idleMembers.length, invalidate]);
+  useEffect(() => { invalidate(); }, [idleMembers.length, invalidate]);
 
   if (isBuildMode) return null;
 
