@@ -1,14 +1,32 @@
-/** Combat arena — replays combat ticks visually. Stub for MVP. */
-export function CombatArena() {
+/** Full combat arena — dedicated R3F Canvas replacing World during combat */
+
+import { Suspense } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { useGameStore } from '@/game/state/store';
+import { CombatArenaEnvironment } from './combat-arena-environment';
+import { CombatEntitySprite } from './combat-entity-sprite';
+import { CombatFightController } from './combat-fight-controller';
+import { CombatVfxLayer } from './combat-vfx-layer';
+export function CombatArenaCanvas() {
+  const entities = useGameStore(s => s.arenaEntities);
+
   return (
-    <group>
-      {/* Arena ground */}
-      <mesh position={[0, -0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[12, 8]} />
-        <meshStandardMaterial color="#3a5a3a" />
-      </mesh>
-      {/* Ally positions (left side) — populated by combat system */}
-      {/* Enemy positions (right side) — populated by combat system */}
-    </group>
+    <Canvas
+      frameloop="always"
+      orthographic
+      camera={{ zoom: 60, position: [0, 7, 10], near: 0.1, far: 1000 }}
+      dpr={[1, 1.5]}
+      gl={{ antialias: false }}
+      style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}
+    >
+      <CombatFightController />
+      <Suspense fallback={null}>
+        <CombatArenaEnvironment />
+        {entities.map(entity => (
+          <CombatEntitySprite key={entity.id} entity={entity} />
+        ))}
+        <CombatVfxLayer />
+      </Suspense>
+    </Canvas>
   );
 }

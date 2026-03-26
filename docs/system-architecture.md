@@ -91,6 +91,249 @@
 └──────────────────────────────────────────────────────────────┘
 ```
 
+## Combat Arena System (v1.11 — Real-Time Visual Combat)
+
+### Overview
+
+The combat arena provides real-time visual combat as an alternative to text-log auto-resolve. When a mission reaches the "arrived" phase, players can choose "Manual" mode to enter the arena, where they control formation setup and actively cast skills via hotbar.
+
+### Architecture Diagram
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    Combat Arena Scene                        │
+├──────────────────────────────────────────────────────────────┤
+│  ┌──────────────────────────────────────────────────────────┐│
+│  │ R3F Canvas (CombatArenaCanvas)                           ││
+│  │ ┌─────────────────────────────────────────────────────┐ ││
+│  │ │ CombatArenaEnvironment (Ground, walls, lighting)    │ ││
+│  │ │ CombatEntitySprite[] (6-12 billboards)              │ ││
+│  │ │ CombatVfxLayer (Damage #s, particles, effects)      │ ││
+│  │ │ CameraController (Sidescroller, 35° angle)          │ ││
+│  │ └─────────────────────────────────────────────────────┘ ││
+│  └──────────────────────────────────────────────────────────┘│
+├──────────────────────────────────────────────────────────────┤
+│  ┌──────────────────────────────────────────────────────────┐│
+│  │ CombatFightController (useFrame loop)                    ││
+│  │  ├─ engine.tick(dt) → CombatEvent[]                      ││
+│  │  ├─ Process events (damage, skill, death)                ││
+│  │  ├─ Sync entities to store (position, animation, HP)     ││
+│  │  └─ Check victory condition                              ││
+│  └──────────────────────────────────────────────────────────┘│
+├──────────────────────────────────────────────────────────────┤
+│  ┌──────────────────────────────────────────────────────────┐│
+│  │ CombatEngine (Mutable state, 100ms logic ticks)          ││
+│  │  ├─ init(formation, enemies) → Place entities            ││
+│  │  ├─ tick(dt) → [CombatEvent]                             ││
+│  │  ├─ activateSkill(memberId, skillId)                     ││
+│  │  └─ checkVictoryCondition() → CombatResult               ││
+│  └──────────────────────────────────────────────────────────┘│
+├──────────────────────────────────────────────────────────────┤
+│  ┌──────────────────────────────────────────────────────────┐│
+│  │ Zustand: CombatArenaSlice                               ││
+│  │  ├─ gameScene: 'combat-arena' | 'guild-hall'            ││
+│  │  ├─ arenaPhase: 'idle' | 'prep' | 'fighting' | 'result' ││
+│  │  ├─ formation: [memberId, memberId, ...] (6 slots)       ││
+│  │  ├─ arenaEntities: ArenaEntitySnapshot[]                 ││
+│  │  ├─ arenaTime, speedMultiplier, recentEvents            ││
+│  │  └─ arenaResult: { outcome, gold, exp, injuries }       ││
+│  └──────────────────────────────────────────────────────────┘│
+├──────────────────────────────────────────────────────────────┤
+│  ┌──────────────────────────────────────────────────────────┐│
+│  │ UI Layer                                                  ││
+│  │  ├─ CombatPrepPanel (Formation grid, start button)       ││
+│  │  ├─ CombatSkillHotbar (Keys 1-4, cooldown bars)          ││
+│  │  ├─ CombatResultOverlay (Rewards, injuries, return btn)  ││
+│  │  └─ Input handling (skill activation, formation changes) ││
+│  └──────────────────────────────────────────────────────────┘│
+├──────────────────────────────────────────────────────────────┤
+│  Game Tick Loop Pause (useGameTickLoop pauses while fighting)│
+└──────────────────────────────────────────────────────────────┘
+```
+
+### Combat Lifecycle
+
+#### 1. Entry: Mission Arrival (processMissionTick)
+```
+Mission reaches "arrived" phase
+    ↓
+Emit MissionTickEvent { type: 'arrival', ... }
+    ↓
+ActiveMissionsList shows Modal:
+  [Manual] [Auto] [timeout 30s → Auto]
+    ↓
+Player selects "Manual"
+    ↓
+setGameScene('combat-arena')
+enterCombatPrep(missionId)
+arenaPhase = 'prep'
+```
+
+#### 2. Prep: Formation Setup (CombatPrepPanel)
+```
+Show 2×3 grid of formation slots
+    ↓
+Player assigns members to slots (1-6 members selected)
+    ↓
+Real-time stats preview (total HP, DPS, avg range)
+    ↓
+Click "Start Battle"
+    ↓
+startBattle()
+  → engine.init(selectedMembers, formation, enemyTemplates)
+  → arenaPhase = 'fighting'
+  → gameTickLoop paused
+  → useFrame loop starts continuous engine.tick()
+```
+
+#### 3. Combat: Real-Time Fighting (CombatFightController)
+```
+Every frame (useFrame callback):
+  1. engine.tick(dt) — Advance 100ms logic ticks
+  2. Process CombatEvent[] (damage, heal, status, death)
+  3. Update entity positions (AI movement)
+  4. Update animations (idle, walking, attacking, skill)
+  5. syncArenaState() → Store entities for rendering
+  6. Check victory/defeat condition
+    ↓
+Player presses key 1-4 to cast skill
+  → activateSkill(memberId, skillId)
+  → Engine checks cooldown, resources, range
+  → If valid: enqueue skill event
+  → Cooldown timer set, hotbar updates
+    ↓
+Speed toggle 1x/2x multiplier:
+  → Affects LOGIC_TICK_MS frequency
+  → Visual: animations play 2x faster on 2x speed
+    ↓
+Combat ends when:
+  - All allies dead (defeat)
+  - All enemies dead (victory)
+  - 2-minute timer expires (stalemate → defeat)
+```
+
+#### 4. Result: Outcome & Rewards (CombatResultOverlay)
+```
+Combat finishes
+    ↓
+arenaResult = { outcome, goldEarned, expPerMember, survivors, injured }
+arenaPhase = 'result'
+    ↓
+Show overlay with:
+  - Victory/Defeat banner
+  - Gold earned (luck-scaled)
+  - EXP per survivor (rank-modified)
+  - Injury list (recovery time)
+  - Loot summary
+    ↓
+Player clicks "Return to Guild Hall"
+    ↓
+exitArena()
+  → applyArenaRewards() via arena-result-handler
+  → Add gold to guild.gold
+  → Add EXP to survivors
+  → Mark injured members with recovery timer
+  → completeMission(missionId)
+  → gameScene = 'guild-hall'
+  → gameTickLoop resumes
+```
+
+### Arena Environment (Sidescroller Layout)
+
+- **Camera Angle**: 35° from horizontal (beat-em-up sidescroller perspective, camera at [0, 7, 10])
+- **Arena Bounds**: X ∈ [-8, 8], Z ∈ [-4, 4] (entities clamp to bounds)
+- **Ground Plane**: Dark textured floor with center reference line
+- **Walls**: Side walls at X=-8 and X=8; background wall at far Z
+- **Lighting**: Front-above light (front-facing, combat-readable)
+- **Formation Spread**: Tightened to Z ∈ ±1.5 per slot (reduced from ±2 for sidescroller depth clarity)
+
+### Formation Grid (2×3 Layout)
+
+```
+Ally Formation:              Enemy Formation:
+Front Row:                   Front Row:
+  [0]  [1]  [2]               [3]  [4]  [5]
+  x=-4 x=-4 x=-4              x=4  x=4  x=4
+  z=-2 z=0  z=2               z=-2 z=0  z=2
+
+Back Row:                    Back Row:
+  [3]  [4]  [5]               [0]  [1]  [2]
+  x=-6 x=-6 x=-6              x=6  x=6  x=6
+  z=-2 z=0  z=2               z=-2 z=0  z=2
+
+Distance: ~2-4 units between front/back row,
+          ~8 units between ally and enemy front rows
+```
+
+### Entity AI & Pathfinding
+
+```
+For each allied entity:
+  1. Find best target via findTarget(entity, enemies)
+     - Prefer low-HP targets
+     - Prioritize frontline if melee, backline if ranged
+  2. Calculate distance to target
+  3. If distance > attackRange:
+     - moveToward(position, targetPosition, moveSpeed, dt)
+     - Walk animation, face target direction
+  4. Else if distance <= attackRange && action ready:
+     - Auto-attack or cast ability
+     - Attack animation, emit damage event
+  5. Update status effects each tick via applyEffectTick()
+     - Poison (flat damage/tick)
+     - Stun (disable actions)
+     - Vulnerability (damage multiplier)
+     - Defense buffs (reduce damage)
+```
+
+### Event-Driven Updates (CombatEvent Stream)
+
+```
+CombatEvent types emitted by engine.tick():
+
+1. DamageEvent: { type: 'damage', target, damage, source, isCrit, position }
+   → Floating damage number at position
+   → Sound effect (hit or crit)
+
+2. HealEvent: { type: 'heal', target, amount, source, position }
+   → Floating heal number (green)
+   → Sound effect
+
+3. SkillCastEvent: { type: 'skill-cast', member, skill, targets, position }
+   → Skill animation (glow, projectile)
+   → Sound effect (SFX_SKILL)
+
+4. StatusEffectEvent: { type: 'status-apply' | 'status-remove', target, effect, duration }
+   → Status icon displayed on entity
+   → Stun animation (freeze frame)
+
+5. DeathEvent: { type: 'death', entity }
+   → Death animation (fade out)
+   → Sound effect (SFX_DEATH)
+   → Remove from active entities, keep for result screen
+
+All events accumulated per tick → UI batches renders once per frame
+```
+
+### Key Systems Reused
+
+- **Combat Formulas** (combat-formulas.ts): Damage, crit, armor
+- **Combat Passives** (combat-passives.ts): All 3 civ passives applied
+- **Status Effects** (combat-effects.ts): Poison, stun, vulnerability, buffs
+- **Skills** (skills.ts): All 7 skills, archetype variants
+- **Loot Tables** (enemies.ts): Same drop rates as auto-resolve
+- **Mission Data** (missions.ts): Enemy templates, difficulty scaling
+
+**Zero Changes**: All existing combat logic reused; arena is purely visual
+
+### Performance Considerations
+
+- **Logic Ticks**: 100ms frequency (10 per second), independent of frame rate
+- **Memory**: ~1-2MB per arena instance (6-12 entities, event queue)
+- **Draw Calls**: 12 billboards + 1 ground plane + VFX layer (~20-30 calls/frame)
+- **CPU**: Entity AI loop O(n²) worst-case (each entity checks all targets), n ≤ 12
+- **Frame Budget**: 16.67ms per frame (60fps); engine tick amortized across multiple frames
+
 ## Data Flow: Mission Phase State Machine
 
 ### Overview

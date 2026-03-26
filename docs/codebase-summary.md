@@ -269,6 +269,86 @@ src/
 - Fallback to 'warrior'/'M' for old saves missing archetype/gender
 - No data model breaking changes (new fields are optional)
 
+## Recent Changes (Auto-Battler Combat Arena — v1.11 LIVE)
+
+### Real-Time Combat Arena (MAJOR FEATURE — Replaces Text-Log Combat)
+- **CombatEngine Class**: Tick-based real-time simulation (100ms logic ticks, 60fps rendering)
+- **Dual Combat Modes**: Manual (player-controlled arena) vs Auto (existing simulateCombat preserved)
+- **Formation Grid**: 2×3 slots (6 party members) front/back row positioning before battle
+- **3D Beat-Em-Up Arena**: R3F Canvas with sidescroller camera (35° angle from horizontal), billboard sprites, bounded arena (X:[-8,8], Z:[-4,4])
+- **Visual Effects**: HP bars, floating damage numbers, status effect indicators, attack/skill animations
+- **Skill Hotbar**: Keys 1-4 to activate manual skills (cooldown tracking per skill)
+- **Speed Control**: 1x/2x multiplier during combat, realtime combat timer
+- **Victory/Defeat Screen**: Detailed result overlay with rewards (gold, EXP), injuries applied
+- **Mission Integration**: Arena rewards seamlessly applied to mission system (mission-resolver.ts)
+- **Game Tick Pause**: Main game loop paused while combat active (resumes on completion)
+- **Full Backwards Compatibility**: Auto-resolve preserved, existing simulateCombat unchanged
+
+**Arena Flow**:
+1. Player at mission "Arrived" phase chooses "Manual" mode
+2. enterCombatPrep() initializes arena state + formation
+3. Formation prep UI (CombatPrepPanel) for slot assignment
+4. Player clicks "Start Battle" → startBattle() → arenaPhase='fighting'
+5. CombatFightController runs engine.tick() in useFrame loop
+6. Entities sync visual state (position, animation, HP)
+7. On victory/defeat: endCombat(result) → result screen
+8. Exit arena: exitArena() → apply rewards + return to guild-hall scene
+9. Game tick resumes, mission completes normally
+
+**Spatial Combat**:
+- **2×3 Formation Grid**: 6 slots with predictable x/z positions
+  - Front row (closer to enemy): indices 0-2
+  - Back row (farther): indices 3-5
+- **Range-Based AI**: Warrior/scout (melee 1.5-2.0u), mage/scholar (ranged 5.0u)
+- **Movement AI**: Smart pathfinding toward enemies, respects formation grid
+- **Distance Calculation**: 3D Euclidean distance for target selection + ability range checks
+
+**UI Layers**:
+- **CombatPrepPanel**: Formation selector (drag/drop or click-assign members to slots)
+- **CombatSkillHotbar**: Active skills (key 1-4) with cooldown progress bars
+- **CombatDamageNumber**: Floating text (green heal, red damage) at entity positions
+- **CombatResultOverlay**: Detailed outcome (victory/defeat, gold/EXP, injuries, loot)
+
+**Key Files (New)**:
+- `src/game/systems/combat-arena-types.ts` — ArenaEntity, Formation, ARCHETYPE_RANGE constants
+- `src/game/systems/combat-engine.ts` — CombatEngine class (tick loop, skill activation, victory)
+- `src/game/systems/combat-ai.ts` — findTarget(), moveToward(), distance calculations
+- `src/game/systems/arena-result-handler.ts` — Apply arena rewards to mission state
+- `src/game/state/combat-arena-slice.ts` — 9th Zustand slice (9 total now)
+- `src/scene/combat-arena.tsx` — Main Canvas component (orthographic R3F)
+- `src/scene/combat-arena-environment.tsx` — 3D ground plane + lighting setup
+- `src/scene/combat-entity-sprite.tsx` — Billboard sprite + HP bar renderer
+- `src/scene/combat-fight-controller.tsx` — useFrame loop, engine tick, sync to store
+- `src/scene/combat-damage-number.tsx` — Floating damage text VFX
+- `src/scene/combat-vfx-layer.tsx` — VFX manager, damage numbers, effect particles
+- `src/ui/panels/combat-prep-panel.tsx` — Formation setup UI (slot assignment)
+- `src/ui/panels/combat-skill-hotbar.tsx` — Active skill bar (keys 1-4)
+- `src/ui/panels/combat-result-overlay.tsx` — Victory/defeat results screen
+
+**Key Files (Modified)**:
+- `combat-types.ts` — Extended CombatEntity with spatial fields (position, animState, etc.)
+- `game-state.ts` — Added CombatArenaSlice interface + GameScene type ('guild-hall' | 'combat-arena')
+- `store.ts` — Combined 9 slices (added combat-arena-slice)
+- `mission-tick.ts` — Trigger enterCombatPrep() on manual mode selection
+- `mission-resolver.ts` — Apply arena results via arena-result-handler.ts
+- `game-screen.tsx` — Render CombatArenaCanvas when gameScene='combat-arena'
+- `active-missions-list.tsx` — Show "Manual/Auto" choice on arrival + mission detail modal
+- `use-game-tick-loop.ts` — Pause tick loop during arenaPhase='fighting'
+- `floor-tile-texture-generator.ts` — (new) Generate floor textures procedurally
+
+**Zero Breaking Changes**:
+- Arena system fully optional (manual mode only, auto-resolve untouched)
+- All existing save data compatible (arenaPhase/formation initialized on prep)
+- No changes to combat formulas, skills, passives, or loot tables
+- Can disable arena UI and use auto-resolve exclusively (backwards compatible)
+
+### Performance & Compatibility
+- **Logic**: 100ms ticks ensure consistent frame-rate independent simulation
+- **Rendering**: 60fps via R3F useFrame (capped by browser refresh rate)
+- **Memory**: ArenaEntity snapshots per update (O(n) where n = 6-12 entities typically)
+- **Assets**: Reuses existing member sprites + enemy models (no new assets required for combat)
+- **Fallback**: Auto-resolve preserved in full for players preferring text-based combat
+
 ## Recent Changes (Icon Asset Integration — v1.10)
 
 ### Pixel-Art Icon System (NEW - Asset Integration)

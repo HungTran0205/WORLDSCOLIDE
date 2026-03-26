@@ -2,8 +2,161 @@
 
 All notable changes to Worlds Collide are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
-**Current Version**: 1.10
-**Release Date**: 2026-03-23 (Building System Refactor — Tile-Based Architecture)
+**Current Version**: 1.11
+**Release Date**: 2026-03-26 (Auto-Battler Combat Arena System)
+
+---
+
+## [1.11] — 2026-03-26 (Auto-Battler Combat Arena — Real-Time Visual Combat)
+
+### Major Feature: Real-Time Combat Arena
+
+#### Combat Mode Selection (NEW)
+- **Mission Arrival Phase**: When party arrives at mission, player chooses **Manual** (arena) or **Auto** (text-log simulation)
+- **30-Second Timeout**: Defaults to auto-resolve if no choice made
+- **UI Modal**: Shows party composition + enemy preview + combat mode buttons
+- **Backwards Compatible**: Auto-resolve fully preserved; no gameplay changes to existing auto path
+
+#### Combat Arena System (MAJOR — 14 New Files)
+- **CombatEngine Class**: Tick-based real-time driver (100ms logic ticks, independent of frame rate)
+- **Formation Grid**: 2×3 party placement slots (front row 0-2, back row 3-5) before battle
+- **3D Beat-Em-Up Arena**: R3F Canvas replacing guild-hall scene during combat (sidescroller perspective, 35° camera angle)
+- **Billboard Sprites**: Members + enemies rendered as animated pixel-art sprites facing camera
+- **Spatial Combat AI**: Range-aware targeting (melee 1.5-2.0u, ranged 5.0u), pathfinding to enemies
+- **Skill Hotbar**: Keys 1-4 activate manual skills (cooldown tracking, resource cost checks)
+- **Visual Feedback**:
+  - HP bars above each entity (color-coded: green healthy → red critical)
+  - Floating damage numbers (red damage, green healing, yellow critical hits)
+  - Status effect icons (poison, stun, vulnerability, buffs)
+  - Animation states (idle, walking, attacking, skill-cast, hit, dead)
+- **Speed Control**: 1x/2x multiplier toggle during combat (affects logic tick frequency)
+- **Combat Timer**: Elapsed/total time display, 2-minute hard cap per battle
+- **Result Screen**: Detailed outcome (victory/defeat), gold earned, EXP per member, injuries applied
+- **Game Tick Pause**: Main game loop pauses during arenaPhase='fighting', resumes on exit
+- **Full Mission Integration**: Arena results flow through mission-resolver to update member stats + guild resources
+
+#### Formation Prep UI (NEW)
+- **CombatPrepPanel**: Slot-based formation editor
+  - Shows 2×3 grid of formation slots
+  - Drag-and-drop or click-to-assign members from party
+  - Cancel/Start Battle buttons
+  - Real-time stats preview (formation total HP/DPS/range)
+
+#### Combat During Battle (NEW)
+- **CombatSkillHotbar**: Keys 1-4 mapped to active member skills
+  - Shows skill icon, name, cooldown (ms remaining)
+  - Disabled when on cooldown or insufficient resources
+  - Global/per-entity cooldown tracking
+- **CombatArenaEnvironment**: Ground plane, side/background walls, sidescroller camera setup
+  - Grid-snapped positioning (formation spread Z ∈ ±1.5)
+  - 35° camera angle for beat-em-up sidescroller view
+  - Arena bounds X ∈ [-8, 8], Z ∈ [-4, 4]
+  - Front-above lighting for combat readability
+
+#### Combat Results & Rewards (NEW)
+- **CombatResultOverlay**: Full-screen results screen
+  - Victory/Defeat banner with outcome reason
+  - Gold earned (scaled by member luck stat)
+  - EXP per survivor (modified by rank bonuses)
+  - Injury list (members injured, recovery time)
+  - Loot summary (items dropped)
+  - "Return to Guild Hall" button
+- **Automatic Reward Application**: Results integrated into mission-resolver
+  - Gold added to guild treasury
+  - EXP distributed to survivors
+  - Injuries marked with recovery timers
+  - Member status updated (idle → active during → idle/injured after)
+
+#### Backend Systems (Reused + Extended)
+- **Combat Formulas**: Existing damage calc, crit, armor (unchanged)
+- **Combat Passives**: All 3 civilization passives apply (unchanged)
+- **Status Effects**: Poison, stun, vulnerability, buffs fully supported
+- **Loot Tables**: Enemy drops unchanged, applied same way as auto-resolve
+- **Skill System**: All 7 skills + archetype variants supported, cooldown system extended for hotbar
+
+#### New Zustand Slice (9th Slice Total)
+- **CombatArenaSlice**: gameScene, arenaPhase, formation, entities, time, speedMultiplier, result
+- **Actions**: enterCombatPrep(), setFormationSlot(), startBattle(), syncArenaState(), endCombat(), exitArena()
+- **Entity Snapshots**: Stored for rendering (position, animState, HP, effects, etc.)
+
+### File Additions (14 New Files)
+
+**Game Systems**:
+- `src/game/systems/combat-arena-types.ts` — ArenaEntity, Formation, ARCHETYPE_RANGE, FORMATION_POSITIONS
+- `src/game/systems/combat-engine.ts` — CombatEngine class (300+ lines, complete real-time driver)
+- `src/game/systems/combat-ai.ts` — findTarget(), moveToward(), distance, pathfinding logic
+- `src/game/systems/arena-result-handler.ts` — Apply arena results to mission rewards + injuries
+
+**State Management**:
+- `src/game/state/combat-arena-slice.ts` — Zustand slice #9 for arena state management
+
+**3D Scene**:
+- `src/scene/combat-arena.tsx` — Main Arena Canvas (R3F entry point)
+- `src/scene/combat-arena-environment.tsx` — Ground plane, grid, lighting, camera setup
+- `src/scene/combat-entity-sprite.tsx` — Billboard entity rendering + HP bar overlay
+- `src/scene/combat-fight-controller.tsx` — useFrame loop, engine tick, state sync
+- `src/scene/combat-damage-number.tsx` — Floating damage text VFX component
+- `src/scene/combat-vfx-layer.tsx` — VFX manager, particle effects, damage numbers pool
+
+**UI Panels**:
+- `src/ui/panels/combat-prep-panel.tsx` — Formation setup grid + start battle button
+- `src/ui/panels/combat-skill-hotbar.tsx` — Skill bar (keys 1-4) with cooldown display
+- `src/ui/panels/combat-result-overlay.tsx` — Full-screen results + rewards display
+
+### File Modifications (8 Files)
+
+- `src/game/systems/combat-types.ts` — Extended CombatEntity with position, animState, moveSpeed, targetId, etc.
+- `src/game/state/game-state.ts` — Added GameScene type ('guild-hall' | 'combat-arena'), game state interfaces
+- `src/game/state/store.ts` — Integrated combat-arena-slice as 9th slice
+- `src/game/systems/mission-tick.ts` — Trigger enterCombatPrep() on manual mode selection during arrival
+- `src/game/systems/mission-resolver.ts` — Apply arena results via arena-result-handler
+- `src/ui/screens/game-screen.tsx` — Conditional render: show CombatArenaCanvas when gameScene='combat-arena'
+- `src/ui/panels/active-missions-list.tsx` — Add "Manual/Auto" mode selection button on arrival
+- `src/game/systems/use-game-tick-loop.ts` — Pause tick loop when arenaPhase='fighting'
+- `src/scene/floor-tile-texture-generator.ts` — (NEW helper) Procedural floor texture generation
+
+### Breaking Changes
+**None**. Arena system is purely additive:
+- Auto-resolve path unchanged, all existing logic preserved
+- Save format unchanged (arenaPhase initialized on prep)
+- Optional feature (can be disabled server-side if needed)
+- No changes to combat formulas, skills, passives, or loot
+
+### Performance Impact
+- **Logic Tick**: 100ms (frame-rate independent), ~5-10 ticks per second
+- **Rendering**: 60fps target via R3F (capped by browser refresh)
+- **Memory**: O(n) entities (typically 6-12), ~1-2MB per arena instance
+- **No Asset Load**: Reuses existing sprites + models
+- **GPU**: Minimal draw calls (billboards + ground plane)
+
+### Testing & Validation
+- **Arena Initialization**: Formation setup, member placement
+- **Combat Tick**: AI targeting, skill casting, damage application
+- **State Sync**: Engine → Store → UI rendering consistency
+- **Result Application**: Gold/EXP distributed, injuries tracked, mission completion
+- **Edge Cases**: Full party wipe, single survivor, skill cooldown overlap, status effect stacking
+
+### Arena Camera & Layout Transformation (Sidescroller View — v1.11.1)
+- **Camera Angle**: Updated from isometric to sidescroller perspective (35° from horizontal)
+- **Camera Position**: Repositioned to [0, 7, 10] for beat-em-up visual style
+- **Arena Boundaries**: Defined bounds X ∈ [-8, 8], Z ∈ [-4, 4]
+- **Formation Spread**: Tightened Z spacing to ±1.5 per slot (from ±2) for depth clarity in sidescroller view
+- **Environment**: Added side walls (X=-8/8) + background wall, dark ground, center reference line
+- **Lighting**: Adjusted to front-above angle for sidescroller combat readability
+- **Gameplay Impact**: None — purely visual/layout change, all combat logic unchanged
+
+### Known Limitations
+- Formation editing only before battle (no mid-combat repositioning)
+- Skill hotbar global cooldown (can be per-skill in future)
+- 2-minute hard cap (prevents infinite battles)
+- No player-controllable member movement (AI pathfinding only)
+
+### Next Steps (Future Enhancements)
+- Mid-combat tactical options (swap party members, adjust formation)
+- Ability to record arena replays
+- Difficulty scaling per arena encounter
+- Boss-specific mechanics (phase transitions, enrage mechanics)
+- PvP arena (guild vs guild)
 
 ---
 
