@@ -9,7 +9,8 @@ import { CombatArenaCanvas } from '@/scene/combat-arena';
 import { HUD } from '@/ui/hud/hud';
 import { QuestBoard } from '@/ui/panels/quest-board';
 import { GuildRoster } from '@/ui/panels/guild-roster';
-import { TavernPanel } from '@/ui/panels/tavern-panel';
+import { FacilitiesPanel } from '@/ui/panels/facilities-panel';
+import { OfflineFacilityPopup } from '@/ui/components/offline-facility-popup';
 import { BuildMenu } from '@/ui/panels/build-menu';
 import { CombatView } from '@/ui/panels/combat-view';
 import { SettingsPanel } from '@/ui/panels/settings-panel';
@@ -61,6 +62,9 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   const currentCombatReplay = useGameStore((s) => s.currentCombatReplay);
   const gameScene = useGameStore((s) => s.gameScene);
   const arenaPhase = useGameStore((s) => s.arenaPhase);
+  const offlineFacilityReport = useGameStore((s) => s.offlineFacilityReport);
+  const offlineElapsedHours = useGameStore((s) => s.offlineElapsedHours);
+  const clearOfflineFacilityReport = useGameStore((s) => s.clearOfflineFacilityReport);
 
   // Auto-open combat panel when manual combat replay is set
   useEffect(() => {
@@ -90,7 +94,14 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
           <HUD activePanel={activePanel} setActivePanel={setActivePanel} />
           {activePanel === 'quests' && <QuestBoard onClose={() => setActivePanel(null)} />}
           {activePanel === 'roster' && <GuildRoster onClose={() => setActivePanel(null)} />}
-          {activePanel === 'tavern' && <TavernPanel onClose={() => setActivePanel(null)} />}
+          {activePanel === 'facilities' && <FacilitiesPanel onClose={() => setActivePanel(null)} />}
+          {offlineFacilityReport && (
+            <OfflineFacilityPopup
+              results={offlineFacilityReport}
+              elapsedHours={offlineElapsedHours}
+              onDismiss={clearOfflineFacilityReport}
+            />
+          )}
           {activePanel === 'build' && <BuildMenu onClose={() => setActivePanel(null)} />}
           {activePanel === 'combat' && <CombatView onClose={() => setActivePanel(null)} />}
           {activePanel === 'settings' && (

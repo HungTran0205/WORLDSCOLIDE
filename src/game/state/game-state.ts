@@ -22,7 +22,16 @@ export interface Skill {
   autoEnabled: boolean;
 }
 
-export type MemberStatus = 'idle' | 'on-mission' | 'injured' | 'training';
+export type MemberStatus = 'idle' | 'on-mission' | 'injured' | 'training' | 'assigned';
+
+export type FacilityType = 'tavern' | 'training-yard' | 'infirmary' | 'workshop';
+
+export interface GuildFacility {
+  type: FacilityType;
+  /** 0 = locked/not built, 1–3 = active */
+  level: number;
+  assignedMemberIds: string[];
+}
 
 /** Guild hierarchy ranks (promotable). MERCENARY is orthogonal — not in hierarchy. */
 export type GuildRank = 'RECRUIT' | 'MEMBER' | 'VETERAN' | 'OFFICER' | 'COMMANDER';

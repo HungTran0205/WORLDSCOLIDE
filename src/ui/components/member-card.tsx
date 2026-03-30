@@ -16,6 +16,7 @@ const STATUS_COLORS: Record<string, string> = {
   'on-mission': '#4a90d9',
   injured: '#e74c3c',
   training: '#9b59b6',
+  assigned: '#f0a500',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -23,6 +24,7 @@ const STATUS_LABELS: Record<string, string> = {
   'on-mission': 'On Mission',
   injured: 'Injured',
   training: 'Training',
+  assigned: 'In Facility',
 };
 
 export function MemberCard({ member, onAllocateStat, activeMissionName }: MemberCardProps) {

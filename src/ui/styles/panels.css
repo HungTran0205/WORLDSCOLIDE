@@ -278,6 +278,42 @@ input[type="range"] {
   margin-bottom: 12px;
 }
 
+/* Facility system */
+.facility-member-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 6px;
+}
+
+.facility-assign-select {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px dashed rgba(255, 215, 0, 0.3);
+  color: #aaa;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.facility-bonus-preview {
+  font-size: 0.75rem;
+  color: #2ecc71;
+  padding: 4px 0;
+}
+
+.facilities-locked-notice {
+  color: #888;
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
 /* Pixel-art icon rendering — safety net for crisp scaling */
 img[src*="sprites/icons"] {
   image-rendering: pixelated;

@@ -1,6 +1,8 @@
 import type { StateCreator } from 'zustand';
-import type { GuildHall, GameSettings, TavernState, Member, FloorTile, PlacedFurniture, GridCell, Rotation, FurnitureType, GuildRank } from './game-state';
+import type { GuildHall, GameSettings, TavernState, Member, FloorTile, PlacedFurniture, GridCell, Rotation, FurnitureType, GuildRank, FacilityType, GuildFacility } from './game-state';
 import type { InventoryState } from './game-state';
+import type { FacilityProductionResult } from '@/game/systems/facility-production-system';
+import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
 import { FLOOR_TILE_COST } from '@/game/data/buildings';
 import { getFurnitureDefinition } from '@/game/data/furniture';
 import { checkTileAdjacency, isCellOccupiedByFurniture } from '@/game/systems/building-system';
@@ -35,6 +37,16 @@ export interface GuildSlice {
   inviteMercenary: (memberId: string) => boolean;
   /** Promote a guild member to next rank. Costs gold. Returns success. */
   promoteMember: (memberId: string) => boolean;
+  // --- Facility system ---
+  facilities: GuildFacility[];
+  buildFacility: (type: FacilityType) => boolean;
+  upgradeFacility: (type: FacilityType) => boolean;
+  assignMemberToFacility: (memberId: string, type: FacilityType) => boolean;
+  unassignMemberFromFacility: (memberId: string, type: FacilityType) => boolean;
+  // Ephemeral offline facility report — not persisted in save
+  offlineFacilityReport: FacilityProductionResult[] | null;
+  offlineElapsedHours: number;
+  clearOfflineFacilityReport: () => void;
 }
 
 /** Generate the default 6x6 gold floor + quest-board at center */
@@ -66,6 +78,13 @@ const DEFAULT_TAVERN: TavernState = {
   availableMercenaries: [],
 };
 
+const DEFAULT_FACILITIES: GuildFacility[] = [
+  { type: 'tavern',        level: 1, assignedMemberIds: [] },
+  { type: 'training-yard', level: 0, assignedMemberIds: [] },
+  { type: 'infirmary',     level: 0, assignedMemberIds: [] },
+  { type: 'workshop',      level: 0, assignedMemberIds: [] },
+];
+
 export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
   guildName: '',
   guildLevel: 1,
@@ -73,6 +92,9 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
   guildHall: createDefaultFloor(),
   settings: DEFAULT_SETTINGS,
   tavern: DEFAULT_TAVERN,
+  facilities: DEFAULT_FACILITIES,
+  offlineFacilityReport: null,
+  offlineElapsedHours: 0,
 
   setGuildName: (name) => set({ guildName: name }),
 
@@ -310,7 +332,7 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
         : fullState.roster.find((m) => m.id === memberId);
       if (!member || member.rank === 'MERCENARY') return s;
 
-      if (member.status === 'on-mission' || member.status === 'injured') return s;
+      if (member.status === 'on-mission' || member.status === 'injured' || member.status === 'assigned') return s;
 
       const currentRank = member.rank as GuildRank;
       const def = GUILD_RANKS[currentRank];
@@ -332,6 +354,110 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
       return {
         gold: s.gold - req.goldCost,
         roster: fullState.roster.map((m) => m.id === memberId ? promoted : m),
+      } as unknown as Partial<GuildSlice>;
+    });
+    return success;
+  },
+
+  buildFacility: (type) => {
+    let success = false;
+    set((s) => {
+      if (s.guildLevel < 2) return s;
+      const facility = s.facilities.find((f) => f.type === type);
+      if (!facility || facility.level !== 0) return s;
+      const cost = FACILITY_DEFINITIONS[type].buildCost;
+      if (s.gold < cost) return s;
+      success = true;
+      return {
+        gold: s.gold - cost,
+        facilities: s.facilities.map((f) => f.type === type ? { ...f, level: 1 } : f),
+      };
+    });
+    return success;
+  },
+
+  upgradeFacility: (type) => {
+    let success = false;
+    set((s) => {
+      const facility = s.facilities.find((f) => f.type === type);
+      if (!facility || facility.level === 0 || facility.level >= 3) return s;
+      const cost = FACILITY_DEFINITIONS[type].upgradeCosts[facility.level - 1];
+      if (s.gold < cost) return s;
+      success = true;
+      return {
+        gold: s.gold - cost,
+        facilities: s.facilities.map((f) => f.type === type ? { ...f, level: f.level + 1 } : f),
+      };
+    });
+    return success;
+  },
+
+  assignMemberToFacility: (memberId, type) => {
+    let success = false;
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null };
+      const member = fullState.founder?.id === memberId
+        ? fullState.founder
+        : fullState.roster.find((m) => m.id === memberId);
+      if (!member) return s;
+      if (member.status === 'on-mission' || member.status === 'injured' || member.status === 'assigned') return s;
+
+      const facility = s.facilities.find((f) => f.type === type);
+      if (!facility || facility.level === 0) return s;
+
+      const maxSlots = FACILITY_DEFINITIONS[type].maxSlots[facility.level - 1];
+      if (facility.assignedMemberIds.length >= maxSlots) return s;
+
+      if (s.facilities.some((f) => f.assignedMemberIds.includes(memberId))) return s;
+
+      success = true;
+      const updatedFacilities = s.facilities.map((f) =>
+        f.type === type ? { ...f, assignedMemberIds: [...f.assignedMemberIds, memberId] } : f,
+      );
+
+      if (fullState.founder?.id === memberId) {
+        return {
+          facilities: updatedFacilities,
+          founder: { ...fullState.founder, status: 'assigned' as const },
+        } as unknown as Partial<GuildSlice>;
+      }
+      return {
+        facilities: updatedFacilities,
+        roster: fullState.roster.map((m) =>
+          m.id === memberId ? { ...m, status: 'assigned' as const } : m,
+        ),
+      } as unknown as Partial<GuildSlice>;
+    });
+    return success;
+  },
+
+  clearOfflineFacilityReport: () => set({ offlineFacilityReport: null, offlineElapsedHours: 0 }),
+
+  unassignMemberFromFacility: (memberId, type) => {
+    let success = false;
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null };
+      const facility = s.facilities.find((f) => f.type === type);
+      if (!facility || !facility.assignedMemberIds.includes(memberId)) return s;
+
+      success = true;
+      const updatedFacilities = s.facilities.map((f) =>
+        f.type === type
+          ? { ...f, assignedMemberIds: f.assignedMemberIds.filter((id) => id !== memberId) }
+          : f,
+      );
+
+      if (fullState.founder?.id === memberId) {
+        return {
+          facilities: updatedFacilities,
+          founder: { ...fullState.founder, status: 'idle' as const },
+        } as unknown as Partial<GuildSlice>;
+      }
+      return {
+        facilities: updatedFacilities,
+        roster: fullState.roster.map((m) =>
+          m.id === memberId ? { ...m, status: 'idle' as const } : m,
+        ),
       } as unknown as Partial<GuildSlice>;
     });
     return success;

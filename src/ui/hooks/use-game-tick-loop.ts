@@ -7,6 +7,8 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useGameStore } from '@/game/state/store';
 import { processMissionTick, processInjuryRecovery } from '@/game/systems/mission-tick';
 import { generateMercenaries } from '@/game/systems/mercenary-generator';
+import { processFacilityProduction } from '@/game/systems/facility-production-system';
+import { calcTotalUpkeep } from '@/game/systems/upkeep-system';
 import { MISSIONS } from '@/game/data/missions';
 import { playSFX } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
@@ -73,7 +75,54 @@ export function useGameTickLoop() {
   }, []);
 
   useEffect(() => {
-    // Catch-up: resolve missions that progressed while offline
+    // Catch-up: resolve missions + process facility production while offline
+    const store = useGameStore.getState();
+    const elapsedMs = Date.now() - store.realTimeLastTick;
+
+    if (elapsedMs >= 60_000) {
+      const GAME_DAY_REAL_MS = 4 * 60 * 60 * 1000;
+      const gameDays = Math.min(30, Math.floor(elapsedMs / GAME_DAY_REAL_MS));
+
+      if (gameDays > 0) {
+        const allMembers = store.founder ? [store.founder, ...store.roster] : store.roster;
+        const dailyUpkeep = calcTotalUpkeep(allMembers);
+        const results = processFacilityProduction(store.facilities, allMembers, gameDays, dailyUpkeep);
+
+        // Apply EXP gains
+        for (const result of results) {
+          for (const [memberId, exp] of Object.entries(result.expGains)) {
+            store.addMemberExp(memberId, exp);
+          }
+        }
+
+        // Apply item gains
+        for (const result of results) {
+          for (const [itemId, qty] of Object.entries(result.itemGains)) {
+            if (qty && qty > 0) store.addItem(itemId as Parameters<typeof store.addItem>[0], qty);
+          }
+        }
+
+        // Apply tavern upkeep savings
+        const tavernResult = results.find((r) => r.facilityType === 'tavern');
+        if (tavernResult && tavernResult.upkeepSaved > 0) {
+          store.addGold(tavernResult.upkeepSaved);
+        }
+
+        // Store report for popup (only if any production occurred)
+        const hasProduction = results.some((r) =>
+          Object.keys(r.expGains).length > 0 ||
+          Object.keys(r.itemGains).length > 0 ||
+          r.upkeepSaved > 0,
+        );
+        if (hasProduction) {
+          useGameStore.setState({
+            offlineFacilityReport: results,
+            offlineElapsedHours: elapsedMs / 3_600_000,
+          });
+        }
+      }
+    }
+
     handleTick(Date.now());
 
     const worker = new Worker(
