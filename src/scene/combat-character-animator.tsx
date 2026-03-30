@@ -6,7 +6,7 @@
 
 import { useRef, useMemo, useEffect } from 'react';
 import { useLoader, useFrame } from '@react-three/fiber';
-import { TextureLoader, MeshBasicMaterial } from 'three';
+import { TextureLoader, MeshBasicMaterial, Mesh } from 'three';
 import type { MutableRefObject } from 'react';
 import type { SpriteDirection } from './sprite-path-resolver';
 import { getWalkingFramePath, getAttackFramePath } from './sprite-path-resolver';
@@ -31,6 +31,7 @@ interface CombatCharacterAnimatorProps {
   basePath: string;
   directionRef: MutableRefObject<SpriteDirection>;
   animStateRef: MutableRefObject<CombatAnimState>;
+  hitTimeRef?: MutableRefObject<number>;
   size?: [number, number];
 }
 
@@ -38,6 +39,7 @@ export function CombatCharacterAnimator({
   basePath,
   directionRef,
   animStateRef,
+  hitTimeRef,
   size = [2.1, 2.1],
 }: CombatCharacterAnimatorProps) {
   const frameIndexRef = useRef(0);
@@ -80,7 +82,7 @@ export function CombatCharacterAnimator({
 
   // --- Animation loop ---
   const materialRef = useRef<MeshBasicMaterial>(null);
-  const meshRef = useRef<THREE.Mesh>(null);
+  const meshRef = useRef<Mesh>(null);
   // Track which atlas is currently bound to avoid unnecessary swaps
   const currentAtlasRef = useRef<'walk' | 'attack'>('walk');
 
@@ -136,6 +138,15 @@ export function CombatCharacterAnimator({
       const frameIdx = DIR_OFFSET[dir] + frameIndexRef.current;
       setAtlasFrame(walkAtlas, frameIdx);
       meshRef.current.scale.x = size[0];
+    }
+
+    // --- Hit Flash ---
+    if (hitTimeRef) {
+      if (performance.now() - hitTimeRef.current < 100) {
+        materialRef.current.color.setRGB(10, 10, 10);
+      } else {
+        materialRef.current.color.setRGB(1, 1, 1);
+      }
     }
   });
 

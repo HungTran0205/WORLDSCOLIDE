@@ -6,7 +6,7 @@
 
 import { useRef, useMemo, useEffect } from 'react';
 import { useLoader, useFrame } from '@react-three/fiber';
-import { TextureLoader, MeshBasicMaterial } from 'three';
+import { TextureLoader, MeshBasicMaterial, Mesh } from 'three';
 import type { MutableRefObject } from 'react';
 import { getEnemyAnimFramePath } from './sprite-path-resolver';
 import { buildAtlasFromTextures, buildAtlasFromUrls, setAtlasFrame } from './sprite-atlas';
@@ -23,6 +23,7 @@ interface EnemySpriteAnimatorProps {
   spriteId: string;
   animStateRef: MutableRefObject<EnemyAnimState>;
   facingRight: boolean;
+  hitTimeRef?: MutableRefObject<number>;
   size?: [number, number];
 }
 
@@ -30,6 +31,7 @@ export function EnemySpriteAnimator({
   spriteId,
   animStateRef,
   facingRight,
+  hitTimeRef,
   size = [2.1, 2.1],
 }: EnemySpriteAnimatorProps) {
   const frameIndexRef = useRef(0);
@@ -79,7 +81,7 @@ export function EnemySpriteAnimator({
 
   // --- Animation loop ---
   const materialRef = useRef<MeshBasicMaterial>(null);
-  const meshRef = useRef<THREE.Mesh>(null);
+  const meshRef = useRef<Mesh>(null);
   const deathFrozenRef = useRef(false);
   // Track which atlas is currently bound
   const currentAtlasRef = useRef<'walk' | 'attack' | 'death'>('walk');
@@ -154,6 +156,15 @@ export function EnemySpriteAnimator({
       elapsedRef.current = 0;
     }
     setAtlasFrame(walkAtlas, frameIndexRef.current);
+
+    // --- Hit Flash ---
+    if (hitTimeRef) {
+      if (performance.now() - hitTimeRef.current < 100) {
+        materialRef.current.color.setRGB(10, 10, 10);
+      } else {
+        materialRef.current.color.setRGB(1, 1, 1);
+      }
+    }
   });
 
   const scaleX = facingRight ? -size[0] : size[0];

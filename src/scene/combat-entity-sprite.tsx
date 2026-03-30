@@ -5,7 +5,7 @@
  * No troika Text, no Html — pure mesh UI.
  */
 
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Billboard, Text } from '@react-three/drei';
 import type { Group, Mesh, MeshBasicMaterial } from 'three';
@@ -15,6 +15,8 @@ import { EnemySpriteAnimator } from './enemy-sprite-animator';
 import { getSpritePath } from './sprite-path-resolver';
 import type { SpriteDirection } from './sprite-path-resolver';
 import type { ArenaEntitySnapshot } from '@/game/state/combat-arena-slice';
+import { useGameStore } from '@/game/state/store';
+import type { CombatEvent } from '@/game/systems/combat-types';
 
 /**
  * WebGL HP bar — background + fill plane.
@@ -74,12 +76,34 @@ export function CombatEntitySprite({ entity }: CombatEntitySpriteProps) {
   const groupRef = useRef<Group>(null);
   const directionRef = useRef<SpriteDirection>('south');
   const animStateRef = useRef<CombatAnimState>('idle');
+  const hitTimeRef = useRef<number>(0);
 
   directionRef.current = entity.facingRight ? 'east' : 'west';
   animStateRef.current = entity.animState as CombatAnimState;
 
   const targetPos = useRef({ x: entity.position.x, z: entity.position.z });
   targetPos.current = { x: entity.position.x, z: entity.position.z };
+
+  const recentEvents = useGameStore(s => s.recentEvents);
+  const prevEventsRef = useRef<CombatEvent[]>([]);
+
+  useEffect(() => {
+    if (recentEvents === prevEventsRef.current || recentEvents.length === 0) return;
+    prevEventsRef.current = recentEvents;
+
+    // Detect if we just got hit
+    const latestHit = recentEvents.find(
+      (e) => 'targetId' in e && e.targetId === entity.id && (e.type === 'auto-attack' || e.type === 'skill-use')
+    );
+    if (latestHit && groupRef.current) {
+      // Phase 1: Knockback - Push back 0.4 units
+      const pushDir = entity.facingRight ? -0.4 : 0.4;
+      groupRef.current.position.x += pushDir;
+      
+      // Phase 2: Track hit time for flashing
+      hitTimeRef.current = performance.now();
+    }
+  }, [recentEvents, entity.id, entity.facingRight]);
 
   useFrame(() => {
     if (!groupRef.current) return;
@@ -110,6 +134,7 @@ export function CombatEntitySprite({ entity }: CombatEntitySpriteProps) {
             spriteId={entity.spriteId}
             animStateRef={animStateRef}
             facingRight={entity.facingRight}
+            hitTimeRef={hitTimeRef}
             size={[2.1, 2.1]}
           />
         ) : (
@@ -117,6 +142,7 @@ export function CombatEntitySprite({ entity }: CombatEntitySpriteProps) {
             basePath={basePath!}
             directionRef={directionRef}
             animStateRef={animStateRef}
+            hitTimeRef={hitTimeRef}
             size={[2.1, 2.1]}
           />
         )}

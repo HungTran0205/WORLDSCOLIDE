@@ -45,22 +45,23 @@ export interface BiomeConfig {
 const FOREST_CONFIG: BiomeConfig = {
   biome: 'forest',
   groundColor: '#3a5a2a',
+  groundTexture: '/arena/forest/tiles/ground-topdown.png',
   bgLayers: [
-    { src: '/arena/forest/bg/far.png', z: -8, y: 3.5, scale: 1.8, opacity: 0.7 },
-    { src: '/arena/forest/bg/mid.png', z: -6, y: 2.5, scale: 1.5, opacity: 0.9 },
-    { src: '/arena/forest/bg/near.png', z: -4.5, y: 2, scale: 1.3, opacity: 0.4 },
+    /* y values compensate for the 35° ortho camera at [0,7,10] */
+    { src: '/arena/forest/bg/far.png',  z: -8, y: -3,   scale: 1.2, opacity: 0.9 },
+    /* mid & near have transparent centers — they frame the scene from edges */
+    { src: '/arena/forest/bg/mid.png',  z: -6,  y: 2, scale: 1.3, opacity: 0.85 },
+    { src: '/arena/forest/bg/near.png', z: 6,  y: 6,   scale: 1.5, opacity: 0.7 },
   ],
   props: [
-    /* left boundary tree */
-    { src: '/arena/forest/props/tree-large.png', position: [-9, 1.5, -1], scale: 2.5 },
-    /* right boundary tree */
-    { src: '/arena/forest/props/tree-large.png', position: [9, 1.5, -1], scale: 2.5 },
-    /* scattered ground props */
-    { src: '/arena/forest/props/stump.png', position: [-7, 0.3, 1.5], scale: 0.8 },
-    { src: '/arena/forest/props/bush.png', position: [7.5, 0.25, 2], scale: 0.7 },
-    { src: '/arena/forest/props/rock.png', position: [-3, 0.2, 3], scale: 0.6 },
-    { src: '/arena/forest/props/mushroom-glow.png', position: [5, 0.3, -2.5], scale: 0.6 },
-    { src: '/arena/forest/props/fallen-log.png', position: [8, 0.2, -2], scale: 0.9 },
+    /* prop y = ground(0) + scale so bottom edge sits on ground plane */
+    { src: '/arena/forest/props/tree-large.png', position: [-9, 2.5, -1], scale: 2.5 },
+    { src: '/arena/forest/props/tree-large.png', position: [9, 2.5, -1], scale: 2.5 },
+    { src: '/arena/forest/props/stump.png', position: [-7, 0.8, 1.5], scale: 0.8 },
+    { src: '/arena/forest/props/bush.png', position: [7.5, 0.7, 2], scale: 0.7 },
+    { src: '/arena/forest/props/rock.png', position: [-3, 0.6, 3], scale: 0.6 },
+    { src: '/arena/forest/props/mushroom-glow.png', position: [5, 0.6, -2.5], scale: 0.6 },
+    { src: '/arena/forest/props/fallen-log.png', position: [8, 0.9, -2], scale: 0.9 },
   ],
   ambient: { intensity: 0.5, color: '#c8e6c8' },
   directional: { intensity: 0.9, color: '#fff5e0', position: [-3, 10, 6] },
@@ -71,29 +72,29 @@ const CAVE_CONFIG: BiomeConfig = {
   biome: 'cave',
   groundColor: '#2a2a30',
   bgLayers: [
-    { src: '/arena/cave/bg/far.png', z: -8, y: 3.5, scale: 1.8, opacity: 0.8 },
-    { src: '/arena/cave/bg/mid.png', z: -6, y: 2.5, scale: 1.5, opacity: 0.9 },
-    { src: '/arena/cave/bg/near.png', z: -4.5, y: 2.5, scale: 1.4, opacity: 0.35 },
+    /* y values compensate for the 35° ortho camera at [0,7,10] */
+    { src: '/arena/cave/bg/far.png',  z: -8,  y: -3,   scale: 1.2, opacity: 0.9 },
+    { src: '/arena/cave/bg/mid.png',  z: -6,  y: -0.5, scale: 1.1, opacity: 0.85 },
+    { src: '/arena/cave/bg/near.png', z: -3,  y: -1,   scale: 1.5, opacity: 0.65 },
   ],
   props: [
-    /* left boundary pillar */
-    { src: '/arena/cave/props/pillar.png', position: [-9, 1.5, -1], scale: 2.5 },
-    /* right boundary pillar */
-    { src: '/arena/cave/props/pillar.png', position: [9, 1.5, -1], scale: 2.5 },
-    /* scattered cave props */
-    { src: '/arena/cave/props/crystal-formation.png', position: [-6, 0.4, -2.5], scale: 0.8 },
-    { src: '/arena/cave/props/crystal-formation.png', position: [6.5, 0.35, 2.5], scale: 0.7 },
-    { src: '/arena/cave/props/stalagmite.png', position: [-3, 0.3, 3], scale: 0.7 },
-    { src: '/arena/cave/props/stalagmite.png', position: [4, 0.3, -3], scale: 0.6 },
-    { src: '/arena/cave/props/rock-pile.png', position: [7.5, 0.15, 1.5], scale: 0.6 },
-    { src: '/arena/cave/props/bone-pile.png', position: [-7, 0.15, 2], scale: 0.6 },
-    { src: '/arena/cave/props/torch-wall.png', position: [-8, 2.5, -4], scale: 0.8 },
-    { src: '/arena/cave/props/torch-wall.png', position: [8, 2.5, -4], scale: 0.8 },
+    /* prop y = ground(0) + scale so bottom edge sits on ground plane */
+    { src: '/arena/cave/props/pillar.png', position: [-9, 2.5, -1], scale: 2.5 },
+    { src: '/arena/cave/props/pillar.png', position: [9, 2.5, -1], scale: 2.5 },
+    { src: '/arena/cave/props/crystal-formation.png', position: [-6, 0.8, -2.5], scale: 0.8 },
+    { src: '/arena/cave/props/crystal-formation.png', position: [6.5, 0.7, 2.5], scale: 0.7 },
+    { src: '/arena/cave/props/stalagmite.png', position: [-3, 0.7, 3], scale: 0.7 },
+    { src: '/arena/cave/props/stalagmite.png', position: [4, 0.6, -3], scale: 0.6 },
+    { src: '/arena/cave/props/rock-pile.png', position: [7.5, 0.6, 1.5], scale: 0.6 },
+    { src: '/arena/cave/props/bone-pile.png', position: [-7, 0.6, 2], scale: 0.6 },
+    { src: '/arena/cave/props/torch-wall.png', position: [-8, 0.8, -4], scale: 0.8 },
+    { src: '/arena/cave/props/torch-wall.png', position: [8, 0.8, -4], scale: 0.8 },
   ],
   ambient: { intensity: 0.3, color: '#8080c0' },
   directional: { intensity: 0.5, color: '#a0a0ff', position: [0, 8, 4] },
   fogColor: '#0a0a14',
 };
+
 
 /** Map mission zone string to arena biome — defaults to forest */
 const ZONE_TO_BIOME: Record<string, ArenaBiome> = {

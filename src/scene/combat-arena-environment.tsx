@@ -6,8 +6,33 @@
 import { useMemo } from 'react';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
+
+/** Diagonal god-ray quad — gradient texture fades at edges, biome-tinted */
+function LightShaft({ tint, opacity, angle }: { tint: string; opacity: number; angle: number }) {
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 4; canvas.height = 2;
+    const ctx = canvas.getContext('2d')!;
+    const g = ctx.createLinearGradient(0, 0, 4, 0);
+    g.addColorStop(0,   'transparent');
+    g.addColorStop(0.3, tint);
+    g.addColorStop(0.7, tint);
+    g.addColorStop(1,   'transparent');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 4, 2);
+    return new THREE.CanvasTexture(canvas);
+  }, [tint]);
+
+  return (
+    <mesh position={[0, 3, -4]} rotation={[0, 0, angle]}>
+      <planeGeometry args={[2, 18]} />
+      <meshBasicMaterial map={texture} transparent opacity={opacity} depthWrite={false} side={THREE.DoubleSide} />
+    </mesh>
+  );
+}
 import type { BiomeConfig, BgLayer, ArenaProp } from './arena-biome-config';
 import { getBiomeConfig } from './arena-biome-config';
+import { useArenaDebug } from './combat-arena-debug';
 
 /* ---------- sub-components ---------- */
 
@@ -62,6 +87,23 @@ function PropSprite({ prop }: { prop: ArenaProp }) {
   );
 }
 
+/** Ground plane with tiled texture */
+function TexturedGround({ src, size, tileSize }: { src: string; size: [number, number]; tileSize: number }) {
+  const texture = useTexture(src);
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(size[0] / tileSize, size[1] / tileSize);
+
+  return (
+    <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={size} />
+      <meshBasicMaterial map={texture} />
+    </mesh>
+  );
+}
+
 /* ---------- main component ---------- */
 
 interface Props {
@@ -70,14 +112,26 @@ interface Props {
 
 export function CombatArenaEnvironment({ zone }: Props) {
   const config: BiomeConfig = useMemo(() => getBiomeConfig(zone), [zone]);
+  const debug = useArenaDebug();
+
+  /* Merge debug overrides onto config bg layers when in dev mode */
+  const bgLayers: BgLayer[] = debug
+    ? config.bgLayers.map((layer, i) => ({ ...layer, ...debug.bgLayers[i] }))
+    : config.bgLayers;
+
+  const groundTileSize = debug?.groundTileSize ?? 3;
 
   return (
     <group>
-      {/* Ground plane — meshBasicMaterial, no PBR cost */}
-      <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[22, 12]} />
-        <meshBasicMaterial color={config.groundColor} />
-      </mesh>
+      {/* Ground plane — sized to arena bounds, slight bleed */}
+      {config.groundTexture ? (
+        <TexturedGround src={config.groundTexture} size={[22, 9]} tileSize={groundTileSize} />
+      ) : (
+        <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[22, 9]} />
+          <meshBasicMaterial color={config.groundColor} />
+        </mesh>
+      )}
 
       {/* Side zone indicators (subtle tint) */}
       <mesh position={[-5, -0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -96,7 +150,7 @@ export function CombatArenaEnvironment({ zone }: Props) {
       </mesh>
 
       {/* Parallax background layers (far → near) */}
-      {config.bgLayers.map((layer, i) => (
+      {bgLayers.map((layer, i) => (
         <BgLayerPlane key={i} layer={layer} />
       ))}
 
@@ -104,6 +158,12 @@ export function CombatArenaEnvironment({ zone }: Props) {
       {config.props.map((prop, i) => (
         <PropSprite key={i} prop={prop} />
       ))}
+
+      {/* Light shafts — forest: warm sun rays; cave: none */}
+      {config.biome === 'forest' && <>
+        <LightShaft tint="#ffe8a0" opacity={0.055} angle={0.28} />
+        <LightShaft tint="#ffe8a0" opacity={0.035} angle={0.42} />
+      </>}
 
       {/* Single ambient light — enough for meshBasicMaterial scene */}
       <ambientLight intensity={1} />
