@@ -162,11 +162,41 @@ function migrateV9toV10(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+/** v10→v11: Add facilities array; reset orphaned 'assigned' member statuses */
+function migrateV10toV11(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+
+  // Add default facilities (tavern lv1, others locked)
+  const facilities = [
+    { type: 'tavern',        level: 1, assignedMemberIds: [] },
+    { type: 'training-yard', level: 0, assignedMemberIds: [] },
+    { type: 'infirmary',     level: 0, assignedMemberIds: [] },
+    { type: 'workshop',      level: 0, assignedMemberIds: [] },
+  ];
+
+  // Reset any members with 'assigned' status back to 'idle'
+  // (v10 saves have no facility data so assignments can't be restored)
+  const resetStatus = (m: AnyRecord): AnyRecord =>
+    m.status === 'assigned' ? { ...m, status: 'idle' } : m;
+
+  const founder = gs.founder ? resetStatus(gs.founder as AnyRecord) : null;
+  const roster = Array.isArray(gs.roster)
+    ? (gs.roster as AnyRecord[]).map(resetStatus)
+    : [];
+
+  return {
+    ...envelope,
+    version: 11,
+    gameState: { ...gs, founder, roster, facilities } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
   8: migrateV8toV9,
   9: migrateV9toV10,
+  10: migrateV10toV11,
 };
 
 /**

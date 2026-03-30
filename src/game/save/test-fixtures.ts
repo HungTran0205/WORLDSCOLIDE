@@ -96,6 +96,12 @@ export const VALID_GAME_SAVE_DATA: GameSaveData = {
   tutorialStep: 'sandbox-intro',
   tavern: { lastRefreshTime: 0, availableMercenaries: [] },
   inventory: { items: {} },
+  facilities: [
+    { type: 'tavern',        level: 1, assignedMemberIds: [] },
+    { type: 'training-yard', level: 0, assignedMemberIds: [] },
+    { type: 'infirmary',     level: 0, assignedMemberIds: [] },
+    { type: 'workshop',      level: 0, assignedMemberIds: [] },
+  ],
 };
 
 export const VALID_METADATA: SaveSlotMetadata = {
