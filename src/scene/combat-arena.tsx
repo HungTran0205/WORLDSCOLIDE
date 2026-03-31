@@ -10,6 +10,7 @@ import { CombatEntitySprite } from './combat-entity-sprite';
 import { CombatFightController } from './combat-fight-controller';
 import { CombatVfxLayer } from './combat-vfx-layer';
 import { getBiomeConfig } from './arena-biome-config';
+import { createWebGPURenderer, WebGPUInit } from './webgpu-init';
 import { ArenaDebugProvider, DebugCameraController, useArenaDebug } from './combat-arena-debug';
 import { CombatPostProcessing } from './combat-post-processing';
 import { CombatShadowLayer } from './combat-shadow-layer';
@@ -55,11 +56,13 @@ export function CombatArenaCanvas() {
       <Canvas
         frameloop="demand"
         orthographic
-        camera={{ zoom: 120, position: [0, 7, 10], near: 0.1, far: 1000 }}
+        shadows
+        camera={{ zoom: 121, position: [0, 3.2, 11.8], near: 0.1, far: 1000 }}
         dpr={1}
-        gl={{ antialias: false, powerPreference: 'low-power' }}
+        gl={createWebGPURenderer}
         style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}
       >
+        <WebGPUInit />
         <FrameRateLimiter />
         <CombatFightController />
         <color attach="background" args={[biome.fogColor]} />
