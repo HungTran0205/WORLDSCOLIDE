@@ -7,7 +7,7 @@
 import { createContext, useContext, useMemo } from 'react';
 import { useControls, folder } from 'leva';
 import { useThree, useFrame } from '@react-three/fiber';
-import type { BiomeConfig } from './arena-biome-config';
+import type { BiomeConfig, Prop3D } from './arena-biome-config';
 
 /* ---------- shared types ---------- */
 
@@ -19,6 +19,8 @@ export interface ArenaDebugValues {
   bgLayers: [DebugBgLayer, DebugBgLayer, DebugBgLayer];
   groundTileSize: number;
   vignette: { strength: number };
+  props3D?: Prop3D[];
+  dioramaScale?: number;
 }
 
 /* ---------- context ---------- */
@@ -35,6 +37,11 @@ export function useArenaDebug(): ArenaDebugValues | null {
 interface ProviderProps {
   config: BiomeConfig;
   children: React.ReactNode;
+}
+
+/** Extract short label from GLB path: '/arena/cave/.../p_stonepilla.glb' → 'p_stonepilla' */
+function propLabel(src: string): string {
+  return src.split('/').pop()?.replace('.glb', '') ?? src;
 }
 
 /** Mounts Leva controls initialized from current biome config. */
@@ -69,15 +76,60 @@ export function ArenaDebugProvider({ config, children }: ProviderProps) {
     }),
   });
 
-  const value = useMemo<ArenaDebugValues>(() => ({
-    bgLayers: [
-      { y: ctrl.farY,  z: ctrl.farZ,  scale: ctrl.farScale,  opacity: ctrl.farOpacity  },
-      { y: ctrl.midY,  z: ctrl.midZ,  scale: ctrl.midScale,  opacity: ctrl.midOpacity  },
-      { y: ctrl.nearY, z: ctrl.nearZ, scale: ctrl.nearScale, opacity: ctrl.nearOpacity },
-    ],
-    groundTileSize:  ctrl.groundTileSize,
-    vignette: { strength: ctrl.vignetteStrength },
-  }), [ctrl]);
+  /* --- 3D props debug controls (only when biome has props3D) --- */
+  const propsSchema: Record<string, ReturnType<typeof folder>> = {};
+  if (config.diorama) {
+    propsSchema['Diorama Scale'] = folder({
+      dioramaScale: { value: config.dioramaScale ?? 1, min: 1, max: 30, step: 0.5 },
+    }, { collapsed: true });
+  }
+  if (config.props3D) {
+    config.props3D.forEach((prop, i) => {
+      const s = typeof prop.scale === 'number' ? prop.scale : prop.scale[0];
+      propsSchema[`${i}: ${propLabel(prop.src)}`] = folder({
+        [`p${i}X`]:     { value: prop.position[0], min: -15, max: 15, step: 0.1 },
+        [`p${i}Y`]:     { value: prop.position[1], min: -5,  max: 10, step: 0.1 },
+        [`p${i}Z`]:     { value: prop.position[2], min: -10, max: 10, step: 0.1 },
+        [`p${i}RotY`]:  { value: prop.rotation?.[1] ?? 0, min: -Math.PI, max: Math.PI, step: 0.05 },
+        [`p${i}Scale`]: { value: s, min: 0.01, max: 2, step: 0.01 },
+      }, { collapsed: true });
+    });
+  }
+  const propsCtrl = useControls('3D Props', propsSchema);
+
+  const value = useMemo<ArenaDebugValues>(() => {
+    const base: ArenaDebugValues = {
+      bgLayers: [
+        { y: ctrl.farY,  z: ctrl.farZ,  scale: ctrl.farScale,  opacity: ctrl.farOpacity  },
+        { y: ctrl.midY,  z: ctrl.midZ,  scale: ctrl.midScale,  opacity: ctrl.midOpacity  },
+        { y: ctrl.nearY, z: ctrl.nearZ, scale: ctrl.nearScale, opacity: ctrl.nearOpacity },
+      ],
+      groundTileSize:  ctrl.groundTileSize,
+      vignette: { strength: ctrl.vignetteStrength },
+    };
+
+    // Reconstruct props3D from Leva values — cast once to avoid repeated unsafe casts
+    if (config.props3D) {
+      const pv = propsCtrl as unknown as Record<string, number>;
+      base.dioramaScale = pv.dioramaScale ?? config.dioramaScale;
+      base.props3D = config.props3D.map((prop, i) => ({
+        src: prop.src,
+        position: [
+          pv[`p${i}X`] ?? prop.position[0],
+          pv[`p${i}Y`] ?? prop.position[1],
+          pv[`p${i}Z`] ?? prop.position[2],
+        ] as [number, number, number],
+        rotation: [
+          prop.rotation?.[0] ?? 0,
+          pv[`p${i}RotY`] ?? 0,
+          prop.rotation?.[2] ?? 0,
+        ] as [number, number, number],
+        scale: pv[`p${i}Scale`] ?? (typeof prop.scale === 'number' ? prop.scale : prop.scale[0]),
+      }));
+    }
+
+    return base;
+  }, [ctrl, propsCtrl, config]);
 
   return <ArenaDebugCtx.Provider value={value}>{children}</ArenaDebugCtx.Provider>;
 }

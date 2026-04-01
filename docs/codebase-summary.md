@@ -2,6 +2,8 @@
 
 **Worlds Collide** — An HD-2D auto-RPG idle guild builder where civilizations collide. Build your guild hall, recruit members from different civilizations, dispatch quests, and watch your guild grow — even while you're away.
 
+**Last Updated**: 2026-03-30 (Forest Arena HD-2D upgrade v1.13 + Guild Facilities System v1.12 documented)
+
 ## Technology Stack
 
 | Layer | Technology | Version |
@@ -349,44 +351,112 @@ src/
 - **Assets**: Reuses existing member sprites + enemy models (no new assets required for combat)
 - **Fallback**: Auto-resolve preserved in full for players preferring text-based combat
 
-## Recent Changes (Icon Asset Integration — v1.10)
+## Recent Changes (Forest Arena HD-2D Upgrade — v1.13)
 
-### Pixel-Art Icon System (NEW - Asset Integration)
-- **60 AI-Generated Icons**: Pixel-art assets integrated across 9 categories (stat, skill, item, room, furniture, badge, rank, emblem, status)
-- **Convention-Based Path Resolution**: Single utility (`icon-paths.ts`) maps entity (category, id) → file path under `/sprites/icons/`
-- **ID-to-Filename Overrides**: Explicit remapping handles naming inconsistencies (UPPER_SNAKE → kebab, PascalCase → kebab, etc.)
-- **Icon Categories**:
-  - `stat` (icon-{name}.png) — Character stats (STR, AGI, INT, etc.)
-  - `skill` (icon-{name}.png) — Abilities per archetype
-  - `item` (icon-{name}.png) — Loot items (wood, stone, iron-ore, etc.)
-  - `room` (icon-room-{name}.png) — Guild hall rooms
-  - `furniture` (icon-furn-{name}.png) — Room furnishings
-  - `badge` (badge-{name}.png) — Mission tier badges (F, E, D, C, B, A, S)
-  - `rank` (badge-{name}.png) — Guild ranks (recruit, member, veteran, officer, commander, mercenary)
-  - `emblem` (emblem-{name}.png) — Civilization emblems (linh-son, de-quoc, thien-lu)
-  - `status` (status-{name}.png) — Character status (idle, injured, active)
-- **GameIcon Component**: Reusable `<GameIcon>` with size control + graceful text fallback on image load failure
-- **CostDisplay Component**: Extracted component rendering ResourceCost with item icons + quantities
-- **UI Integration**: Icons now appear in 13 files including quest board, roster, build menu, character detail, tavern, combat log, mission list, badges
+### HD-2D Diorama + 3D Props System (NEW - Octopath Traveler Style)
+- **Forest Biome Upgrade**: Replaced 2D parallax background with Octopath Traveler/Triangle Strategy style GLB diorama (ground) + 3D billboard sprite characters
+- **GLB Asset Pipeline**:
+  - Diorama ground model: `/arena/forest/3dtiles/optimized/forestground.glb` (receives shadows)
+  - 9 prop models (trees, logs, rocks, etc.): `/arena/forest/3dprops/optimized/` (cast + receive shadows)
+  - Preloading at module import time prevents hitching during combat
+- **Shadow Casting System**:
+  - Directional light with 1024×512 shadow map, bias tuning for artifact-free shadows
+  - 3D props cast shadows onto ground plane
+  - Billboard character sprites upgraded to `MeshStandardMaterial` (was `MeshBasicMaterial`) to receive shadows
+  - `castShadow` enabled on all prop and sprite meshes
+- **Conditional 3D Rendering**: `is3D = Boolean(config.diorama)` detects 3D biomes; forest + cave biomes now support HD-2D
+- **Backward Compat**: `diorama` and `props3D` are optional in `BiomeConfig` — missing fields gracefully use 2D system
 
 **Key Files (New)**:
-- `src/ui/utils/icon-paths.ts` — Convention resolver, ID_TO_FILENAME overrides, category prefixes
-- `src/ui/components/game-icon.tsx` — Icon component with fallback + pixelated rendering
-- `src/ui/components/cost-display.tsx` — Resource cost display with icons
+- `src/scene/combat-arena-3d-props.tsx` — `Environment3DModel`, `Prop3DModel`, `Prop3DLayer` components for GLB asset rendering
 
 **Key Files (Modified)**:
-- `civ-badge.tsx`, `rank-badge.tsx` — Now use GameIcon for emblem/rank visuals
-- `stat-bar.tsx`, `resource-bar.tsx` — Icons display next to values
-- `roster-list-item.tsx`, `character-detail-panel.tsx` — Stat icons + skill icons
-- `build-menu.tsx` — Cost display with item icons
-- `quest-board.tsx`, `quest-detail-modal.tsx` — Tier badges + quest icons
-- `active-missions-list.tsx`, `tavern-panel.tsx` — Mission + recruitment icons
-- `panels.css`, `hud.css` — Icon sizing + layout support
+- `src/scene/arena-biome-config.ts` — Added `Prop3D` type, `diorama?`, `props3D?` optional fields to `BiomeConfig`; forest config uses GLB assets
+- `src/scene/combat-arena-environment.tsx` — HD-2D rendering pipeline (conditional 3D/2D), shadow-casting directional light for 3D biomes
+- `src/scene/combat-arena.tsx` — Enabled shadow maps on Canvas (`shadowMap={{ type: PCFShadowShadowMap }}`)
+- `src/scene/combat-character-animator.tsx` — `MeshBasicMaterial` → `MeshStandardMaterial`, `castShadow` on sprites
+- `src/scene/enemy-sprite-animator.tsx` — `MeshBasicMaterial` → `MeshStandardMaterial`, `castShadow` on sprites
+
+### Leva Debug Controls for 3D Props (NEW - Dev Mode)
+- Real-time prop position/rotation/scale tuning via Leva folders
+- Per-prop controls (posX/Y/Z, rotY, scale) + diorama scale slider
+- Dynamic folder generation from `config.props3D[]` (generic for all biomes)
+- Copy-config button logs tuned values to console for quick config updates
+- DEV-gated, zero production impact
 
 ### Zero Breaking Changes
-- All icon integration is additive (rendering enhancement only)
-- No data file changes — convention-based mapping keeps asset logic separated
-- Existing text fallbacks ensure compatibility if icons unavailable
+- HD-2D system fully opt-in via BiomeConfig (forest + cave both have 3D support)
+- Backward compat: old saves load with 2D fallback if props3D missing
+- No changes to combat mechanics, AI, or damage formulas
+
+## Recent Changes (Guild Facilities System — v1.12)
+
+### Multi-Facility Management (NEW - 4 Functional Zones)
+- **4 Facility Types**: Tavern (lv1 default), Training Yard, Infirmary, Workshop
+- **Facility Levels**: 0 (locked/unbuilt) → 1–3 (active upgrades)
+- **Build Requirements**: Guild level ≥ 2 to unlock Training Yard, Infirmary, Workshop; Tavern starts at lv1
+- **Upgrade Costs**: Each facility has build cost + two upgrade paths (lv1→2, lv2→3) in gold
+- **FacilitiesPanel**: Unified panel replacing TavernPanel, manages all 4 facilities in one view
+
+### Member Assignment System (NEW - Slotted Workers)
+- **Per-Facility Slots**: Each facility has `maxSlots` per level ([lv1, lv2, lv3] array)
+  - Tavern: [1, 2, 2], Training Yard: [2, 3, 4], Infirmary: [1, 2, 3], Workshop: [1, 2, 3]
+- **Assignment Blocking**: Members assigned to facilities marked with `assigned` status, cannot dispatch on missions or promote
+- **Unassign Mechanic**: Click to remove member from facility, frees status + enables missions again
+- **Visual Feedback**: Facility cards show assigned member list + bonus calculations with current assignments
+
+### Stat-Based Production & Bonuses (NEW - 4 Distinct Mechanics)
+- **Training Yard** (EXP passive): Base daily EXP per level [12, 22, 40], scaled by assigned members' DEX+AGI
+  - Formula: `base * (1 + (DEX+AGI)*0.002)` per member
+- **Workshop** (Materials): Daily items based on level, STR affects quantity, DEX chance to double iron ore at lv2+
+  - Base outputs: Lv1 [3 wood, 2 stone], Lv2 [5 wood, 3 stone, 1 iron], Lv3 [8 wood, 5 stone, 3 iron]
+  - Multiplier: `1 + STR*0.004` per member
+- **Tavern** (Upkeep reduction): CHA-based gold savings on daily upkeep
+  - Formula: Min(10%, totalCHA * 0.0005 * level) of daily upkeep
+  - Example: 3 members with 50 CHA each at lv2 = ~1.5% upkeep reduction
+- **Infirmary** (Recovery multiplier): END+INT improves injury recovery speed (lower multiplier = faster)
+  - Base recovery mult per level: [0.75, 0.55, 0.40] (Infirmary scales recovery time)
+  - Applied during injury-recovery tick processing in mission system
+
+### Offline Production Tracking (NEW - Login Popup)
+- **OfflineFacilityPopup**: Shown on game load if facilities produced while away
+- **Production Calculation**: For each game-day elapsed, facility production applied per assigned members
+- **Displays**: EXP gains (training), items (workshop), upkeep saved (tavern), recovery applied (infirmary)
+- **Dismissable**: Click to acknowledge, popup clears without manual claiming
+- **No Offline Loss**: All production accumulated accurately from timestamp
+
+### State Management (NEW - Game State Extension)
+- **`facilities: GuildFacility[]`** — Array of facility objects (type, level, assignedMemberIds)
+- **`facilityProduction: LastProductionDay`** — Timestamp tracking for offline catch-up
+- **Zustand Actions**:
+  - `buildFacility(type)` — Create facility at lv1 if not exists, cost validation
+  - `upgradeFacility(type)` — Upgrade to next level, cost validation
+  - `assignMemberToFacility(facilityType, memberId)` — Add to assignedMemberIds, mark member `assigned`
+  - `unassignMemberFromFacility(facilityType, memberId)` — Remove from assignedMemberIds, clear `assigned` status
+
+**Key Files (New)**:
+- `src/game/data/facility-definitions.ts` — Static facility config (name, costs, slots, descriptions)
+- `src/game/systems/facility-production-system.ts` — Pure production calculations per facility type + game-days
+- `src/ui/panels/facilities-panel.tsx` — Unified UI for all 4 facilities + member slots
+- `src/ui/panels/facility-card.tsx` — Single facility display with assignment UI + bonus preview
+- `src/ui/components/offline-facility-popup.tsx` — Login popup showing offline production
+
+**Key Files (Modified)**:
+- `game-state.ts` — Added GuildFacility interface + FacilityType type
+- `guild-slice.ts` — Added facilities[] array, facilityProduction timestamp, build/upgrade/assign actions
+- `use-game-tick-loop.ts` — Calls processFacilityProduction() on game load for offline catch-up
+- `game-screen.tsx` — Renders OfflineFacilityPopup if production occurred while away
+
+### Panel Integration
+- **HUD Button**: "Facilities" button in toggle bar (replaces old "Tavern" button)
+- **Panel Layout**: Tabs or scrollable list of 4 facility cards
+- **No Direct 3D Interaction**: All access via HUD panel only (consistent with furniture-based build system)
+
+### Zero Breaking Changes
+- Facilities fully optional (players can ignore, gameplay proceeds)
+- No changes to core economy, combat, or mission mechanics
+- Backward compatible with existing saves (new fields initialize on upgrade)
+- Facility bonuses are passive (no active skills or complex triggers)
 
 ## Recent Changes (Milestone 2 Vertical Slice — v1.9)
 
@@ -437,19 +507,9 @@ src/
 - **Rewards**: Gold + EXP + items scale by difficulty + quest type
 - **Travel Times**: Adjusted for new difficulty tiers
 
-### UI Enhancements (NEW - Civ-Aware Components)
-- **Quest Board**: Shows civ filter + quest chain badges for multi-mission sets
-- **Roster View**: Civ badges + passive ability displays per member
-- **Character Detail**: Full passive ability description + stat bonuses from civ
-- **Mission List**: Quest chain indicators + gate boss markers
-
-### Audio System Expansion (NEW - 6 New Keys)
-- **BGM_COMBAT**: Combat background music
-- **SFX_CRIT**: Critical hit sound effect
-- **SFX_DODGE**: Dodge/miss sound effect
-- **SFX_DEATH**: Enemy defeat sound effect
-- **SFX_SKILL**: Skill usage sound effect
-- **SFX_RECRUIT**: Character recruitment sound effect
+### UI & Audio Enhancements (NEW)
+- **Civ Badges**: Quest board + roster show civilization emblems for filtering
+- **Audio Expansion**: 6 new keys (BGM_COMBAT, SFX_CRIT, SFX_DODGE, SFX_DEATH, SFX_SKILL, SFX_RECRUIT)
 
 ### Save Migration v8→v9 (TRANSPARENT)
 - **Version Bump**: `SAVE_VERSION` incremented to 9
@@ -698,83 +758,6 @@ src/
 - `camera-controller.tsx` — Pan disabled during any active placement/move
 - `build-mode-advanced.test.ts` — Comprehensive test coverage (48 tests)
 
-## Earlier Changes (Phase State Machine Implementation)
-
-### Mission Phase State Machine (NEW)
-- **Transitions**: `traveling → arrived → in-combat → completed/failed`
-- **Types**: `MissionPhase` type with 6 states; `ActiveMission` holds `phase`, `arrivalTime`, `combatMode`
-- **Travel Times**: Added `travelTimeMs` field (F=10s, E=15s, D=20s by tier)
-- **Arrival Timeout**: 30-second window (`ARRIVAL_TIMEOUT_MS = 30_000`) for player to choose combat mode
-- **Combat Mode Selection**: Manual (player choice) or Auto (timeout auto-triggers)
-- **Tick Processing**: `processMissionTick()` advances phase state on every 1s tick
-
-### Arrival Modal UI (NEW)
-- Modal displays on arrival with Manual/Auto choice
-- Countdown timer (30s) → auto-triggers if no choice made
-- Phase badge in quest board: 🚶 Traveling / 📍 Arrived / ⚔️ In Combat
-
-### Mission Resolution (Enhanced)
-- `resolveMission()` now called synchronously in `in-combat` phase
-- Detailed results: survivors, injured, gold earned, EXP per member
-- Offline catch-up calls `resolveMission()` for accurate replay
-
-### Save Migration
-- Save version bumped 1→2
-- Existing saves migrated with new `phase`, `arrivalTime`, `combatMode` fields
-
-### Game Loop Architecture
-- Separated game rendering from tick processing via extracted `GameScreen` component
-- `useGameTickLoop` hook initializes Web Worker and processes ticks when component mounts
-- Worker runs independently; main thread remains responsive for UI interactions
-- Offline catch-up on app load ensures no mission progress is lost
-
-### Mission Tick Processing
-- Every 1s: check expired missions, advance state machine, resolve via combat simulation
-- Apply rewards/injuries based on phase and outcome
-- Rewards: gold added to guild treasury, EXP distributed per survivor
-- Injuries: members marked with status + recovery timer (scales with mission difficulty)
-- Failures: full-wipe missions mark members injured, no gold/EXP awarded
-
-### Notification System (Ephemeral)
-- Mission results pushed to notification store on completion
-- Toast component displays up to 5 visible notifications with outcome + rewards
-- Auto-dismiss after 5s or click to dismiss immediately
-- SFX feedback: reward sound on success, hit sound on wipe
-
-### Member Status Transitions
-- Idle → Active (on mission dispatch)
-- Active → Idle/Injured (on mission completion/failure)
-- Injured → Idle (on timer expiration, checked every tick)
-
-### Quest Board Updates
-- Active missions show progress bars (fill % based on elapsed time)
-- Phase badges display current state (traveling/arrived/in-combat)
-- Click to view detailed mission modal with party composition + rewards
-- Tick-by-tick combat log available in combat view panel
-
-## Earlier Changes (Save System Overhaul)
-
-### Multi-Slot IndexedDB Architecture
-- Replaced localStorage+IndexedDB fallback with dedicated 3-slot system
-- Each slot stores complete game state envelope
-- Shadow backup for corruption recovery
-- Enables independent save management per slot
-
-### Title Screen Implementation
-- New entry point before char creation
-- Save slot cards showing founder name, play time, last save
-- Actions: continue, new game, delete with confirmation
-- Overwrite protection for existing slots
-
-### Save Validation Pipeline
-- TypeScript type guards (no external validation libs)
-- Automatic migration for format changes
-- Validation on import + load
-- Error state reporting in HUD
-
-### Auto-Save Status Indicator
-- HUD badge showing: saving → saved → hidden (5s timeout)
-- Error state persists until next save
 - Status Zustand slice drives UI updates
 - Visual feedback for offline play
 

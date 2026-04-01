@@ -33,6 +33,7 @@ function LightShaft({ tint, opacity, angle }: { tint: string; opacity: number; a
 import type { BiomeConfig, BgLayer, ArenaProp } from './arena-biome-config';
 import { getBiomeConfig } from './arena-biome-config';
 import { useArenaDebug } from './combat-arena-debug';
+import { Environment3DModel, Prop3DLayer } from './combat-arena-3d-props';
 
 /* ---------- sub-components ---------- */
 
@@ -120,11 +121,16 @@ export function CombatArenaEnvironment({ zone }: Props) {
     : config.bgLayers;
 
   const groundTileSize = debug?.groundTileSize ?? 3;
+  const is3D = Boolean(config.diorama);
+  const activeProps3D = debug?.props3D ?? config.props3D;
+  const activeDioramaScale = debug?.dioramaScale ?? config.dioramaScale ?? 1;
 
   return (
     <group>
-      {/* Ground plane — sized to arena bounds, slight bleed */}
-      {config.groundTexture ? (
+      {/* === GROUND === */}
+      {is3D ? (
+        <Environment3DModel src={config.diorama!} scale={activeDioramaScale} />
+      ) : config.groundTexture ? (
         <TexturedGround src={config.groundTexture} size={[22, 9]} tileSize={groundTileSize} />
       ) : (
         <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -154,10 +160,12 @@ export function CombatArenaEnvironment({ zone }: Props) {
         <BgLayerPlane key={i} layer={layer} />
       ))}
 
-      {/* Decorative props */}
-      {config.props.map((prop, i) => (
-        <PropSprite key={i} prop={prop} />
-      ))}
+      {/* === PROPS === */}
+      {is3D && activeProps3D && activeProps3D.length > 0 ? (
+        <Prop3DLayer props3D={activeProps3D} sceneScale={activeDioramaScale} />
+      ) : (
+        config.props.map((prop, i) => <PropSprite key={i} prop={prop} />)
+      )}
 
       {/* Light shafts — forest: warm sun rays; cave: none */}
       {config.biome === 'forest' && <>
@@ -165,8 +173,25 @@ export function CombatArenaEnvironment({ zone }: Props) {
         <LightShaft tint="#ffe8a0" opacity={0.035} angle={0.42} />
       </>}
 
-      {/* Single ambient light — enough for meshBasicMaterial scene */}
-      <ambientLight intensity={1} />
+      {/* === LIGHTING === */}
+      <ambientLight intensity={config.ambient.intensity} color={config.ambient.color} />
+      {/* Directional with shadow — only when 3D content is present */}
+      {is3D && (
+        <directionalLight
+          castShadow
+          intensity={config.directional.intensity}
+          color={config.directional.color}
+          position={config.directional.position}
+          shadow-mapSize={[1024, 512]}
+          shadow-camera-left={-13}
+          shadow-camera-right={13}
+          shadow-camera-top={7}
+          shadow-camera-bottom={-7}
+          shadow-camera-near={0.5}
+          shadow-camera-far={30}
+          shadow-bias={-0.001}
+        />
+      )}
     </group>
   );
 }
