@@ -23,6 +23,8 @@ import { CombatSkillHotbar } from '@/ui/panels/combat-skill-hotbar';
 import { CombatResultOverlay } from '@/ui/panels/combat-result-overlay';
 import { useGameTickLoop } from '@/ui/hooks/use-game-tick-loop';
 import { useGameStore } from '@/game/state/store';
+import { playBGM } from '@/audio/audio-manager';
+import { AUDIO } from '@/audio/audio-keys';
 import type { PanelId } from '@/ui/hud/panel-toggle';
 
 /** Floating toggle button to enter/exit build mode */
@@ -72,6 +74,11 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
       setActivePanel('combat');
     }
   }, [currentCombatReplay]);
+
+  // Switch BGM when scene changes
+  useEffect(() => {
+    playBGM(gameScene === 'combat-arena' ? AUDIO.BGM_COMBAT : AUDIO.BGM_GUILD);
+  }, [gameScene]);
 
   // Detect game over: all guild members are injured
   const founder = useGameStore((s) => s.founder);

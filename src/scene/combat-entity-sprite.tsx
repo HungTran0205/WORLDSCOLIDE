@@ -7,7 +7,7 @@
 
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Billboard, Text } from '@react-three/drei';
+import { Billboard, Html } from '@react-three/drei';
 import type { Group, Mesh, MeshBasicMaterial } from 'three';
 import { CombatCharacterAnimator } from './combat-character-animator';
 import type { CombatAnimState } from './combat-character-animator';
@@ -52,19 +52,14 @@ function HpBar({ ratio }: { ratio: number }) {
   );
 }
 
-/** Entity name label — ally blue, enemy red */
+/** Entity name label — ally blue, enemy red. Html avoids troika GLSL incompatibility with WebGPU */
 function EntityName({ name, isAlly }: { name: string; isAlly: boolean }) {
   return (
-    <Text
-      fontSize={0.09}
-      color={isAlly ? '#67b8e3' : '#e74c3c'}
-      anchorX="center"
-      anchorY="bottom"
-      outlineWidth={0.01}
-      outlineColor="#000000"
-    >
-      {name}
-    </Text>
+    <Html center>
+      <span style={{ color: isAlly ? '#67b8e3' : '#e74c3c', fontSize: '9px', whiteSpace: 'nowrap', textShadow: '1px 1px 2px #000, 0 0 2px #000' }}>
+        {name}
+      </span>
+    </Html>
   );
 }
 
@@ -128,7 +123,7 @@ export function CombatEntitySprite({ entity }: CombatEntitySpriteProps) {
   return (
     <group ref={groupRef} position={[entity.position.x, 0, entity.position.z]}>
       {/* Single Billboard — correct camera-facing, no distortion */}
-      <Billboard follow lockX={false} lockY={false} lockZ={false} position={[0, 1.05, 0]}>
+      <Billboard follow lockX={false} lockY={false} lockZ={false} position={[0, 0.65, 0]}>
         {entity.spriteId ? (
           <EnemySpriteAnimator
             spriteId={entity.spriteId}

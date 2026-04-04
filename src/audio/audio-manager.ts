@@ -2,46 +2,52 @@ import { Howl, Howler } from 'howler';
 
 const sounds: Record<string, Howl> = {};
 let bgmKey: string | null = null;
+let initialized = false;
 
-/** Initialize all audio assets — call after first user interaction */
+/** Initialize all audio assets — safe to call multiple times */
 export function initAudio() {
+  if (initialized) return;
+  initialized = true;
+
   // BGM
   sounds['bgm-guild'] = new Howl({
-    src: ['/audio/bgm-guild.ogg', '/audio/bgm-guild.m4a'],
+    src: ['/audio/bgm-guild.ogg', '/audio/bgm-guild.mp3'],
     loop: true, volume: 0.3,
   });
   sounds['bgm-combat'] = new Howl({
-    src: ['/audio/bgm-combat.ogg', '/audio/bgm-combat.m4a'],
+    src: ['/audio/bgm-combat.ogg', '/audio/bgm-combat.mp3'],
     loop: true, volume: 0.3,
   });
 
-  // SFX — existing
-  sounds['sfx-click'] = new Howl({ src: ['/audio/sfx-click.ogg', '/audio/sfx-click.m4a'], volume: 0.5 });
-  sounds['sfx-dispatch'] = new Howl({ src: ['/audio/sfx-dispatch.ogg', '/audio/sfx-dispatch.m4a'], volume: 0.5 });
-  sounds['sfx-reward'] = new Howl({ src: ['/audio/sfx-reward.ogg', '/audio/sfx-reward.m4a'], volume: 0.6 });
-  sounds['sfx-levelup'] = new Howl({ src: ['/audio/sfx-levelup.ogg', '/audio/sfx-levelup.m4a'], volume: 0.7 });
-  sounds['sfx-hit'] = new Howl({ src: ['/audio/sfx-hit.ogg', '/audio/sfx-hit.m4a'], volume: 0.4 });
-
-  // SFX — new
-  sounds['sfx-crit'] = new Howl({ src: ['/audio/sfx-crit.ogg', '/audio/sfx-crit.m4a'], volume: 0.5 });
-  sounds['sfx-dodge'] = new Howl({ src: ['/audio/sfx-dodge.ogg', '/audio/sfx-dodge.m4a'], volume: 0.4 });
-  sounds['sfx-death'] = new Howl({ src: ['/audio/sfx-death.ogg', '/audio/sfx-death.m4a'], volume: 0.5 });
-  sounds['sfx-skill'] = new Howl({ src: ['/audio/sfx-skill.ogg', '/audio/sfx-skill.m4a'], volume: 0.5 });
-  sounds['sfx-recruit'] = new Howl({ src: ['/audio/sfx-recruit.ogg', '/audio/sfx-recruit.m4a'], volume: 0.6 });
+  // SFX
+  sounds['sfx-click'] = new Howl({ src: ['/audio/sfx-click.ogg'], volume: 0.5 });
+  sounds['sfx-dispatch'] = new Howl({ src: ['/audio/sfx-dispatch.ogg'], volume: 0.5 });
+  sounds['sfx-reward'] = new Howl({ src: ['/audio/sfx-reward.ogg'], volume: 0.6 });
+  sounds['sfx-levelup'] = new Howl({ src: ['/audio/sfx-levelup.ogg'], volume: 0.7 });
+  sounds['sfx-hit'] = new Howl({ src: ['/audio/sfx-hit.ogg'], volume: 0.4 });
+  sounds['sfx-crit'] = new Howl({ src: ['/audio/sfx-crit.ogg'], volume: 0.5 });
+  sounds['sfx-dodge'] = new Howl({ src: ['/audio/sfx-dodge.ogg'], volume: 0.4 });
+  sounds['sfx-death'] = new Howl({ src: ['/audio/sfx-death.ogg'], volume: 0.5 });
+  sounds['sfx-skill'] = new Howl({ src: ['/audio/sfx-skill.ogg'], volume: 0.5 });
+  sounds['sfx-recruit'] = new Howl({ src: ['/audio/sfx-recruit.ogg'], volume: 0.6 });
 }
 
 export function playBGM(key: string) {
-  if (bgmKey === key) return; // already playing
-  if (bgmKey) stopBGM();
+  if (bgmKey === key) return;
+  // Stop ALL bgm tracks to prevent overlapping
+  for (const [k, howl] of Object.entries(sounds)) {
+    if (k.startsWith('bgm-')) howl.stop();
+  }
+  bgmKey = null;
   sounds[key]?.play();
   bgmKey = key;
 }
 
 export function stopBGM() {
-  if (bgmKey && sounds[bgmKey]) {
-    sounds[bgmKey].stop();
-    bgmKey = null;
+  for (const [k, howl] of Object.entries(sounds)) {
+    if (k.startsWith('bgm-')) howl.stop();
   }
+  bgmKey = null;
 }
 
 export function playSFX(key: string) {

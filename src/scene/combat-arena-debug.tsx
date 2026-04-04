@@ -4,8 +4,8 @@
  * All controls are gated behind import.meta.env.DEV — zero cost in production.
  */
 
-import { createContext, useContext, useMemo } from 'react';
-import { useControls, folder } from 'leva';
+import { createContext, useContext, useMemo, useCallback } from 'react';
+import { useControls, folder, button } from 'leva';
 import { useThree, useFrame } from '@react-three/fiber';
 import type { BiomeConfig, Prop3D } from './arena-biome-config';
 
@@ -19,8 +19,11 @@ export interface ArenaDebugValues {
   bgLayers: [DebugBgLayer, DebugBgLayer, DebugBgLayer];
   groundTileSize: number;
   vignette: { strength: number };
+  lighting?: { ambientIntensity: number; directionalIntensity: number };
   props3D?: Prop3D[];
   dioramaScale?: number;
+  dioramaY?: number;
+  paused: boolean;
 }
 
 /* ---------- context ---------- */
@@ -42,6 +45,15 @@ interface ProviderProps {
 /** Extract short label from GLB path: '/arena/cave/.../p_stonepilla.glb' → 'p_stonepilla' */
 function propLabel(src: string): string {
   return src.split('/').pop()?.replace('.glb', '') ?? src;
+}
+
+/** Download a JSON blob as a file */
+function downloadJson(filename: string, data: unknown) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
 }
 
 /** Mounts Leva controls initialized from current biome config. */
@@ -74,13 +86,18 @@ export function ArenaDebugProvider({ config, children }: ProviderProps) {
     'Vignette': folder({
       vignetteStrength: { value: 0.99, min: 0, max: 1.5, step: 0.01 },
     }),
+    'Lighting': folder({
+      ambientIntensity: { value: config.ambient.intensity, min: 0, max: 3, step: 0.05, label: 'ambient' },
+      directionalIntensity: { value: config.directional.intensity, min: 0, max: 3, step: 0.05, label: 'directional' },
+    }),
   });
 
   /* --- 3D props debug controls (only when biome has props3D) --- */
   const propsSchema: Record<string, ReturnType<typeof folder>> = {};
   if (config.diorama) {
-    propsSchema['Diorama Scale'] = folder({
-      dioramaScale: { value: config.dioramaScale ?? 1, min: 1, max: 30, step: 0.5 },
+    propsSchema['Diorama'] = folder({
+      dioramaScale: { value: config.dioramaScale ?? 1, min: 1, max: 30, step: 0.5, label: 'scale' },
+      dioramaY: { value: config.dioramaY ?? 0, min: -10, max: 5, step: 0.1, label: 'Y offset' },
     }, { collapsed: true });
   }
   if (config.props3D) {
@@ -97,6 +114,48 @@ export function ArenaDebugProvider({ config, children }: ProviderProps) {
   }
   const propsCtrl = useControls('3D Props', propsSchema);
 
+  /* --- Build current debug snapshot for export (includes ALL tunable values) --- */
+  const buildSnapshot = useCallback(() => {
+    const pv = propsCtrl as unknown as Record<string, number>;
+    const snapshot: Record<string, unknown> = {
+      biome: config.biome,
+      bgLayers: [
+        { src: config.bgLayers[0]?.src, y: ctrl.farY, z: ctrl.farZ, scale: ctrl.farScale, opacity: ctrl.farOpacity },
+        { src: config.bgLayers[1]?.src, y: ctrl.midY, z: ctrl.midZ, scale: ctrl.midScale, opacity: ctrl.midOpacity },
+        { src: config.bgLayers[2]?.src, y: ctrl.nearY, z: ctrl.nearZ, scale: ctrl.nearScale, opacity: ctrl.nearOpacity },
+      ],
+      ambient: { intensity: ctrl.ambientIntensity, color: config.ambient.color },
+      directional: { intensity: ctrl.directionalIntensity, color: config.directional.color, position: config.directional.position },
+      vignette: { strength: ctrl.vignetteStrength },
+      groundTileSize: ctrl.groundTileSize,
+      dioramaScale: pv.dioramaScale ?? config.dioramaScale,
+      dioramaY: pv.dioramaY ?? config.dioramaY ?? 0,
+    };
+    if (config.props3D) {
+      snapshot.props3D = config.props3D.map((prop, i) => ({
+        src: prop.src,
+        position: [pv[`p${i}X`] ?? prop.position[0], pv[`p${i}Y`] ?? prop.position[1], pv[`p${i}Z`] ?? prop.position[2]],
+        rotation: [prop.rotation?.[0] ?? 0, pv[`p${i}RotY`] ?? 0, prop.rotation?.[2] ?? 0],
+        scale: pv[`p${i}Scale`] ?? (typeof prop.scale === 'number' ? prop.scale : prop.scale[0]),
+        ...(prop.light  && { light:  prop.light  }),
+        ...(prop.sprite && { sprite: prop.sprite }),
+      }));
+    }
+    return snapshot;
+  }, [ctrl, propsCtrl, config]);
+
+  /* --- Pause toggle + Export action --- */
+  const { pauseCombat } = useControls('Actions', {
+    pauseCombat: { value: false, label: 'Pause Combat' },
+  });
+  useControls('Actions', {
+    'Export Config JSON': button(() => {
+      const snapshot = buildSnapshot();
+      downloadJson(`arena-debug-${config.biome}-${Date.now()}.json`, snapshot);
+      console.log('[ArenaDebug] Exported config:', JSON.stringify(snapshot, null, 2));
+    }),
+  });
+
   const value = useMemo<ArenaDebugValues>(() => {
     const base: ArenaDebugValues = {
       bgLayers: [
@@ -106,12 +165,15 @@ export function ArenaDebugProvider({ config, children }: ProviderProps) {
       ],
       groundTileSize:  ctrl.groundTileSize,
       vignette: { strength: ctrl.vignetteStrength },
+      lighting: { ambientIntensity: ctrl.ambientIntensity, directionalIntensity: ctrl.directionalIntensity },
+      paused: pauseCombat,
     };
 
     // Reconstruct props3D from Leva values — cast once to avoid repeated unsafe casts
     if (config.props3D) {
       const pv = propsCtrl as unknown as Record<string, number>;
       base.dioramaScale = pv.dioramaScale ?? config.dioramaScale;
+      base.dioramaY = pv.dioramaY ?? config.dioramaY ?? 0;
       base.props3D = config.props3D.map((prop, i) => ({
         src: prop.src,
         position: [
@@ -125,11 +187,14 @@ export function ArenaDebugProvider({ config, children }: ProviderProps) {
           prop.rotation?.[2] ?? 0,
         ] as [number, number, number],
         scale: pv[`p${i}Scale`] ?? (typeof prop.scale === 'number' ? prop.scale : prop.scale[0]),
+        // Preserve light and sprite — debug only tunes position/rotation/scale
+        ...(prop.light  && { light:  prop.light  }),
+        ...(prop.sprite && { sprite: prop.sprite }),
       }));
     }
 
     return base;
-  }, [ctrl, propsCtrl, config]);
+  }, [ctrl, propsCtrl, config, pauseCombat]);
 
   return <ArenaDebugCtx.Provider value={value}>{children}</ArenaDebugCtx.Provider>;
 }
@@ -143,10 +208,11 @@ export function ArenaDebugProvider({ config, children }: ProviderProps) {
 export function DebugCameraController() {
   const camera = useThree(s => s.camera);
 
-  const { zoom, camY, camZ } = useControls('Camera', {
-    zoom: { value: 137, min: 30,  max: 400, step: 1,   label: 'zoom'   },
-    camY: { value: 8.8,   min: 0,   max: 30,  step: 0.1, label: 'pos Y'  },
-    camZ: { value: 8.2,  min: 1,   max: 40,  step: 0.1, label: 'pos Z'  },
+  // camY/camZ at 3.6/10.0 → atan(3.6/10) ≈ 20° elevation angle
+  const { zoom, camY, camZ } = useControls('View', {
+    zoom: { value: 114, min: 30,  max: 400, step: 1,   label: 'zoom'   },
+    camY: { value: 3.6, min: 0,   max: 30,  step: 0.1, label: 'pos Y'  },
+    camZ: { value: 10.0, min: 1,  max: 40,  step: 0.1, label: 'pos Z'  },
   });
 
   useFrame(() => {

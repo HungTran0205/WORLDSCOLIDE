@@ -124,12 +124,13 @@ export function CombatArenaEnvironment({ zone }: Props) {
   const is3D = Boolean(config.diorama);
   const activeProps3D = debug?.props3D ?? config.props3D;
   const activeDioramaScale = debug?.dioramaScale ?? config.dioramaScale ?? 1;
+  const activeDioramaY = debug?.dioramaY ?? config.dioramaY ?? 0;
 
   return (
     <group>
       {/* === GROUND === */}
       {is3D ? (
-        <Environment3DModel src={config.diorama!} scale={activeDioramaScale} />
+        <Environment3DModel src={config.diorama!} scale={activeDioramaScale} positionY={activeDioramaY} />
       ) : config.groundTexture ? (
         <TexturedGround src={config.groundTexture} size={[22, 9]} tileSize={groundTileSize} />
       ) : (
@@ -167,19 +168,23 @@ export function CombatArenaEnvironment({ zone }: Props) {
         config.props.map((prop, i) => <PropSprite key={i} prop={prop} />)
       )}
 
-      {/* Light shafts — forest: warm sun rays; cave: none */}
+      {/* Light shafts — forest: warm sun rays; cave: cool crystal glow */}
       {config.biome === 'forest' && <>
         <LightShaft tint="#ffe8a0" opacity={0.055} angle={0.28} />
         <LightShaft tint="#ffe8a0" opacity={0.035} angle={0.42} />
       </>}
+      {config.biome === 'cave' && <>
+        <LightShaft tint="#a0a0ff" opacity={0.06} angle={0.2} />
+        <LightShaft tint="#8080d0" opacity={0.04} angle={-0.35} />
+      </>}
 
       {/* === LIGHTING === */}
-      <ambientLight intensity={config.ambient.intensity} color={config.ambient.color} />
+      <ambientLight intensity={debug?.lighting?.ambientIntensity ?? config.ambient.intensity} color={config.ambient.color} />
       {/* Directional with shadow — only when 3D content is present */}
       {is3D && (
         <directionalLight
           castShadow
-          intensity={config.directional.intensity}
+          intensity={debug?.lighting?.directionalIntensity ?? config.directional.intensity}
           color={config.directional.color}
           position={config.directional.position}
           shadow-mapSize={[1024, 512]}
@@ -192,6 +197,7 @@ export function CombatArenaEnvironment({ zone }: Props) {
           shadow-bias={-0.001}
         />
       )}
+
     </group>
   );
 }

@@ -7,7 +7,6 @@
 import * as THREE from 'three';
 
 const TEX_SIZE = 64;
-const textureCache = new Map<string, THREE.CanvasTexture>();
 
 /** Seeded pseudo-random for deterministic textures per color */
 function seededRandom(seed: number): () => number {
@@ -174,33 +173,39 @@ function drawCementPattern(ctx: CanvasRenderingContext2D, baseColor: string, ran
   ctx.strokeRect(1, 1, TEX_SIZE - 2, TEX_SIZE - 2);
 }
 
+const canvasCache = new Map<string, HTMLCanvasElement>();
+
 /** Get or create a procedural texture for a floor tile color */
 export function getFloorTileTexture(colorHex: string): THREE.CanvasTexture {
-  const cached = textureCache.get(colorHex);
-  if (cached) return cached;
+  let canvas = canvasCache.get(colorHex);
 
-  const canvas = document.createElement('canvas');
-  canvas.width = TEX_SIZE;
-  canvas.height = TEX_SIZE;
-  const ctx = canvas.getContext('2d')!;
-  const rand = seededRandom(hashString(colorHex));
-  const material = detectMaterial(colorHex);
+  if (!canvas) {
+    canvas = document.createElement('canvas');
+    canvas.width = TEX_SIZE;
+    canvas.height = TEX_SIZE;
+    const ctx = canvas.getContext('2d')!;
+    const rand = seededRandom(hashString(colorHex));
+    const material = detectMaterial(colorHex);
 
-  switch (material) {
-    case 'wood':
-      drawWoodGrain(ctx, colorHex, rand);
-      break;
-    case 'stone':
-      drawStonePattern(ctx, colorHex, rand);
-      break;
-    case 'cement':
-      drawCementPattern(ctx, colorHex, rand);
-      break;
+    switch (material) {
+      case 'wood':
+        drawWoodGrain(ctx, colorHex, rand);
+        break;
+      case 'stone':
+        drawStonePattern(ctx, colorHex, rand);
+        break;
+      case 'cement':
+        drawCementPattern(ctx, colorHex, rand);
+        break;
+    }
+    canvasCache.set(colorHex, canvas);
   }
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.magFilter = THREE.NearestFilter;
   texture.minFilter = THREE.NearestFilter;
-  textureCache.set(colorHex, texture);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  // Explicitly tag it for WebGPU upload
+  texture.needsUpdate = true;
   return texture;
 }

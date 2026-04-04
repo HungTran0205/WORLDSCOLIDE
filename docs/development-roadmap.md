@@ -1,8 +1,8 @@
 # Development Roadmap
 
-**Last Updated**: 2026-03-23
-**Current Phase**: Phase 5 In Progress (Milestone 5 Building System Refactor v1.10 Complete)
-**Overall Progress**: ~95% Complete
+**Last Updated**: 2026-03-30
+**Current Phase**: Phase 5 In Progress (Milestone 7 Forest Arena HD-2D Upgrade v1.13 Complete)
+**Overall Progress**: ~96% Complete
 
 ---
 
@@ -181,9 +181,14 @@
 - [x] SpriteAnimator component + sprite-path-resolver utility + member-layer enhancement
 - [x] Archetype/gender fields added to Member interface, fallback support for old saves
 - [x] Convention-based sprite folder structure (TS/DQ/TL prefixes, 8 walking frames per direction)
+- [x] Guild Facilities System — 4 zones (Tavern, Training Yard, Infirmary, Workshop) with member assignment, stat-based bonuses, offline production (v1.12 released)
+- [x] FacilitiesPanel unified UI, facility-card component, facility-production-system calculations
+- [x] Member 'assigned' status blocking missions/promotions, offline facility popup on login
+- [x] Facility level progression with upgrade costs, per-level slot capacity
 
 ### Current Tasks
 - [x] Character sprite animation system (v1.11 complete)
+- [x] Forest Arena HD-2D upgrade (v1.13 complete — GLB diorama + 3D props + shadow casting)
 - [ ] Performance optimization (target <100ms saves)
 - [ ] Comprehensive testing (combat, economy, offline progression, sprite rendering)
 - [ ] Bug fixes from testing phase
@@ -271,6 +276,8 @@
 | Phase 5 Milestone 3 | 2026-03-21 | ✅ Done | Icon asset integration (60 pixel-art icons, 9 categories, convention-based resolution) |
 | Phase 5 Milestone 4 | 2026-03-23 | ✅ Done | Character sprite animation (12 civ-specific sprite sets, 4-directional walking, movement AI) |
 | Phase 5 Milestone 5 | 2026-03-23 | ✅ Done | Building System Refactor (tile-based architecture, floor tiles, guild-level furniture, save migration v9→v10) |
+| Phase 5 Milestone 6 | 2026-03-30 | ✅ Done | Guild Facilities System (4 zones, member assignment, stat-based production, offline catch-up) |
+| Phase 5 Milestone 7 | 2026-03-30 | ✅ Done | Forest Arena HD-2D Upgrade (GLB diorama + 3D props, shadow pipeline, MeshStandardMaterial sprites) |
 | Phase 5 Complete | 2026-03-30 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
 | Phase 6 Start | 2026-04-15 | 📋 Planned | Post-launch content |
 
@@ -410,4 +417,4 @@ Documentation automatically updated when:
 - Significant scope changes
 - Resource allocation changes
 
-**Last Updated**: 2026-03-21 by docs-manager (Milestone 2 Vertical Slice Complete)
+**Last Updated**: 2026-03-30 by docs-manager (Milestone 6 Guild Facilities System Complete)

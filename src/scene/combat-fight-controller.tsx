@@ -10,6 +10,7 @@ import { CombatEngine } from '@/game/systems/combat-engine';
 import { useGameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
 import { ENEMIES } from '@/game/data/enemies';
+import { useArenaDebug } from './combat-arena-debug';
 import type { ArenaEntitySnapshot } from '@/game/state/combat-arena-slice';
 
 /** Max dt per frame to prevent massive tick bursts after tab suspend */
@@ -63,10 +64,11 @@ export function CombatFightController() {
     return () => window.removeEventListener('combat-skill', handler);
   }, []);
 
-  // Tick engine each frame
+  // Tick engine each frame — skip when debug paused
+  const debugPaused = useArenaDebug()?.paused ?? false;
   useFrame((_, delta) => {
     const engine = engineRef.current;
-    if (!engine || arenaPhase !== 'fighting') return;
+    if (!engine || arenaPhase !== 'fighting' || debugPaused) return;
 
     const dtMs = Math.min(delta * 1000, MAX_FRAME_DT_MS) * speedMultiplier;
     const events = engine.tick(dtMs);

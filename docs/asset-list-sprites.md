@@ -746,9 +746,6 @@
   "id": "wolf",
   "type": "enemy-sprite",
   "name": "Wolf",
-  "level": 3,
-  "boss": false,
-  "resolution": "48x48",
   "body": "quadruped canine, lean muscular build, hackles raised, low aggressive stance",
   "features": "amber eyes, bared fangs, pointed ears forward, bushy tail low, fur texture visible",
   "colorPattern": {

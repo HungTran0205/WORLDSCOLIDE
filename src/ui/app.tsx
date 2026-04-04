@@ -13,6 +13,8 @@ import { deleteSlot, loadBackup, saveSlot } from '@/game/save/save-storage';
 import { getActiveSlotId, setActiveSlotId, clearActiveSlotId } from '@/game/save/active-slot-storage';
 import { extractGameSaveData, createSaveEnvelope } from '@/game/save/save-types';
 import { isValidSaveEnvelope } from '@/game/save/save-validation';
+import { initAudio, playBGM } from '@/audio/audio-manager';
+import { AUDIO } from '@/audio/audio-keys';
 
 type AppScreen = 'title' | 'char-creation' | 'game';
 
@@ -33,6 +35,8 @@ export function App() {
         saveManager.setActiveSlot(storedSlot);
         setActiveSlot(storedSlot);
         saveManager.startAutoSave(getState);
+        initAudio();
+        playBGM(AUDIO.BGM_GUILD);
         setAppScreen('game');
       } else {
         // Corrupt save — clear and show title
@@ -66,6 +70,8 @@ export function App() {
     setActiveSlot(slotId);
     setActiveSlotId(slotId);
     saveManager.startAutoSave(getState);
+    initAudio();
+    playBGM(AUDIO.BGM_GUILD);
     setAppScreen('game');
   }, []);
 

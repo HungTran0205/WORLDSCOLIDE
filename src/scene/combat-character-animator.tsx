@@ -5,8 +5,8 @@
  */
 
 import { useRef, useMemo, useEffect } from 'react';
-import { useLoader, useFrame } from '@react-three/fiber';
-import { TextureLoader, MeshBasicMaterial, Mesh } from 'three';
+import { useLoader, useFrame, useThree } from '@react-three/fiber';
+import { TextureLoader, MeshStandardMaterial, Mesh } from 'three';
 import type { MutableRefObject } from 'react';
 import type { SpriteDirection } from './sprite-path-resolver';
 import { getWalkingFramePath, getAttackFramePath } from './sprite-path-resolver';
@@ -59,10 +59,12 @@ export function CombatCharacterAnimator({
 
   const walkTextures = useLoader(TextureLoader, walkPaths);
 
+  const { gl } = useThree();
+
   // Build walk atlas once textures are loaded (32 frames → 8×4 grid)
   const walkAtlas = useMemo<SpriteAtlas>(
     () => buildAtlasFromTextures(walkTextures, 8),
-    [walkTextures],
+    [walkTextures, gl],
   );
 
   // --- Attack atlas: async load, graceful 404 ---
@@ -81,7 +83,7 @@ export function CombatCharacterAnimator({
   }, [basePath]);
 
   // --- Animation loop ---
-  const materialRef = useRef<MeshBasicMaterial>(null);
+  const materialRef = useRef<MeshStandardMaterial>(null);
   const meshRef = useRef<Mesh>(null);
   // Track which atlas is currently bound to avoid unnecessary swaps
   const currentAtlasRef = useRef<'walk' | 'attack'>('walk');
@@ -153,7 +155,7 @@ export function CombatCharacterAnimator({
   return (
     <mesh ref={meshRef} scale={[size[0], size[1], 1]}>
       <planeGeometry args={[1, 1]} />
-      <meshBasicMaterial
+      <meshStandardMaterial
         ref={materialRef}
         map={walkAtlas.texture}
         transparent

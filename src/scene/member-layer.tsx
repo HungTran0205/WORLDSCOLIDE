@@ -4,7 +4,7 @@
  * Invalidates at 20fps only when members exist and are visible.
  */
 
-import { Billboard, Text } from '@react-three/drei';
+import { Billboard, Html } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGameStore } from '@/game/state/store';
 import { useRef, useMemo, useEffect } from 'react';
@@ -79,18 +79,12 @@ function MemberSprite({ member, index }: { member: Member; index: number }) {
           directionRef={directionRef}
           isMovingRef={isMovingRef}
         />
-        {/* Member name */}
-        <Text
-          position={[0, 1.3, 0]}
-          fontSize={0.2}
-          color="white"
-          anchorX="center"
-          anchorY="bottom"
-          outlineWidth={0.025}
-          outlineColor="black"
-        >
-          {member.name}
-        </Text>
+        {/* Member name — Html overlay avoids troika GLSL incompatibility with WebGPU */}
+        <Html position={[0, 1.3, 0]} center>
+          <span style={{ color: 'white', fontSize: '10px', whiteSpace: 'nowrap', textShadow: '1px 1px 2px black, 0 0 2px black' }}>
+            {member.name}
+          </span>
+        </Html>
       </Billboard>
     </group>
   );

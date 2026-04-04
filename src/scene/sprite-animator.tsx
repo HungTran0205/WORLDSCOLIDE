@@ -5,7 +5,7 @@
  */
 
 import { useRef, useMemo } from 'react';
-import { useLoader, useFrame } from '@react-three/fiber';
+import { useLoader, useFrame, useThree } from '@react-three/fiber';
 import { TextureLoader, NearestFilter, SRGBColorSpace } from 'three';
 import type { MutableRefObject } from 'react';
 import type { MeshBasicMaterial } from 'three';
@@ -44,6 +44,8 @@ export function SpriteAnimator({ basePath, directionRef, isMovingRef, size = [2.
 
   const allTextures = useLoader(TextureLoader, allPaths);
 
+  const { gl } = useThree();
+
   const atlas = useMemo<SpriteAtlas>(() => {
     for (const t of allTextures) {
       t.magFilter = NearestFilter;
@@ -51,7 +53,7 @@ export function SpriteAnimator({ basePath, directionRef, isMovingRef, size = [2.
       t.colorSpace = SRGBColorSpace;
     }
     return buildAtlasFromTextures(allTextures, FRAME_COUNT);
-  }, [allTextures]);
+  }, [allTextures, gl]);
 
   /* Animation loop — only updates UV uniforms, no texture swap */
   useFrame((_, delta) => {

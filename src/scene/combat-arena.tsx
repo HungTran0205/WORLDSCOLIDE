@@ -22,14 +22,25 @@ const FRAME_INTERVAL = 1000 / TARGET_FPS;
 /**
  * Drives invalidation at a capped frame rate via setInterval.
  * Lighter than rAF loop — no per-frame JS overhead between invalidations.
+ * Respects debug pause state — stops interval but still invalidates once
+ * when debug values change so Leva tweaks render immediately.
  */
 function FrameRateLimiter() {
   const invalidate = useThree(s => s.invalidate);
+  const debug = useArenaDebug();
+  const paused = debug?.paused ?? false;
 
+  // Normal tick loop — disabled when paused
   useEffect(() => {
+    if (paused) return;
     const id = setInterval(invalidate, FRAME_INTERVAL);
     return () => clearInterval(id);
-  }, [invalidate]);
+  }, [invalidate, paused]);
+
+  // When paused, still invalidate once per debug value change so Leva tweaks render
+  useEffect(() => {
+    if (paused && debug) invalidate();
+  }, [paused, debug, invalidate]);
 
   return null;
 }
@@ -57,7 +68,7 @@ export function CombatArenaCanvas() {
         frameloop="demand"
         orthographic
         shadows
-        camera={{ zoom: 121, position: [0, 3.2, 11.8], near: 0.1, far: 1000 }}
+        camera={{ zoom: 114, position: [0, 3.6, 10.0], near: 0.1, far: 1000 }}
         dpr={1}
         gl={createWebGPURenderer}
         style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}
