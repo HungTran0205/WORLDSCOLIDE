@@ -11,7 +11,7 @@ export function World() {
     <Canvas
       frameloop="demand"
       orthographic
-      camera={{ zoom: 80, position: [10, 10, 10], near: 0.1, far: 1000 }}
+      camera={{ zoom: 65, position: [15, 10, 14], near: 0.1, far: 1000 }}
       dpr={[1, 1.5]}
       gl={createWebGPURenderer}
       style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}

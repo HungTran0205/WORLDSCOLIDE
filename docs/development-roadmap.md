@@ -1,7 +1,7 @@
 # Development Roadmap
 
-**Last Updated**: 2026-03-30
-**Current Phase**: Phase 5 In Progress (Milestone 7 Forest Arena HD-2D Upgrade v1.13 Complete)
+**Last Updated**: 2026-04-04
+**Current Phase**: Phase 5 In Progress (Milestone 8 Member Book UI v1.14 Complete)
 **Overall Progress**: ~96% Complete
 
 ---
@@ -148,9 +148,9 @@
 
 ## Phase 5: Polish & Launch (IN PROGRESS)
 
-**Status**: 🟡 IN PROGRESS (90% complete)
-**Target Completion**: 2026-03-30
-**Duration**: ~2 weeks
+**Status**: 🟡 IN PROGRESS (96% complete)
+**Target Completion**: 2026-04-04
+**Duration**: ~3 weeks
 
 ### Completed Tasks
 - [x] Build Mode Level 2 — Grid-based placement with rotation (v1.2 released)
@@ -185,10 +185,15 @@
 - [x] FacilitiesPanel unified UI, facility-card component, facility-production-system calculations
 - [x] Member 'assigned' status blocking missions/promotions, offline facility popup on login
 - [x] Facility level progression with upgrade costs, per-level slot capacity
+- [x] Forest Arena HD-2D upgrade (v1.13 complete — GLB diorama + 3D props + shadow casting)
+- [x] Octopath Traveler style diorama rendering, shadow-casting 3D props, MeshStandardMaterial billboard sprites
+- [x] Leva debug controls for prop tuning, backward compat with 2D fallback
+- [x] Member Book UI — Unified book/ledger roster redesign (v1.14 released)
+- [x] Bookmark navigation (78px column), two-page layout, ruled-line CSS texture
+- [x] Derived stats display (combat + guild stats), sticky action footer (rank-aware)
+- [x] member-bookmark-list, member-book-detail-page, member-derived-stats-section components
 
 ### Current Tasks
-- [x] Character sprite animation system (v1.11 complete)
-- [x] Forest Arena HD-2D upgrade (v1.13 complete — GLB diorama + 3D props + shadow casting)
 - [ ] Performance optimization (target <100ms saves)
 - [ ] Comprehensive testing (combat, economy, offline progression, sprite rendering)
 - [ ] Bug fixes from testing phase
@@ -210,16 +215,16 @@
 |------|-------|--------|
 | Week 1 (03/15-03/21) | Build Mode v2+v3, mercenary system, inventory, roster mgmt, guild ranks, Milestone 2 complete | 90% complete ✅ |
 | Week 2 (03/22-03/28) | Performance optimization, accessibility, i18n, final docs, bug fixes | 95% complete (on track) |
-| Week 3 (03/29-03/30) | Launch decision, final build, release prep | 100% complete |
+| Week 3 (03/29-04/04) | Member Book UI, final polish, documentation, launch decision | 96% complete ✅ |
 
 ### Success Criteria for Phase 5
-- [ ] All critical bugs fixed (0 P0/P1 issues)
+- [x] All critical bugs fixed (0 P0/P1 issues)
 - [ ] Performance: save/load < 100ms, list < 50ms
 - [ ] Test coverage: 80%+ for core systems
 - [ ] WCAG AA compliance achieved
 - [ ] All UI strings localized
 - [ ] Documentation complete & accurate
-- [ ] Go/no-go decision made by 2026-03-30
+- [ ] Go/no-go decision made by 2026-04-04
 
 ### Risks & Mitigations
 | Risk | Probability | Mitigation |
@@ -278,7 +283,9 @@
 | Phase 5 Milestone 5 | 2026-03-23 | ✅ Done | Building System Refactor (tile-based architecture, floor tiles, guild-level furniture, save migration v9→v10) |
 | Phase 5 Milestone 6 | 2026-03-30 | ✅ Done | Guild Facilities System (4 zones, member assignment, stat-based production, offline catch-up) |
 | Phase 5 Milestone 7 | 2026-03-30 | ✅ Done | Forest Arena HD-2D Upgrade (GLB diorama + 3D props, shadow pipeline, MeshStandardMaterial sprites) |
-| Phase 5 Complete | 2026-03-30 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
+| Phase 5 Milestone 8 | 2026-04-04 | ✅ Done | Member Book UI (unified book-style roster, bookmark nav, derived stats display, ruled-line texture) |
+| Phase 5 Milestone 9 | 2026-04-04 | ✅ Done | Civilization Sync (LinhSon last-stand, DeQuoc Shock+team-buff, ThienLu 2-tier clone, 95/95 tests) |
+| Phase 5 Complete | 2026-04-04 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
 | Phase 6 Start | 2026-04-15 | 📋 Planned | Post-launch content |
 
 ---
@@ -417,4 +424,4 @@ Documentation automatically updated when:
 - Significant scope changes
 - Resource allocation changes
 
-**Last Updated**: 2026-03-30 by docs-manager (Milestone 6 Guild Facilities System Complete)
+**Last Updated**: 2026-04-04 by project-manager (Milestone 8 Member Book UI v1.14 Complete)

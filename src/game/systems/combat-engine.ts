@@ -9,9 +9,13 @@ import type { EnemyTemplate } from '@/game/data/enemies';
 import type { CombatEvent, CombatTick, CombatResult, CombatOutcome } from './combat-types';
 import type { ArenaEntity, Formation } from './combat-arena-types';
 import { getFormationPosition } from './combat-arena-types';
-import { calcAutoAttackDamage, calcSkillDamage, rollCrit, CRIT_MULTIPLIER } from './combat-formulas';
+import { calcAutoAttackDamage, calcSkillDamage, rollCrit } from './combat-formulas';
 import { applyEffectTick } from './combat-effects';
-import { applyPassiveTick, onDamageDealt, rollPassiveDodge } from './combat-passives';
+import {
+  applyPassiveTick, onDamageDealt,
+  consumeShock, activateTeamBuff, isTeamBuffActive,
+  resolveThienLuTimers, isCloneActive,
+} from './combat-passives';
 import { findTarget, getDistance, moveToward, processAbilities } from './combat-ai';
 import { memberToArenaEntity, enemyToArenaEntity } from './combat-entity-factory';
 
@@ -131,6 +135,25 @@ export class CombatEngine {
     // Refresh conditional passive buffs
     if (entity.passiveState) applyPassiveTick(entity);
 
+    // DeQuoc team buff flag — set by nearby alive ally with active buff
+    const deQuocAlly = this.entities.find(e =>
+      e.isAlly === entity.isAlly &&
+      e.passiveState?.civId === 'DeQuoc' &&
+      isTeamBuffActive(e.passiveState, this.time) &&
+      e.currentHp > 0,
+    );
+    entity._hasDeQuocBuff = !!(deQuocAlly && entity.id !== deQuocAlly.id);
+
+    // HP regen tick
+    if (entity.hpRegenPerSec > 0) {
+      const regen = Math.round(entity.hpRegenPerSec * LOGIC_TICK_MS / 1000);
+      if (regen > 0 && entity.currentHp < entity.maxHp) {
+        const healed = Math.min(regen, entity.maxHp - entity.currentHp);
+        entity.currentHp += healed;
+        this.eventQueue.push({ type: 'heal', healerId: entity.id, targetId: entity.id, amount: healed });
+      }
+    }
+
     // Apply status effects (poison, stun)
     const effectResult = applyEffectTick(entity);
     if (effectResult.damage > 0) {
@@ -175,11 +198,34 @@ export class CombatEngine {
     } else if (!entity.isAlly && entity.skill && entity.skill.autoEnabled && this.time >= entity.skillCooldownUntil) {
       this.trySkill(entity, target);
     }
+
+    // ThienLu Tinh Lo clone hit — extra auto-attack each tick while clone is active
+    if (entity.passiveState && isCloneActive(entity.passiveState, this.time)) {
+      const cloneTarget = findTarget(entity, this.entities);
+      if (cloneTarget && cloneTarget.currentHp > 0) {
+        let cloneDmg = calcAutoAttackDamage(entity.stats.STR, cloneTarget.stats.END);
+        const cloneCrit = rollCrit(entity.stats.LCK);
+        if (cloneCrit) cloneDmg = Math.floor(cloneDmg * entity.critDmg);
+        cloneTarget.currentHp -= cloneDmg;
+        this.totalDamageDealt += entity.isAlly ? cloneDmg : 0;
+        this.eventQueue.push({
+          type: 'auto-attack',
+          attackerId: `${entity.id}-clone`,
+          targetId: cloneTarget.id,
+          damage: cloneDmg,
+          isCrit: cloneCrit,
+        });
+        if (cloneTarget.currentHp <= 0) {
+          cloneTarget.animState = 'dead';
+          this.eventQueue.push({ type: 'death', entityId: cloneTarget.id });
+        }
+      }
+    }
   }
 
   private tryAttack(entity: ArenaEntity, target: ArenaEntity): void {
-    // Dodge check (ThienLu passive)
-    if (rollPassiveDodge(target.civilization)) {
+    // Generic stat-derived dodge check
+    if (target.dodgeRate > 0 && Math.random() < target.dodgeRate) {
       this.eventQueue.push({ type: 'dodge', attackerId: entity.id, targetId: target.id });
       entity.nextAttackAt = this.time + entity.attackIntervalMs;
       return;
@@ -190,8 +236,25 @@ export class CombatEngine {
     if (entity.statusEffects.some(e => e.type === 'boosted')) {
       damage = Math.floor(damage * 1.2);
     }
-    const isCrit = rollCrit(entity.stats.LCK);
-    if (isCrit) damage = Math.floor(damage * CRIT_MULTIPLIER);
+    let isCrit = rollCrit(entity.stats.LCK);
+    // ThienLu Tinh Lo crit bonus (+15% when tier 1 active)
+    if (!isCrit && (entity.passiveState?.critBonus ?? 0) > 0) {
+      isCrit = Math.random() < entity.passiveState!.critBonus;
+    }
+    // DeQuoc team buff crit bonus (+5%)
+    if (!isCrit && entity._hasDeQuocBuff) {
+      isCrit = Math.random() < 0.05;
+    }
+    if (isCrit) damage = Math.floor(damage * entity.critDmg);
+    // DeQuoc team buff damage bonus (+5%)
+    if (entity._hasDeQuocBuff) damage = Math.floor(damage * 1.05);
+
+    // Block check (50% damage reduction on proc)
+    if (target.blockRate > 0 && Math.random() < target.blockRate) {
+      const reducedDamage = Math.max(1, Math.floor(damage * 0.5));
+      this.eventQueue.push({ type: 'block', attackerId: entity.id, targetId: target.id, reducedDamage });
+      damage = reducedDamage;
+    }
 
     target.currentHp -= damage;
     this.totalDamageDealt += entity.isAlly ? damage : 0;
@@ -208,6 +271,27 @@ export class CombatEngine {
 
     // Track passive stacks
     if (entity.passiveState) onDamageDealt(entity.passiveState);
+
+    // DeQuoc Shock application — apply shocked debuff to target + activate team buff
+    if (entity.passiveState && consumeShock(entity.passiveState)) {
+      if (!target.statusEffects.some(e => e.type === 'shocked')) {
+        target.statusEffects.push({ type: 'shocked', ticksRemaining: 1 });
+        this.eventQueue.push({ type: 'effect-applied', targetId: target.id, effect: 'shocked' });
+      }
+      activateTeamBuff(entity.passiveState, this.time);
+      this.eventQueue.push({ type: 'effect-applied', targetId: entity.id, effect: 'team-buff' });
+    }
+
+    // ThienLu timer resolution (crit bonus + clone activation/expiry)
+    if (entity.passiveState?.civId === 'ThienLu') {
+      const result = resolveThienLuTimers(entity.passiveState, this.time);
+      if (result.cloneActivated) {
+        this.eventQueue.push({ type: 'effect-applied', targetId: entity.id, effect: 'clone-activated' });
+      }
+      if (result.critActivated) {
+        this.eventQueue.push({ type: 'effect-applied', targetId: entity.id, effect: 'crit-boost' });
+      }
+    }
 
     if (target.currentHp <= 0) {
       target.animState = 'dead';
@@ -226,20 +310,25 @@ export class CombatEngine {
     if (this.time < entity.skillCooldownUntil) return;
 
     const baseDmg = calcAutoAttackDamage(entity.stats.STR, target.stats.END);
-    const isCrit = rollCrit(entity.stats.LCK);
+    const isCrit2 = rollCrit(entity.stats.LCK);
     let skillDmg = calcSkillDamage(baseDmg, entity.skill.damageMultiplier, entity.stats.DEX);
-    if (isCrit) skillDmg = Math.floor(skillDmg * CRIT_MULTIPLIER);
+    if (isCrit2) skillDmg = Math.floor(skillDmg * entity.critDmg);
 
     target.currentHp -= skillDmg;
     this.totalDamageDealt += entity.isAlly ? skillDmg : 0;
-    this.eventQueue.push({ type: 'skill-use', attackerId: entity.id, targetId: target.id, damage: skillDmg, skillName: entity.skill.name, isCrit });
+    this.eventQueue.push({ type: 'skill-use', attackerId: entity.id, targetId: target.id, damage: skillDmg, skillName: entity.skill.name, isCrit: isCrit2 });
     entity.skillCooldownUntil = this.time + entity.skill.cooldownMs;
 
     // Anim
     entity.animState = 'skill';
     entity.animStateUntil = this.time + 400;
 
-    if (entity.passiveState) onDamageDealt(entity.passiveState);
+    if (entity.passiveState) {
+      onDamageDealt(entity.passiveState);
+      if (entity.passiveState.civId === 'ThienLu') {
+        resolveThienLuTimers(entity.passiveState, this.time);
+      }
+    }
 
     if (target.currentHp <= 0) {
       target.animState = 'dead';

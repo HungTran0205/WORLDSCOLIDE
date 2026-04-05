@@ -12,6 +12,10 @@ export function applyEffectTick(entity: CombatEntity): { damage: number; skipTur
     if (effect.type === 'stunned') {
       skipTurn = true;
     }
+    // Shocked = skip 1 turn (same as stun but shorter — DeQuoc passive)
+    if (effect.type === 'shocked') {
+      skipTurn = true;
+    }
     effect.ticksRemaining--;
   }
 

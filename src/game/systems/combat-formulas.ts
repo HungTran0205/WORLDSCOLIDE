@@ -22,10 +22,24 @@ export function calcSkillDamage(baseDamage: number, skillMultiplier: number, dex
   return Math.floor(baseDamage * skillMultiplier * dexBonus);
 }
 
+/** Crit rate as a pure value (0..0.5) — use calcDerivedCombatStats for full derived model */
+export function calcCritRate(lck: number): number {
+  return Math.min(0.5, 0.05 + lck * 0.003);
+}
+
 /** Crit roll based on LCK */
 export function rollCrit(lck: number): boolean {
-  const critRate = Math.min(0.5, 0.05 + lck * 0.003);
-  return Math.random() < critRate;
+  return Math.random() < calcCritRate(lck);
+}
+
+/** Defense damage reduction fraction (0..0.75) */
+export function calcDefenseRating(end: number): number {
+  return Math.min(0.75, end / (end + 100));
+}
+
+/** Skill damage bonus as additive fraction — DEX × 0.5% */
+export function calcSkillDmgBonus(dex: number): number {
+  return dex * 0.005;
 }
 
 export const CRIT_MULTIPLIER = 1.5;

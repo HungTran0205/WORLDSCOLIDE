@@ -12,7 +12,7 @@ export function CameraController() {
       enableZoom={true}
       minZoom={40}
       maxZoom={150}
-      target={[0, 0, 0]}
+      target={[5, 0, 3.5]}
     />
   );
 }

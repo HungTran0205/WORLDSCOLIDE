@@ -61,7 +61,7 @@ export const CIV_CONFIG: Record<Civilization, CivConfig> = {
     passive: {
       id: 'son-the',
       name: 'Sơn Thể',
-      description: 'END/DEX +15% when HP > 50%',
+      description: 'HP < 30%: END +30%, knockback resist',
     },
     colors: {
       primary: '#f5f0e6',
@@ -84,12 +84,12 @@ export const CIV_CONFIG: Record<Civilization, CivConfig> = {
     statBonuses: [
       { stat: 'CHA', multiplier: 1.2 },
       { stat: 'INT', multiplier: 1.1 },
-      { stat: 'DEX', multiplier: 1.1 },
+      { stat: 'AGI', multiplier: 1.1 },
     ],
     passive: {
       id: 'dien-the-chi-huy',
       name: 'Điện Thế Chỉ Huy',
-      description: 'CHA/INT +3% per hit (max 5 stacks)',
+      description: '3 stacks → Shock debuff + team 5% crit/dmg 5s',
     },
     colors: {
       primary: '#1a1a2e',
@@ -107,17 +107,17 @@ export const CIV_CONFIG: Record<Civilization, CivConfig> = {
     displayName: 'Thiên Lữ',
     shortName: 'TL',
     description: 'Du mục thần bí sống theo sao trời, mang theo cả bầu trời trong bước chân.',
-    role: 'Skirmisher / Mystic Ranger',
+    role: 'Speed DPS / Crit Striker',
     archetypes: ['dualblade', 'philosopher'],
     statBonuses: [
       { stat: 'AGI', multiplier: 1.2 },
       { stat: 'INT', multiplier: 1.1 },
-      { stat: 'CHA', multiplier: 1.1 },
+      { stat: 'DEX', multiplier: 1.1 },
     ],
     passive: {
       id: 'tinh-lo',
       name: 'Tinh Lộ',
-      description: 'AGI +15%, +10% dodge chance',
+      description: '5 hits → +15% crit 5s, 15 hits → clone 5s',
     },
     colors: {
       primary: '#191970',

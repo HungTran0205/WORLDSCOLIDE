@@ -6,6 +6,7 @@
 import type { GuildFacility, Member } from '@/game/state/game-state';
 import type { ItemID } from '@/game/data/items';
 import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
+import { calcDerivedGuildStats } from './derived-guild-stats';
 
 export interface FacilityProductionResult {
   facilityType: string;
@@ -24,8 +25,8 @@ export interface FacilityProductionResult {
 
 function calcTrainingYardExpPerDay(member: Member, level: number): number {
   const base = [12, 22, 40][level - 1];
-  const statBonus = 1 + (member.stats.DEX + member.stats.AGI) * 0.002;
-  return Math.floor(base * statBonus);
+  const { trainingEff } = calcDerivedGuildStats(member.stats, member.level);
+  return Math.floor(base * (1 + trainingEff));
 }
 
 // --- Workshop ---
@@ -38,9 +39,10 @@ const WORKSHOP_BASE_OUTPUT: Partial<Record<ItemID, number>>[] = [
 
 function calcWorkshopOutputPerDay(member: Member, level: number): Partial<Record<ItemID, number>> {
   const base = WORKSHOP_BASE_OUTPUT[level - 1];
-  const speedMult = 1 + member.stats.STR * 0.004;
-  // DEX quality: chance to double iron ore at lv2+
-  const qualityRoll = level >= 2 && Math.random() < member.stats.DEX * 0.005;
+  const { gatherSpeed, craftSkill } = calcDerivedGuildStats(member.stats, member.level);
+  const speedMult = 1 + gatherSpeed;
+  // craftSkill quality: chance to double iron ore at lv2+ (higher craftSkill → higher chance)
+  const qualityRoll = level >= 2 && Math.random() < craftSkill * 0.001;
   const result: Partial<Record<ItemID, number>> = {};
   for (const [k, v] of Object.entries(base)) {
     result[k as ItemID] = Math.floor((v ?? 0) * speedMult);
@@ -56,8 +58,11 @@ function calcTavernUpkeepSavedPerDay(
   level: number,
   dailyUpkeep: number,
 ): number {
-  const totalCha = assignedMembers.reduce((s, m) => s + m.stats.CHA, 0);
-  const pct = Math.min(0.10, totalCha * 0.0005 * level);
+  const totalNegotiation = assignedMembers.reduce(
+    (s, m) => s + calcDerivedGuildStats(m.stats, m.level).negotiation,
+    0,
+  );
+  const pct = Math.min(0.10, totalNegotiation * 0.0001 * level);
   return Math.floor(dailyUpkeep * pct);
 }
 
@@ -66,10 +71,11 @@ function calcTavernUpkeepSavedPerDay(
 /** Recovery time multiplier — lower is faster. Applied by injury-recovery logic. */
 export function calcInfirmaryRecoveryMult(assignedMembers: Member[], level: number): number {
   if (assignedMembers.length === 0) return 1.0;
-  const avgEnd = assignedMembers.reduce((s, m) => s + m.stats.END, 0) / assignedMembers.length;
-  const avgInt = assignedMembers.reduce((s, m) => s + m.stats.INT, 0) / assignedMembers.length;
+  const avgRecovery =
+    assignedMembers.reduce((s, m) => s + calcDerivedGuildStats(m.stats, m.level).recovery, 0) /
+    assignedMembers.length;
   const base = [0.75, 0.55, 0.40][level - 1];
-  return Math.max(0.2, base - (avgEnd + avgInt) * 0.001);
+  return Math.max(0.2, base * avgRecovery);
 }
 
 // --- Main processor ---

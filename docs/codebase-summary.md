@@ -2,7 +2,7 @@
 
 **Worlds Collide** — An HD-2D auto-RPG idle guild builder where civilizations collide. Build your guild hall, recruit members from different civilizations, dispatch quests, and watch your guild grow — even while you're away.
 
-**Last Updated**: 2026-03-30 (Forest Arena HD-2D upgrade v1.13 + Guild Facilities System v1.12 documented)
+**Last Updated**: 2026-04-04 (Member Book UI v1.14 complete)
 
 ## Technology Stack
 
@@ -33,7 +33,7 @@ src/
 │   ├── screens/            # Full-screen views (title screen with slot selection)
 │   ├── panels/             # Collapsible UI panels (quest board, roster, build, combat, settings)
 │   ├── hud/                # Heads-up display overlay + panel toggle bar + save status badge
-│   ├── components/         # Reusable UI components (stat bars, cards, dialogs, civ-badge, game-icon, cost-display, rank-badge)
+│   ├── components/         # Reusable UI components (stat bars, cards, dialogs, civ-badge, game-icon, cost-display, rank-badge, member-book)
 │   ├── utils/              # Utility functions (icon-paths for convention-based icon resolution)
 │   └── styles/             # CSS for panels, HUD, and screens
 ├── audio/                  # Howler.js audio manager + sound key enums (6 new keys)
@@ -72,7 +72,7 @@ src/
 - `save-storage.ts` — Multi-slot IndexedDB CRUD
 - `save-manager.ts` — Orchestrates save/load/export/import lifecycle
 - `save-validation.ts` — TypeScript type guards + migration pipeline
-- `active-slot-storage.ts` — Track active slot in localStorage
+- `active-slot-storage.ts` — Slot tracking
 
 ### Game State (Zustand)
 - **Game Slice**: Active guild, missions, combat log, game clock
@@ -396,7 +396,6 @@ src/
 - **Facility Levels**: 0 (locked/unbuilt) → 1–3 (active upgrades)
 - **Build Requirements**: Guild level ≥ 2 to unlock Training Yard, Infirmary, Workshop; Tavern starts at lv1
 - **Upgrade Costs**: Each facility has build cost + two upgrade paths (lv1→2, lv2→3) in gold
-- **FacilitiesPanel**: Unified panel replacing TavernPanel, manages all 4 facilities in one view
 
 ### Member Assignment System (NEW - Slotted Workers)
 - **Per-Facility Slots**: Each facility has `maxSlots` per level ([lv1, lv2, lv3] array)
@@ -470,13 +469,13 @@ src/
 - **Roster Filter**: Quest board + roster show civ badges for filtering/identification
 - **Save Migration v8→v9**: Transparent civ name remapping for old saves
 
-### Combat Passives System (NEW - 3 Exclusive Abilities)
-- **Son The (Linh Sơn)**: +20% max HP per level
-- **Dien The Chi Huy (Đế Quốc)**: +30% EXP gain from missions
-- **Tinh Lo (Thiên Lữ)**: +15% dodge rate in combat
-- **Passive Application**: Automatically applied based on member's civilization
-- **Combat Integration**: Passives checked during combat simulation + damage calculation
-- **Display**: Passive abilities shown in character detail panel + roster list items
+### Combat Passives System (REFINED - 3 Exclusive Abilities)
+- **Son The (Linh Sơn)**: Last-stand mechanic — END +30% when HP ≤ 30% (survivability)
+- **Dien The Chi Huy (Đế Quốc)**: 3-stack trigger → Shock debuff (enemy skip 1 tick) + team buff (+5% crit/dmg 5s)
+- **Tinh Lo (Thiên Lữ)**: 2-tier hit stacking — 5 hits → +15% crit 5s, 15 hits → clone (extra attack 5s)
+- **PassiveState Tracking**: Expanded to track stacks, Shock readiness, team buff duration, crit bonus, clone duration
+- **Combat Integration**: Passives triggered on damage dealt, applied in real-time + simulator with synchronized behavior
+- **Display**: Passive abilities shown in character detail panel + member book derived stats section
 
 ### Skills Expansion (NEW - 7 Total, was 1)
 - **7 Skills Total**: Grouped by archetype via `SKILLS_BY_ARCHETYPE`
@@ -771,6 +770,44 @@ src/
 - Vietnamese translations for title screen (slot labels, actions, messages)
 - Save/import dialog strings
 - Status badge messages
+
+## Recent Changes (Member Book UI — v1.14)
+
+### Unified Book-Style Roster (NEW - Major UI Redesign)
+- **Replaces Dual Overlays**: Single 680px-wide book panel replaces detached roster + character detail
+- **Bookmark Navigation**: Left edge (78px) scrollable bookmark column with avatar thumbnails, short names, status dots
+- **Status Indicators**: Gold (founder), green (available), blue (on-mission), red (injured), amber (mercenary)
+- **Two-Page Layout**: Left page (identity, biography, civ passive, equipment, skill) + right page (talents, combat stats, guild stats)
+- **Ruled-Line Texture**: Pure CSS gradient texture on both pages for ledger aesthetic
+- **Sticky Footer**: Action footer (promote, invite, release) always visible; rank-aware (mercenary hides promote, shows invite cost)
+- **Independent Scroll**: Both pages scroll independently; footer fixed outside scroll area
+
+### Derived Combat & Guild Stats Display (NEW - Read-Model Stats)
+- **Combat Stats Section**: 2-column grid (ATK, DEF, SPD, CRIT, HP, MP, EVA, ACC) calculated from member base stats
+- **Guild Stats Section**: 4 labeled progress bars (member facility contributions) derived from facility assignments
+- **Selector-Based**: All derived values computed on demand via `memberDerivedStats` selectors, no schema changes
+
+### Member Book Components (NEW)
+- **member-bookmark-list.tsx**: Scrollable bookmark column (78px) with active state gold accent
+- **member-book-detail-page.tsx**: Two-page book layout with spine divider, title bar, sticky footer
+- **member-derived-stats-section.tsx**: Combat stats grid + guild stats progress bars section
+- **Integration**: Embedded in guild-roster.tsx as single unified panel
+
+### Responsive Design
+- **Wide Viewport (>720px)**: Two-page side-by-side layout
+- **Narrow Viewport (<720px)**: Pages stack vertically, bookmark column fixed
+- **Mobile Fallback**: Single column with horizontal scroll fallback
+
+**Key Files (New)**:
+- `src/ui/components/member-bookmark-list.tsx` — Bookmark navigation with status indicators
+- `src/ui/components/member-book-detail-page.tsx` — Two-page book shell + layout
+- `src/ui/components/member-derived-stats-section.tsx` — Derived stats display (combat + guild)
+
+**Key Files (Modified)**:
+- `src/ui/panels/guild-roster.tsx` — Replaced dual-overlay with unified book panel (680px)
+- `src/ui/components/roster-list-item.tsx` — Preserved (bookmark uses avatar from this style)
+- `src/ui/styles/panels.css` — Added book-specific styles (ruled-line texture, spine, page layout)
+- `src/game/state/selectors.ts` — Selector-based derived stats queries
 
 ## Development Commands
 

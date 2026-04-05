@@ -26,6 +26,8 @@ export interface ArenaEntitySnapshot {
   civilization?: string;
   gender?: 'M' | 'F';
   spriteId?: string;
+  /** Flying enemy — sprite renders elevated above ground */
+  flying?: boolean;
 }
 
 export interface CombatArenaSlice {

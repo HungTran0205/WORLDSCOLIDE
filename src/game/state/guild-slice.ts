@@ -49,22 +49,15 @@ export interface GuildSlice {
   clearOfflineFacilityReport: () => void;
 }
 
-/** Generate the default 6x6 gold floor + quest-board at center */
+/** Generate the default 10x7 diorama floor (no default furniture — quest board is a static scene prop) */
 export function createDefaultFloor(): GuildHall {
   const floorTiles: FloorTile[] = [];
-  for (let x = 0; x < 6; x++) {
-    for (let z = 0; z < 6; z++) {
+  for (let x = 0; x < 10; x++) {
+    for (let z = 0; z < 7; z++) {
       floorTiles.push({ x, z, color: '#DAA520' });
     }
   }
-  const furniture: PlacedFurniture[] = [{
-    id: crypto.randomUUID(),
-    type: 'quest-board',
-    level: 1,
-    position: { x: 3, z: 3 },
-    rotation: 0,
-  }];
-  return { level: 1, floorTiles, furniture };
+  return { level: 1, floorTiles, furniture: [] };
 }
 
 const DEFAULT_SETTINGS: GameSettings = {

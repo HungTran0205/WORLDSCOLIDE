@@ -8,21 +8,23 @@ import type { EnemyTemplate } from '@/game/data/enemies';
 import type { ArenaEntity } from './combat-arena-types';
 import { getAttackRange, DEFAULT_MOVE_SPEED } from './combat-arena-types';
 import { calcMaxHp, calcAttackInterval } from './combat-formulas';
+import { calcDerivedCombatStats } from './derived-combat-stats';
 import { createPassiveState, applyPassiveOnInit, snapshotBaseStats } from './combat-passives';
 
 /** Convert a guild Member into an ArenaEntity at the given position */
 export function memberToArenaEntity(member: Member, pos: { x: number; z: number }): ArenaEntity {
+  const derived = calcDerivedCombatStats(member.stats, member.level);
   const entity: ArenaEntity = {
     id: member.id,
     name: member.name,
     isAlly: true,
-    maxHp: calcMaxHp(member.stats.END, member.level),
-    currentHp: calcMaxHp(member.stats.END, member.level),
+    maxHp: derived.maxHp,
+    currentHp: derived.maxHp,
     stats: { ...member.stats },
     skill: member.skill ? { ...member.skill } : null,
     level: member.level,
-    attackIntervalMs: calcAttackInterval(member.stats.AGI),
-    nextAttackAt: calcAttackInterval(member.stats.AGI),
+    attackIntervalMs: derived.attackIntervalMs,
+    nextAttackAt: derived.attackIntervalMs,
     skillCooldownUntil: 0,
     statusEffects: [],
     abilities: [],
@@ -31,6 +33,10 @@ export function memberToArenaEntity(member: Member, pos: { x: number; z: number 
     gender: member.gender,
     baseStats: snapshotBaseStats(member.stats),
     passiveState: createPassiveState(member.civilization),
+    dodgeRate: derived.dodgeRate,
+    blockRate: derived.blockRate,
+    critDmg: derived.critDmg,
+    hpRegenPerSec: derived.hpRegen,
     position: { ...pos },
     targetId: null,
     attackRange: getAttackRange(member.archetype),
@@ -45,20 +51,25 @@ export function memberToArenaEntity(member: Member, pos: { x: number; z: number 
 
 /** Convert an EnemyTemplate into an ArenaEntity at the given position */
 export function enemyToArenaEntity(template: EnemyTemplate, index: number, pos: { x: number; z: number }): ArenaEntity {
+  const derived = calcDerivedCombatStats(template.stats, template.level);
   return {
     id: `enemy-${template.id}-${index}`,
     name: template.name,
     isAlly: false,
-    maxHp: calcMaxHp(template.stats.END, template.level),
-    currentHp: calcMaxHp(template.stats.END, template.level),
+    maxHp: derived.maxHp,
+    currentHp: derived.maxHp,
     stats: { ...template.stats },
     skill: template.skill ? { ...template.skill } : null,
     level: template.level,
-    attackIntervalMs: calcAttackInterval(template.stats.AGI),
-    nextAttackAt: calcAttackInterval(template.stats.AGI),
+    attackIntervalMs: derived.attackIntervalMs,
+    nextAttackAt: derived.attackIntervalMs,
     skillCooldownUntil: 0,
     statusEffects: [],
     abilities: [...template.abilities],
+    dodgeRate: derived.dodgeRate,
+    blockRate: derived.blockRate,
+    critDmg: derived.critDmg,
+    hpRegenPerSec: derived.hpRegen,
     position: { ...pos },
     targetId: null,
     attackRange: 1.5,
@@ -67,5 +78,6 @@ export function enemyToArenaEntity(template: EnemyTemplate, index: number, pos: 
     facingRight: false,
     animStateUntil: 0,
     spriteId: template.spriteId,
+    flying: template.flying,
   };
 }

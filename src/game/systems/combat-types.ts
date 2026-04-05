@@ -19,6 +19,15 @@ export interface CombatEntity {
   passiveState?: PassiveState;
   baseStats?: Stats;
 
+  // Temporary combat flags (set each tick by engine/simulator)
+  _hasDeQuocBuff?: boolean;  // DeQuoc ally team buff: +5% crit/dmg
+
+  // Derived combat snapshot (set at entity creation)
+  dodgeRate: number;
+  blockRate: number;
+  critDmg: number;
+  hpRegenPerSec: number;
+
   // Spatial fields (used by real-time arena, absent in auto-resolve)
   position?: { x: number; z: number };
   targetId?: string | null;
@@ -30,10 +39,12 @@ export interface CombatEntity {
   gender?: 'M' | 'F';
   /** Enemy sprite folder name (e.g. 'slime') */
   spriteId?: string;
+  /** Flying enemy — elevated above ground in arena */
+  flying?: boolean;
 }
 
 export interface ActiveEffect {
-  type: 'poisoned' | 'stunned' | 'boosted';
+  type: 'poisoned' | 'stunned' | 'boosted' | 'shocked';
   ticksRemaining: number;
 }
 
@@ -55,6 +66,7 @@ export type CombatEvent =
   | { type: 'effect-tick'; targetId: string; effect: string; damage: number }
   | { type: 'death'; entityId: string }
   | { type: 'dodge'; attackerId: string; targetId: string }
+  | { type: 'block'; attackerId: string; targetId: string; reducedDamage: number }
   | { type: 'heal'; healerId: string; targetId: string; amount: number }
   | { type: 'victory' }
   | { type: 'wipe' };

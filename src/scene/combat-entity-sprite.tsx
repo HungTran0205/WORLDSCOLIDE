@@ -120,8 +120,10 @@ export function CombatEntitySprite({ entity }: CombatEntitySpriteProps) {
 
   const hpRatio = entity.currentHp / entity.maxHp;
 
+  const flyingYOffset = entity.flying ? 1.2 : 0;
+
   return (
-    <group ref={groupRef} position={[entity.position.x, 0, entity.position.z]}>
+    <group ref={groupRef} position={[entity.position.x, flyingYOffset, entity.position.z]}>
       {/* Single Billboard — correct camera-facing, no distortion */}
       <Billboard follow lockX={false} lockY={false} lockZ={false} position={[0, 0.65, 0]}>
         {entity.spriteId ? (

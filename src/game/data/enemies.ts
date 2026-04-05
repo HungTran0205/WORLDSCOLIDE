@@ -20,6 +20,8 @@ export interface EnemyTemplate {
   loot: LootRule[];
   /** Sprite folder name under /sprites/enemies/ (e.g. 'slime') */
   spriteId?: string;
+  /** Flying enemy — sprite renders elevated above ground */
+  flying?: boolean;
 }
 
 export const ENEMIES: Record<string, EnemyTemplate> = {
@@ -60,6 +62,7 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     skill: null, abilities: [],
     loot: [{ itemId: 'BOAR_PELT', chance: 0.3, min: 1, max: 1 }],
     spriteId: 'cave-bat',
+    flying: true,
   },
 
   // --- Level 3 ---

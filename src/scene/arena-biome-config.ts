@@ -67,11 +67,8 @@ const FOREST_CONFIG: BiomeConfig = {
   groundColor: '#3a5a2a',
   // groundTexture removed — replaced by diorama GLB
   bgLayers: [
-    /* y values compensate for the 20° ortho camera at [0,3.6,10] */
-    { src: '/arena/forest/bg/far.png',  z: -6.9, y: 3.7,   scale: 1.10, opacity: 0.18 },
-    /* mid & near have transparent centers — they frame the scene from edges */
-    { src: '/arena/forest/bg/mid.png',  z: 5.6,  y: -6.0, scale: 1.25, opacity: 0.83 },
-    { src: '/arena/forest/bg/near.png', z: 5.5,  y: 5.0,   scale: 1.50, opacity: 0.70 },
+    /* y compensates for 20° ortho camera at [0,3.6,10] — see battlefield-template.md */
+    { src: '/arena/forest/bg/far.png', z: -6.9, y: 3.7, scale: 1.10, opacity: 0.18 },
   ],
   props: [],  // emptied — 3D props replace 2D sprites
   ambient: { intensity: 0.5, color: '#c8e6c8' },
@@ -99,9 +96,8 @@ const CAVE_CONFIG: BiomeConfig = {
   biome: 'cave',
   groundColor: '#2a2a30',
   bgLayers: [
-    { src: '/arena/cave/bg/far.png',  z: -12.9, y: 4,   scale: 1.2,  opacity: 0.9 },
-    { src: '/arena/cave/bg/mid.png',  z: -6,    y: 5.2, scale: 1.4,  opacity: 0.3 },
-    { src: '/arena/cave/bg/near.png', z: 0.6,   y: 6.2, scale: 1.85, opacity: 0   },
+    /* y compensates for 20° ortho camera at [0,3.6,10] — see battlefield-template.md */
+    { src: '/arena/cave/bg/far.png', z: -12.9, y: 4, scale: 1.2, opacity: 0.9 },
   ],
   props: [],
   ambient: { intensity: 3, color: '#8080c0' },

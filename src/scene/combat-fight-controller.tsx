@@ -111,5 +111,6 @@ function buildSnapshots(engine: CombatEngine): ArenaEntitySnapshot[] {
     civilization: e.civilization,
     gender: e.gender,
     spriteId: e.spriteId,
+    flying: e.flying,
   }));
 }
