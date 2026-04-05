@@ -14,13 +14,13 @@ import { TorchFireEffect } from './torch-fire-particles';
 // ─── GLB paths ────────────────────────────────────────────────────────────────
 
 const GLB = {
-  torch:      '/arena/cave/3dprops/optimized/p_standing_torch.glb',
+  torch: '/arena/cave/3dprops/optimized/p_standing_torch.glb',
   questBoard: '/models/furnitures/quest-board.glb',
-  throne:     '/GuildHall/LinhSon/optimized/p_ironthrone.glb',
-  fairy:      '/GuildHall/LinhSon/optimized/p_fairtymotherstatues.glb',
-  dragon:     '/GuildHall/LinhSon/optimized/p_dragonfatherstatues.glb',
-  drum:       '/GuildHall/LinhSon/optimized/p_cooperdrumfireholder.glb',
-  pillar:     '/GuildHall/LinhSon/optimized/p_woodpillar.glb',
+  throne: '/GuildHall/LinhSon/optimized/p_ironthrone.glb',
+  fairy: '/GuildHall/LinhSon/optimized/p_fairtymotherstatues.glb',
+  dragon: '/GuildHall/LinhSon/optimized/p_dragonfatherstatues.glb',
+  drum: '/GuildHall/LinhSon/optimized/p_cooperdrumfireholder.glb',
+  pillar: '/GuildHall/LinhSon/optimized/p_woodpillar.glb',
 } as const;
 
 Object.values(GLB).forEach((p) => useGLTF.preload(p));
@@ -93,21 +93,21 @@ function ThroneLight({ thronePos }: { thronePos: [number, number, number] }) {
   const [tx, , tz] = thronePos;
 
   const spot = useControls('Throne Spotlight', {
-    x:         { value: tx,   min: -10, max: 20,   step: 0.1  },
-    y:         { value: 5.2,  min: 0,   max: 12,   step: 0.1  },
-    z:         { value: tz,   min: -10, max: 10,   step: 0.1  },
-    color:     { value: '#ffffff' },
-    intensity: { value: 50,   min: 0,   max: 200,  step: 1    },
-    distance:  { value: 15,   min: 1,   max: 30,   step: 0.5  },
-    angle:     { value: 0.6,  min: 0.05,max: 1.2,  step: 0.01 },
-    penumbra:  { value: 2,    min: 0,   max: 5,    step: 0.05 },
-    decay:     { value: 1.2,  min: 0,   max: 5,    step: 0.1  },
+    x: { value: 1.7, min: -10, max: 20, step: 0.1 },
+    y: { value: 7.6, min: 0, max: 12, step: 0.1 },
+    z: { value: 3.6, min: -10, max: 10, step: 0.1 },
+    color: { value: '#ffffff' },
+    intensity: { value: 25, min: 0, max: 200, step: 1 },
+    distance: { value: 10.0, min: 1, max: 30, step: 0.5 },
+    angle: { value: 0.50, min: 0.05, max: 1.2, step: 0.01 },
+    penumbra: { value: 1.80, min: 0, max: 5, step: 0.05 },
+    decay: { value: 1.3, min: 0, max: 5, step: 0.1 },
   }, { collapsed: true });
 
   const fill = useControls('Throne Fill Light', {
-    color:     { value: '#ffffff' },
-    intensity: { value: 3,    min: 0,   max: 20,   step: 0.5  },
-    distance:  { value: 4,    min: 1,   max: 15,   step: 0.5  },
+    color: { value: '#ffffff' },
+    intensity: { value: 3, min: 0, max: 20, step: 0.5 },
+    distance: { value: 4, min: 1, max: 15, step: 0.5 },
   }, { collapsed: true });
 
   return (
@@ -216,16 +216,16 @@ export function GuildHallProps() {
   return (
     <>
       {/* Back wall torch — left side only (right side moved to pillar top) */}
-      <WallTorch position={[0.8, 1.8, 0.25]} rotationY={0}           label="Torch BL" />
+      <WallTorch position={[0.8, 1.8, 0.25]} rotationY={0} label="Torch BL" />
 
       {/* Left wall torch — front section only (back section moved to pillar top) */}
-      <WallTorch position={[0.25, 1.8, 2]}   rotationY={Math.PI / 2} label="Torch LL" />
+      <WallTorch position={[0.25, 1.8, 2]} rotationY={Math.PI / 2} label="Torch LL" />
 
       {/* Pillar-body torches — pushed out to outer face, facing into room */}
       {/* North pillar: shift +z to clear pillar radius, face into room (+z) */}
-      <WallTorch position={[9.5, 1.8, 1.3]}  rotationY={0}           label="Torch North Pillar" />
+      <WallTorch position={[9.5, 1.8, 1.3]} rotationY={0} label="Torch North Pillar" />
       {/* West pillar: shift +x to clear pillar radius, face into room (+x) */}
-      <WallTorch position={[1.3, 1.8, 6.5]}  rotationY={Math.PI / 2} label="Torch West Pillar" />
+      <WallTorch position={[1.3, 1.8, 6.5]} rotationY={Math.PI / 2} label="Torch West Pillar" />
 
       {/* Quest board — wall-mounted on left section of back wall */}
       <QuestBoard />

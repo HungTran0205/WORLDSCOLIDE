@@ -27,11 +27,14 @@ export function clearWebGPUBlock(): void {
 
 /** Async renderer factory for R3F Canvas gl prop */
 export async function createWebGPURenderer(props: Record<string, unknown>) {
+  // alpha: true so canvas is transparent — lets CSS background show through
+  const glProps = { ...props, alpha: true };
+
   /* Try WebGPU only if not previously blocked */
   if (!isWebGPUBlocked() && navigator.gpu) {
     try {
       const { WebGPURenderer } = await import('three/webgpu');
-      const renderer = new WebGPURenderer(props as any);
+      const renderer = new WebGPURenderer(glProps as any);
       await renderer.init();
 
       /* Watch for device loss — if it happens, persist flag and reload
@@ -54,7 +57,7 @@ export async function createWebGPURenderer(props: Record<string, unknown>) {
   }
 
   console.log('[Renderer] WebGL active');
-  return new WebGLRenderer(props as any);
+  return new WebGLRenderer(glProps as any);
 }
 
 /** Place inside Canvas with frameloop="demand" — ensures first frames render after mount */
