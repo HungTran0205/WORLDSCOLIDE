@@ -2,13 +2,14 @@
  * Guild hall sprite animator — uses sprite atlas for zero texture binding cost.
  * Walk atlas: 4 dirs × 8 frames = 32 frames in 8-col grid.
  * Animation selects frames via UV offset (no material.map swap, no needsUpdate).
+ * MeshStandardMaterial so guild hall torches and ambient light affect sprites.
  */
 
 import { useRef, useMemo } from 'react';
 import { useLoader, useFrame, useThree } from '@react-three/fiber';
 import { TextureLoader, NearestFilter, SRGBColorSpace } from 'three';
 import type { MutableRefObject } from 'react';
-import type { MeshBasicMaterial } from 'three';
+import type { MeshStandardMaterial } from 'three';
 import type { SpriteDirection } from './sprite-path-resolver';
 import { getWalkingFramePath } from './sprite-path-resolver';
 import { buildAtlasFromTextures, setAtlasFrame } from './sprite-atlas';
@@ -31,7 +32,7 @@ interface SpriteAnimatorProps {
 export function SpriteAnimator({ basePath, directionRef, isMovingRef, size = [2.1, 2.1] }: SpriteAnimatorProps) {
   const frameIndexRef = useRef(0);
   const elapsedRef = useRef(0);
-  const materialRef = useRef<MeshBasicMaterial>(null);
+  const materialRef = useRef<MeshStandardMaterial>(null);
 
   /* Build atlas from loaded textures (same load as before, but packed once) */
   const allPaths = useMemo(() => {
@@ -77,7 +78,7 @@ export function SpriteAnimator({ basePath, directionRef, isMovingRef, size = [2.
   return (
     <mesh>
       <planeGeometry args={size} />
-      <meshBasicMaterial ref={materialRef} map={atlas.texture} transparent alphaTest={0.1} />
+      <meshStandardMaterial ref={materialRef} map={atlas.texture} transparent alphaTest={0.1} roughness={1} metalness={0} />
     </mesh>
   );
 }

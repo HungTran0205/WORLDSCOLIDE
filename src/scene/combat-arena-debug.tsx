@@ -16,7 +16,7 @@ export interface DebugBgLayer {
 }
 
 export interface ArenaDebugValues {
-  bgLayers: [DebugBgLayer, DebugBgLayer, DebugBgLayer];
+  bgLayers: [DebugBgLayer];
   groundTileSize: number;
   vignette: { strength: number };
   lighting?: { ambientIntensity: number; directionalIntensity: number };
@@ -58,7 +58,7 @@ function downloadJson(filename: string, data: unknown) {
 
 /** Mounts Leva controls initialized from current biome config. */
 export function ArenaDebugProvider({ config, children }: ProviderProps) {
-  const [far, mid, near] = config.bgLayers;
+  const [far] = config.bgLayers;
 
   /* Single useControls call — folder() must nest inside a schema object */
   const ctrl = useControls({
@@ -67,18 +67,6 @@ export function ArenaDebugProvider({ config, children }: ProviderProps) {
       farZ:       { value: far?.z      ?? -1, min: -20, max: 10,  step: 0.1  },
       farScale:   { value: far?.scale  ?? 0.65,  min: 0.1, max: 5,   step: 0.05 },
       farOpacity: { value: far?.opacity ?? 0.45, min: 0,   max: 1,   step: 0.01 },
-    }),
-    'BG Mid': folder({
-      midY:       { value: mid?.y      ?? 2,  min: -15, max: 15,  step: 0.1  },
-      midZ:       { value: mid?.z      ?? -1, min: -20, max: 10,  step: 0.1  },
-      midScale:   { value: mid?.scale  ?? 0.95,  min: 0.1, max: 5,   step: 0.05 },
-      midOpacity: { value: mid?.opacity ?? 0.79, min: 0,   max: 1,   step: 0.01 },
-    }),
-    'BG Near': folder({
-      nearY:       { value: near?.y      ?? 7.1,  min: -15, max: 15,  step: 0.1  },
-      nearZ:       { value: near?.z      ?? 6.0, min: -20, max: 15,  step: 0.1  },
-      nearScale:   { value: near?.scale  ?? 1.50,  min: 0.1, max: 5,   step: 0.05 },
-      nearOpacity: { value: near?.opacity ?? 0.70, min: 0,   max: 1,   step: 0.01 },
     }),
     'Ground': folder({
       groundTileSize: { value: 1.75, min: 0.5, max: 15, step: 0.25, label: 'tile size (world units)' },
@@ -121,8 +109,6 @@ export function ArenaDebugProvider({ config, children }: ProviderProps) {
       biome: config.biome,
       bgLayers: [
         { src: config.bgLayers[0]?.src, y: ctrl.farY, z: ctrl.farZ, scale: ctrl.farScale, opacity: ctrl.farOpacity },
-        { src: config.bgLayers[1]?.src, y: ctrl.midY, z: ctrl.midZ, scale: ctrl.midScale, opacity: ctrl.midOpacity },
-        { src: config.bgLayers[2]?.src, y: ctrl.nearY, z: ctrl.nearZ, scale: ctrl.nearScale, opacity: ctrl.nearOpacity },
       ],
       ambient: { intensity: ctrl.ambientIntensity, color: config.ambient.color },
       directional: { intensity: ctrl.directionalIntensity, color: config.directional.color, position: config.directional.position },
@@ -159,9 +145,7 @@ export function ArenaDebugProvider({ config, children }: ProviderProps) {
   const value = useMemo<ArenaDebugValues>(() => {
     const base: ArenaDebugValues = {
       bgLayers: [
-        { y: ctrl.farY,  z: ctrl.farZ,  scale: ctrl.farScale,  opacity: ctrl.farOpacity  },
-        { y: ctrl.midY,  z: ctrl.midZ,  scale: ctrl.midScale,  opacity: ctrl.midOpacity  },
-        { y: ctrl.nearY, z: ctrl.nearZ, scale: ctrl.nearScale, opacity: ctrl.nearOpacity },
+        { y: ctrl.farY, z: ctrl.farZ, scale: ctrl.farScale, opacity: ctrl.farOpacity },
       ],
       groundTileSize:  ctrl.groundTileSize,
       vignette: { strength: ctrl.vignetteStrength },
@@ -208,11 +192,12 @@ export function ArenaDebugProvider({ config, children }: ProviderProps) {
 export function DebugCameraController() {
   const camera = useThree(s => s.camera);
 
-  // camY/camZ at 3.6/10.0 → atan(3.6/10) ≈ 20° elevation angle
+  // camY/camZ at 8.4/12.0 → atan(8.4/12) ≈ 35° elevation angle
+  // X is omitted — managed by CombatFightController camera follow
   const { zoom, camY, camZ } = useControls('View', {
-    zoom: { value: 114, min: 30,  max: 400, step: 1,   label: 'zoom'   },
-    camY: { value: 3.6, min: 0,   max: 30,  step: 0.1, label: 'pos Y'  },
-    camZ: { value: 10.0, min: 1,  max: 40,  step: 0.1, label: 'pos Z'  },
+    zoom: { value: 80,  min: 30,  max: 400, step: 1,   label: 'zoom'   },
+    camY: { value: 8.4, min: 0,   max: 30,  step: 0.1, label: 'pos Y'  },
+    camZ: { value: 12.0, min: 1,  max: 40,  step: 0.1, label: 'pos Z'  },
   });
 
   useFrame(() => {

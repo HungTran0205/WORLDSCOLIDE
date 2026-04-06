@@ -159,14 +159,7 @@ export function EnemySpriteAnimator({
     }
     setAtlasFrame(walkAtlas, frameIndexRef.current);
 
-    // --- Hit Flash ---
-    if (hitTimeRef) {
-      if (performance.now() - hitTimeRef.current < 100) {
-        materialRef.current.color.setRGB(10, 10, 10);
-      } else {
-        materialRef.current.color.setRGB(1, 1, 1);
-      }
-    }
+    // hitTimeRef reserved for future sparkle effect
   });
 
   const scaleX = facingRight ? -size[0] : size[0];

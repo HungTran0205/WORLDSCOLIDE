@@ -1,4 +1,4 @@
-/** Full combat arena — dedicated R3F Canvas with HD-2D post-processing */
+/** Full combat arena — dedicated R3F Canvas with CSS vignette overlay */
 
 import { Suspense, useMemo, useEffect } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
@@ -12,7 +12,6 @@ import { CombatVfxLayer } from './combat-vfx-layer';
 import { getBiomeConfig } from './arena-biome-config';
 import { createWebGPURenderer, WebGPUInit } from './webgpu-init';
 import { ArenaDebugProvider, DebugCameraController, useArenaDebug } from './combat-arena-debug';
-import { CombatPostProcessing } from './combat-post-processing';
 import { CombatShadowLayer } from './combat-shadow-layer';
 
 /** Target FPS — pixel art looks best at 24-30fps (Octopath style) */
@@ -46,10 +45,6 @@ function FrameRateLimiter() {
 }
 
 /** Reads debug context (if present) and renders post-processing with live values */
-function PostProcessing() {
-  const debug = useArenaDebug();
-  return <CombatPostProcessing vignetteStrength={debug?.vignette.strength} />;
-}
 
 export function CombatArenaCanvas() {
   const entities = useGameStore(s => s.arenaEntities);
@@ -68,7 +63,7 @@ export function CombatArenaCanvas() {
         frameloop="demand"
         orthographic
         shadows
-        camera={{ zoom: 114, position: [0, 3.6, 10.0], near: 0.1, far: 1000 }}
+        camera={{ zoom: 80, position: [0, 8.4, 12], near: 0.1, far: 1000 }}
         dpr={1}
         gl={createWebGPURenderer}
         style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}
@@ -87,12 +82,23 @@ export function CombatArenaCanvas() {
           <CombatVfxLayer />
         </Suspense>
 
-        <PostProcessing />
-
         {/* Dev-only overlays */}
         {import.meta.env.DEV && <Stats />}
         {import.meta.env.DEV && <DebugCameraController />}
       </Canvas>
+      {/* Tilt-shift blur — blurs top 30% and bottom 30%, keeps center sharp (Octopath style) */}
+      <div style={{
+        position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 1,
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
+        maskImage: 'linear-gradient(to bottom, black 0%, transparent 28%, transparent 72%, black 100%)',
+        WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 28%, transparent 72%, black 100%)',
+      }} />
+      {/* Vignette overlay — darkens corners for cinematic depth */}
+      <div style={{
+        position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 2,
+        background: 'radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.65) 100%)',
+      }} />
     </>
   );
 

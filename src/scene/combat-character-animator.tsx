@@ -141,15 +141,7 @@ export function CombatCharacterAnimator({
       setAtlasFrame(walkAtlas, frameIdx);
       meshRef.current.scale.x = size[0];
     }
-
-    // --- Hit Flash ---
-    if (hitTimeRef) {
-      if (performance.now() - hitTimeRef.current < 100) {
-        materialRef.current.color.setRGB(10, 10, 10);
-      } else {
-        materialRef.current.color.setRGB(1, 1, 1);
-      }
-    }
+    // hitTimeRef reserved for future sparkle effect
   });
 
   return (

@@ -6,6 +6,7 @@
 import { useMemo } from 'react';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
+import { CombatTileGrid } from './combat-tile-grid';
 
 /** Diagonal god-ray quad — gradient texture fades at edges, biome-tinted */
 function LightShaft({ tint, opacity, angle }: { tint: string; opacity: number; angle: number }) {
@@ -121,7 +122,7 @@ export function CombatArenaEnvironment({ zone }: Props) {
     : config.bgLayers;
 
   const groundTileSize = debug?.groundTileSize ?? 3;
-  const is3D = Boolean(config.diorama);
+  const is3D = Boolean(config.diorama) || Boolean(config.props3D?.length);
   const activeProps3D = debug?.props3D ?? config.props3D;
   const activeDioramaScale = debug?.dioramaScale ?? config.dioramaScale ?? 1;
   const activeDioramaY = debug?.dioramaY ?? config.dioramaY ?? 0;
@@ -129,32 +130,24 @@ export function CombatArenaEnvironment({ zone }: Props) {
   return (
     <group>
       {/* === GROUND === */}
-      {is3D ? (
+      {config.tilePrimary ? (
+        <CombatTileGrid
+          width={64} depth={9}
+          tileSize={config.tileSize ?? 1}
+          primarySrc={config.tilePrimary}
+          accentSrc={config.tileAccent ?? config.tilePrimary}
+          fogColor={config.fogColor}
+        />
+      ) : is3D ? (
         <Environment3DModel src={config.diorama!} scale={activeDioramaScale} positionY={activeDioramaY} />
       ) : config.groundTexture ? (
-        <TexturedGround src={config.groundTexture} size={[22, 9]} tileSize={groundTileSize} />
+        <TexturedGround src={config.groundTexture} size={[64, 9]} tileSize={groundTileSize} />
       ) : (
         <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[22, 9]} />
+          <planeGeometry args={[64, 9]} />
           <meshBasicMaterial color={config.groundColor} />
         </mesh>
       )}
-
-      {/* Side zone indicators (subtle tint) */}
-      <mesh position={[-5, -0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[6, 8]} />
-        <meshBasicMaterial color="#3366aa" transparent opacity={0.08} />
-      </mesh>
-      <mesh position={[5, -0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[6, 8]} />
-        <meshBasicMaterial color="#aa3333" transparent opacity={0.08} />
-      </mesh>
-
-      {/* Center line — clash zone */}
-      <mesh position={[0, -0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[0.04, 10]} />
-        <meshBasicMaterial color="#ffffff" transparent opacity={0.1} />
-      </mesh>
 
       {/* Parallax background layers (far → near) */}
       {bgLayers.map((layer, i) => (
@@ -167,6 +160,9 @@ export function CombatArenaEnvironment({ zone }: Props) {
       ) : (
         config.props.map((prop, i) => <PropSprite key={i} prop={prop} />)
       )}
+
+      {/* Foreground props — decorative, high Z (blurred by DoF) */}
+      {config.foregroundProps?.map((prop, i) => <PropSprite key={`fg-${i}`} prop={prop} />)}
 
       {/* Light shafts — forest: warm sun rays; cave: cool crystal glow */}
       {config.biome === 'forest' && <>

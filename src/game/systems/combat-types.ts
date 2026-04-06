@@ -68,6 +68,7 @@ export type CombatEvent =
   | { type: 'dodge'; attackerId: string; targetId: string }
   | { type: 'block'; attackerId: string; targetId: string; reducedDamage: number }
   | { type: 'heal'; healerId: string; targetId: string; amount: number }
+  | { type: 'wave-cleared'; waveIndex: number }
   | { type: 'victory' }
   | { type: 'wipe' };
 

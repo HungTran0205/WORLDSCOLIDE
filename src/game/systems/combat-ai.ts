@@ -6,7 +6,7 @@
 import { ARENA_BOUNDS, type ArenaEntity } from './combat-arena-types';
 import type { CombatEvent } from './combat-types';
 
-/** Find best target: nearest alive enemy, weighted toward front-row (lower |x|) */
+/** Find best target: nearest alive enemy, weighted toward front-row and same lane */
 export function findTarget(entity: ArenaEntity, allEntities: ArenaEntity[]): ArenaEntity | null {
   const enemies = allEntities.filter(e => e.currentHp > 0 && e.isAlly !== entity.isAlly);
   if (enemies.length === 0) return null;
@@ -17,9 +17,12 @@ export function findTarget(entity: ArenaEntity, allEntities: ArenaEntity[]): Are
     const dx = enemy.position.x - entity.position.x;
     const dz = enemy.position.z - entity.position.z;
     const dist = Math.sqrt(dx * dx + dz * dz);
-    // Front-row aggro: subtract bonus for enemies closer to center (|x| < 5)
+    // Front-row aggro bonus (enemies closer to center)
     const frontBonus = Math.abs(enemy.position.x) < 5 ? 2 : 0;
-    const score = dist - frontBonus;
+    // Same-lane bonus: prefer targets on matching Z lane
+    const laneDist = Math.abs(enemy.position.z - entity.position.z);
+    const laneBonus = laneDist < 1 ? 1.5 : 0;
+    const score = dist - frontBonus - laneBonus;
     if (score < bestScore) {
       bestScore = score;
       best = enemy;
@@ -35,7 +38,11 @@ export function getDistance(a: ArenaEntity, b: ArenaEntity): number {
   return Math.sqrt(dx * dx + dz * dz);
 }
 
-/** Move entity toward target position. Returns true if arrived within stopDistance. */
+/**
+ * Move entity toward target position with beat-em-up priority:
+ * X movement is primary (full speed), Z lane drift is secondary (60% speed).
+ * Returns true if arrived within stopDistance.
+ */
 export function moveToward(
   entity: ArenaEntity,
   targetPos: { x: number; z: number },
@@ -48,23 +55,28 @@ export function moveToward(
 
   if (dist <= stopDistance) return true;
 
-  const step = entity.moveSpeed * dtSeconds;
-  if (step >= dist - stopDistance) {
-    // Snap to stop distance
-    const ratio = (dist - stopDistance) / dist;
-    entity.position.x += dx * ratio;
-    entity.position.z += dz * ratio;
-    clampToBounds(entity);
-    return true;
+  const xStep = entity.moveSpeed * dtSeconds;
+  const zStep = entity.moveSpeed * 0.6 * dtSeconds; // slower lane switching
+
+  // Move X first (primary axis)
+  if (Math.abs(dx) > 0.1) {
+    const xMove = Math.min(xStep, Math.abs(dx));
+    entity.position.x += Math.sign(dx) * xMove;
   }
 
-  entity.position.x += (dx / dist) * step;
-  entity.position.z += (dz / dist) * step;
-  clampToBounds(entity);
+  // Drift Z toward target lane (secondary)
+  if (Math.abs(dz) > 0.3) {
+    const zMove = Math.min(zStep, Math.abs(dz));
+    entity.position.z += Math.sign(dz) * zMove;
+  }
 
-  // Update facing direction
+  clampToBounds(entity);
   entity.facingRight = dx > 0;
-  return false;
+
+  // Re-check after movement
+  const newDx = targetPos.x - entity.position.x;
+  const newDz = targetPos.z - entity.position.z;
+  return Math.sqrt(newDx * newDx + newDz * newDz) <= stopDistance;
 }
 
 /** Clamp entity position to arena boundaries */

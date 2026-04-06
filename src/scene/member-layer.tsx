@@ -72,6 +72,11 @@ function MemberSprite({ member, index }: { member: Member; index: number }) {
 
   return (
     <group ref={ref} position={[startPos.x, 1.05, startPos.z]}>
+      {/* Blob shadow — flat circle on floor, outside Billboard so it doesn't face camera */}
+      <mesh position={[0, -1.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.35, 8]} />
+        <meshBasicMaterial color="black" transparent opacity={0.25} depthWrite={false} />
+      </mesh>
       {/* Single Billboard — sprite + name indicator */}
       <Billboard>
         <SpriteAnimator

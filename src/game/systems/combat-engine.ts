@@ -26,15 +26,18 @@ const ANIM_ATTACK_DURATION = 300; // ms before reverting to idle
 export class CombatEngine {
   entities: ArenaEntity[] = [];
   time = 0;
+  /** Called when all enemies are dead — return true if more waves exist */
+  onWaveCheck?: () => boolean;
   private accumulator = 0;
   private eventQueue: CombatEvent[] = [];
   private ticks: CombatTick[] = [];
   private totalDamageDealt = 0;
   private finished = false;
   private pendingSkills: Set<string> = new Set();
+  private nextEnemyIndex = 0;
 
   /** Initialize combat from formation + enemies */
-  init(members: Member[], formation: Formation, enemyTemplates: EnemyTemplate[]): void {
+  init(members: Member[], formation: Formation, enemyTemplates: EnemyTemplate[], hpMultiplier = 1): void {
     this.entities = [];
     this.time = 0;
     this.accumulator = 0;
@@ -43,6 +46,7 @@ export class CombatEngine {
     this.finished = false;
     this.pendingSkills.clear();
     this.eventQueue = [];
+    this.nextEnemyIndex = 0;
 
     // Place allies from formation
     formation.forEach((memberId, slotIndex) => {
@@ -53,11 +57,21 @@ export class CombatEngine {
       this.entities.push(memberToArenaEntity(member, pos));
     });
 
-    // Place enemies in mirror formation
+    // Place enemies with optional hp scaling
     enemyTemplates.forEach((tmpl, i) => {
       const slotIndex = i % 6;
       const pos = getFormationPosition(slotIndex, 'enemy');
-      this.entities.push(enemyToArenaEntity(tmpl, i, pos));
+      this.entities.push(enemyToArenaEntity(tmpl, this.nextEnemyIndex++, pos, hpMultiplier));
+    });
+  }
+
+  /** Spawn new enemies mid-combat (wave transition) */
+  addEnemies(templates: EnemyTemplate[], xOffset: number, hpMultiplier: number): void {
+    templates.forEach((tmpl, i) => {
+      const slotIndex = i % 6;
+      const pos = getFormationPosition(slotIndex, 'enemy');
+      pos.x += xOffset;
+      this.entities.push(enemyToArenaEntity(tmpl, this.nextEnemyIndex++, pos, hpMultiplier));
     });
   }
 
@@ -73,13 +87,13 @@ export class CombatEngine {
       this.eventQueue = [];
 
       this.processLogicTick();
+      this.checkVictoryCondition();
 
       if (this.eventQueue.length > 0) {
         this.ticks.push({ time: this.time, events: [...this.eventQueue] });
         frameEvents.push(...this.eventQueue);
       }
 
-      this.checkVictoryCondition();
       if (this.time >= MAX_COMBAT_MS) this.finished = true;
     }
 
@@ -341,6 +355,11 @@ export class CombatEngine {
     const enemiesAlive = this.entities.some(e => !e.isAlly && e.currentHp > 0);
 
     if (!enemiesAlive) {
+      if (this.onWaveCheck?.()) {
+        // More waves pending — emit wave-cleared, controller handles spawn
+        this.eventQueue.push({ type: 'wave-cleared', waveIndex: -1 });
+        return;
+      }
       this.eventQueue.push({ type: 'victory' });
       this.finished = true;
     } else if (!alliesAlive) {

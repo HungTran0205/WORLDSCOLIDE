@@ -9,6 +9,11 @@ export const MISSIONS: Mission[] = [
     durationMs: 60_000, travelTimeMs: 10_000,
     goldRewardMin: 50, goldRewardMax: 100, expReward: 100,
     enemyIds: ['slime', 'slime', 'slime'], requiredMembers: 1, requiredLevel: 1,
+    waves: [
+      { enemyIds: ['slime','slime','slime','slime','slime','slime'], spawnXOffset: 0, hpMultiplier: 0.4 },
+      { enemyIds: ['slime','slime','slime','slime','forest-spider','forest-spider','forest-spider','forest-spider'], spawnXOffset: 15, hpMultiplier: 0.35 },
+      { enemyIds: ['slime','slime','slime','slime','slime-king'], spawnXOffset: 30, hpMultiplier: 0.5 },
+    ],
   },
   {
     id: 'spider-nest', name: 'Spider Nest', tier: 'F',
@@ -25,6 +30,10 @@ export const MISSIONS: Mission[] = [
     durationMs: 80_000, travelTimeMs: 10_000,
     goldRewardMin: 60, goldRewardMax: 120, expReward: 130,
     enemyIds: ['cave-bat', 'cave-bat', 'slime', 'slime'], requiredMembers: 1, requiredLevel: 1,
+    waves: [
+      { enemyIds: ['cave-bat','cave-bat','cave-bat','cave-bat','cave-bat','cave-bat'], spawnXOffset: 0, hpMultiplier: 0.4 },
+      { enemyIds: ['slime','slime','cave-bat','cave-bat','cave-bat','cave-bat','cave-bat','cave-bat'], spawnXOffset: 15, hpMultiplier: 0.35 },
+    ],
   },
   {
     id: 'bandit-ambush', name: 'Bandit Ambush', tier: 'F',
@@ -60,6 +69,11 @@ export const MISSIONS: Mission[] = [
     durationMs: 150_000, travelTimeMs: 15_000,
     goldRewardMin: 100, goldRewardMax: 300, expReward: 275,
     enemyIds: ['goblin', 'goblin', 'goblin', 'goblin'], requiredMembers: 2, requiredLevel: 2,
+    waves: [
+      { enemyIds: ['goblin','goblin','goblin','goblin','goblin','goblin'], spawnXOffset: 0, hpMultiplier: 0.4 },
+      { enemyIds: ['goblin','goblin','goblin','goblin','goblin','goblin','goblin','goblin'], spawnXOffset: 15, hpMultiplier: 0.35 },
+      { enemyIds: ['goblin','goblin','goblin','goblin','goblin-shaman'], spawnXOffset: 30, hpMultiplier: 0.4 },
+    ],
   },
   {
     id: 'wolf-pack-hunt', name: 'Wolf Pack Hunt', tier: 'E',
@@ -109,6 +123,11 @@ export const MISSIONS: Mission[] = [
     goldRewardMin: 200, goldRewardMax: 400, expReward: 400,
     enemyIds: ['orc-warrior', 'orc-warrior', 'warlord-grok'], requiredMembers: 3, requiredLevel: 5,
     isBossGate: true,
+    waves: [
+      { enemyIds: ['orc-warrior','orc-warrior','orc-warrior','orc-warrior','orc-warrior','orc-warrior'], spawnXOffset: 0, hpMultiplier: 0.35 },
+      { enemyIds: ['orc-warrior','orc-warrior','orc-warrior','orc-warrior','orc-warrior','orc-warrior','orc-warrior','orc-warrior'], spawnXOffset: 15, hpMultiplier: 0.3 },
+      { enemyIds: ['orc-warrior','orc-warrior','orc-warrior','orc-warrior','warlord-grok'], spawnXOffset: 30, hpMultiplier: 0.3 },
+    ],
   },
 
   // ========== D-Tier (5 total) ==========

@@ -44,6 +44,9 @@ export interface CombatArenaSlice {
   recentEvents: CombatEvent[];
   arenaResult: CombatResult | null;
 
+  /** Current wave progress for HUD display */
+  waveState: { current: number; total: number };
+
   // Actions
   setGameScene: (scene: GameScene) => void;
   enterCombatPrep: (missionId: string) => void;
@@ -51,6 +54,7 @@ export interface CombatArenaSlice {
   clearFormation: () => void;
   startBattle: () => void;
   syncArenaState: (entities: ArenaEntitySnapshot[], time: number, events: CombatEvent[]) => void;
+  syncWaveState: (current: number, total: number) => void;
   setSpeedMultiplier: (speed: number) => void;
   endCombat: (result: CombatResult) => void;
   exitArena: () => void;
@@ -68,6 +72,7 @@ export const createCombatArenaSlice: StateCreator<CombatArenaSlice> = (set) => (
   speedMultiplier: 1,
   recentEvents: [],
   arenaResult: null,
+  waveState: { current: 0, total: 1 },
 
   setGameScene: (scene) => set({ gameScene: scene }),
 
@@ -103,6 +108,8 @@ export const createCombatArenaSlice: StateCreator<CombatArenaSlice> = (set) => (
     recentEvents: events,
   }),
 
+  syncWaveState: (current, total) => set({ waveState: { current, total } }),
+
   setSpeedMultiplier: (speed) => set({ speedMultiplier: speed }),
 
   endCombat: (result) => set({
@@ -120,5 +127,6 @@ export const createCombatArenaSlice: StateCreator<CombatArenaSlice> = (set) => (
     arenaResult: null,
     recentEvents: [],
     speedMultiplier: 1,
+    waveState: { current: 0, total: 1 },
   }),
 });

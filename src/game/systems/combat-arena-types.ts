@@ -37,36 +37,57 @@ export const DEFAULT_MOVE_SPEED = 3.0;
 
 /** Arena boundary limits for invisible walls */
 export const ARENA_BOUNDS = {
-  minX: -8,
-  maxX: 8,
+  minX: -30,
+  maxX: 30,
   minZ: -4,
   maxZ: 4,
 } as const;
 
-/** Formation grid world positions (Z tightened for beat-em-up depth) */
+/** Lane Z positions for beat-em-up depth */
+export const LANES = {
+  back: -2,
+  mid: 0,
+  front: 2,
+} as const;
+
+export type Lane = keyof typeof LANES;
+
+export type ArenaBounds = { minX: number; maxX: number; minZ: number; maxZ: number };
+
+/** Compute expanded bounds for a given wave X offset */
+export function getWaveBounds(waveXOffset: number): ArenaBounds {
+  return {
+    minX: ARENA_BOUNDS.minX,
+    maxX: Math.max(ARENA_BOUNDS.maxX, waveXOffset + 12),
+    minZ: ARENA_BOUNDS.minZ,
+    maxZ: ARENA_BOUNDS.maxZ,
+  };
+}
+
+/** Formation grid world positions — 3 lanes: back(-2), mid(0), front(+2) */
 export const FORMATION_POSITIONS = {
   ally: {
     front: [
-      { x: -4, z: -1.5 },
-      { x: -4, z: 0 },
-      { x: -4, z: 1.5 },
+      { x: -4, z: -2 },  // back lane
+      { x: -4, z: 0 },   // mid lane
+      { x: -4, z: 2 },   // front lane
     ],
     back: [
-      { x: -6, z: -1.5 },
+      { x: -6, z: -2 },
       { x: -6, z: 0 },
-      { x: -6, z: 1.5 },
+      { x: -6, z: 2 },
     ],
   },
   enemy: {
     front: [
-      { x: 4, z: -1.5 },
+      { x: 4, z: -2 },
       { x: 4, z: 0 },
-      { x: 4, z: 1.5 },
+      { x: 4, z: 2 },
     ],
     back: [
-      { x: 6, z: -1.5 },
+      { x: 6, z: -2 },
       { x: 6, z: 0 },
-      { x: 6, z: 1.5 },
+      { x: 6, z: 2 },
     ],
   },
 } as const;

@@ -334,6 +334,104 @@ All events accumulated per tick → UI batches renders once per frame
 - **CPU**: Entity AI loop O(n²) worst-case (each entity checks all targets), n ≤ 12
 - **Frame Budget**: 16.67ms per frame (60fps); engine tick amortized across multiple frames
 
+### Wave System (v1.14 — Multi-Wave Encounters)
+
+#### Overview
+Multi-wave system adds progressive difficulty to combat arena. Missions define wave cohorts instead of single enemy set. Each wave clears triggers camera advance + next wave spawn.
+
+#### Wave Flow
+
+```
+Mission.waves[] = [
+  { enemies: [...], hpMultiplier: 0.4 },  // Wave 0: weak many
+  { enemies: [...], hpMultiplier: 0.5 },  // Wave 1: stronger many
+  { enemies: [...], hpMultiplier: 1.0 }   // Wave 2: tough few
+]
+    ↓
+WaveManager.init()
+    ↓
+CombatFightController detects 'wave-cleared' event
+    ↓
+Camera lerp X by ~15 units (1s transition)
+    ↓
+WaveManager.next() → engine.addEnemies(wave[n])
+    ↓
+Repeat until final wave cleared
+    ↓
+checkVictoryCondition() → combat result
+```
+
+#### Wave Manager (New Class)
+
+```typescript
+class WaveManager {
+  current: number              // Current wave index
+  definitions: WaveDefinition[] // Mission wave list
+  
+  next()                       // Advance to next wave
+  isFinished(): boolean        // All waves cleared
+  getCurrentWave()             // Return current wave def
+}
+
+interface WaveDefinition {
+  enemies: string[]            // Enemy template IDs
+  hpMultiplier: number         // 0.3-1.5 range
+}
+```
+
+#### Enemy HP Tuning
+
+- **Weak enemies** (hpMultiplier 0.3-0.4): 2-3 hits to kill, swarm-based waves
+- **Normal enemies** (hpMultiplier 0.8-1.0): 5-8 hits to kill, mixed composition
+- **Boss waves** (hpMultiplier 1.5): Elite 1-shot targets, 2-4 weak adds
+
+#### Arena Bounds Expansion
+
+Wave progression scrolls arena left-to-right:
+- **Wave 0**: X ∈ [-30, 0]
+- **Wave 1**: X ∈ [-15, 15]
+- **Wave 2**: X ∈ [0, 30]
+
+Camera follow keeps ally centroid in view while respecting wave zone.
+
+#### Z-Axis Lane Movement
+
+Beat-em-up depth controlled by lane constants:
+- **Back lane**: Z = -2 (far from camera)
+- **Mid lane**: Z = 0 (center)
+- **Front lane**: Z = +2 (close to camera)
+
+Formation slots pinned to lanes. AI targets nearby same-lane enemies (reduces diagonal beeline).
+
+#### Tile Grid Floor
+
+Instanced mesh system for arena ground:
+- **Primary tiles** (~80%): Dominant terrain (grass, stone, ice)
+- **Accent tiles** (~20%): Variation detail (cork, moss, cracks)
+- **Elevation**: ±0.05u variation per tile for terrain feel
+- **Performance**: 2 draw calls (InstancedMesh per type), 60×6 tile grid
+
+#### Depth-of-Field Blur
+
+Post-processing effect for HD-2D signature look:
+- **Focal point**: Entity centroid (allies + enemies average)
+- **Foreground blur**: High Z objects heavily blurred
+- **Background blur**: Low Z objects lightly blurred
+- **Tuning**: Leva debug controls (focalLength, bokehScale)
+
+#### Camera Redesign (35° Angle)
+
+Shifted from isometric (20°) to beat-em-up sidescroller:
+- **Position**: [0, 8.4, 12] (was [0, 3.6, 10])
+- **Zoom**: 80 (was 114)
+- **Parallax**: Background Y offsets raised for 35° angle
+
+#### Backward Compatibility
+
+- Missions without `waves` field default to single-wave mode (all enemies at once)
+- Existing formation positions preserved for non-wave combat
+- Post-processing additive (new DoF layers on top of existing vignette)
+
 ## Data Flow: Mission Phase State Machine
 
 ### Overview

@@ -1,10 +1,25 @@
-/** HD-2D post-processing — Vignette temporarily disabled pending WebGPU/TSL rebuild. */
+/**
+ * HD-2D post-processing — Vignette only.
+ * DoF removed: incompatible with orthographic camera and WebGPU renderer.
+ * EffectComposer skipped entirely when WebGPU renderer is active.
+ */
+
+import { useThree } from '@react-three/fiber';
+import { EffectComposer, Vignette } from '@react-three/postprocessing';
 
 interface Props {
   vignetteStrength?: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function CombatPostProcessing({ vignetteStrength: _ }: Props) {
-  return null;
+export function CombatPostProcessing({ vignetteStrength = 0.5 }: Props) {
+  const gl = useThree(s => s.gl);
+
+  // Skip for WebGPU renderer — GLSL-based EffectComposer not compatible
+  if ('isWebGPURenderer' in gl) return null;
+
+  return (
+    <EffectComposer>
+      <Vignette darkness={vignetteStrength} />
+    </EffectComposer>
+  );
 }

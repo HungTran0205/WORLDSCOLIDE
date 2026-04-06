@@ -121,9 +121,18 @@ export function CombatEntitySprite({ entity }: CombatEntitySpriteProps) {
   const hpRatio = entity.currentHp / entity.maxHp;
 
   const flyingYOffset = entity.flying ? 1.2 : 0;
+  // Shadow radius and opacity scale with height — flying enemies cast fainter, wider shadow
+  const shadowRadius = entity.flying ? 0.55 : 0.38;
+  const shadowOpacity = entity.flying ? 0.12 : 0.28;
+  const shadowY = -flyingYOffset + 0.02; // floor level relative to group
 
   return (
     <group ref={groupRef} position={[entity.position.x, flyingYOffset, entity.position.z]}>
+      {/* Blob shadow — floor circle, outside Billboard to stay flat on ground */}
+      <mesh position={[0, shadowY, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[shadowRadius, 10]} />
+        <meshBasicMaterial color="black" transparent opacity={shadowOpacity} depthWrite={false} />
+      </mesh>
       {/* Single Billboard — correct camera-facing, no distortion */}
       <Billboard follow lockX={false} lockY={false} lockZ={false} position={[0, 0.65, 0]}>
         {entity.spriteId ? (

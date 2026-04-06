@@ -77,6 +77,8 @@ export interface Mission {
   goldRewardMax: number;
   expReward: number;
   enemyIds: string[];
+  /** Multi-wave definitions — if present, overrides enemyIds for arena combat */
+  waves?: import('@/game/systems/combat-wave-manager').WaveDefinition[];
   requiredMembers: number;
   requiredLevel: number;
   chainId?: string;

@@ -389,6 +389,69 @@ src/
 - Backward compat: old saves load with 2D fallback if props3D missing
 - No changes to combat mechanics, AI, or damage formulas
 
+## Recent Changes (Combat Arena HD-2D Redesign — v1.14)
+
+### Beat-Em-Up Camera Angle & Arena Expansion
+- **Camera Redesign**: Shifted from 20° to 35° oblique angle (Tactics Ogre / Octopath Traveler style)
+  - Position: `[0, 8.4, 12]` (was `[0, 3.6, 10]`)
+  - Zoom: 80 (was 114) — preserves sprite scaling at new angle
+- **Arena Expansion**: X bounds expanded from [-8,8] to [-30,30] units (64 units wide)
+  - Accommodates multi-wave progression camera scrolling
+  - Z lanes preserved: back=-2, mid=0, front=+2 (beat-em-up depth)
+- **Background Parallax**: Y offsets adjusted for 35° angle (forest 6.5u, cave 7u)
+
+### Z-Axis Lane Movement (Beat-Em-Up Depth)
+- **Lane Formation**: 3 discrete Z positions (back=-2, mid=0, front=+2) per wave
+- **Formation Positions**: Updated to use lane constants for predictable enemy spawning
+- **AI Lane Targeting**: `findTarget()` adds proximity bonus for same-lane enemies (reduces diagonal beeline)
+- **Movement Split**: `moveToward()` uses 60% Z speed vs X speed for natural lane transitions
+
+### Tile Grid Floor System
+- **InstancedMesh Tiles**: 2 draw calls (primary + accent), deterministic hash distribution
+- **Forest Biome**: Uses tile GLB models (`t_Green_Tile_of_Grass.glb`, `t_Cork_Tile.glb`) + minor elevation variation (±0.05u)
+- **Biome Config**: New fields `tilePrimary`, `tileAccent`, `tileSize` + preloading optimization
+- **File**: `src/scene/combat-tile-grid.tsx` (NEW) — instanced tile renderer
+
+### Foreground Depth-of-Field Blur
+- **EffectComposer**: Post-processing pipeline with DepthOfField + Vignette
+- **Focal Point**: Tracks entity centroid for smooth focus
+- **WebGPU Compatibility**: Confirmed WebGL fallback active; `@react-three/postprocessing` used without guards
+- **Debug Controls**: Leva folder controls (focalLength, bokehScale) in arena debug panel
+
+### Multi-Wave Encounter System
+- **WaveManager Class**: Manages wave progression, victory checks per wave
+- **Wave Definitions**: `WaveDefinition[]` per mission with enemy configs + `hpMultiplier` per wave
+- **Engine Integration**: `CombatEngine.addEnemies()` method spawns next wave cohorts
+- **Wave Cleared Event**: 'wave-cleared' event triggers camera advance lerp (1s transition)
+- **HP Tuning**: Weak enemies (hpMultiplier 0.3-0.4) for high-volume waves; boss waves use 1.5x multiplier
+- **Mission Data**: Updated 4 core missions with 2-3 wave definitions each
+  - slime-extermination: 3 waves (6+8+10 enemies)
+  - cave-patrol: 2 waves (8+10 enemies)
+  - goblin-camp-raid: 3 waves (6+8+12 enemies)
+  - warlord-challenge: 3 waves (6+8+1 elite boss)
+
+**Key Files (New)**:
+- `src/game/systems/combat-wave-manager.ts` — WaveManager class, wave progression logic
+- `src/scene/combat-tile-grid.tsx` — InstancedMesh tile grid renderer
+
+**Key Files (Modified)**:
+- `src/scene/combat-arena.tsx` — Camera position/zoom update
+- `src/scene/combat-arena-environment.tsx` — Arena expansion, tile grid integration
+- `src/scene/combat-arena-debug.tsx` — Camera angle slider, DoF controls
+- `src/scene/combat-post-processing.tsx` — EffectComposer + DoF integration
+- `src/scene/combat-fight-controller.tsx` — WaveManager integration, wave transition flow
+- `src/scene/arena-biome-config.ts` — Tile config fields, foreground layer props
+- `src/game/systems/combat-engine.ts` — addEnemies() method, wave-aware victory check
+- `src/game/systems/combat-arena-types.ts` — LANES constants, getWaveBounds() helper
+- `src/game/systems/combat-ai.ts` — Lane proximity targeting bonus
+- `src/game/state/combat-arena-slice.ts` — waveState tracking in store
+- `src/game/data/missions.ts` — Wave definitions + hpMultiplier per mission
+
+### Zero Breaking Changes
+- Backward compat: missions without `waves` field default to single-wave mode
+- Formation positioning unchanged for non-wave missions
+- Post-processing additive (DoF on top of existing vignette)
+
 ## Recent Changes (Guild Facilities System — v1.12)
 
 ### Multi-Facility Management (NEW - 4 Functional Zones)

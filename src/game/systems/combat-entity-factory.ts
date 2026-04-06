@@ -7,7 +7,7 @@ import type { Member } from '@/game/state/game-state';
 import type { EnemyTemplate } from '@/game/data/enemies';
 import type { ArenaEntity } from './combat-arena-types';
 import { getAttackRange, DEFAULT_MOVE_SPEED } from './combat-arena-types';
-import { calcMaxHp, calcAttackInterval } from './combat-formulas';
+// calcMaxHp / calcAttackInterval consumed via calcDerivedCombatStats — no direct import needed
 import { calcDerivedCombatStats } from './derived-combat-stats';
 import { createPassiveState, applyPassiveOnInit, snapshotBaseStats } from './combat-passives';
 
@@ -50,14 +50,20 @@ export function memberToArenaEntity(member: Member, pos: { x: number; z: number 
 }
 
 /** Convert an EnemyTemplate into an ArenaEntity at the given position */
-export function enemyToArenaEntity(template: EnemyTemplate, index: number, pos: { x: number; z: number }): ArenaEntity {
+export function enemyToArenaEntity(
+  template: EnemyTemplate,
+  index: number,
+  pos: { x: number; z: number },
+  hpMultiplier = 1.0,
+): ArenaEntity {
   const derived = calcDerivedCombatStats(template.stats, template.level);
+  const hp = Math.max(1, Math.floor(derived.maxHp * hpMultiplier));
   return {
     id: `enemy-${template.id}-${index}`,
     name: template.name,
     isAlly: false,
-    maxHp: derived.maxHp,
-    currentHp: derived.maxHp,
+    maxHp: hp,
+    currentHp: hp,
     stats: { ...template.stats },
     skill: template.skill ? { ...template.skill } : null,
     level: template.level,
