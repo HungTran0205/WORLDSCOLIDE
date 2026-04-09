@@ -14,6 +14,12 @@ export interface FacilityDef {
   maxSlots: [number, number, number];
   /** Primary stats label for UI tooltip */
   primaryStats: string;
+  /** World-space anchor position [x, y, z] — center of zone in guild hall */
+  zonePosition: [number, number, number];
+  /** Zone size in tiles [width, depth] */
+  tileFootprint: [number, number];
+  /** World-space center of this facility's dedicated 7×7 room (behind guild hall) */
+  roomCenter: [number, number, number];
 }
 
 export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
@@ -25,6 +31,9 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     upgradeCosts: [200, 400],
     maxSlots: [1, 2, 2],
     primaryStats: 'CHA',
+    zonePosition: [8, 0, 5],
+    tileFootprint: [3, 3],
+    roomCenter: [13.5, 0, -8.5],
   },
   'training-yard': {
     type: 'training-yard',
@@ -34,6 +43,9 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     upgradeCosts: [300, 500],
     maxSlots: [2, 3, 4],
     primaryStats: 'DEX + AGI',
+    zonePosition: [2, 0, 2.5],
+    tileFootprint: [3, 3],
+    roomCenter: [3.5, 0, -20.5],
   },
   infirmary: {
     type: 'infirmary',
@@ -43,6 +55,9 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     upgradeCosts: [350, 600],
     maxSlots: [1, 2, 3],
     primaryStats: 'END + INT',
+    zonePosition: [2, 0, 5],
+    tileFootprint: [3, 3],
+    roomCenter: [3.5, 0, -8.5],
   },
   workshop: {
     type: 'workshop',
@@ -52,5 +67,8 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     upgradeCosts: [400, 700],
     maxSlots: [1, 2, 3],
     primaryStats: 'STR + DEX',
+    zonePosition: [8, 0, 2.5],
+    tileFootprint: [3, 3],
+    roomCenter: [13.5, 0, -20.5],
   },
 };

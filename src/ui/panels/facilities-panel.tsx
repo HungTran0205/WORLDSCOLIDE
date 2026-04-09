@@ -1,5 +1,6 @@
 /** FacilitiesPanel — unified panel for all guild facilities + tavern mercenaries. */
 
+import { useEffect } from 'react';
 import { useGameStore } from '@/game/state/store';
 import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
 import { calcTotalUpkeep } from '@/game/systems/upkeep-system';
@@ -14,6 +15,20 @@ interface FacilitiesPanelProps {
 }
 
 export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
+  const focusFacilityType = useGameStore((s) => s.focusFacilityType);
+  const clearFocusFacilityType = useGameStore((s) => s.clearFocusFacilityType);
+  const setCameraTarget = useGameStore((s) => s.setCameraTarget);
+
+  // Scroll to clicked facility zone target on mount; clear on unmount
+  useEffect(() => {
+    if (focusFacilityType) {
+      const el = document.getElementById(`facility-card-${focusFacilityType}`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    return () => { clearFocusFacilityType(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const facilities    = useGameStore((s) => s.facilities);
   const guildLevel    = useGameStore((s) => s.guildLevel);
   const gold          = useGameStore((s) => s.gold);
@@ -50,8 +65,8 @@ export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
 
       {/* Facility cards */}
       {facilities.map((facility) => (
+        <div key={facility.type} id={`facility-card-${facility.type}`}>
         <FacilityCard
-          key={facility.type}
           facility={facility}
           def={FACILITY_DEFINITIONS[facility.type]}
           allMembers={allMembers}
@@ -63,6 +78,17 @@ export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
           onAssign={(id) => assignMemberToFacility(id, facility.type)}
           onUnassign={(id) => unassignMemberFromFacility(id, facility.type)}
         />
+        <button
+          className="panel-btn"
+          style={{ marginBottom: 8, width: '100%' }}
+          onClick={() => {
+            setCameraTarget(FACILITY_DEFINITIONS[facility.type].roomCenter);
+            onClose();
+          }}
+        >
+          🏠 Enter Room
+        </button>
+        </div>
       ))}
 
       {/* Tavern mercenaries — always visible when tavern is active */}

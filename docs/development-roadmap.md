@@ -1,8 +1,8 @@
 # Development Roadmap
 
-**Last Updated**: 2026-04-04
-**Current Phase**: Phase 5 In Progress (Milestone 8 Member Book UI v1.14 Complete)
-**Overall Progress**: ~96% Complete
+**Last Updated**: 2026-04-09
+**Current Phase**: Phase 5 In Progress (Milestone 11 Facility Rooms with Camera Navigation v1.15.0 Complete)
+**Overall Progress**: ~97% Complete
 
 ---
 
@@ -285,6 +285,8 @@
 | Phase 5 Milestone 7 | 2026-03-30 | ✅ Done | Forest Arena HD-2D Upgrade (GLB diorama + 3D props, shadow pipeline, MeshStandardMaterial sprites) |
 | Phase 5 Milestone 8 | 2026-04-04 | ✅ Done | Member Book UI (unified book-style roster, bookmark nav, derived stats display, ruled-line texture) |
 | Phase 5 Milestone 9 | 2026-04-04 | ✅ Done | Civilization Sync (LinhSon last-stand, DeQuoc Shock+team-buff, ThienLu 2-tier clone, 95/95 tests) |
+| Phase 5 Milestone 10 | 2026-04-09 | ✅ Done | 3D Facility Zone Visualization (4 zone markers, level-gated props, assigned member sprites, zone → panel integration) |
+| Phase 5 Milestone 11 | 2026-04-09 | ✅ Done | Facility Rooms with Camera Navigation (4 facility rooms, smooth camera animation, "Enter Room" + home button) |
 | Phase 5 Complete | 2026-04-04 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
 | Phase 6 Start | 2026-04-15 | 📋 Planned | Post-launch content |
 

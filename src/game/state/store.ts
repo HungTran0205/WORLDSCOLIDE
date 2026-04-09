@@ -8,8 +8,10 @@ import { createNotificationSlice, type NotificationSlice } from './notification-
 import { createBuildModeSlice, type BuildModeSlice } from './build-mode-slice';
 import { createInventorySlice, type InventorySlice } from './inventory-slice';
 import { createCombatArenaSlice, type CombatArenaSlice } from './combat-arena-slice';
+import { createFacilityZoneSlice, type FacilityZoneSlice } from './facility-zone-slice';
+import { createCameraSlice, type CameraSlice } from './camera-slice';
 
-export type GameStore = ClockSlice & GuildSlice & RosterSlice & MissionSlice & SaveStatusSlice & NotificationSlice & BuildModeSlice & InventorySlice & CombatArenaSlice;
+export type GameStore = ClockSlice & GuildSlice & RosterSlice & MissionSlice & SaveStatusSlice & NotificationSlice & BuildModeSlice & InventorySlice & CombatArenaSlice & FacilityZoneSlice & CameraSlice;
 
 export const useGameStore = create<GameStore>()((...a) => ({
   ...createClockSlice(...a),
@@ -21,6 +23,8 @@ export const useGameStore = create<GameStore>()((...a) => ({
   ...createBuildModeSlice(...a),
   ...createInventorySlice(...a),
   ...createCombatArenaSlice(...a),
+  ...createFacilityZoneSlice(...a),
+  ...createCameraSlice(...a),
 }));
 
 /** Reset all game data to fresh-game defaults (preserves action functions) */
@@ -60,5 +64,8 @@ export function resetGameState(): void {
     speedMultiplier: 1,
     recentEvents: [],
     arenaResult: null,
+    pendingFacilityPanel: null,
+    focusFacilityType: null,
+    cameraTarget: [5, 0, 3.5] as [number, number, number],
   });
 }

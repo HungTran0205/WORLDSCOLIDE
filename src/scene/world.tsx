@@ -4,6 +4,7 @@ import { useThree } from '@react-three/fiber';
 import { GuildHall } from './guild-hall';
 import { MemberLayer } from './member-layer';
 import { CameraController } from './camera-controller';
+import { FacilityRoomsLayer } from './facility-rooms-layer';
 import { createWebGPURenderer, WebGPUInit } from './webgpu-init';
 
 /** Nulls out scene.background so the CSS cave image shows through the canvas */
@@ -32,6 +33,7 @@ export function World() {
       <CameraController />
       <Suspense fallback={null}>
         <GuildHall />
+        <FacilityRoomsLayer />
         <MemberLayer />
       </Suspense>
     </Canvas>

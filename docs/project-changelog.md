@@ -2,8 +2,116 @@
 
 All notable changes to Worlds Collide are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
-**Current Version**: 1.11
-**Release Date**: 2026-03-26 (Auto-Battler Combat Arena System)
+**Current Version**: 1.15.0
+**Release Date**: 2026-04-09 (Facility Rooms with Camera Navigation)
+
+---
+
+## [1.15.0] — 2026-04-09 (Facility Rooms with Camera Navigation)
+
+### Major Feature: Animated Room Navigation
+
+#### Facility Rooms (NEW)
+- **4 Dedicated 7×7 Rooms**: Tavern, Training Yard, Infirmary, Workshop positioned behind guild hall (z < 0)
+- **Room Rendering**: Walls (back, left, right, transparent front), tinted floors per facility type
+- **Room Labels**: HTML labels showing facility name + lock state / level
+- **Always Visible**: Rooms render in background, accessible via camera navigation
+
+#### Camera Animation System (NEW)
+- **Smooth Transitions**: Camera lerps toward facility center when "Enter Room" clicked (0.08 rate ≈ 500ms)
+- **Zustand CameraSlice**: Manages `cameraTarget` state + `setCameraTarget()` + `resetCameraToGuildHall()` actions
+- **CameraController**: Uses OrbitControls ref + useFrame to animate camera + target toward goal
+- **Isometric Constraints**: Rotation disabled, pan disabled during build mode, zoom always enabled
+- **Arrival Detection**: Stops animating once within 0.01 unit threshold (demand frameloop efficiency)
+
+#### UI Integration (NEW)
+- **"Enter Room" Button**: Added to FacilitiesPanel — triggers `setCameraTarget(roomCenter)` + closes panel
+- **Home Button (🏠)**: Click to `resetCameraToGuildHall()` and return to main view
+- **No State Persistence**: Camera defaults to guild hall on load (prevents isolated room spawns)
+
+#### Camera Offset Formula
+```
+cameraPosition = cameraTarget + [10, 10, 10.5]
+cameraLookAt = cameraTarget
+```
+Derived from isometric perspective: position [15, 10, 14] looking at [5, 0, 3.5].
+
+### Files Added
+- `src/game/state/camera-slice.ts` — CameraSlice: state, setCameraTarget(), resetCameraToGuildHall()
+- `src/scene/camera-controller.tsx` — Camera animation controller (useFrame lerp)
+- `src/scene/facility-room.tsx` — Single 7×7 room with walls, floor, name label
+- `src/scene/facility-rooms-layer.tsx` — Orchestrator for 4 facility rooms
+
+### Files Modified
+- `src/game/state/store.ts` — Integrated CameraSlice into GameStore
+- `src/scene/camera-controller.tsx` — Modified to use Zustand cameraTarget instead of fixed position
+- `src/scene/world.tsx` — Added FacilityRoomsLayer to Canvas; positioned after GuildHall, before MemberLayer
+- `src/ui/panels/facilities-panel.tsx` — Added "Enter Room" button with setCameraTarget() call
+- `src/ui/screens/game-screen.tsx` — Ensured cameraTarget state is accessible (read-only in this version)
+- `src/scene/guild-hall.tsx` — FacilityZoneLayer removed from render (replaced by FacilityRoomsLayer functionality)
+
+### Backward Compatibility
+- No breaking changes to game mechanics or save format
+- Existing facility game logic unaffected (production, bonuses, assignments)
+- Build mode workflow unchanged
+- Save migration: Not required (camera target is transient state)
+
+---
+
+## [1.12.1] — 2026-04-09 (3D Facility Zone Visualization)
+
+### Major Feature: Visual Guild Hall Facility Zones
+
+#### Zone Floor Markers (NEW)
+- **4 Colored Zone Markers**: Always-visible semi-transparent floor planes indicating facility locations
+  - Tavern: Gold (#D4A017)
+  - Training Yard: Red (#B04040)
+  - Infirmary: Blue (#4080B0)
+  - Workshop: Brown (#8B6914)
+- **State Indication**: Locked zones (level 0) render grey/dim, active zones show facility color
+- **Isometric Positioning**: Fixed zone positions in guild hall for consistent player navigation
+
+#### Level-Gated Props (NEW — GLB 3D Models)
+- **Progressive Unlocking**: Props appear as facilities level up (lv1 → lv2)
+- **Tavern Props**: Bar-counter (lv1), wine-barrel (lv2) with warm amber lighting
+- **Training Yard Props**: Training dummies (lv1 + lv2 pair) with red warning lighting
+- **Infirmary Props**: Medical bed (lv1), alchemy-table (lv2) with cool blue healing lighting
+- **Workshop Props**: Workbench (lv1), reception-desk (lv2) with golden work lighting
+- **Auto-Scaling**: Each GLB model automatically scaled to target height (preserves proportions)
+- **Lighting**: Ambient point lights per zone with color-coded intensity and distance
+
+#### Assigned Member Sprites (NEW)
+- **2×2 Grid Display**: Up to 4 members per zone arranged in 4 fixed slot positions
+- **Static Rendering**: Members always idle + facing south (no wandering like main hall)
+- **Sprite Consistency**: Uses existing SpriteAnimator + sprite-path-resolver (4-directional sprites with fallback)
+- **Visual Polish**:
+  - Billboard rendering (always face camera)
+  - Blob shadow under each sprite (0.35u radius, 25% opacity)
+  - Name labels above sprites with black text shadow for readability
+  - Y position: 1.05u (stands on zone floor)
+
+#### User Interaction (NEW)
+- **Zone Click → Panel Bridge**: Clicking zone opens FacilitiesPanel with that facility focused
+  - Zustand bridge: zone click sets `pendingFacilityPanel` + `focusFacilityType`
+  - GameScreen watches state, auto-opens panel + scrolls to target facility
+- **Build Mode Hiding**: All zones (markers, props, sprites) hidden when in build mode (preserves UI focus)
+- **Cursor Feedback**: Pointer cursor on zone hover, auto-reset on layer unmount
+
+#### Zero Breaking Changes
+- Facility game mechanics unchanged (production, bonuses, assignments)
+- Backward compatible with existing saves (new rendering layer only)
+- No impact on build mode or furniture placement workflow
+
+### Files Added
+- `src/scene/facility-zone-layer.tsx` — Master orchestrator for all 4 zones + click handling
+- `src/scene/zone-floor-marker.tsx` — Color-coded floor planes with locked/active logic
+- `src/scene/zone-props.tsx` — Level-gated GLB models with auto-scaling + ambient lighting
+- `src/scene/zone-member-sprites.tsx` — 2×2 grid member sprite layout
+- `src/game/state/facility-zone-slice.ts` — Zustand slice for zone interaction state
+
+### Files Modified
+- `src/scene/guild-hall.tsx` — Integrated FacilityZoneLayer into isometric scene
+- `src/ui/screens/game-screen.tsx` — Watches `pendingFacilityPanel`, auto-opens panel
 
 ---
 

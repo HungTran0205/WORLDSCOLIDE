@@ -432,6 +432,91 @@ Shifted from isometric (20°) to beat-em-up sidescroller:
 - Existing formation positions preserved for non-wave combat
 - Post-processing additive (new DoF layers on top of existing vignette)
 
+## Camera Navigation System (v1.15 — Facility Rooms)
+
+### Overview
+
+The camera navigation system enables smooth animated transitions between the guild hall and 4 facility rooms positioned behind the main hall. Players click "Enter Room" in FacilitiesPanel to trigger camera animation; a home button (🏠) returns to the guild hall.
+
+### Architecture
+
+```
+Zustand Store (CameraSlice)
+    │
+    ├─ cameraTarget: [x, y, z]           Default: GUILD_HALL_CAMERA_TARGET [5, 0, 3.5]
+    ├─ setCameraTarget(target)            Updates target, triggers animation
+    └─ resetCameraToGuildHall()           Convenience method to return home
+
+    ↓ Consumed by
+
+CameraController (React Three Fiber)
+    │
+    ├─ Reads cameraTarget from store
+    ├─ Computes goal vectors (offset by CAM_OFFSET_X/Y/Z = [10, 10, 10.5])
+    ├─ useFrame(): Lerps camera + OrbitControls.target toward goals
+    ├─ LERP_SPEED = 0.08 (8% per frame, ~500ms smooth transition)
+    └─ Stops lerping when within ARRIVE_THRESHOLD (0.01 units)
+
+    ↓ Controlled by
+
+FacilitiesPanel UI
+    │
+    └─ "Enter Room" button → setCameraTarget(roomCenter) + onClose()
+
+FacilityRoomsLayer (3D Scene)
+    │
+    └─ Renders 4 placeholder 7×7 rooms positioned at facility roomCenter coords
+       (Tavern x=-10, Training x=-3, Infirmary x=3, Workshop x=10; all z < 0)
+```
+
+### Camera Target Coordinates
+
+| Location | Coordinates | Notes |
+|----------|-------------|-------|
+| Guild Hall | [5, 0, 3.5] | Default spawn point |
+| Tavern | [-10, 0, -5] | Warmth/gathering |
+| Training Yard | [-3, 0, -8] | Combat focus |
+| Infirmary | [3, 0, -7] | Healing sanctuary |
+| Workshop | [10, 0, -4] | Crafting space |
+
+Offset formula: `cameraPosition = cameraTarget + [CAM_OFFSET_X, CAM_OFFSET_Y, CAM_OFFSET_Z]`
+
+### Animation Details
+
+- **Lerp Speed**: 0.08 per frame (~60fps) = ~500ms for full transition
+- **Threshold**: 0.01 units (demand frameloop stops once arrived)
+- **Build Mode**: Pan disabled during build mode (zoom/scroll still work)
+- **OrbitControls**: Rotation disabled (isometric view only)
+
+### Room Rendering
+
+Each facility room (`FacilityRoom` component):
+- **Dimensions**: 7×7 units, 3 units tall
+- **Walls**: Back, left, right semi-transparent; front wall 40% opaque
+- **Floor**: Tinted per facility type (tavern dark brown, training grey, etc.)
+- **Label**: HTML label showing facility name + level
+
+### File Structure
+
+```
+src/game/state/
+  ├─ camera-slice.ts          CameraSlice: state + actions
+  └─ store.ts                 Integrates CameraSlice into GameStore
+
+src/scene/
+  ├─ camera-controller.tsx    CameraController: animation loop
+  ├─ facility-rooms-layer.tsx FacilityRoomsLayer: orchestrator
+  ├─ facility-room.tsx        FacilityRoom: single 7×7 room rendering
+  └─ world.tsx                Canvas setup, includes FacilityRoomsLayer + CameraController
+
+src/ui/panels/
+  └─ facilities-panel.tsx     "Enter Room" button → setCameraTarget()
+```
+
+### State Persistence
+
+Camera target is **not** persisted — always defaults to guild hall on load. This prevents players loading into isolated facility views.
+
 ## Data Flow: Mission Phase State Machine
 
 ### Overview
@@ -1274,6 +1359,10 @@ getRoomBounds(room: Room):
 | `sprite-animator.tsx` | Animated sprite component: loads walking frames, cycles at 10 FPS, supports 4 directions — NEW v1.11 |
 | `sprite-path-resolver.ts` | Convention-based sprite path resolution: (civ, archetype, gender) → `/sprites/characters/{PREFIX}-{ARCH}-{GENDER}` — NEW v1.11 |
 | `member-layer.tsx` | Renders all guild members as animated sprite billboards, handles movement AI + direction tracking — ENHANCED v1.11 |
+| `facility-zone-layer.tsx` | Master layer rendering all 4 facility zones: floor markers, level-gated props, assigned member sprites — NEW v1.12.1 |
+| `zone-floor-marker.tsx` | Colored semi-transparent plane mesh indicating zone footprint (locked/active color logic) — NEW v1.12.1 |
+| `zone-props.tsx` | Level-gated GLB furniture models with auto-scaling + ambient point lights — NEW v1.12.1 |
+| `zone-member-sprites.tsx` | Static 2×2 grid member sprite rendering with fallback gender/archetype — NEW v1.12.1 |
 | Other scene files | Camera, lighting, world setup |
 
 ### `/game/state/` — Zustand Store
@@ -1289,6 +1378,7 @@ getRoomBounds(room: Room):
 | `notification-slice.ts` | Ephemeral mission notifications (not persisted) |
 | `build-mode-slice.ts` | Build mode state (activeBuildType, buildRotation, placement controls) |
 | `inventory-slice.ts` | Inventory CRUD: addItems(), consumeItems() with atomic validation |
+| `facility-zone-slice.ts` | Zone interaction state: pendingFacilityPanel (trigger to open panel), focusFacilityType (scroll target in panel) — NEW v1.12.1 |
 
 ### `/game/systems/` — Game Logic
 | File | Purpose |

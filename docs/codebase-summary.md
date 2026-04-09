@@ -2,7 +2,7 @@
 
 **Worlds Collide** — An HD-2D auto-RPG idle guild builder where civilizations collide. Build your guild hall, recruit members from different civilizations, dispatch quests, and watch your guild grow — even while you're away.
 
-**Last Updated**: 2026-04-04 (Member Book UI v1.14 complete)
+**Last Updated**: 2026-04-09 (Facility Rooms with Camera Navigation v1.15.0)
 
 ## Technology Stack
 
@@ -519,6 +519,72 @@ src/
 - No changes to core economy, combat, or mission mechanics
 - Backward compatible with existing saves (new fields initialize on upgrade)
 - Facility bonuses are passive (no active skills or complex triggers)
+
+## Recent Changes (3D Facility Zone Visualization — v1.12.1)
+
+### Visual Facility Zones in Guild Hall (NEW - Always-Visible 3D Zones)
+- **4 Permanent Zone Markers**: Colored floor planes indicating Tavern, Training Yard, Infirmary, Workshop locations
+  - **Tavern**: Gold (#D4A017) footprint
+  - **Training Yard**: Red (#B04040) footprint
+  - **Infirmary**: Blue (#4080B0) footprint
+  - **Workshop**: Brown (#8B6914) footprint
+- **Locked vs. Active States**: Locked zones (level 0) render grey (opacity 0.15), active zones (level 1+) show facility color (opacity 0.25)
+- **Level-Gated Props**: GLB furniture models scale to facility level progression
+  - **Level 1**: 1 prop per zone (bar-counter, training-dummy, medical-bed, workbench)
+  - **Level 2**: 2 props per zone (original + secondary pair, e.g., wine-barrel for tavern, alchemy-table for infirmary)
+  - Models auto-scale to target height via `useScaledModel()` hook (preserves proportions)
+- **Ambient Lighting**: Each zone has warm/cool point lights scaled to level (warmth for tavern/workshop, cool for infirmary)
+- **Assigned Member Sprites**: Up to 4 idle members per zone render in 2×2 grid layout
+  - Static (no wandering), always facing south, blob shadows on ground
+  - Name labels above sprites with text-shadow for readability
+  - Uses existing SpriteAnimator + sprite-path-resolver for consistent 4-directional sprites
+- **Interactive Zones**: Clicking zone opens FacilitiesPanel focused on that facility (via `setPendingFacilityPanel`)
+- **Build Mode Hiding**: All zones (markers, props, sprites) hidden when `isBuildMode = true` (preserves floor/furniture editing focus)
+- **Zustand Bridge**: `FacilityZoneSlice` manages `pendingFacilityPanel` + `focusFacilityType` state for seamless R3F → UI panel transition
+
+**Key Files (New)**:
+- `src/scene/facility-zone-layer.tsx` — Master layer component rendering all 4 zones with click handling
+- `src/scene/zone-floor-marker.tsx` — Colored semi-transparent plane mesh per zone (locked/active color logic)
+- `src/scene/zone-props.tsx` — Level-gated GLB furniture models with auto-scaling + point lights
+- `src/scene/zone-member-sprites.tsx` — Static 2×2 grid member sprite rendering with fallback gender/archetype
+- `src/game/state/facility-zone-slice.ts` — Zustand slice for zone interaction state (pending panel, focus type)
+
+**Key Files (Modified)**:
+- `guild-hall.tsx` — Integrated FacilityZoneLayer into isometric scene (rendered alongside furniture layer)
+- `game-screen.tsx` — Watches `pendingFacilityPanel` + auto-opens FacilitiesPanel on zone click
+
+## Recent Changes (Facility Rooms with Camera Navigation — v1.15.0)
+
+### Camera Navigation System (NEW - Animated Room Transitions)
+- **4 Facility Rooms**: 7×7 rooms positioned behind guild hall (z < 0) for Tavern, Training Yard, Infirmary, Workshop
+  - Each room has tinted floor (facility-specific color), 3 walls (back/left/right opaque), transparent front wall
+  - HTML label showing facility name + level indicator
+  - Rooms always rendered, accessible via camera animation
+- **Zustand CameraSlice**: `cameraTarget: [x, y, z]` state + actions
+  - `setCameraTarget(target)` — Trigger animation toward room center
+  - `resetCameraToGuildHall()` — Return to default guild hall view [5, 0, 3.5]
+  - Default: GUILD_HALL_CAMERA_TARGET = [5, 0, 3.5]
+- **Camera Animation**: CameraController uses useFrame + lerp
+  - Lerp speed: 0.08 per frame (≈500ms for full transition at 60fps)
+  - Stops animating when within 0.01 unit threshold (on-demand rendering)
+  - Offset formula: `cameraPosition = cameraTarget + [10, 10, 10.5]` (isometric perspective)
+  - OrbitControls: Rotation disabled, pan disabled during build mode
+- **UI Integration**: FacilitiesPanel "Enter Room" button
+  - Click → `setCameraTarget(FACILITY_DEFINITIONS[type].roomCenter)` + close panel
+  - Home button (🏠) calls `resetCameraToGuildHall()`
+  - No state persistence (camera defaults to guild hall on load)
+
+**Key Files (New)**:
+- `src/game/state/camera-slice.ts` — CameraSlice state + actions
+- `src/scene/camera-controller.tsx` — Animation controller using useFrame + lerp
+- `src/scene/facility-room.tsx` — Single 7×7 room with walls, floor, label
+- `src/scene/facility-rooms-layer.tsx` — Orchestrator for all 4 facility rooms
+
+**Key Files (Modified)**:
+- `src/game/state/store.ts` — Integrated CameraSlice into GameStore
+- `src/scene/world.tsx` — Added FacilityRoomsLayer to Canvas (after GuildHall, before MemberLayer)
+- `src/ui/panels/facilities-panel.tsx` — Added "Enter Room" button with setCameraTarget() call
+- `src/scene/guild-hall.tsx` — FacilityZoneLayer removed from render (complemented by FacilityRoomsLayer)
 
 ## Recent Changes (Milestone 2 Vertical Slice — v1.9)
 

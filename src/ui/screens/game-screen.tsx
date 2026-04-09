@@ -23,9 +23,58 @@ import { CombatSkillHotbar } from '@/ui/panels/combat-skill-hotbar';
 import { CombatResultOverlay } from '@/ui/panels/combat-result-overlay';
 import { useGameTickLoop } from '@/ui/hooks/use-game-tick-loop';
 import { useGameStore } from '@/game/state/store';
+import { GUILD_HALL_CAMERA_TARGET } from '@/game/state/camera-slice';
 import { playBGM } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
 import type { PanelId } from '@/ui/hud/panel-toggle';
+
+/** Home button — returns camera to guild hall; visible only when camera is in a facility room */
+function HomeButton() {
+  const cameraTarget = useGameStore((s) => s.cameraTarget);
+  const resetCameraToGuildHall = useGameStore((s) => s.resetCameraToGuildHall);
+
+  const isAtGuildHall =
+    cameraTarget[0] === GUILD_HALL_CAMERA_TARGET[0] &&
+    cameraTarget[2] === GUILD_HALL_CAMERA_TARGET[2];
+
+  // ESC returns to guild hall when inside a facility room
+  useEffect(() => {
+    if (isAtGuildHall) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') resetCameraToGuildHall();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isAtGuildHall, resetCameraToGuildHall]);
+
+  if (isAtGuildHall) return null;
+
+  return (
+    <button
+      onClick={resetCameraToGuildHall}
+      title="Return to Guild Hall"
+      style={{
+        position: 'fixed',
+        bottom: 60,
+        left: 16,
+        width: 44,
+        height: 44,
+        background: 'rgba(30,20,10,0.85)',
+        color: '#ffd700',
+        border: '1px solid rgba(255,215,0,0.4)',
+        borderRadius: 8,
+        cursor: 'pointer',
+        fontSize: '1.3rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 100,
+      }}
+    >
+      🏠
+    </button>
+  );
+}
 
 /** Floating toggle button to enter/exit build mode */
 function BuildModeToggle() {
@@ -67,6 +116,8 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   const offlineFacilityReport = useGameStore((s) => s.offlineFacilityReport);
   const offlineElapsedHours = useGameStore((s) => s.offlineElapsedHours);
   const clearOfflineFacilityReport = useGameStore((s) => s.clearOfflineFacilityReport);
+  const pendingFacilityPanel = useGameStore((s) => s.pendingFacilityPanel);
+  const clearPendingFacilityPanel = useGameStore((s) => s.clearPendingFacilityPanel);
 
   // Auto-open combat panel when manual combat replay is set
   useEffect(() => {
@@ -74,6 +125,14 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
       setActivePanel('combat');
     }
   }, [currentCombatReplay]);
+
+  // Bridge: R3F zone click → React panel state (Canvas cannot call setActivePanel directly)
+  useEffect(() => {
+    if (pendingFacilityPanel) {
+      setActivePanel('facilities');
+      clearPendingFacilityPanel();
+    }
+  }, [pendingFacilityPanel, clearPendingFacilityPanel]);
 
   // Switch BGM when scene changes
   useEffect(() => {
@@ -119,6 +178,7 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
           )}
           <BuildModeHint />
           <BuildModeToggle />
+          <HomeButton />
         </>
       )}
 
