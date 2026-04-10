@@ -24,7 +24,7 @@ export interface RosterSlice {
   updateMemberStatus: (id: string, status: MemberStatus) => void;
   setMemberInjuredUntil: (id: string, until: number | null) => void;
   toggleAutoCast: (memberId: string) => void;
-  allocateStat: (memberId: string, stat: StatKey) => void;
+  allocateStat: (memberId: string, stat: StatKey, amount?: number) => void;
   addMemberExp: (memberId: string, exp: number) => void;
   /** Increment missionsCompleted counter for given member IDs */
   incrementMissionsCompleted: (memberIds: string[]) => void;
@@ -105,14 +105,15 @@ export const createRosterSlice: StateCreator<RosterSlice> = (set) => ({
       return { roster: updateMember(s.roster, memberId, toggler) };
     }),
 
-  allocateStat: (memberId, stat) =>
+  allocateStat: (memberId, stat, amount = 1) =>
     set((s) => {
       const updater = (m: Member): Member => {
-        if (m.unallocatedPoints <= 0) return m;
+        const pts = Math.min(amount, m.unallocatedPoints);
+        if (pts <= 0) return m;
         return {
           ...m,
-          stats: { ...m.stats, [stat]: m.stats[stat] + 1 },
-          unallocatedPoints: m.unallocatedPoints - 1,
+          stats: { ...m.stats, [stat]: m.stats[stat] + pts },
+          unallocatedPoints: m.unallocatedPoints - pts,
         };
       };
       if (s.founder?.id === memberId) {

@@ -52,6 +52,22 @@ function getBonusPreview(facility: GuildFacility, assignedMembers: Member[], dai
       const fasterPct = Math.round((1 - mult) * 100);
       return `${fasterPct}% faster recovery`;
     }
+    case 'logging-site': {
+      const base = [5, 9, 15][lv - 1];
+      const total = assignedMembers.reduce((sum, m) => {
+        const gatherSpeed = m.stats.STR * 0.004;
+        return sum + Math.floor(base * (1 + gatherSpeed));
+      }, 0);
+      return `+${total} Wood/day`;
+    }
+    case 'stone-quarry': {
+      const base = [4, 7, 12][lv - 1];
+      const total = assignedMembers.reduce((sum, m) => {
+        const gatherSpeed = m.stats.STR * 0.004;
+        return sum + Math.floor(base * (1 + gatherSpeed));
+      }, 0);
+      return `+${total} Stone/day`;
+    }
     default:
       return '';
   }

@@ -76,6 +76,8 @@ const DEFAULT_FACILITIES: GuildFacility[] = [
   { type: 'training-yard', level: 0, assignedMemberIds: [] },
   { type: 'infirmary',     level: 0, assignedMemberIds: [] },
   { type: 'workshop',      level: 0, assignedMemberIds: [] },
+  { type: 'logging-site',  level: 0, assignedMemberIds: [] },
+  { type: 'stone-quarry',  level: 0, assignedMemberIds: [] },
 ];
 
 export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({

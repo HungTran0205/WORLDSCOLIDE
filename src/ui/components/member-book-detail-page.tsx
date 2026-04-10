@@ -13,7 +13,7 @@ import { expToNextLevel } from '@/game/systems/leveling-system';
 
 interface MemberBookDetailPageProps {
   member: Member;
-  onAllocateStat: (stat: StatKey) => void;
+  onAllocateStat: (stat: StatKey, amount?: number) => void;
   onToggleAutoCast: () => void;
 }
 
@@ -148,6 +148,18 @@ export function MemberBookDetailPage({ member, onAllocateStat, onToggleAutoCast 
                     cursor: isMercenary ? 'not-allowed' : 'pointer',
                     fontSize: '0.65rem', opacity: isMercenary ? 0.4 : 1, padding: 0,
                   }}>+</button>
+              )}
+              {member.unallocatedPoints >= 5 && (
+                <button
+                  onClick={() => onAllocateStat(stat, 5)}
+                  disabled={isMercenary}
+                  title={isMercenary ? 'Mercenaries auto-distribute stats' : `Allocate 5 points to ${stat}`}
+                  style={{
+                    background: 'rgba(255,165,0,0.15)', border: '1px solid rgba(255,165,0,0.4)',
+                    color: '#ffa500', width: 26, height: 18, borderRadius: 3,
+                    cursor: isMercenary ? 'not-allowed' : 'pointer',
+                    fontSize: '0.6rem', opacity: isMercenary ? 0.4 : 1, padding: 0,
+                  }}>+5</button>
               )}
             </div>
           ))}

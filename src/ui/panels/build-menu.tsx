@@ -1,10 +1,8 @@
-/** Build menu — 2-tab layout: Floor | Furniture */
+/** Build menu — Furniture only (Floor tab removed) */
 
-import { useState } from 'react';
 import { useGameStore } from '@/game/state/store';
-import { FLOOR_TILE_COLORS } from '@/game/state/game-state';
 import type { FurnitureType } from '@/game/state/game-state';
-import { FLOOR_TILE_COST, GUILD_UPGRADES, getUnlockedFurniture } from '@/game/data/buildings';
+import { GUILD_UPGRADES, getUnlockedFurniture } from '@/game/data/buildings';
 import { FURNITURE_DEFINITIONS } from '@/game/data/furniture';
 import { getUpgradeCost } from '@/game/systems/guild-upgrade-system';
 import { GameIcon } from '@/ui/components/game-icon';
@@ -14,80 +12,14 @@ import '@/ui/styles/panels.css';
 interface BuildMenuProps { onClose: () => void; }
 
 export function BuildMenu({ onClose }: BuildMenuProps) {
-  const [activeTab, setActiveTab] = useState<'floor' | 'furniture'>('floor');
-
   return (
     <div className="panel-overlay">
       <h2>
         Build
         <button className="panel-close-btn" onClick={onClose}>Close</button>
       </h2>
-      <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
-        {(['floor', 'furniture'] as const).map((tab) => (
-          <button key={tab} className="panel-btn" onClick={() => setActiveTab(tab)}
-            style={{ opacity: activeTab === tab ? 1 : 0.5 }}>
-            {tab === 'floor' ? 'Floor' : 'Furniture'}
-          </button>
-        ))}
-      </div>
-      {activeTab === 'floor' && <FloorTab onClose={onClose} />}
-      {activeTab === 'furniture' && <FurnitureTab onClose={onClose} />}
+      <FurnitureTab onClose={onClose} />
     </div>
-  );
-}
-
-function FloorTab({ onClose }: { onClose: () => void }) {
-  const gold = useGameStore((s) => s.gold);
-  const floorTiles = useGameStore((s) => s.guildHall.floorTiles);
-  const startFloorPaint = useGameStore((s) => s.startFloorPaint);
-  const startFloorErase = useGameStore((s) => s.startFloorErase);
-  const [selectedColor, setSelectedColor] = useState(FLOOR_TILE_COLORS[0].hex);
-
-  const handlePaint = () => {
-    startFloorPaint(selectedColor);
-    onClose();
-  };
-  const handleErase = () => {
-    startFloorErase();
-    onClose();
-  };
-
-  return (
-    <>
-      <div className="panel-section">
-        <strong>Floor Tiles</strong>
-        <div style={{ fontSize: '0.8rem', color: '#aaa' }}>
-          Total: {floorTiles.length} tiles &bull; Cost: {FLOOR_TILE_COST}G per tile
-        </div>
-      </div>
-
-      <h3 style={{ color: '#ffd700' }}>Color</h3>
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 12 }}>
-        {FLOOR_TILE_COLORS.map((c) => (
-          <button key={c.id}
-            title={c.name}
-            onClick={() => setSelectedColor(c.hex)}
-            style={{
-              width: 32, height: 32,
-              background: c.hex,
-              border: selectedColor === c.hex ? '3px solid #ffd700' : '2px solid #555',
-              borderRadius: 4, cursor: 'pointer',
-            }}
-          />
-        ))}
-      </div>
-
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button className="panel-btn" onClick={handlePaint}
-          disabled={gold < FLOOR_TILE_COST}>
-          Paint ({FLOOR_TILE_COST}G/tile)
-        </button>
-        <button className="panel-btn" onClick={handleErase}
-          style={{ background: '#8B0000' }}>
-          Erase
-        </button>
-      </div>
-    </>
   );
 }
 

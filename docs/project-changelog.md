@@ -2,8 +2,78 @@
 
 All notable changes to Worlds Collide are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
-**Current Version**: 1.15.0
-**Release Date**: 2026-04-09 (Facility Rooms with Camera Navigation)
+**Current Version**: 1.16.0
+**Release Date**: 2026-04-10 (Stat Allocation, New Facilities, Camera Controls, Room Navigation)
+
+---
+
+## [1.16.0] — 2026-04-10 (UI Enhancements & New Facilities)
+
+### Major Features: Character Progression & Resource Expansion
+
+#### +5 Stat Allocation Button (NEW)
+- **Allocate Helper**: `allocateStat()` now accepts optional `amount` parameter (default: 1)
+- **UI Enhancement**: +5 button shown when `unallocatedPoints >= 5` in:
+  - Character detail panel (`character-detail-panel.tsx`)
+  - Member book detail page (`member-book-detail-page.tsx`)
+- **Player Convenience**: Quick allocation reduces click fatigue for high-stat characters
+
+#### New Facility Types (NEW)
+- **Logging Site**: Resource extraction facility with STR-based production
+  - Extraction formula: `STR * 0.004 * gatherSpeed`
+  - Supports member assignment, offline production, level progression
+- **Stone Quarry**: Resource extraction facility with STR-based production
+  - Extraction formula: `STR * 0.004 * gatherSpeed`
+  - Full production pipeline matching existing facility system (Tavern, Training, Infirmary, Workshop)
+- **DEFAULT_FACILITIES Updated**: Both new facilities added to default guild setup
+- **FacilityType Enum Extended**: Backward compatible (existing saves unaffected)
+
+#### WASD Camera Pan Controls (NEW)
+- **Keyboard Handler**: Implemented in `HomeButton` within `game-screen.tsx`
+  - **W/↑**: Pan camera north
+  - **A/←**: Pan camera west
+  - **S/↓**: Pan camera south
+  - **D/→**: Pan camera east
+  - **ESC**: Return to guild hall view
+- **Usage Context**: Active when viewing facility rooms (post-Enter Room)
+- **Accessibility**: Complements mouse-based orbit controls; no speed ramp (instant pan)
+
+#### Room Navigation UI Bar (NEW)
+- **New Component**: `room-nav-bar.tsx` above PanelToggle in game screen
+- **Visual Design**: Horizontal icon button bar showing:
+  - Guild Hall icon (home) + built facility icons (Tavern, Training Yard, Infirmary, Workshop, Logging Site, Stone Quarry)
+  - Icons auto-generated via PixelLab (facility-specific 32×32 pixel art)
+  - Quick facility access without opening FacilitiesPanel
+- **Interaction**: Click to navigate to facility room (camera animation)
+
+#### UI Build Menu Refactor (NEW)
+- **Removed**: FloorTab from build menu (unused feature)
+- **Simplified**: `build-menu.tsx` now renders FurnitureTab directly
+- **User Impact**: Cleaner build UI, focused on room furniture placement
+
+### Files Added
+- None (feature extensions to existing systems)
+
+### Files Modified
+- `src/game/systems/facility-production-system.ts` — Added Logging Site & Stone Quarry to facility configs
+- `src/game/data/facilities.ts` — Extended FacilityType enum with 'logging-site', 'stone-quarry'
+- `src/game/systems/stat-system.ts` — Updated `allocateStat()` to accept optional amount parameter
+- `src/ui/components/room-nav-bar.tsx` — NEW: Navigation bar component for facility access
+- `src/ui/panels/character-detail-panel.tsx` — Added +5 stat button (unallocatedPoints >= 5)
+- `src/ui/panels/member-book-detail-page.tsx` — Added +5 stat button (unallocatedPoints >= 5)
+- `src/ui/screens/game-screen.tsx` — Integrated keyboard handler (WASD + ESC)
+- `src/ui/panels/build-menu.tsx` — Removed FloorTab, FurnitureTab now primary
+- `src/ui/hud/home-button.tsx` — Integrated WASD camera pan controls
+
+### Asset Generation
+- 2 new facility icons (Logging Site, Stone Quarry) via PixelLab AI
+- Integrated into room nav bar (32×32 pixel art format)
+
+### Backward Compatibility
+- ✅ Save format unchanged (new facilities optional, existing saves unaffected)
+- ✅ `allocateStat()` default behavior preserved (amount = 1)
+- ✅ Existing facility system fully operational
+- ✅ Build mode workflow unaffected
 
 ---
 

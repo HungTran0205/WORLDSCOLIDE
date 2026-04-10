@@ -24,7 +24,7 @@ export interface Skill {
 
 export type MemberStatus = 'idle' | 'on-mission' | 'injured' | 'training' | 'assigned';
 
-export type FacilityType = 'tavern' | 'training-yard' | 'infirmary' | 'workshop';
+export type FacilityType = 'tavern' | 'training-yard' | 'infirmary' | 'workshop' | 'logging-site' | 'stone-quarry';
 
 export interface GuildFacility {
   type: FacilityType;

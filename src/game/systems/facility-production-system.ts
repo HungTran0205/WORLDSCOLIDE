@@ -21,6 +21,16 @@ export interface FacilityProductionResult {
   recoveryApplied: boolean;
 }
 
+// --- Logging Site + Stone Quarry ---
+
+const LOGGING_BASE: number[] = [5, 9, 15];
+const QUARRY_BASE: number[] = [4, 7, 12];
+
+function calcExtractionOutput(member: Member, level: number, baseTable: number[]): number {
+  const { gatherSpeed } = calcDerivedGuildStats(member.stats, member.level);
+  return Math.floor(baseTable[level - 1] * (1 + gatherSpeed));
+}
+
 // --- Training Yard ---
 
 function calcTrainingYardExpPerDay(member: Member, level: number): number {
@@ -137,6 +147,26 @@ export function processFacilityProduction(
       case 'infirmary':
         result.recoveryApplied = true;
         break;
+
+      case 'logging-site': {
+        const combined: Partial<Record<ItemID, number>> = {};
+        for (const member of assignedMembers) {
+          const daily = calcExtractionOutput(member, facility.level, LOGGING_BASE);
+          combined.WOOD = ((combined.WOOD ?? 0) + daily) * gameDays;
+        }
+        result.itemGains = combined;
+        break;
+      }
+
+      case 'stone-quarry': {
+        const combined: Partial<Record<ItemID, number>> = {};
+        for (const member of assignedMembers) {
+          const daily = calcExtractionOutput(member, facility.level, QUARRY_BASE);
+          combined.STONE = ((combined.STONE ?? 0) + daily) * gameDays;
+        }
+        result.itemGains = combined;
+        break;
+      }
     }
 
     results.push(result);

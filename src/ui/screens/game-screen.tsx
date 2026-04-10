@@ -32,20 +32,30 @@ import type { PanelId } from '@/ui/hud/panel-toggle';
 function HomeButton() {
   const cameraTarget = useGameStore((s) => s.cameraTarget);
   const resetCameraToGuildHall = useGameStore((s) => s.resetCameraToGuildHall);
+  const setCameraTarget = useGameStore((s) => s.setCameraTarget);
 
   const isAtGuildHall =
     cameraTarget[0] === GUILD_HALL_CAMERA_TARGET[0] &&
     cameraTarget[2] === GUILD_HALL_CAMERA_TARGET[2];
 
-  // ESC returns to guild hall when inside a facility room
+  const PAN_STEP = 2;
+
+  // ESC returns to guild hall; WASD pans camera when inside a facility room
   useEffect(() => {
     if (isAtGuildHall) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') resetCameraToGuildHall();
+      if (e.key === 'Escape') { resetCameraToGuildHall(); return; }
+      const [cx, cy, cz] = cameraTarget;
+      switch (e.key) {
+        case 'w': case 'W': setCameraTarget([cx, cy, cz - PAN_STEP]); break;
+        case 's': case 'S': setCameraTarget([cx, cy, cz + PAN_STEP]); break;
+        case 'a': case 'A': setCameraTarget([cx - PAN_STEP, cy, cz]); break;
+        case 'd': case 'D': setCameraTarget([cx + PAN_STEP, cy, cz]); break;
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [isAtGuildHall, resetCameraToGuildHall]);
+  }, [isAtGuildHall, cameraTarget, setCameraTarget, resetCameraToGuildHall]);
 
   if (isAtGuildHall) return null;
 

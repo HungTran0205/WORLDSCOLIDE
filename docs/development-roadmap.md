@@ -1,8 +1,8 @@
 # Development Roadmap
 
-**Last Updated**: 2026-04-09
-**Current Phase**: Phase 5 In Progress (Milestone 11 Facility Rooms with Camera Navigation v1.15.0 Complete)
-**Overall Progress**: ~97% Complete
+**Last Updated**: 2026-04-10
+**Current Phase**: Phase 5 In Progress (Milestone 12 UI Enhancements & New Facilities v1.16.0 Complete)
+**Overall Progress**: ~98% Complete
 
 ---
 
@@ -13,7 +13,7 @@
 [PHASE 2: Guild Hall]          ████████████████████ 100% COMPLETE
 [PHASE 3: Characters & NPCs]   ████████████████████ 100% COMPLETE
 [PHASE 4: Save System v1]      ████████████████████ 100% COMPLETE
-[PHASE 5: Polish & Launch]     █████████████████████ 95% IN PROGRESS
+[PHASE 5: Polish & Launch]     ██████████████████████ 98% IN PROGRESS
 [PHASE 6: Post-Launch]         ░░░░░░░░░░░░░░░░░░░░ 0% PLANNED
 ```
 
@@ -148,8 +148,8 @@
 
 ## Phase 5: Polish & Launch (IN PROGRESS)
 
-**Status**: 🟡 IN PROGRESS (96% complete)
-**Target Completion**: 2026-04-04
+**Status**: 🟡 IN PROGRESS (98% complete)
+**Target Completion**: 2026-04-11
 **Duration**: ~3 weeks
 
 ### Completed Tasks
@@ -192,6 +192,12 @@
 - [x] Bookmark navigation (78px column), two-page layout, ruled-line CSS texture
 - [x] Derived stats display (combat + guild stats), sticky action footer (rank-aware)
 - [x] member-bookmark-list, member-book-detail-page, member-derived-stats-section components
+- [x] UI Enhancements & New Facilities (v1.16 released)
+- [x] +5 Stat Allocation button (character-detail-panel, member-book-detail-page)
+- [x] New facility types: Logging Site, Stone Quarry with STR-based production
+- [x] WASD camera pan controls (WASD + ESC) for facility room navigation
+- [x] Room navigation bar (room-nav-bar.tsx) with facility icon buttons
+- [x] Build menu refactor: removed FloorTab, streamlined to FurnitureTab
 
 ### Current Tasks
 - [ ] Performance optimization (target <100ms saves)
@@ -287,7 +293,8 @@
 | Phase 5 Milestone 9 | 2026-04-04 | ✅ Done | Civilization Sync (LinhSon last-stand, DeQuoc Shock+team-buff, ThienLu 2-tier clone, 95/95 tests) |
 | Phase 5 Milestone 10 | 2026-04-09 | ✅ Done | 3D Facility Zone Visualization (4 zone markers, level-gated props, assigned member sprites, zone → panel integration) |
 | Phase 5 Milestone 11 | 2026-04-09 | ✅ Done | Facility Rooms with Camera Navigation (4 facility rooms, smooth camera animation, "Enter Room" + home button) |
-| Phase 5 Complete | 2026-04-04 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
+| Phase 5 Milestone 12 | 2026-04-10 | ✅ Done | UI Enhancements & New Facilities (+5 stat button, Logging Site, Stone Quarry, WASD camera pan, room nav bar) |
+| Phase 5 Complete | 2026-04-11 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
 | Phase 6 Start | 2026-04-15 | 📋 Planned | Post-launch content |
 
 ---
@@ -426,4 +433,4 @@ Documentation automatically updated when:
 - Significant scope changes
 - Resource allocation changes
 
-**Last Updated**: 2026-04-04 by project-manager (Milestone 8 Member Book UI v1.14 Complete)
+**Last Updated**: 2026-04-10 by docs-manager (Milestone 12 UI Enhancements & New Facilities v1.16.0 Complete)

@@ -92,7 +92,7 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
           {selectedMember ? (
             <MemberBookDetailPage
               member={selectedMember}
-              onAllocateStat={(stat) => allocateStat(selectedMember.id, stat as StatKey)}
+              onAllocateStat={(stat, amount) => allocateStat(selectedMember.id, stat as StatKey, amount)}
               onToggleAutoCast={() => toggleAutoCast(selectedMember.id)}
             />
           ) : (

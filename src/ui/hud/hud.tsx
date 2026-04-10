@@ -3,6 +3,7 @@ import { GoldDisplay } from '@/ui/components/gold-display';
 import { ResourceBar } from '@/ui/components/resource-bar';
 import { SaveStatusBadge } from './save-status-badge';
 import { PanelToggle, type PanelId } from './panel-toggle';
+import { RoomNavBar } from './room-nav-bar';
 import { formatGameTime } from '@/game/utils/format-game-time';
 import { calcTotalUpkeep } from '@/game/systems/upkeep-system';
 import '@/ui/styles/hud.css';
@@ -38,6 +39,7 @@ export function HUD({ activePanel, setActivePanel }: HUDProps) {
         <span>Missions: {missionCount}</span>
         <SaveStatusBadge />
       </div>
+      <RoomNavBar />
       <PanelToggle activePanel={activePanel} setActivePanel={setActivePanel} />
     </div>
   );

@@ -11,7 +11,7 @@ import { expToNextLevel } from '@/game/systems/leveling-system';
 
 interface CharacterDetailPanelProps {
   member: Member;
-  onAllocateStat: (stat: StatKey) => void;
+  onAllocateStat: (stat: StatKey, amount?: number) => void;
   onToggleAutoCast: () => void;
   onInviteMercenary?: () => void;
   inviteCost?: number;
@@ -183,6 +183,19 @@ export function CharacterDetailPanel({ member, onAllocateStat, onToggleAutoCast,
                   cursor: isMercenary ? 'not-allowed' : 'pointer',
                   fontSize: '0.7rem', opacity: isMercenary ? 0.4 : 1,
                 }}>+</button>
+            )}
+            {member.unallocatedPoints >= 5 && (
+              <button
+                onClick={() => onAllocateStat(stat, 5)}
+                disabled={isMercenary}
+                title={isMercenary ? 'Mercenaries auto-distribute stats' : `Allocate 5 points to ${stat}`}
+                style={{
+                  background: 'rgba(255,165,0,0.2)',
+                  border: '1px solid rgba(255,165,0,0.4)',
+                  color: '#ffa500', width: 28, height: 20, borderRadius: 4,
+                  cursor: isMercenary ? 'not-allowed' : 'pointer',
+                  fontSize: '0.65rem', opacity: isMercenary ? 0.4 : 1,
+                }}>+5</button>
             )}
           </div>
         ))}
