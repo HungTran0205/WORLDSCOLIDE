@@ -1,8 +1,8 @@
 # Development Roadmap
 
-**Last Updated**: 2026-04-11
-**Current Phase**: Phase 5 In Progress (Milestone 14 Logging Site Finite Harvest Complete)
-**Overall Progress**: ~99.5% Complete
+**Last Updated**: 2026-04-12
+**Current Phase**: Phase 5 In Progress (Milestone 15 GPU-Instanced Combat Rendering Complete)
+**Overall Progress**: ~99.7% Complete
 
 ---
 
@@ -213,6 +213,7 @@
 - [x] Depletion lifecycle UI (warning/critical/depleted states, color thresholds, auto-unassign)
 - [x] Save migration v13→v14 (members get craftSkills, facilities get woodReserve)
 - [x] 3D zone tinting (reserve % → color gradient)
+- [x] GPU-Instanced Combat Rendering (mega-atlas builder, animation state buffer, single draw call, WebGPU compatibility fixes)
 
 ### Current Tasks
 - [ ] Performance optimization (target <100ms saves)
@@ -311,7 +312,8 @@
 | Phase 5 Milestone 12 | 2026-04-10 | ✅ Done | UI Enhancements & New Facilities (+5 stat button, Logging Site, Stone Quarry, WASD camera pan, room nav bar) |
 | Phase 5 Milestone 13 | 2026-04-10 | ✅ Done | Tutorial First-Session Flow (world-board lore, tutorial quest, Kael recruitment, facility unlock, progression gates) |
 | Phase 5 Milestone 14 | 2026-04-11 | ✅ Done | Logging Site Finite Harvest System (woodcutting skill, finite reserve, permit gate, depletion lifecycle, 3D zone tinting, save v14) |
-| Phase 5 Complete | 2026-04-11 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
+| Phase 5 Milestone 15 | 2026-04-12 | ✅ Done | GPU-Instanced Combat Rendering (mega-atlas, animation buffer, 1 draw call, WebGPU fixes, canvas-texture UI) |
+| Phase 5 Complete | 2026-04-12 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
 | Phase 6 Start | 2026-04-15 | 📋 Planned | Post-launch content |
 
 ---

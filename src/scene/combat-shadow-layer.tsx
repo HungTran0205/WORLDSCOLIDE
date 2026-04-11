@@ -73,7 +73,7 @@ export function CombatShadowLayer({ entities }: CombatShadowLayerProps) {
 
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, MAX_SHADOWS]} frustumCulled={false}>
-      <planeGeometry args={[1, 1]} />
+      <planeGeometry args={[1, 1]} onUpdate={(g) => g.index && g.setDrawRange(0, g.index.count)} />
       <meshBasicMaterial map={texture} transparent depthWrite={false} />
     </instancedMesh>
   );

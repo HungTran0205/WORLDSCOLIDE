@@ -1,18 +1,22 @@
 /** Full combat arena — dedicated R3F Canvas with CSS vignette overlay */
 
-import { Suspense, useMemo, useEffect } from 'react';
+import { Suspense, useMemo, useRef, useEffect } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { Stats } from '@react-three/drei';
 import { useGameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
 import { CombatArenaEnvironment } from './combat-arena-environment';
-import { CombatEntitySprite } from './combat-entity-sprite';
-import { CombatFightController } from './combat-fight-controller';
-import { CombatVfxLayer } from './combat-vfx-layer';
+import { CombatFightController, getCombatRenderState } from './combat-fight-controller';
 import { getBiomeConfig } from './arena-biome-config';
 import { createWebGPURenderer, WebGPUInit } from './webgpu-init';
 import { ArenaDebugProvider, DebugCameraController, useArenaDebug } from './combat-arena-debug';
 import { CombatShadowLayer } from './combat-shadow-layer';
+// New instanced rendering components (Phase 01-03)
+import { InstancedSpriteRenderer } from './combat/instanced-sprite-renderer';
+import { InstancedHpBars } from './combat/instanced-hp-bars';
+import { CombatTextLayer } from './combat/combat-text-layer';
+import { DamageNumberPool } from './combat/damage-number-pool';
+import type { DamageNumberPoolHandle } from './combat/damage-number-pool';
 
 /** Target FPS — pixel art looks best at 24-30fps (Octopath style) */
 const TARGET_FPS = 30;
@@ -21,22 +25,18 @@ const FRAME_INTERVAL = 1000 / TARGET_FPS;
 /**
  * Drives invalidation at a capped frame rate via setInterval.
  * Lighter than rAF loop — no per-frame JS overhead between invalidations.
- * Respects debug pause state — stops interval but still invalidates once
- * when debug values change so Leva tweaks render immediately.
  */
 function FrameRateLimiter() {
   const invalidate = useThree(s => s.invalidate);
   const debug = useArenaDebug();
   const paused = debug?.paused ?? false;
 
-  // Normal tick loop — disabled when paused
   useEffect(() => {
     if (paused) return;
     const id = setInterval(invalidate, FRAME_INTERVAL);
     return () => clearInterval(id);
   }, [invalidate, paused]);
 
-  // When paused, still invalidate once per debug value change so Leva tweaks render
   useEffect(() => {
     if (paused && debug) invalidate();
   }, [paused, debug, invalidate]);
@@ -44,11 +44,46 @@ function FrameRateLimiter() {
   return null;
 }
 
-/** Reads debug context (if present) and renders post-processing with live values */
+/**
+ * Instanced combat renderer — replaces per-entity CombatEntitySprite mapping.
+ * Reads render state from CombatFightController and renders:
+ * - ALL sprites in 1 draw call (InstancedSpriteRenderer)
+ * - ALL HP bars in 2 draw calls (InstancedHpBars)
+ * - Entity names via troika SDF text (~1 draw call)
+ * - Damage numbers via pooled troika text
+ */
+function InstancedCombatRenderer({
+  damagePoolRef,
+}: {
+  damagePoolRef: React.RefObject<DamageNumberPoolHandle | null>;
+}) {
+  const renderState = getCombatRenderState();
+
+  if (!renderState) {
+    // Atlas not ready yet — show nothing (brief loading moment)
+    return null;
+  }
+
+  const { bridge, atlasTextures, registry } = renderState;
+
+  return (
+    <>
+      <InstancedSpriteRenderer
+        stateBuffer={bridge.buffer}
+        registry={registry}
+        atlasTextures={atlasTextures}
+      />
+      <InstancedHpBars stateBuffer={bridge.buffer} />
+      <CombatTextLayer stateBuffer={bridge.buffer} />
+      <DamageNumberPool ref={damagePoolRef} />
+    </>
+  );
+}
 
 export function CombatArenaCanvas() {
   const entities = useGameStore(s => s.arenaEntities);
   const missionId = useGameStore(s => s.arenaMissionId);
+  const damagePoolRef = useRef<DamageNumberPoolHandle | null>(null);
 
   const zone = useMemo(() => {
     if (!missionId) return undefined;
@@ -70,16 +105,15 @@ export function CombatArenaCanvas() {
       >
         <WebGPUInit />
         <FrameRateLimiter />
-        <CombatFightController />
+        <CombatFightController damagePoolRef={damagePoolRef} />
         <color attach="background" args={[biome.fogColor]} />
 
         <Suspense fallback={null}>
           <CombatArenaEnvironment zone={zone} />
+          {/* Shadows still use store entities (static enough for throttled sync) */}
           <CombatShadowLayer entities={entities} />
-          {entities.map(entity => (
-            <CombatEntitySprite key={entity.id} entity={entity} />
-          ))}
-          <CombatVfxLayer />
+          {/* New instanced renderers — driven by AnimationStateBuffer */}
+          <InstancedCombatRenderer damagePoolRef={damagePoolRef} />
         </Suspense>
 
         {/* Dev-only overlays */}

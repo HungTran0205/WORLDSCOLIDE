@@ -119,11 +119,35 @@ src/
 - **Injury System**: 50% of mission duration; scales with difficulty
 - **Offline Completion**: `resolveMission()` called for offline catch-up
 
-### Combat System
-- **Tick-based Simulation**: Auto-RPG mechanics
+### Combat System (v1.19 GPU-Instanced Rendering)
+- **Tick-based Logic**: CombatEngine (100ms ticks), auto-RPG mechanics
 - **Formulas**: AGI+weapon speed for action order, crit chance, status effects
 - **Status Effects**: Poison, stun, vulnerability, defense buffs
 - **Damage Calculation**: Base damage + scaling + weapon/armor
+- **Formation Grid**: 2×3 layout (3 allies + 3 enemies per row), range-based AI targeting
+- **Wave System**: Multi-wave missions with atlas pre-loading of all enemy templates
+
+### Combat Rendering (v1.19 — GPU Instancing, WebGPU-Compatible)
+
+**Architecture**: Single draw call for ALL sprites via InstancedMesh. All sprite frames packed into shared mega-atlas. Animation/position state in Float32Array (imperative, non-React).
+
+**Core Modules** (`src/scene/combat/`):
+- **MegaAtlasBuilder** — Loads walk/attack/death frames for all characters + all waves → packs into shared CanvasTexture (flipY=false for WebGPU)
+- **SpriteRegistry** — Maps (typeId, animState, frameIndex) → UV coords in atlas (O(1) cached lookups)
+- **AnimationStateBuffer** — 18 floats per entity (pos, animState, frameIndex, hp%, alive, tint, scale); zero React overhead
+- **CombatStateBridge** — Syncs CombatEngine → AnimationStateBuffer every frame; derives typeId from entity
+- **InstancedSpriteRenderer** — Renders 48 entities in 1 draw call; billboard rotation via camera quaternion; WebGPU workaround: always render MAX_INSTANCES, hide unused via opacity=0
+- **SpriteMaterial** — Dual-path material (MeshBasicNodeMaterial+TSL for WebGPU, ShaderMaterial+GLSL for fallback); per-instance UV remapping + tint + alpha-test
+- **CombatTextLayer** — Entity name labels as canvas-texture sprites (fixed 256×48 canvas, NOT troika SDF which uses GLSL incompatible with WebGPU)
+- **DamageNumberPool** — 32 pooled floating damage numbers, imperative spawn via ref, float-up + fade-out (fixed 160×48 canvas)
+- **InstancedHpBars** — HP bars via InstancedMesh
+- **CombatVfxSpawner** — VFX layer for visual effects
+
+**WebGPU Compatibility Fixes**:
+- CanvasTexture.flipY must be false (true breaks UV formula)
+- Troika-three-text (SDF) replaced with canvas-texture sprites (GLSL incompatible with WebGPU)
+- InstancedMesh.count dynamic changes not picked up; use opacity=0 for hidden slots instead
+- Canvas texture resize errors; use fixed dimensions (256×48, 160×48)
 
 ### Economy System
 - **Gold**: Currency earned from quests, spent on recruitment/upkeep

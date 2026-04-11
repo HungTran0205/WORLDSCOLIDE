@@ -45,6 +45,10 @@ interface InstancesProps {
 
 function TileInstances({ geo, mat, positions, scale }: InstancesProps) {
   const mesh = useMemo(() => {
+    // Explicit drawRange prevents WebGPU crash — default Infinity is invalid for drawIndexed
+    if (geo.index && geo.drawRange.count === Infinity) {
+      geo.setDrawRange(0, geo.index.count);
+    }
     const m = new THREE.InstancedMesh(geo, mat, positions.length);
     const matrix = new THREE.Matrix4();
     const s = new THREE.Vector3(scale, scale, scale);

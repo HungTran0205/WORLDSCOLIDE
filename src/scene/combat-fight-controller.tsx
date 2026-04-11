@@ -2,6 +2,10 @@
  * Combat fight controller — drives CombatEngine tick loop inside the R3F Canvas.
  * Initializes engine on phase='fighting', ticks each frame, syncs snapshots to store.
  * Listens for 'combat-skill' CustomEvents from the skill hotbar.
+ *
+ * V2: Uses CombatStateBridge for GPU-driven rendering (Phase 04 redesign).
+ * Engine → Bridge → AnimationStateBuffer → InstancedSpriteRenderer
+ * Store sync throttled to 5Hz (UI panels only).
  */
 
 import { useRef, useEffect } from 'react';
@@ -12,19 +16,42 @@ import { MISSIONS } from '@/game/data/missions';
 import { ENEMIES } from '@/game/data/enemies';
 import { useArenaDebug } from './combat-arena-debug';
 import { WaveManager, legacyToWaves } from '@/game/systems/combat-wave-manager';
-import { preloadAttackAtlas } from './combat-character-animator';
-import { getSpritePath } from './sprite-path-resolver';
+// sprite-path-resolver used internally by mega-atlas-builder
 import { combatLog, clearCombatLog, downloadCombatLog } from './combat-logger';
-import type { ArenaEntitySnapshot } from '@/game/state/combat-arena-slice';
+import { CombatStateBridge } from './combat/combat-state-bridge';
+import { preloadCombatAtlases } from './combat/mega-atlas-builder';
+import type { MegaAtlasResult } from './combat/mega-atlas-builder';
+import type { DamageNumberPoolHandle } from './combat/damage-number-pool';
+import type { CanvasTexture } from 'three';
+import type { SpriteRegistry } from './combat/sprite-registry';
 
 /** Max dt per frame to prevent massive tick bursts after tab suspend */
 const MAX_FRAME_DT_MS = 200;
-/** Throttle store sync to ~10Hz (100ms) to avoid 60fps GC pressure */
-const SYNC_INTERVAL_MS = 100;
+/** Throttle store sync to ~5Hz (200ms) — reduced from 10Hz for less GC pressure */
+const SYNC_INTERVAL_MS = 200;
 
-export function CombatFightController() {
+/** Props passed down to CombatArena for instanced rendering */
+export interface CombatRenderState {
+  bridge: CombatStateBridge;
+  atlasTextures: CanvasTexture[];
+  registry: SpriteRegistry;
+}
+
+/** Shared render state stored in a ref for child components */
+let _renderState: CombatRenderState | null = null;
+export function getCombatRenderState(): CombatRenderState | null {
+  return _renderState;
+}
+
+export function CombatFightController({
+  damagePoolRef,
+}: {
+  damagePoolRef?: React.RefObject<DamageNumberPoolHandle | null>;
+}) {
   const engineRef = useRef<CombatEngine | null>(null);
   const waveManagerRef = useRef<WaveManager | null>(null);
+  const bridgeRef = useRef<CombatStateBridge | null>(null);
+  const atlasResultRef = useRef<MegaAtlasResult | null>(null);
   const lastSyncRef = useRef(0);
   const waveTransitioningRef = useRef(false);
   const waveTransitionUntilRef = useRef(0);
@@ -45,6 +72,12 @@ export function CombatFightController() {
       engineRef.current = null;
       waveManagerRef.current = null;
       waveTransitioningRef.current = false;
+      // Clean up bridge
+      if (bridgeRef.current) {
+        bridgeRef.current.clear();
+        bridgeRef.current = null;
+      }
+      _renderState = null;
       return;
     }
 
@@ -58,15 +91,7 @@ export function CombatFightController() {
     clearCombatLog();
     combatLog(`=== COMBAT START === mission:${arenaMissionId} members:${members.map(m => m.name).join(',')}`);
 
-    // Preload attack atlases before ticks begin — prevents race condition for
-    // long-range characters (e.g. TS-SCOUT-M) that attack before useEffect fires
-    members.forEach(member => {
-      const basePath = getSpritePath(member.civilization ?? '', member.archetype ?? '', member.gender ?? 'M');
-      combatLog(`preloading atlas: ${member.name} → ${basePath}`);
-      preloadAttackAtlas(basePath);
-    });
-
-    // Wave system: use mission.waves if present, else wrap enemyIds as single wave
+    // Wave system
     const waves = missionData.waves ?? legacyToWaves(missionData.enemyIds);
     const waveManager = new WaveManager(waves);
     waveManagerRef.current = waveManager;
@@ -74,6 +99,14 @@ export function CombatFightController() {
     const firstWave = waveManager.current();
     const enemyTemplates = firstWave.enemyIds.map(id => ENEMIES[id]).filter(Boolean);
 
+    // Collect ALL unique enemy templates from ALL waves for atlas building
+    const allEnemyIds = new Set<string>();
+    for (const wave of waves) {
+      for (const id of wave.enemyIds) allEnemyIds.add(id);
+    }
+    const allEnemyTemplates = [...allEnemyIds].map(id => ENEMIES[id]).filter(Boolean);
+
+    // Initialize engine
     const engine = new CombatEngine();
     engine.init(members, formation, enemyTemplates, firstWave.hpMultiplier ?? 1);
     engine.onWaveCheck = () => waveManagerRef.current?.hasNext() ?? false;
@@ -81,8 +114,33 @@ export function CombatFightController() {
 
     syncWaveState(0, waveManager.totalWaves());
 
-    // Initial sync so entities appear immediately
-    const snapshots = buildSnapshots(engine);
+    // Build mega-atlas and initialize bridge
+    preloadCombatAtlases(members, allEnemyTemplates).then((result) => {
+      atlasResultRef.current = result;
+
+      // Create bridge
+      const bridge = new CombatStateBridge();
+      bridge.initFromEngine(engine, result.registry);
+      if (damagePoolRef) bridge.setDamagePool(damagePoolRef);
+      bridgeRef.current = bridge;
+
+      // Expose render state for CombatArena
+      _renderState = {
+        bridge,
+        atlasTextures: result.textures,
+        registry: result.registry,
+      };
+
+      // Initial sync so entities appear immediately
+      bridge.syncFromEngine(engine);
+      const snapshots = bridge.buildUISnapshots(engine);
+      syncArenaState(snapshots, 0, []);
+
+      combatLog(`Atlas built: ${result.textures.length} texture(s), ${result.registry.getTypeIds().length} types`);
+    });
+
+    // Legacy initial sync (before atlas is ready)
+    const snapshots = buildLegacySnapshots(engine);
     syncArenaState(snapshots, 0, []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [arenaPhase]);
@@ -97,15 +155,23 @@ export function CombatFightController() {
     return () => window.removeEventListener('combat-skill', handler);
   }, []);
 
+  // Update damage pool ref when it changes
+  useEffect(() => {
+    if (bridgeRef.current && damagePoolRef) {
+      bridgeRef.current.setDamagePool(damagePoolRef);
+    }
+  }, [damagePoolRef]);
+
   // Tick engine each frame — skip when debug paused
   const debugPaused = useArenaDebug()?.paused ?? false;
   useFrame((_, delta) => {
     const engine = engineRef.current;
     if (!engine || arenaPhase !== 'fighting' || debugPaused) return;
 
+    const bridge = bridgeRef.current;
     const now = performance.now();
 
-    // Wave transition pause — skip engine tick, camera still follows allies
+    // Wave transition pause
     if (waveTransitioningRef.current) {
       advanceCameraFollow(engine, camera);
       if (now >= waveTransitionUntilRef.current) {
@@ -117,6 +183,11 @@ export function CombatFightController() {
             const templates = nextWave.enemyIds.map(id => ENEMIES[id]).filter(Boolean);
             engine.addEnemies(templates, nextWave.spawnXOffset, nextWave.hpMultiplier ?? 1);
             syncWaveState(wm.currentWaveIndex(), wm.totalWaves());
+
+            // Add new entities to bridge
+            if (bridge && atlasResultRef.current) {
+              bridge.addEntities(engine.entities.slice(-templates.length) as any, atlasResultRef.current.registry);
+            }
           }
         }
       }
@@ -126,7 +197,7 @@ export function CombatFightController() {
     const dtMs = Math.min(delta * 1000, MAX_FRAME_DT_MS) * speedMultiplier;
     const events = engine.tick(dtMs);
 
-    // Log combat events to combat.log
+    // Log combat events
     for (const e of events) {
       if (e.type === 'auto-attack' || e.type === 'skill-use') {
         const attacker = engine.entities.find(en => en.id === e.attackerId);
@@ -145,29 +216,37 @@ export function CombatFightController() {
       }
     }
 
-    // Handle wave-cleared: start 1s transition pause
+    // Sync engine → buffer (every frame, fast)
+    if (bridge) {
+      bridge.syncFromEngine(engine);
+      bridge.emitCombatEvents(events, engine);
+    }
+
+    // Handle wave-cleared
     const waveClearedEvent = events.find(e => e.type === 'wave-cleared');
     if (waveClearedEvent && !waveTransitioningRef.current && waveManagerRef.current?.hasNext()) {
       waveTransitioningRef.current = true;
       waveTransitionUntilRef.current = now + 1000;
     }
 
-    // Camera follow — lerp toward ally centroid
+    // Camera follow
     advanceCameraFollow(engine, camera);
 
-    // Throttle store sync to ~10Hz to reduce GC pressure
+    // Throttled store sync for UI panels (5Hz)
     const shouldSync = events.length > 0 || engine.time - lastSyncRef.current >= SYNC_INTERVAL_MS;
-    if (shouldSync) {
+    if (shouldSync && bridge) {
       lastSyncRef.current = engine.time;
-      const snapshots = buildSnapshots(engine);
+      const snapshots = bridge.buildUISnapshots(engine);
       syncArenaState(snapshots, engine.time, events);
     }
 
     // Check if combat finished
     if (engine.isFinished()) {
-      engineRef.current = null; // prevent re-entry on subsequent frames before re-render
-      const snapshots = buildSnapshots(engine);
-      syncArenaState(snapshots, engine.time, events);
+      engineRef.current = null;
+      if (bridge) {
+        const snapshots = bridge.buildUISnapshots(engine);
+        syncArenaState(snapshots, engine.time, events);
+      }
       const result = engine.getResult();
       combatLog(`=== COMBAT END === outcome:${result.outcome} duration:${result.durationMs}ms`);
       downloadCombatLog();
@@ -189,8 +268,8 @@ function advanceCameraFollow(
   camera.position.x += (centroidX - camera.position.x) * 0.05;
 }
 
-/** Convert engine entities to serializable snapshots for Zustand store */
-function buildSnapshots(engine: CombatEngine): ArenaEntitySnapshot[] {
+/** Legacy snapshot builder — used before atlas is ready */
+function buildLegacySnapshots(engine: CombatEngine) {
   return engine.entities.map(e => ({
     id: e.id,
     name: e.name,

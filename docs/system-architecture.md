@@ -108,59 +108,97 @@ For detailed implementation, see:
 
 ---
 
-## PLACEHOLDER: Detailed Combat Arena Architecture
+## GPU-Instanced Combat Rendering Architecture (v1.19 — WebGPU-Compatible)
+
+Combat rendering overhauled from per-entity React components to 1-draw-call GPU instancing. All sprite frames packed into mega-atlas. Animation & position state maintained in typed arrays (imperative, non-React).
+
+### Rendering Pipeline Overview
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                    Combat Arena Scene                        │
-├──────────────────────────────────────────────────────────────┤
-│  ┌──────────────────────────────────────────────────────────┐│
-│  │ R3F Canvas (CombatArenaCanvas)                           ││
-│  │ ┌─────────────────────────────────────────────────────┐ ││
-│  │ │ CombatArenaEnvironment (Ground, walls, lighting)    │ ││
-│  │ │ CombatEntitySprite[] (6-12 billboards)              │ ││
-│  │ │ CombatVfxLayer (Damage #s, particles, effects)      │ ││
-│  │ │ CameraController (Sidescroller, 35° angle)          │ ││
-│  │ └─────────────────────────────────────────────────────┘ ││
-│  └──────────────────────────────────────────────────────────┘│
-├──────────────────────────────────────────────────────────────┤
-│  ┌──────────────────────────────────────────────────────────┐│
-│  │ CombatFightController (useFrame loop)                    ││
-│  │  ├─ engine.tick(dt) → CombatEvent[]                      ││
-│  │  ├─ Process events (damage, skill, death)                ││
-│  │  ├─ Sync entities to store (position, animation, HP)     ││
-│  │  └─ Check victory condition                              ││
-│  └──────────────────────────────────────────────────────────┘│
-├──────────────────────────────────────────────────────────────┤
-│  ┌──────────────────────────────────────────────────────────┐│
-│  │ CombatEngine (Mutable state, 100ms logic ticks)          ││
-│  │  ├─ init(formation, enemies) → Place entities            ││
-│  │  ├─ tick(dt) → [CombatEvent]                             ││
-│  │  ├─ activateSkill(memberId, skillId)                     ││
-│  │  └─ checkVictoryCondition() → CombatResult               ││
-│  └──────────────────────────────────────────────────────────┘│
-├──────────────────────────────────────────────────────────────┤
-│  ┌──────────────────────────────────────────────────────────┐│
-│  │ Zustand: CombatArenaSlice                               ││
-│  │  ├─ gameScene: 'combat-arena' | 'guild-hall'            ││
-│  │  ├─ arenaPhase: 'idle' | 'prep' | 'fighting' | 'result' ││
-│  │  ├─ formation: [memberId, memberId, ...] (6 slots)       ││
-│  │  ├─ arenaEntities: ArenaEntitySnapshot[]                 ││
-│  │  ├─ arenaTime, speedMultiplier, recentEvents            ││
-│  │  └─ arenaResult: { outcome, gold, exp, injuries }       ││
-│  └──────────────────────────────────────────────────────────┘│
-├──────────────────────────────────────────────────────────────┤
-│  ┌──────────────────────────────────────────────────────────┐│
-│  │ UI Layer                                                  ││
-│  │  ├─ CombatPrepPanel (Formation grid, start button)       ││
-│  │  ├─ CombatSkillHotbar (Keys 1-4, cooldown bars)          ││
-│  │  ├─ CombatResultOverlay (Rewards, injuries, return btn)  ││
-│  │  └─ Input handling (skill activation, formation changes) ││
-│  └──────────────────────────────────────────────────────────┘│
-├──────────────────────────────────────────────────────────────┤
-│  Game Tick Loop Pause (useGameTickLoop pauses while fighting)│
-└──────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────┐
+│  CombatEngine (100ms ticks)         │
+│  ├─ Entity state (position, anim)   │
+│  └─ Emits CombatEvent[]             │
+└────────────┬────────────────────────┘
+             │
+             ↓
+┌─────────────────────────────────────┐
+│  CombatStateBridge                  │
+│  ├─ Derives typeId from entity      │
+│  ├─ Syncs to AnimationStateBuffer   │
+│  └─ Emits damage numbers to pool    │
+└────────────┬────────────────────────┘
+             │
+             ↓
+┌─────────────────────────────────────┐
+│  AnimationStateBuffer (Float32Array)│
+│  ├─ 18 floats/entity (pos, frame..) │
+│  └─ Zero React overhead             │
+└────────────┬────────────────────────┘
+             │
+             ↓
+┌─────────────────────────────────────┐
+│  InstancedSpriteRenderer            │
+│  ├─ useFrame reads buffer           │
+│  ├─ Updates InstancedMesh matrices  │
+│  ├─ Updates per-instance attributes │
+│  └─ GPU renders 1 draw call (48 max)│
+└─────────────────────────────────────┘
 ```
+
+### Core Modules (src/scene/combat/)
+
+**MegaAtlasBuilder** (`mega-atlas-builder.ts`)
+- Loads ALL sprite frames (walk, attack, death) for all character templates + all enemy waves
+- Packs into shared CanvasTexture atlas (8 cols × N rows, max 4096×4096)
+- Single atlas per sprite-size group (e.g. 128×128, 256×256)
+- Critical: `flipY = false` (WebGPU UV convention; `flipY = true` breaks formula)
+- Canvas disposed post-GPU upload to save RAM
+
+**SpriteRegistry** (`sprite-registry.ts`)
+- Maps (typeId, animState, frameIndex) → UV coords in atlas
+- UV formula: v = bottom of frame row; h = negative height (feet→head)
+- Cached O(1) lookups, populated by MegaAtlasBuilder
+
+**AnimationStateBuffer** (`animation-state-buffer.ts`)
+- Float32Array, 18 floats per entity stride
+- Layout: targetX, targetZ, currentX, currentZ, animState, elapsed, frameIndex, fps, totalFrames, facingRight, hpRatio, isAlive, spriteTypeIndex, scaleX, scaleY, tintR, tintG, tintB
+- No React involvement—pure imperative operations
+- Position lerp (smooth movement), frame advance (animation timing), hit flash (red tint), death fade (elapsed timer after animation)
+
+**CombatStateBridge** (`combat-state-bridge.ts`)
+- Bridges CombatEngine → AnimationStateBuffer every frame
+- Derives typeId: spriteId for enemies, civilization+archetype+gender for allies
+- Emits combat events (damage numbers) to floating-text pool
+- Syncs HP ratio, death state, animation index from engine
+
+**InstancedSpriteRenderer** (`instanced-sprite-renderer.tsx`)
+- Renders 48 entities in 1 draw call via InstancedMesh + PlaneGeometry
+- Per-instance attributes: aUvRect (frame UV), aOpacity, aTint
+- useFrame callback: read buffer → update matrices → update attributes → no render call (WebGPU handles it)
+- Billboard rotation via camera quaternion (always face-on)
+- WebGPU workaround: always render MAX_INSTANCES; hide unused via opacity=0 (dynamic count causes draw-call misses)
+- Death fade: after death animation (~1s), entity opacity → 0 over 0.5s
+
+**SpriteMaterial** (`sprite-material.ts`)
+- Dual-path: MeshBasicNodeMaterial+TSL for WebGPU, ShaderMaterial+GLSL for WebGL fallback
+- Per-instance UV remapping, tint overlay, alpha-test (discard transparent fragments)
+
+**CombatTextLayer** (`combat-text-layer.tsx`)
+- Entity name labels as canvas-texture sprites (NOT troika SDF, which uses custom GLSL incompatible with WebGPU)
+- Fixed 256×48 canvas to avoid WebGPU texture-resize errors
+
+**DamageNumberPool** (`damage-number-pool.tsx`)
+- 32 pooled floating damage numbers as canvas-texture sprites
+- Imperative spawn via ref
+- Float-up + fade-out animation (1.5s duration, fixed 160×48 canvas)
+
+**InstancedHpBars** (`instanced-hp-bars.tsx`)
+- HP bars rendered via InstancedMesh (one bar per entity)
+- Red fill = current HP, grey background
+
+**CombatVfxSpawner** (`combat-vfx-spawner.tsx`)
+- VFX layer for combat effects (particle emitters, visual polish)
 
 ### Combat Lifecycle
 
@@ -345,10 +383,24 @@ All events accumulated per tick → UI batches renders once per frame
 - **CPU**: Entity AI loop O(n²) worst-case (each entity checks all targets), n ≤ 12
 - **Frame Budget**: 16.67ms per frame (60fps); engine tick amortized across multiple frames
 
-### Wave System (v1.14 — Multi-Wave Encounters)
+### WebGPU Compatibility (v1.19 Critical Findings)
+
+Architecture designed to work with WebGPU. Key constraints discovered during implementation:
+
+| Issue | Solution | Impact |
+|-------|----------|--------|
+| `CanvasTexture.flipY = true` breaks UV formula | Always use `flipY = false` for atlas | Must invert UV v-coordinate formula |
+| Troika-three-text (SDF) uses custom GLSL ShaderMaterial | Replace with canvas-texture sprite labels | Text now renders via InstancedMesh attribute batches |
+| `InstancedMesh.count` dynamic changes not picked up by WebGPU | Always render MAX_INSTANCES (48), hide unused via opacity=0 | Minor performance overhead (~2-5 unused slots typical) |
+| Canvas texture resize triggers WebGPU `Texture copy range` errors | Use fixed canvas dimensions (256×48 for labels, 160×48 for damage) | Must allocate worst-case size upfront |
+| Alpha-test (discard) required for correct transparency | Use `alphaTest = 0.5` in SpriteMaterial | Fragments at 50%+ alpha rendered, below discarded |
+
+### Wave System (v1.19 — Multi-Wave Mega-Atlas)
 
 #### Overview
 Multi-wave system adds progressive difficulty to combat arena. Missions define wave cohorts instead of single enemy set. Each wave clears triggers camera advance + next wave spawn.
+
+**Key fix (v1.19)**: Mega-atlas now built with ALL enemy templates from ALL waves in mission, preventing sprite-missing errors during wave transitions.
 
 #### Wave Flow
 
@@ -359,13 +411,14 @@ Mission.waves[] = [
   { enemies: [...], hpMultiplier: 1.0 }   // Wave 2: tough few
 ]
     ↓
-WaveManager.init()
+MegaAtlasBuilder loads sprites for ALL wave enemies
     ↓
 CombatFightController detects 'wave-cleared' event
     ↓
 Camera lerp X by ~15 units (1s transition)
     ↓
 WaveManager.next() → engine.addEnemies(wave[n])
+    (Sprites already in atlas, no stalls)
     ↓
 Repeat until final wave cleared
     ↓

@@ -10,8 +10,28 @@
  * 3. Settings can clear the flag to retry WebGPU after driver updates
  */
 import { useEffect, useRef } from 'react';
-import { WebGLRenderer } from 'three';
+import { InstancedBufferGeometry, WebGLRenderer } from 'three';
 import { useThree } from '@react-three/fiber';
+
+/**
+ * Three.js r175 WebGPU bug: InstancedBufferGeometry.instanceCount defaults to Infinity.
+ * WebGL silently clamps this; WebGPU's drawIndexed() rejects Infinity as unsigned long.
+ * Fix: intercept Infinity reads and return 0 (skip draw until real count is set).
+ * Troika-three-text triggers this — its GlyphsGeometry extends InstancedBufferGeometry
+ * and sets instanceCount only AFTER async font layout completes.
+ */
+const _ibgCountKey = Symbol('ibgInstanceCount');
+Object.defineProperty(InstancedBufferGeometry.prototype, 'instanceCount', {
+  get(this: any) {
+    const v = this[_ibgCountKey];
+    return (v === undefined || v === Infinity) ? 0 : v;
+  },
+  set(this: any, v: number) {
+    this[_ibgCountKey] = v;
+  },
+  configurable: true,
+  enumerable: true,
+});
 
 const WEBGPU_FAILED_KEY = 'webgpu-device-failed';
 
