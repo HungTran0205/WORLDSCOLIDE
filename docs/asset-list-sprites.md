@@ -157,7 +157,7 @@
   "colorPattern": {
     "primary": "#2c3e50 (deep indigo, natural dye)",
     "secondary": "#8B6914 (dark gold/bronze)",
-    "accent": "#D4A017 (bright bronze)",
+    "accent": "#1753d4 (bright bronze)",
     "skin": "#c49a6c (warm tan, tattoos #1a1a1a black)",
     "metal": "#8c7853 (bronze medallion/trigger)"
   },
