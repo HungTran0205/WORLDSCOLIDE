@@ -21,7 +21,9 @@ import { memberToArenaEntity, enemyToArenaEntity } from './combat-entity-factory
 
 const LOGIC_TICK_MS = 100;
 const MAX_COMBAT_MS = 120_000; // 2 min hard cap
-const ANIM_ATTACK_DURATION = 300; // ms before reverting to idle
+// 8 frames @ 12fps = 667ms. With strict-> expiry check, animState persists one
+// extra tick (100ms) past this value, so effective display = 600 + 100 = 700ms.
+const ANIM_ATTACK_DURATION = 600;
 
 export class CombatEngine {
   entities: ArenaEntity[] = [];
@@ -135,8 +137,11 @@ export class CombatEngine {
     for (const entity of this.entities) {
       if (entity.currentHp <= 0) continue;
 
-      // Revert animState if duration expired
-      if (entity.animStateUntil > 0 && this.time >= entity.animStateUntil) {
+      // Revert animState if duration expired.
+      // Use strict > (not >=) to avoid same-tick collision: if attack expires at T=800
+      // and enemy also attacks at T=800, the ally stays 'attacking' for that tick,
+      // preventing hit-state from overriding right as the animation finishes.
+      if (entity.animStateUntil > 0 && this.time > entity.animStateUntil) {
         entity.animState = 'idle';
         entity.animStateUntil = 0;
       }
@@ -278,7 +283,9 @@ export class CombatEngine {
     // Anim states
     entity.animState = 'attacking';
     entity.animStateUntil = this.time + ANIM_ATTACK_DURATION;
-    if (target.currentHp > 0) {
+    // Don't interrupt target's own attack animation — hit-flash is driven by
+    // recentEvents in CombatEntitySprite and doesn't need animState='hit'
+    if (target.currentHp > 0 && target.animState !== 'attacking' && target.animState !== 'skill') {
       target.animState = 'hit';
       target.animStateUntil = this.time + 200;
     }
@@ -335,7 +342,7 @@ export class CombatEngine {
 
     // Anim
     entity.animState = 'skill';
-    entity.animStateUntil = this.time + 400;
+    entity.animStateUntil = this.time + ANIM_ATTACK_DURATION;
 
     if (entity.passiveState) {
       onDamageDealt(entity.passiveState);

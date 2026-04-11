@@ -21,7 +21,6 @@ interface WoodcuttingAnimatorProps {
 /** Animates the woodcutting-8-frames/east sprite atlas in a continuous loop */
 export function WoodcuttingAnimator({ basePath, size = [2.1, 2.1] }: WoodcuttingAnimatorProps) {
   const frameIndexRef = useRef(0);
-  const elapsedRef = useRef(0);
   const materialRef = useRef<MeshStandardMaterial>(null);
 
   const paths = useMemo(() => {
@@ -43,13 +42,14 @@ export function WoodcuttingAnimator({ basePath, size = [2.1, 2.1] }: Woodcutting
     return buildAtlasFromTextures(textures, FRAME_COUNT);
   }, [textures]);
 
-  useFrame((_, delta) => {
+  useFrame((state) => {
     if (!materialRef.current) return;
-    elapsedRef.current += delta;
-    if (elapsedRef.current >= 1 / ANIMATION_FPS) {
-      elapsedRef.current -= 1 / ANIMATION_FPS;
-      frameIndexRef.current = (frameIndexRef.current + 1) % FRAME_COUNT;
-    }
+    // Use absolute clock time to avoid delta spike when frameloop="demand" resumes
+    // after idle (large delta would otherwise cause catch-up speedup).
+    const totalDuration = FRAME_COUNT / ANIMATION_FPS;
+    const t = state.clock.elapsedTime % totalDuration;
+    const frameIndex = Math.floor(t * ANIMATION_FPS) % FRAME_COUNT;
+    frameIndexRef.current = frameIndex;
     setAtlasFrame(atlas, frameIndexRef.current);
     materialRef.current.map = atlas.texture;
     materialRef.current.needsUpdate = false;

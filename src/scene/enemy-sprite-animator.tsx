@@ -13,6 +13,7 @@ import { buildAtlasFromTextures, buildAtlasFromUrls, setAtlasFrame } from './spr
 import type { SpriteAtlas } from './sprite-atlas';
 
 const WALK_FRAMES = 8;
+const ATTACK_FRAMES = 4;
 const WALK_FPS = 10;
 const ATTACK_FPS = 12;
 const DEATH_FPS = 8;
@@ -23,7 +24,6 @@ interface EnemySpriteAnimatorProps {
   spriteId: string;
   animStateRef: MutableRefObject<EnemyAnimState>;
   facingRight: boolean;
-  hitTimeRef?: MutableRefObject<number>;
   size?: [number, number];
 }
 
@@ -31,7 +31,6 @@ export function EnemySpriteAnimator({
   spriteId,
   animStateRef,
   facingRight,
-  hitTimeRef,
   size = [2.1, 2.1],
 }: EnemySpriteAnimatorProps) {
   const frameIndexRef = useRef(0);
@@ -62,8 +61,8 @@ export function EnemySpriteAnimator({
   useEffect(() => {
     let cancelled = false;
     const paths: string[] = [];
-    for (let i = 0; i < 8; i++) paths.push(getEnemyAnimFramePath(spriteId, 'attack', i));
-    buildAtlasFromUrls(paths, 8).then((atlas) => {
+    for (let i = 0; i < ATTACK_FRAMES; i++) paths.push(getEnemyAnimFramePath(spriteId, 'attack', i));
+    buildAtlasFromUrls(paths, ATTACK_FRAMES).then((atlas) => {
       if (!cancelled) attackAtlasRef.current = atlas;
     });
     return () => { cancelled = true; };
@@ -158,8 +157,6 @@ export function EnemySpriteAnimator({
       elapsedRef.current = 0;
     }
     setAtlasFrame(walkAtlas, frameIndexRef.current);
-
-    // hitTimeRef reserved for future sparkle effect
   });
 
   const scaleX = facingRight ? -size[0] : size[0];

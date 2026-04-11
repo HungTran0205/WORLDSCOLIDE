@@ -71,8 +71,6 @@ export function CombatEntitySprite({ entity }: CombatEntitySpriteProps) {
   const groupRef = useRef<Group>(null);
   const directionRef = useRef<SpriteDirection>('south');
   const animStateRef = useRef<CombatAnimState>('idle');
-  const hitTimeRef = useRef<number>(0);
-
   directionRef.current = entity.facingRight ? 'east' : 'west';
   animStateRef.current = entity.animState as CombatAnimState;
 
@@ -91,12 +89,11 @@ export function CombatEntitySprite({ entity }: CombatEntitySpriteProps) {
       (e) => 'targetId' in e && e.targetId === entity.id && (e.type === 'auto-attack' || e.type === 'skill-use')
     );
     if (latestHit && groupRef.current) {
-      // Phase 1: Knockback - Push back 0.4 units
-      const pushDir = entity.facingRight ? -0.4 : 0.4;
-      groupRef.current.position.x += pushDir;
-      
-      // Phase 2: Track hit time for flashing
-      hitTimeRef.current = performance.now();
+      // Knockback only for enemies — allies use hit-flash only
+      if (!entity.isAlly) {
+        const pushDir = entity.facingRight ? -0.4 : 0.4;
+        groupRef.current.position.x += pushDir;
+      }
     }
   }, [recentEvents, entity.id, entity.facingRight]);
 
@@ -140,7 +137,6 @@ export function CombatEntitySprite({ entity }: CombatEntitySpriteProps) {
             spriteId={entity.spriteId}
             animStateRef={animStateRef}
             facingRight={entity.facingRight}
-            hitTimeRef={hitTimeRef}
             size={[2.1, 2.1]}
           />
         ) : (
@@ -148,7 +144,7 @@ export function CombatEntitySprite({ entity }: CombatEntitySpriteProps) {
             basePath={basePath!}
             directionRef={directionRef}
             animStateRef={animStateRef}
-            hitTimeRef={hitTimeRef}
+            entityId={entity.name}
             size={[2.1, 2.1]}
           />
         )}

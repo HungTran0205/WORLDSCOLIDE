@@ -12,6 +12,9 @@ import { MISSIONS } from '@/game/data/missions';
 import { ENEMIES } from '@/game/data/enemies';
 import { useArenaDebug } from './combat-arena-debug';
 import { WaveManager, legacyToWaves } from '@/game/systems/combat-wave-manager';
+import { preloadAttackAtlas } from './combat-character-animator';
+import { getSpritePath } from './sprite-path-resolver';
+import { combatLog, clearCombatLog, downloadCombatLog } from './combat-logger';
 import type { ArenaEntitySnapshot } from '@/game/state/combat-arena-slice';
 
 /** Max dt per frame to prevent massive tick bursts after tab suspend */
@@ -50,6 +53,18 @@ export function CombatFightController() {
     if (!missionData) return;
 
     const members = allMembers.filter(m => formation.includes(m.id));
+
+    // Clear previous combat log and start fresh
+    clearCombatLog();
+    combatLog(`=== COMBAT START === mission:${arenaMissionId} members:${members.map(m => m.name).join(',')}`);
+
+    // Preload attack atlases before ticks begin — prevents race condition for
+    // long-range characters (e.g. TS-SCOUT-M) that attack before useEffect fires
+    members.forEach(member => {
+      const basePath = getSpritePath(member.civilization ?? '', member.archetype ?? '', member.gender ?? 'M');
+      combatLog(`preloading atlas: ${member.name} → ${basePath}`);
+      preloadAttackAtlas(basePath);
+    });
 
     // Wave system: use mission.waves if present, else wrap enemyIds as single wave
     const waves = missionData.waves ?? legacyToWaves(missionData.enemyIds);
@@ -111,6 +126,25 @@ export function CombatFightController() {
     const dtMs = Math.min(delta * 1000, MAX_FRAME_DT_MS) * speedMultiplier;
     const events = engine.tick(dtMs);
 
+    // Log combat events to combat.log
+    for (const e of events) {
+      if (e.type === 'auto-attack' || e.type === 'skill-use') {
+        const attacker = engine.entities.find(en => en.id === e.attackerId);
+        const target   = engine.entities.find(en => en.id === e.targetId);
+        combatLog(
+          `${e.type} | ${attacker?.name ?? e.attackerId} → ${target?.name ?? e.targetId}` +
+          ` | dmg=${e.damage}${e.isCrit ? '(CRIT)' : ''} | HP=${target?.currentHp ?? '?'}/${target?.maxHp ?? '?'}`,
+        );
+      } else if (e.type === 'death') {
+        const dead = engine.entities.find(en => en.id === e.entityId);
+        combatLog(`DEATH: ${dead?.name ?? e.entityId}`);
+      } else if (e.type === 'dodge' || e.type === 'block') {
+        combatLog(`${e.type.toUpperCase()}: ${e.targetId}`);
+      } else if (e.type === 'wave-cleared') {
+        combatLog(`--- WAVE CLEARED ---`);
+      }
+    }
+
     // Handle wave-cleared: start 1s transition pause
     const waveClearedEvent = events.find(e => e.type === 'wave-cleared');
     if (waveClearedEvent && !waveTransitioningRef.current && waveManagerRef.current?.hasNext()) {
@@ -131,9 +165,13 @@ export function CombatFightController() {
 
     // Check if combat finished
     if (engine.isFinished()) {
+      engineRef.current = null; // prevent re-entry on subsequent frames before re-render
       const snapshots = buildSnapshots(engine);
       syncArenaState(snapshots, engine.time, events);
-      endCombat(engine.getResult());
+      const result = engine.getResult();
+      combatLog(`=== COMBAT END === outcome:${result.outcome} duration:${result.durationMs}ms`);
+      downloadCombatLog();
+      endCombat(result);
     }
   });
 

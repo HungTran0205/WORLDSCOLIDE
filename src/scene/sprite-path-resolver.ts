@@ -27,6 +27,12 @@ export function getWalkingFramePath(basePath: string, direction: SpriteDirection
   return `${basePath}/animations/walking-8-frames/${direction}/frame_${padded}.png`;
 }
 
+/** Build path to a specific running animation frame */
+export function getRunningFramePath(basePath: string, direction: SpriteDirection, frame: number): string {
+  const padded = String(frame).padStart(3, '0');
+  return `${basePath}/animations/running-8-frames/${direction}/frame_${padded}.png`;
+}
+
 /** Build path to a woodcutting animation frame */
 export function getWoodcuttingFramePath(basePath: string, direction: SpriteDirection, frame: number): string {
   const padded = String(frame).padStart(3, '0');

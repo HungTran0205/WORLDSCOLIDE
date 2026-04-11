@@ -29,6 +29,8 @@ export function setAtlasFrame(atlas: SpriteAtlas, frameIndex: number): void {
   // UV origin is bottom-left in Three.js, so flip Y
   atlas.texture.offset.set(col / atlas.cols, 1 - (row + 1) / atlas.rows);
   atlas.texture.repeat.set(1 / atlas.cols, 1 / atlas.rows);
+  // Force update the matrix immediately. WebGLRenderer relies on it for the mapTransform uniform.
+  atlas.texture.updateMatrix();
 }
 
 /**
