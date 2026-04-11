@@ -7,6 +7,7 @@
 import { useGameStore } from '@/game/state/store';
 import { GUILD_HALL_CAMERA_TARGET } from '@/game/state/camera-slice';
 import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
+import { FACILITY_SLOTS } from '@/game/data/facility-slot-positions';
 import type { FacilityType } from '@/game/state/game-state';
 
 interface RoomEntry {
@@ -25,25 +26,6 @@ const FACILITY_ROOM_ORDER: FacilityType[] = [
   'tavern', 'infirmary', 'training-yard', 'workshop', 'logging-site', 'stone-quarry',
 ];
 
-const ROOM_ENTRIES: RoomEntry[] = [
-  {
-    id: 'guild-hall',
-    label: 'Guild Hall',
-    icon: '/sprites/icons/icon-room-guild-hall.png',
-    target: GUILD_HALL_CAMERA_TARGET,
-  },
-  ...FACILITY_ROOM_ORDER.map((type) => {
-    const def = FACILITY_DEFINITIONS[type];
-    const slug = ICON_SLUG[type] ?? type;
-    return {
-      id: type,
-      label: def.name,
-      icon: `/sprites/icons/icon-room-${slug}.png`,
-      target: def.roomCenter,
-    };
-  }),
-];
-
 export function RoomNavBar() {
   const cameraTarget = useGameStore((s) => s.cameraTarget);
   const setCameraTarget = useGameStore((s) => s.setCameraTarget);
@@ -52,19 +34,40 @@ export function RoomNavBar() {
   const isActive = (target: [number, number, number]) =>
     cameraTarget[0] === target[0] && cameraTarget[2] === target[2];
 
-  // Only show facilities that are built (level > 0); guild hall always visible
-  const visibleRooms = ROOM_ENTRIES.filter((r) => {
-    if (r.id === 'guild-hall') return true;
-    const f = facilities.find((fac) => fac.type === r.id);
-    return f && f.level > 0;
-  });
+  // Build room entries dynamically: only show placed facilities (level > 0 && slot assigned)
+  const visibleRooms: RoomEntry[] = [
+    {
+      id: 'guild-hall',
+      label: 'Guild Hall',
+      icon: '/sprites/icons/icon-room-guild-hall.png',
+      target: GUILD_HALL_CAMERA_TARGET,
+    },
+    ...FACILITY_ROOM_ORDER
+      .map((type) => {
+        const f = facilities.find((fac) => fac.type === type);
+        if (!f || f.level === 0 || f.placedSlot === null) return null;
+        const def = FACILITY_DEFINITIONS[type];
+        const slug = ICON_SLUG[type] ?? type;
+        return {
+          id: type,
+          label: def.name,
+          icon: `/sprites/icons/icon-room-${slug}.png`,
+          target: FACILITY_SLOTS[f.placedSlot] as [number, number, number],
+        };
+      })
+      .filter((r) => r !== null) as RoomEntry[],
+  ];
 
   return (
     <div style={{
+      position: 'fixed',
+      bottom: 72,
+      left: '50%',
+      transform: 'translateX(-50%)',
       display: 'flex',
       gap: 6,
-      justifyContent: 'center',
-      marginBottom: 6,
+      zIndex: 50,
+      pointerEvents: 'auto',
     }}>
       {visibleRooms.map((room) => (
         <button

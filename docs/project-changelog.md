@@ -2,8 +2,131 @@
 
 All notable changes to Worlds Collide are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
-**Current Version**: 1.16.0
-**Release Date**: 2026-04-10 (Stat Allocation, New Facilities, Camera Controls, Room Navigation)
+**Current Version**: 1.17.0
+**Release Date**: 2026-04-10 (Tutorial First-Session Flow)
+
+---
+
+## [1.17.0] — 2026-04-10 (Tutorial First-Session Flow)
+
+### Major Feature: Narrative-Driven First-Session Onboarding
+
+#### World Board Lore Modal (NEW)
+- **2-Page Narrative Modal**: Opens after character creation (step: world-board)
+- **Page 1 - A World Divided**: World lore with 3 civilizations (LinhSon, ThuanPhong, HaiLong)
+- **Page 2 - Your Guild**: Charter, mission statement, player role
+- **Pagination UI**: Back/Next/Begin buttons, page counter (1/2)
+- **Styling**: Fixed overlay (z-index 1000), dark background, gold-trimmed borders
+- **Component**: `world-board-modal.tsx` (NEW)
+
+#### Tutorial Quest "Into the Clearing" (NEW)
+- **Mission ID**: `tutorial-into-the-clearing` (tier F, duration 5s, travel 2s)
+- **Rewards**: 25 gold, 50 exp, trivial slime fight (hp multiplier 0.1)
+- **Progression**: Dispatch → Active → Complete (auto-triggers rewards)
+- **Founder Only**: No roster requirement for tutorial phase
+- **Defined**: `tutorial-data.ts` (NEW)
+
+#### Kael Recruitment System (NEW)
+- **NPC Template**: `KAEL_TEMPLATE` — LinhSon warrior (STR 8, END 7)
+- **Auto-Add**: Triggers on tutorial quest completion (no cost, no gold spent)
+- **Guard**: Duplicate prevention (checks roster for 'Kael' name)
+- **Animation**: Rescue dialogue modal showing Kael's story/acceptance
+
+#### Logging Site Access Permit (NEW)
+- **Key Item**: `LOGGING_SITE_ACCESS` (item type CONSUMABLE, rarity UNCOMMON)
+- **Grant**: Awarded after Kael rescue (via `handleTutorialQuestComplete()`)
+- **Consumption**: Used when building logging site during tutorial
+- **Cost Bypass**: Waives gold + guildLevel requirements during tutorial
+- **Mechanism**: Check in `guild-slice.ts` `buildFacility()` action
+
+#### Tutorial Progression Gates (NEW)
+- **9 Tutorial Steps**: char-creation → world-board → quest-dispatch → quest-active → kael-rescue → reward → build-logging-site → assign-kael → complete
+- **Auto-Advance**: 
+  - Tutorial-quest-dispatch → active (when mission dispatched)
+  - Build-logging-site → assign-kael (when facility level > 0)
+  - Assign-kael → complete (when member assigned)
+- **Manual Steps**: world-board, kael-rescue, reward (modal/dialogue interaction)
+- **Configuration**: Updated `TUTORIAL_STEPS` array in `tutorial-manager.ts`
+
+#### Panel Gating During Tutorial (NEW)
+- **Quest Board**: Filtered to show only `tutorial-*` prefixed missions (normal quests hidden)
+- **Facilities Panel**: 
+  - Highlights Logging Site during build-logging-site step
+  - Filters to show only Logging Site during build/assign steps
+- **No Tier Filter**: Tier buttons hidden during tutorial (UI simplification)
+
+#### Tutorial Quest Handler (NEW)
+- **Pure Function**: `handleTutorialQuestComplete()` in `tutorial-quest-handler.ts`
+- **Called After**: Mission completion (both auto-tick and arena modes)
+- **Side Effects**:
+  1. Add Kael to roster (UUID generation, duplicate guard)
+  2. Grant LOGGING_SITE_ACCESS item (qty 1)
+  3. Advance tutorial step to kael-rescue (shows rescue dialogue)
+- **Hooks**: Integrated into `mission-tick.ts` and `arena-result-handler.ts`
+
+#### Tutorial Dialogue Overlays (NEW)
+- **Kael Rescue Dialogue**: Shows Kael story after quest completion
+  - Component: `KaelRescueDialogue` in `tutorial-dialogue-overlays.tsx`
+  - Triggers advance to tutorial-reward
+- **Reward Splash**: Displays LOGGING_SITE_ACCESS permit card
+  - Component: `TutorialRewardSplash` in `tutorial-dialogue-overlays.tsx`
+  - Triggers advance to build-logging-site
+- **Styling**: Matching world-board-modal (dark overlay, gold trim, centered)
+
+#### Save Migration v11→v12 (NEW)
+- **Version Bump**: CURRENT_SAVE_VERSION 11 → 12
+- **Migration Logic**: Maps old tutorial steps (sandbox-intro, first-build, etc.) → complete
+- **Guard**: Existing saves skip entire tutorial on load (migrated to complete state)
+- **Tests**: Added `save-migrations.test.ts` validation
+
+#### Tutorial Integration in Game Screen (NEW)
+- **Conditional Renders**: Mounts modal/dialogue based on tutorialStep
+  - `tutorialStep === 'world-board'` → `<WorldBoardModal />`
+  - `tutorialStep === 'tutorial-kael-rescue'` → `<KaelRescueDialogue />`
+  - `tutorialStep === 'tutorial-reward'` → `<TutorialRewardSplash />`
+- **Z-Index Management**: All tutorial overlays at z-index 1000 (above HUD/panels)
+- **File**: Updated `game-screen.tsx`
+
+### Files Added
+- `src/game/data/tutorial-data.ts` — Kael template + tutorial quest definition
+- `src/game/systems/tutorial-quest-handler.ts` — Completion handler + rewards
+- `src/ui/components/world-board-modal.tsx` — 2-page lore intro modal
+- `src/ui/components/tutorial-dialogue-overlays.tsx` — Kael + reward dialogues
+
+### Files Modified
+- `src/game/state/game-state.ts` — Updated TutorialStep union (9 values)
+- `src/game/data/items.ts` — Added LOGGING_SITE_ACCESS to ItemID + database
+- `src/game/data/missions.ts` — Prepended TUTORIAL_QUEST
+- `src/game/save/save-validation.ts` — Updated TUTORIAL_STEPS array
+- `src/game/save/save-migrations.ts` — Added v11→v12 migration
+- `src/game/save/save-types.ts` — Bumped SAVE_VERSION 11→12
+- `src/game/save/test-fixtures.ts` — Updated version + tutorialStep
+- `src/game/systems/tutorial-manager.ts` — Replaced TUTORIAL_STEPS config (9 steps, new auto-advance conditions)
+- `src/game/systems/mission-tick.ts` — Added handleTutorialQuestComplete hook
+- `src/game/systems/arena-result-handler.ts` — Added handleTutorialQuestComplete hook
+- `src/game/state/guild-slice.ts` — Added LOGGING_SITE_ACCESS cost bypass in buildFacility
+- `src/ui/panels/quest-board.tsx` — Added tutorial quest filtering (filter to tutorial-* only)
+- `src/ui/panels/facilities-panel.tsx` — Added tutorial gating (highlight logging-site)
+- `src/ui/screens/game-screen.tsx` — Mounted tutorial overlays + modals
+- `src/ui/hooks/use-game-tick-loop.ts` — Added tutorial auto-advance logic
+- `src/ui/panels/char-creation.tsx` — Changed post-creation step from sandbox-intro → world-board
+- `src/game/save/save-migrations.test.ts` — Added v11→v12 migration test
+
+### Test Coverage
+- ✅ TutorialStep type validation (9 values)
+- ✅ TUTORIAL_QUEST mission lookup
+- ✅ handleTutorialQuestComplete behavior (Kael addition, item grant, step advance)
+- ✅ LOGGING_SITE_ACCESS cost bypass in buildFacility
+- ✅ Save migration v11→v12 (old steps → complete)
+- ✅ Full tutorial flow (manual playthrough: char-creation → complete)
+- ✅ TypeScript compilation (npx tsc --noEmit, 0 errors)
+
+### Backward Compatibility
+- ✅ Old saves with sandbox-intro etc. migrate to complete (skip tutorial)
+- ✅ LOGGING_SITE_ACCESS item absent in old inventories (no impact)
+- ✅ Quest board filter only applies when tutorialStep !== complete
+- ✅ Existing facility system unaffected
+- ✅ No breaking changes to mission/roster/save schema
 
 ---
 

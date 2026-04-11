@@ -47,7 +47,7 @@ export function CharCreation({ onComplete }: CharCreationProps) {
     const founder = createFounder(name.trim(), stats, selectedCiv);
     setFounder(founder);
     if (guildName.trim()) setGuildName(guildName.trim());
-    setTutorialStep('sandbox-intro');
+    setTutorialStep('world-board');
 
     initAudio();
     playBGM(AUDIO.BGM_GUILD);
@@ -84,8 +84,9 @@ export function CharCreation({ onComplete }: CharCreationProps) {
             {STAT_KEYS.map((stat) => (
               <StatRow
                 key={stat} stat={stat} value={stats[stat]}
-                canAdd={remaining > 0}
+                canAdd={remaining > 0} canAdd5={remaining >= 5}
                 onAdd={() => handleAllocate(stat, 1)}
+                onAdd5={() => handleAllocate(stat, 5)}
                 onRemove={() => handleAllocate(stat, -1)}
               />
             ))}
@@ -105,8 +106,10 @@ export function CharCreation({ onComplete }: CharCreationProps) {
   );
 }
 
-function StatRow({ stat, value, canAdd, onAdd, onRemove }: {
-  stat: StatKey; value: number; canAdd: boolean; onAdd: () => void; onRemove: () => void;
+function StatRow({ stat, value, canAdd, canAdd5, onAdd, onAdd5, onRemove }: {
+  stat: StatKey; value: number;
+  canAdd: boolean; canAdd5: boolean;
+  onAdd: () => void; onAdd5: () => void; onRemove: () => void;
 }) {
   return (
     <>
@@ -118,6 +121,7 @@ function StatRow({ stat, value, canAdd, onAdd, onRemove }: {
       <div style={{ display: 'flex', gap: 2 }}>
         <button disabled={value <= 0} onClick={onRemove}>-</button>
         <button disabled={!canAdd} onClick={onAdd}>+</button>
+        <button disabled={!canAdd5} onClick={onAdd5}>+5</button>
       </div>
     </>
   );

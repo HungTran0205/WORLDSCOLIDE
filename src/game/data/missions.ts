@@ -1,6 +1,8 @@
 import type { Mission, QuestTier } from '@/game/state/game-state';
+import { TUTORIAL_QUEST } from './tutorial-data';
 
 export const MISSIONS: Mission[] = [
+  TUTORIAL_QUEST,
   // ========== F-Tier (6 total) ==========
   {
     id: 'slime-extermination', name: 'Slime Extermination', tier: 'F',

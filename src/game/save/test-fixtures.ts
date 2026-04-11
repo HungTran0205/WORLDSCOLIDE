@@ -93,14 +93,14 @@ export const VALID_GAME_SAVE_DATA: GameSaveData = {
   roster: [VALID_ROSTER_MEMBER],
   activeMissions: [],
   completedMissions: [],
-  tutorialStep: 'sandbox-intro',
+  tutorialStep: 'complete',
   tavern: { lastRefreshTime: 0, availableMercenaries: [] },
   inventory: { items: {} },
   facilities: [
-    { type: 'tavern',        level: 1, assignedMemberIds: [] },
-    { type: 'training-yard', level: 0, assignedMemberIds: [] },
-    { type: 'infirmary',     level: 0, assignedMemberIds: [] },
-    { type: 'workshop',      level: 0, assignedMemberIds: [] },
+    { type: 'tavern',        level: 1, assignedMemberIds: [], placedSlot: 8 },
+    { type: 'training-yard', level: 0, assignedMemberIds: [], placedSlot: null },
+    { type: 'infirmary',     level: 0, assignedMemberIds: [], placedSlot: null },
+    { type: 'workshop',      level: 0, assignedMemberIds: [], placedSlot: null },
   ],
 };
 
@@ -115,7 +115,7 @@ export const VALID_METADATA: SaveSlotMetadata = {
 };
 
 export const VALID_SAVE_ENVELOPE: SaveEnvelope = {
-  version: 9,
+  version: 12,
   savedAt: Date.now(),
   metadata: VALID_METADATA,
   gameState: VALID_GAME_SAVE_DATA,

@@ -37,9 +37,9 @@ describe('migrateSave', () => {
     expect(result.gameState.founder?.missionsCompleted).toBe(0);
   });
 
-  it('migrates v7 → v8: bumps version', () => {
+  it('migrates v7 → current: bumps version to SAVE_VERSION', () => {
     const result = migrateSave(makeV7Envelope() as any);
-    expect(result.version).toBe(9); // v7 now chains through v8→v9
+    expect(result.version).toBe(SAVE_VERSION);
   });
 
   it('migrates v7 → v8: founder gets COMMANDER rank', () => {
@@ -101,6 +101,25 @@ describe('migrateSave', () => {
     const result = migrateSave(makeV7Envelope() as any);
     const tavMerc = (result.gameState as any).tavern.availableMercenaries[0];
     expect(tavMerc.civilization).toBe('DeQuoc');
+  });
+
+  it('migrates v11→v12+: old tutorial steps remapped to complete', () => {
+    const v11Envelope = {
+      ...makeV7Envelope({ tutorialStep: 'first-build' }),
+      version: 11,
+    };
+    const result = migrateSave(v11Envelope as any);
+    expect(result.version).toBe(13); // chain now goes v11→v12→v13
+    expect((result.gameState as any).tutorialStep).toBe('complete');
+  });
+
+  it('migrates v11→v12: valid steps pass through unchanged', () => {
+    const v11Envelope = {
+      ...makeV7Envelope({ tutorialStep: 'complete' }),
+      version: 11,
+    };
+    const result = migrateSave(v11Envelope as any);
+    expect((result.gameState as any).tutorialStep).toBe('complete');
   });
 
   it('throws for version higher than SAVE_VERSION', () => {

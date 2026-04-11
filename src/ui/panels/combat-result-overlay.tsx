@@ -52,7 +52,7 @@ export function CombatResultOverlay() {
           </div>
         )}
 
-        {/* Rewards preview (actual application in Phase 8) */}
+        {/* Rewards */}
         {isVictory && mission && (
           <div style={{ marginTop: 8, padding: '8px 16px', background: 'rgba(255,215,0,0.1)', borderRadius: 6 }}>
             <div style={{ color: '#ffd700', fontWeight: 'bold', marginBottom: 4 }}>Rewards</div>
@@ -62,6 +62,20 @@ export function CombatResultOverlay() {
             <div style={{ color: '#e0e0e0', fontSize: '0.85rem' }}>
               EXP: {mission.expReward}
             </div>
+            {/* Tutorial-specific bonus reward */}
+            {arenaMissionId === 'tutorial-into-the-clearing' && (
+              <div style={{ marginTop: 8, borderTop: '1px solid rgba(255,215,0,0.2)', paddingTop: 8 }}>
+                <div style={{ color: '#ffd700', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                  ★ Rescue Reward
+                </div>
+                <div style={{ color: '#2ecc71', fontSize: '0.85rem' }}>
+                  Kael joins your guild!
+                </div>
+                <div style={{ color: '#a8d8ea', fontSize: '0.85rem' }}>
+                  + Logging Site Access (permit)
+                </div>
+              </div>
+            )}
           </div>
         )}
 

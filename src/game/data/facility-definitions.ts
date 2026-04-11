@@ -6,7 +6,7 @@ export interface FacilityDef {
   type: FacilityType;
   name: string;
   description: string;
-  /** Gold to unlock from level 0 → 1 (guildLevel >= 2 required) */
+  /** Gold to unlock from level 0 → 1. 0 = free (tavern). guildLevel >= 2 required for cost > 0. */
   buildCost: number;
   /** Gold costs for lv1→2 and lv2→3 upgrades */
   upgradeCosts: [number, number];
@@ -14,12 +14,10 @@ export interface FacilityDef {
   maxSlots: [number, number, number];
   /** Primary stats label for UI tooltip */
   primaryStats: string;
-  /** World-space anchor position [x, y, z] — center of zone in guild hall */
+  /** World-space anchor position [x, y, z] — center of interactive zone inside guild hall */
   zonePosition: [number, number, number];
   /** Zone size in tiles [width, depth] */
   tileFootprint: [number, number];
-  /** World-space center of this facility's dedicated 7×7 room (behind guild hall) */
-  roomCenter: [number, number, number];
 }
 
 export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
@@ -27,13 +25,12 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     type: 'tavern',
     name: 'Tavern',
     description: 'High CHA members attract better mercenaries and reduce upkeep.',
-    buildCost: 0, // starts at lv1 by default
+    buildCost: 0,
     upgradeCosts: [200, 400],
     maxSlots: [1, 2, 2],
     primaryStats: 'CHA',
     zonePosition: [8, 0, 5],
     tileFootprint: [3, 3],
-    roomCenter: [13.5, 0, -8.5],
   },
   'training-yard': {
     type: 'training-yard',
@@ -45,7 +42,6 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     primaryStats: 'DEX + AGI',
     zonePosition: [2, 0, 2.5],
     tileFootprint: [3, 3],
-    roomCenter: [3.5, 0, -20.5],
   },
   infirmary: {
     type: 'infirmary',
@@ -57,7 +53,6 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     primaryStats: 'END + INT',
     zonePosition: [2, 0, 5],
     tileFootprint: [3, 3],
-    roomCenter: [3.5, 0, -8.5],
   },
   workshop: {
     type: 'workshop',
@@ -69,7 +64,6 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     primaryStats: 'STR + DEX',
     zonePosition: [8, 0, 2.5],
     tileFootprint: [3, 3],
-    roomCenter: [13.5, 0, -20.5],
   },
   'logging-site': {
     type: 'logging-site',
@@ -81,7 +75,6 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     primaryStats: 'STR',
     zonePosition: [5, 0, 1],
     tileFootprint: [3, 3],
-    roomCenter: [3.5, 0, -32.5],
   },
   'stone-quarry': {
     type: 'stone-quarry',
@@ -93,6 +86,5 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     primaryStats: 'STR',
     zonePosition: [7, 0, 1],
     tileFootprint: [3, 3],
-    roomCenter: [13.5, 0, -32.5],
   },
 };

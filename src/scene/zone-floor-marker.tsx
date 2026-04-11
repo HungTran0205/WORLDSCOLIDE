@@ -8,6 +8,8 @@ const ZONE_COLORS: Record<FacilityType, string> = {
   'training-yard': '#B04040',
   infirmary: '#4080B0',
   workshop: '#8B6914',
+  'logging-site': '#4A7A30',
+  'stone-quarry': '#7A7060',
 };
 
 interface ZoneFloorMarkerProps {

@@ -5,6 +5,7 @@
 
 import { Html } from '@react-three/drei';
 import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
+import { FACILITY_SLOTS } from '@/game/data/facility-slot-positions';
 import { useGameStore } from '@/game/state/store';
 import type { GuildFacility } from '@/game/state/game-state';
 import type { FacilityType } from '@/game/state/game-state';
@@ -18,6 +19,8 @@ const ROOM_FLOOR_COLORS: Record<FacilityType, string> = {
   'training-yard': '#1a1010',
   infirmary: '#0f1520',
   workshop: '#1a1508',
+  'logging-site': '#1a1608',
+  'stone-quarry': '#2a2a2a',
 };
 
 /** Per-facility point light config — color + intensity when room is active */
@@ -26,6 +29,8 @@ const ROOM_LIGHT: Record<FacilityType, { color: string; intensity: number }> = {
   'training-yard': { color: '#ff6633', intensity: 5 },
   infirmary: { color: '#88aaff', intensity: 6 },
   workshop: { color: '#ffcc44', intensity: 5 },
+  'logging-site': { color: '#c5c5c5', intensity: 5 },
+  'stone-quarry': { color: '#aaaacc', intensity: 5 },
 };
 
 interface FacilityRoomProps {
@@ -37,7 +42,8 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
   const def = FACILITY_DEFINITIONS[facility.type];
   const cameraTarget = useGameStore((s) => s.cameraTarget);
 
-  const [cx, , cz] = def.roomCenter;
+  // placedSlot is guaranteed non-null (FacilityRoomsLayer filters before rendering)
+  const [cx, , cz] = FACILITY_SLOTS[facility.placedSlot!];
   const ox = cx - ROOM_SIZE / 2;
   const oz = cz - ROOM_SIZE / 2;
 

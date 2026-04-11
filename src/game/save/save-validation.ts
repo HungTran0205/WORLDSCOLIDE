@@ -8,8 +8,9 @@ import type { Stats, Member, GuildHall, PlacedFurniture } from '@/game/state/gam
 import { migrateSave } from './save-migrations';
 
 const TUTORIAL_STEPS = [
-  'char-creation', 'sandbox-intro', 'first-build',
-  'first-quest', 'first-combat', 'first-recruit', 'complete',
+  'char-creation', 'world-board', 'tutorial-quest-dispatch',
+  'tutorial-quest-active', 'tutorial-kael-rescue', 'tutorial-reward',
+  'build-logging-site', 'assign-kael', 'complete',
 ] as const;
 
 const STAT_KEYS: (keyof Stats)[] = ['STR', 'END', 'INT', 'DEX', 'CHA', 'LCK', 'AGI'];

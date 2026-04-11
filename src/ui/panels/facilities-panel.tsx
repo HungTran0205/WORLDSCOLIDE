@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useGameStore } from '@/game/state/store';
 import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
+import { FACILITY_SLOTS } from '@/game/data/facility-slot-positions';
 import { calcTotalUpkeep } from '@/game/systems/upkeep-system';
 import { FacilityCard } from './facility-card';
 import { RankBadge } from '@/ui/components/rank-badge';
@@ -30,13 +31,12 @@ export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
   }, []);
 
   const facilities    = useGameStore((s) => s.facilities);
-  const guildLevel    = useGameStore((s) => s.guildLevel);
+  const tutorialStep  = useGameStore((s) => s.tutorialStep);
   const gold          = useGameStore((s) => s.gold);
   const founder       = useGameStore((s) => s.founder);
   const roster        = useGameStore((s) => s.roster);
   const tavern        = useGameStore((s) => s.tavern);
 
-  const buildFacility            = useGameStore((s) => s.buildFacility);
   const upgradeFacility          = useGameStore((s) => s.upgradeFacility);
   const assignMemberToFacility   = useGameStore((s) => s.assignMemberToFacility);
   const unassignMemberFromFacility = useGameStore((s) => s.unassignMemberFromFacility);
@@ -57,39 +57,56 @@ export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
         <button className="panel-close-btn" onClick={onClose}>Close</button>
       </h2>
 
-      {guildLevel < 2 && (
-        <p className="facilities-locked-notice">
-          Upgrade guild to level 2 to unlock new facilities.
+      {/* Tutorial hints */}
+      {tutorialStep === 'build-logging-site' && (
+        <p style={{ color: '#ffd700', fontSize: '0.85rem', marginBottom: 12, textAlign: 'center' }}>
+          Open the <strong>Build</strong> menu → Facilities tab to construct the Logging Site.
+        </p>
+      )}
+      {tutorialStep === 'assign-kael' && (
+        <p style={{ color: '#ffd700', fontSize: '0.85rem', marginBottom: 12, textAlign: 'center' }}>
+          Assign Kael to the Logging Site to begin harvesting wood.
         </p>
       )}
 
-      {/* Facility cards */}
-      {facilities.map((facility) => (
-        <div key={facility.type} id={`facility-card-${facility.type}`}>
-        <FacilityCard
-          facility={facility}
-          def={FACILITY_DEFINITIONS[facility.type]}
-          allMembers={allMembers}
-          guildLevel={guildLevel}
-          gold={gold}
-          dailyUpkeep={dailyUpkeep}
-          onBuild={() => buildFacility(facility.type)}
-          onUpgrade={() => upgradeFacility(facility.type)}
-          onAssign={(id) => assignMemberToFacility(id, facility.type)}
-          onUnassign={(id) => unassignMemberFromFacility(id, facility.type)}
-        />
-        <button
-          className="panel-btn"
-          style={{ marginBottom: 8, width: '100%' }}
-          onClick={() => {
-            setCameraTarget(FACILITY_DEFINITIONS[facility.type].roomCenter);
-            onClose();
-          }}
-        >
-          🏠 Enter Room
-        </button>
-        </div>
-      ))}
+      {/* Only show built + placed facilities */}
+      {(() => {
+        const placedFacilities = facilities.filter(
+          (f) => f.level > 0 && f.placedSlot !== null
+            && (tutorialStep === 'complete' || f.type === 'logging-site'),
+        );
+        if (placedFacilities.length === 0) {
+          return (
+            <p style={{ color: '#666', textAlign: 'center', padding: '20px 0', fontSize: '0.85rem' }}>
+              No facilities built yet.<br />Open the <strong style={{ color: '#ffd700' }}>Build</strong> menu to construct one.
+            </p>
+          );
+        }
+        return placedFacilities.map((facility) => (
+          <div key={facility.type} id={`facility-card-${facility.type}`}>
+            <FacilityCard
+              facility={facility}
+              def={FACILITY_DEFINITIONS[facility.type]}
+              allMembers={allMembers}
+              gold={gold}
+              dailyUpkeep={dailyUpkeep}
+              onUpgrade={() => upgradeFacility(facility.type)}
+              onAssign={(id) => assignMemberToFacility(id, facility.type)}
+              onUnassign={(id) => unassignMemberFromFacility(id, facility.type)}
+            />
+            <button
+              className="panel-btn"
+              style={{ marginBottom: 8, width: '100%' }}
+              onClick={() => {
+                setCameraTarget(FACILITY_SLOTS[facility.placedSlot!]);
+                onClose();
+              }}
+            >
+              Enter Room
+            </button>
+          </div>
+        ));
+      })()}
 
       {/* Tavern mercenaries — always visible when tavern is active */}
       {tavernFacility && tavernFacility.level >= 1 && (

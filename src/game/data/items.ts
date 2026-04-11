@@ -3,7 +3,8 @@
 export type ItemID =
   | 'WOOD' | 'STONE' | 'IRON_ORE'
   | 'SLIME_GEL' | 'BOAR_PELT' | 'WOLF_FANG'
-  | 'GOBLIN_EAR' | 'ORC_TUSK';
+  | 'GOBLIN_EAR' | 'ORC_TUSK'
+  | 'LOGGING_SITE_ACCESS';
 
 export type ItemType = 'MATERIAL' | 'CONSUMABLE' | 'EQUIPMENT' | 'CURRENCY';
 export type ItemRarity = 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
@@ -26,7 +27,8 @@ export const ITEM_DATABASE: Record<ItemID, ItemTemplate> = {
   BOAR_PELT:  { id: 'BOAR_PELT',  name: 'Boar Pelt',   type: 'MATERIAL', rarity: 'COMMON',   basePrice: 4,  description: 'Tough hide from forest boars.' },
   WOLF_FANG:  { id: 'WOLF_FANG',  name: 'Wolf Fang',   type: 'MATERIAL', rarity: 'UNCOMMON', basePrice: 10, description: 'Sharp canine tooth.' },
   GOBLIN_EAR: { id: 'GOBLIN_EAR', name: 'Goblin Ear',  type: 'MATERIAL', rarity: 'COMMON',   basePrice: 3,  description: 'Proof of goblin subjugation.' },
-  ORC_TUSK:   { id: 'ORC_TUSK',   name: 'Orc Tusk',    type: 'MATERIAL', rarity: 'UNCOMMON', basePrice: 15, description: 'Massive ivory tusk.' },
+  ORC_TUSK:            { id: 'ORC_TUSK',            name: 'Orc Tusk',            type: 'MATERIAL',   rarity: 'UNCOMMON', basePrice: 15, description: 'Massive ivory tusk.' },
+  LOGGING_SITE_ACCESS: { id: 'LOGGING_SITE_ACCESS', name: 'Logging Site Access', type: 'CONSUMABLE', rarity: 'UNCOMMON', basePrice: 0,  description: "A worn permit from the Forester's Guild. Allows construction of a logging site." },
 };
 
 /** O(1) lookup of item template by ID */

@@ -6,6 +6,7 @@
 
 import { useGameStore } from '@/game/state/store';
 import { resolveMissionWithResult } from './mission-resolver';
+import { handleTutorialQuestComplete } from './tutorial-quest-handler';
 import { MISSIONS } from '@/game/data/missions';
 
 export function applyArenaResult(): void {
@@ -46,5 +47,6 @@ export function applyArenaResult(): void {
   }
 
   store.pushMissionResult(result);
+  handleTutorialQuestComplete(arenaMissionId);
   store.exitArena();
 }

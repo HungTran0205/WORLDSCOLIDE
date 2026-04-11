@@ -6,6 +6,7 @@
 
 import { MISSIONS } from '@/game/data/missions';
 import { resolveMission, type MissionResult } from './mission-resolver';
+import { handleTutorialQuestComplete } from './tutorial-quest-handler';
 import type { ItemID } from '@/game/data/items';
 import type { GameStore } from '@/game/state/store';
 
@@ -104,6 +105,7 @@ export function processMissionTick(store: GameStore, now: number): MissionTickEv
         }
 
         store.pushMissionResult(result);
+        handleTutorialQuestComplete(active.missionId);
         events.push({ type: 'combat-complete', missionId: active.missionId, result, combatMode: active.combatMode ?? 'auto' });
         break;
       }

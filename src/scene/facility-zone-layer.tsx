@@ -17,8 +17,7 @@ interface FacilityZoneProps {
 }
 
 function FacilityZone({ facility, def, onZoneClick }: FacilityZoneProps) {
-  const locked = facility.level === 0;
-
+  // Only rendered for built facilities (level > 0) — caller filters locked ones out
   return (
     <group
       position={def.zonePosition}
@@ -32,10 +31,10 @@ function FacilityZone({ facility, def, onZoneClick }: FacilityZoneProps) {
       <ZoneFloorMarker
         footprint={def.tileFootprint}
         facilityType={facility.type}
-        locked={locked}
+        locked={false}
       />
-      {!locked && <ZoneProps type={facility.type} level={facility.level} />}
-      {!locked && facility.assignedMemberIds.length > 0 && (
+      <ZoneProps type={facility.type} level={facility.level} />
+      {facility.assignedMemberIds.length > 0 && (
         <ZoneMemberSprites assignedMemberIds={facility.assignedMemberIds} />
       )}
     </group>
@@ -53,9 +52,12 @@ export function FacilityZoneLayer() {
 
   if (isBuildMode) return null;
 
+  // Only show zones for built facilities — no locked/dimmed markers
+  const builtFacilities = facilities.filter((f) => f.level > 0);
+
   return (
     <group>
-      {facilities.map((facility) => (
+      {builtFacilities.map((facility) => (
         <FacilityZone
           key={facility.type}
           facility={facility}

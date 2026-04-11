@@ -6,6 +6,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useGameStore } from '@/game/state/store';
 import { processMissionTick, processInjuryRecovery } from '@/game/systems/mission-tick';
+import { shouldAdvanceTutorial, getNextStep } from '@/game/systems/tutorial-manager';
 import { generateMercenaries } from '@/game/systems/mercenary-generator';
 import { processFacilityProduction } from '@/game/systems/facility-production-system';
 import { calcTotalUpkeep } from '@/game/systems/upkeep-system';
@@ -67,6 +68,12 @@ export function useGameTickLoop() {
 
     // Recover injured members whose timer expired
     processInjuryRecovery(store, now);
+
+    // Auto-advance tutorial steps with conditions
+    if (shouldAdvanceTutorial(store.tutorialStep, store)) {
+      const next = getNextStep(store.tutorialStep);
+      if (next) store.setTutorialStep(next);
+    }
 
     // Refresh tavern mercenaries every 4 real-time hours (or on first load when lastRefreshTime=0)
     if (now - store.tavern.lastRefreshTime >= TAVERN_REFRESH_MS) {

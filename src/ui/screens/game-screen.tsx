@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { FACILITY_SLOTS } from '@/game/data/facility-slot-positions';
 import { World } from '@/scene/world';
 import { CombatArenaCanvas } from '@/scene/combat-arena';
 import { HUD } from '@/ui/hud/hud';
@@ -16,6 +17,8 @@ import { CombatView } from '@/ui/panels/combat-view';
 import { SettingsPanel } from '@/ui/panels/settings-panel';
 import { GameOverOverlay } from '@/ui/panels/game-over-overlay';
 import { BuildModeHint } from '@/ui/components/build-mode-hint';
+import { WorldBoardModal } from '@/ui/components/world-board-modal';
+import { KaelRescueDialogue, TutorialRewardSplash } from '@/ui/components/tutorial-dialogue-overlays';
 import { MissionNotification } from '@/ui/components/mission-notification';
 import { ActiveMissionsList } from '@/ui/panels/active-missions-list';
 import { CombatPrepPanel } from '@/ui/panels/combat-prep-panel';
@@ -33,29 +36,55 @@ function HomeButton() {
   const cameraTarget = useGameStore((s) => s.cameraTarget);
   const resetCameraToGuildHall = useGameStore((s) => s.resetCameraToGuildHall);
   const setCameraTarget = useGameStore((s) => s.setCameraTarget);
+  const facilities = useGameStore((s) => s.facilities);
 
   const isAtGuildHall =
     cameraTarget[0] === GUILD_HALL_CAMERA_TARGET[0] &&
     cameraTarget[2] === GUILD_HALL_CAMERA_TARGET[2];
 
-  const PAN_STEP = 2;
-
-  // ESC returns to guild hall; WASD pans camera when inside a facility room
+  // WASD snaps to nearest room in that direction; ESC returns to guild hall
   useEffect(() => {
-    if (isAtGuildHall) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { resetCameraToGuildHall(); return; }
-      const [cx, cy, cz] = cameraTarget;
-      switch (e.key) {
-        case 'w': case 'W': setCameraTarget([cx, cy, cz - PAN_STEP]); break;
-        case 's': case 'S': setCameraTarget([cx, cy, cz + PAN_STEP]); break;
-        case 'a': case 'A': setCameraTarget([cx - PAN_STEP, cy, cz]); break;
-        case 'd': case 'D': setCameraTarget([cx + PAN_STEP, cy, cz]); break;
+      if (e.key === 'Escape') {
+        if (!isAtGuildHall) resetCameraToGuildHall();
+        return;
       }
+
+      const dirs: Record<string, 'w' | 's' | 'a' | 'd'> = {
+        w: 'w', W: 'w', s: 's', S: 's', a: 'a', A: 'a', d: 'd', D: 'd',
+      };
+      const dir = dirs[e.key];
+      if (!dir) return;
+
+      // Build list of navigable rooms: guild hall + placed facilities
+      const rooms: [number, number, number][] = [GUILD_HALL_CAMERA_TARGET];
+      for (const f of facilities) {
+        if (f.level > 0 && f.placedSlot !== null) rooms.push(FACILITY_SLOTS[f.placedSlot]);
+      }
+
+      const [cx, cy, cz] = cameraTarget;
+      let best: [number, number, number] | null = null;
+      let bestDist = Infinity;
+
+      for (const room of rooms) {
+        const [rx, , rz] = room;
+        if (rx === cx && rz === cz) continue; // skip current room
+
+        let dist = Infinity;
+        if (dir === 'w' && rz < cz) dist = cz - rz;
+        else if (dir === 's' && rz > cz) dist = rz - cz;
+        else if (dir === 'a' && rx < cx) dist = cx - rx;
+        else if (dir === 'd' && rx > cx) dist = rx - cx;
+
+        if (dist < bestDist) { bestDist = dist; best = room; }
+      }
+
+      if (best) setCameraTarget([best[0], cy, best[2]]);
     };
+
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [isAtGuildHall, cameraTarget, setCameraTarget, resetCameraToGuildHall]);
+  }, [isAtGuildHall, cameraTarget, setCameraTarget, resetCameraToGuildHall, facilities]);
 
   if (isAtGuildHall) return null;
 
@@ -154,6 +183,7 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   const roster = useGameStore((s) => s.roster);
   const allMembers = founder ? [founder, ...roster] : roster;
   const isGameOver = allMembers.length > 0 && allMembers.every((m) => m.status === 'injured');
+  const tutorialStep = useGameStore((s) => s.tutorialStep);
 
   // Start game tick loop (missions, injuries, clock, tavern refresh)
   useGameTickLoop();
@@ -186,11 +216,16 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
               onReturnToTitle={onReturnToTitle}
             />
           )}
+          {tutorialStep === 'world-board' && <WorldBoardModal />}
           <BuildModeHint />
           <BuildModeToggle />
           <HomeButton />
         </>
       )}
+
+      {/* Tutorial dialogue overlays — shown in any scene */}
+      {tutorialStep === 'tutorial-kael-rescue' && <KaelRescueDialogue />}
+      {tutorialStep === 'tutorial-reward' && <TutorialRewardSplash />}
 
       {/* Always visible regardless of scene */}
       <ActiveMissionsList />

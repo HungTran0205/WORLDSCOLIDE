@@ -5,6 +5,7 @@
 
 import type { SaveEnvelope } from './save-types';
 import { SAVE_VERSION } from './save-types';
+import { FACILITY_DEFAULT_SLOTS } from '@/game/data/facility-slot-positions';
 
 export type MigrationFn = (envelope: SaveEnvelope) => SaveEnvelope;
 
@@ -191,12 +192,64 @@ function migrateV10toV11(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+/** v11→v12: Remap old sandbox tutorial steps + add logging-site/stone-quarry if absent */
+function migrateV11toV12(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+
+  // Remap old sandbox tutorial steps to 'complete'
+  const OLD_STEPS = ['sandbox-intro', 'first-build', 'first-quest', 'first-combat', 'first-recruit'];
+  const tutorialStep = OLD_STEPS.includes(gs.tutorialStep as string)
+    ? 'complete'
+    : gs.tutorialStep;
+
+  // Ensure logging-site and stone-quarry exist in facilities (added in recent feature)
+  const facilities: AnyRecord[] = Array.isArray(gs.facilities) ? [...gs.facilities] : [];
+  const ENSURE_FACILITIES = [
+    { type: 'logging-site', level: 0, assignedMemberIds: [] },
+    { type: 'stone-quarry', level: 0, assignedMemberIds: [] },
+  ];
+  for (const f of ENSURE_FACILITIES) {
+    if (!facilities.some((existing) => existing.type === f.type)) {
+      facilities.push(f);
+    }
+  }
+
+  return {
+    ...envelope,
+    version: 12,
+    gameState: { ...gs, tutorialStep, facilities } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
+/** v12→v13: Add placedSlot to GuildFacility; built facilities get default slot, unbuilt get null */
+function migrateV12toV13(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+
+  const facilities = Array.isArray(gs.facilities)
+    ? (gs.facilities as AnyRecord[]).map((f) => {
+        if (f.placedSlot !== undefined) return f; // already migrated
+        const slot = f.level > 0
+          ? (FACILITY_DEFAULT_SLOTS[f.type as string] ?? null)
+          : null;
+        return { ...f, placedSlot: slot };
+      })
+    : gs.facilities;
+
+  return {
+    ...envelope,
+    version: 13,
+    gameState: { ...gs, facilities } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
   8: migrateV8toV9,
   9: migrateV9toV10,
   10: migrateV10toV11,
+  11: migrateV11toV12,
+  12: migrateV12toV13,
 };
 
 /**

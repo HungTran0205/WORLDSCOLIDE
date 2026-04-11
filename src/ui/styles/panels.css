@@ -59,6 +59,12 @@
   background: linear-gradient(135deg, #5a4f3f, #3a3530);
 }
 
+.panel-btn--active {
+  background: linear-gradient(135deg, #5a4a20, #3a3010);
+  border-color: #ffd700;
+  color: #ffd700;
+}
+
 .panel-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;

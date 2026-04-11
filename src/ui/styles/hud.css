@@ -57,6 +57,40 @@
   border-color: #ffd700;
 }
 
+/* Tutorial guidance highlight — pulses gold to draw player attention */
+.panel-toggle-bar button.tutorial-highlight,
+button.tutorial-highlight {
+  border-color: #ffd700 !important;
+  color: #ffd700 !important;
+  animation: tutorialPulse 1.2s ease-in-out infinite;
+}
+
+.tutorial-highlight {
+  animation: tutorialPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes tutorialPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 215, 0, 0.35); }
+}
+
+/* Tutorial hint bar — instructional text above the panel toggles */
+.tutorial-hint-bar {
+  position: fixed;
+  bottom: 68px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 14, 4, 0.92);
+  border: 1px solid rgba(255, 215, 0, 0.5);
+  border-radius: 8px;
+  padding: 8px 20px;
+  color: #ffd700;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 51;
+}
+
 .hud-clock {
   color: #ddd;
   font-size: 0.85rem;

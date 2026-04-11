@@ -31,6 +31,8 @@ export interface GuildFacility {
   /** 0 = locked/not built, 1–3 = active */
   level: number;
   assignedMemberIds: string[];
+  /** Index into FACILITY_SLOTS (0–11). null = bought but not yet placed on map. */
+  placedSlot: number | null;
 }
 
 /** Guild hierarchy ranks (promotable). MERCENARY is orthogonal — not in hierarchy. */
@@ -158,11 +160,13 @@ export type GameScene = 'guild-hall' | 'combat-arena';
 
 export type TutorialStep =
   | 'char-creation'
-  | 'sandbox-intro'
-  | 'first-build'
-  | 'first-quest'
-  | 'first-combat'
-  | 'first-recruit'
+  | 'world-board'
+  | 'tutorial-quest-dispatch'
+  | 'tutorial-quest-active'
+  | 'tutorial-kael-rescue'
+  | 'tutorial-reward'
+  | 'build-logging-site'
+  | 'assign-kael'
   | 'complete';
 
 export interface InventoryState {

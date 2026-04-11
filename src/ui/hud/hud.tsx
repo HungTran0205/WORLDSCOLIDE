@@ -6,6 +6,7 @@ import { PanelToggle, type PanelId } from './panel-toggle';
 import { RoomNavBar } from './room-nav-bar';
 import { formatGameTime } from '@/game/utils/format-game-time';
 import { calcTotalUpkeep } from '@/game/systems/upkeep-system';
+import { getCurrentStep } from '@/game/systems/tutorial-manager';
 import '@/ui/styles/hud.css';
 
 /** Compute upkeep inside selector to return primitive (avoids new array ref → infinite re-render) */
@@ -26,7 +27,12 @@ export function HUD({ activePanel, setActivePanel }: HUDProps) {
   const hasFounder = useGameStore((s) => s.founder !== null);
   const missionCount = useGameStore((s) => s.activeMissions.length);
   const dailyUpkeep = useGameStore(selectDailyUpkeep);
+  const tutorialStep = useGameStore((s) => s.tutorialStep);
   const memberCount = rosterCount + (hasFounder ? 1 : 0);
+
+  const stepConfig = getCurrentStep(tutorialStep);
+  const hintMessage = stepConfig?.message ?? '';
+  const highlightPanel = stepConfig?.highlightPanel ?? null;
 
   return (
     <div className="hud-overlay">
@@ -39,8 +45,18 @@ export function HUD({ activePanel, setActivePanel }: HUDProps) {
         <span>Missions: {missionCount}</span>
         <SaveStatusBadge />
       </div>
+      {/* Tutorial hint bar — shown when current step has a non-empty message */}
+      {hintMessage && tutorialStep !== 'complete' && (
+        <div className="tutorial-hint-bar">
+          {hintMessage}
+        </div>
+      )}
       <RoomNavBar />
-      <PanelToggle activePanel={activePanel} setActivePanel={setActivePanel} />
+      <PanelToggle
+        activePanel={activePanel}
+        setActivePanel={setActivePanel}
+        highlightPanel={highlightPanel}
+      />
     </div>
   );
 }

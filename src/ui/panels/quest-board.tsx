@@ -46,13 +46,23 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
 
   const completedMissions = useGameStore((s) => s.completedMissions);
+  const tutorialStep = useGameStore((s) => s.tutorialStep);
 
-  const filteredMissions = MISSIONS.filter(
-    (m) =>
-      (filterTier === 'all' || m.tier === filterTier) &&
-      unlockedTiers.includes(m.tier) &&
-      (!m.prerequisiteId || completedMissions.includes(m.prerequisiteId)),
-  );
+  const filteredMissions = useMemo(() => {
+    let missions = MISSIONS.filter(
+      (m) =>
+        (filterTier === 'all' || m.tier === filterTier) &&
+        unlockedTiers.includes(m.tier) &&
+        (!m.prerequisiteId || completedMissions.includes(m.prerequisiteId)),
+    );
+    // During tutorial: only show incomplete tutorial quests
+    if (tutorialStep !== 'complete') {
+      missions = missions.filter(
+        (m) => m.id.startsWith('tutorial-') && !completedMissions.includes(m.id),
+      );
+    }
+    return missions;
+  }, [filterTier, unlockedTiers, completedMissions, tutorialStep]);
 
   /** Dispatch from modal — receives selected member IDs */
   const handleDispatchFromModal = (memberIds: string[]) => {
@@ -76,8 +86,8 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
         <button className="panel-close-btn" onClick={onClose}>Close</button>
       </h2>
 
-      {/* Tier filter */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 12, flexWrap: 'wrap' }}>
+      {/* Tier filter — hidden during tutorial to reduce UI noise */}
+      <div style={{ display: tutorialStep !== 'complete' ? 'none' : 'flex', gap: 4, marginBottom: 12, flexWrap: 'wrap' }}>
         <button
           className="panel-btn"
           style={{ width: 'auto', padding: '4px 8px', fontSize: '0.8rem' }}

@@ -16,36 +16,50 @@ export const TUTORIAL_STEPS: TutorialStepConfig[] = [
     autoAdvance: false,
   },
   {
-    step: 'sandbox-intro',
-    message: 'Welcome to your guild hall!',
+    step: 'world-board',
+    message: '', // Modal handles its own content
     autoAdvance: false,
   },
   {
-    step: 'first-build',
-    message: 'Open the Build menu and expand your guild floor.',
-    highlightPanel: 'build',
-    autoAdvance: true,
-    advanceCondition: (state) => state.guildHall.floorTiles.length > 36,
-  },
-  {
-    step: 'first-quest',
-    message: 'Open the Quest Board and dispatch a quest.',
+    step: 'tutorial-quest-dispatch',
+    message: 'A traveler needs help! Open the Quest Board and dispatch "Into the Clearing".',
     highlightPanel: 'quests',
     autoAdvance: true,
-    advanceCondition: (state) => state.activeMissions.length > 0,
+    advanceCondition: (state) =>
+      state.activeMissions.some((m) => m.missionId === 'tutorial-into-the-clearing'),
   },
   {
-    step: 'first-combat',
-    message: 'Your founder is on a quest! Wait for completion.',
-    autoAdvance: true,
-    advanceCondition: (state) => state.completedMissions.length > 0,
+    step: 'tutorial-quest-active',
+    message: 'Your founder is on the way. Wait for the quest to complete.',
+    autoAdvance: false, // Advanced by tutorial-quest-handler after combat resolves
   },
   {
-    step: 'first-recruit',
-    message: 'Open the Roster to manage your guild members.',
-    highlightPanel: 'roster',
+    step: 'tutorial-kael-rescue',
+    message: '', // Dialogue modal handles content
+    autoAdvance: false,
+  },
+  {
+    step: 'tutorial-reward',
+    message: '', // Reward splash handles content
+    autoAdvance: false,
+  },
+  {
+    step: 'build-logging-site',
+    message: 'Open the Build menu → Facilities tab to build your Logging Site.',
+    highlightPanel: 'build',
     autoAdvance: true,
-    advanceCondition: (state) => state.roster.length >= 1,
+    advanceCondition: (state) =>
+      state.facilities.some((f) => f.type === 'logging-site' && f.level > 0),
+  },
+  {
+    step: 'assign-kael',
+    message: 'Assign Kael to the Logging Site to begin harvesting wood.',
+    highlightPanel: 'facilities',
+    autoAdvance: true,
+    advanceCondition: (state) => {
+      const ls = state.facilities.find((f) => f.type === 'logging-site');
+      return (ls?.assignedMemberIds.length ?? 0) > 0;
+    },
   },
   {
     step: 'complete',

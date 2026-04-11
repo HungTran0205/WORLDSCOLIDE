@@ -5,13 +5,11 @@ import type { FacilityDef } from '@/game/data/facility-definitions';
 import { CivBadge } from '@/ui/components/civ-badge';
 
 interface FacilityCardProps {
-  facility: GuildFacility;
+  facility: GuildFacility;  // guaranteed level > 0 && placedSlot !== null
   def: FacilityDef;
   allMembers: Member[];
-  guildLevel: number;
   gold: number;
   dailyUpkeep: number;
-  onBuild: () => void;
   onUpgrade: () => void;
   onAssign: (memberId: string) => void;
   onUnassign: (memberId: string) => void;
@@ -74,13 +72,12 @@ function getBonusPreview(facility: GuildFacility, assignedMembers: Member[], dai
 }
 
 export function FacilityCard({
-  facility, def, allMembers, guildLevel, gold, dailyUpkeep,
-  onBuild, onUpgrade, onAssign, onUnassign,
+  facility, def, allMembers, gold, dailyUpkeep,
+  onUpgrade, onAssign, onUnassign,
 }: FacilityCardProps) {
-  const isLocked = facility.level === 0;
-  const canUpgrade = facility.level > 0 && facility.level < 3;
+  const canUpgrade = facility.level < 3;
   const upgradeCost = canUpgrade ? def.upgradeCosts[facility.level - 1] : 0;
-  const maxSlots = isLocked ? 0 : def.maxSlots[facility.level - 1];
+  const maxSlots = def.maxSlots[facility.level - 1];
   const assignedMembers = allMembers.filter((m) => facility.assignedMemberIds.includes(m.id));
 
   // Eligible: idle members not assigned to any facility
@@ -97,14 +94,7 @@ export function FacilityCard({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
         <strong style={{ color: '#ffd700' }}>{def.name}</strong>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          {!isLocked && (
-            <span style={{ fontSize: '0.75rem', color: '#aaa' }}>Lv.{facility.level}</span>
-          )}
-          {isLocked && (
-            <span style={{ fontSize: '0.7rem', color: '#666', border: '1px solid #444', borderRadius: 4, padding: '1px 6px' }}>
-              Locked
-            </span>
-          )}
+          <span style={{ fontSize: '0.75rem', color: '#aaa' }}>Lv.{facility.level}</span>
           {canUpgrade && (
             <button
               className="panel-btn"
@@ -123,21 +113,8 @@ export function FacilityCard({
       <div style={{ fontSize: '0.75rem', color: '#9b59b6', marginBottom: 2 }}>{def.primaryStats}</div>
       <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 8 }}>{def.description}</div>
 
-      {/* Locked state — build button */}
-      {isLocked && (
-        <button
-          className="panel-btn"
-          disabled={guildLevel < 2 || gold < def.buildCost}
-          onClick={onBuild}
-          title={guildLevel < 2 ? 'Requires guild level 2' : gold < def.buildCost ? 'Not enough gold' : undefined}
-        >
-          Build — {def.buildCost}g
-          {guildLevel < 2 && ' (Guild lv.2 req)'}
-        </button>
-      )}
-
-      {/* Active state — member slots */}
-      {!isLocked && (
+      {/* Member slots */}
+      {(
         <>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
             {assignedMembers.map((member) => (

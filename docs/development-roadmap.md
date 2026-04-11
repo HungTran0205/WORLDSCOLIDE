@@ -1,8 +1,8 @@
 # Development Roadmap
 
 **Last Updated**: 2026-04-10
-**Current Phase**: Phase 5 In Progress (Milestone 12 UI Enhancements & New Facilities v1.16.0 Complete)
-**Overall Progress**: ~98% Complete
+**Current Phase**: Phase 5 In Progress (Milestone 13 Tutorial First-Session Flow Complete)
+**Overall Progress**: ~99% Complete
 
 ---
 
@@ -198,6 +198,14 @@
 - [x] WASD camera pan controls (WASD + ESC) for facility room navigation
 - [x] Room navigation bar (room-nav-bar.tsx) with facility icon buttons
 - [x] Build menu refactor: removed FloorTab, streamlined to FurnitureTab
+- [x] Tutorial First-Session Flow (v1.17 planned)
+- [x] Narrative-driven onboarding: World Board lore modal -> tutorial quest dispatch
+- [x] Kael NPC recruitment via tutorial quest completion
+- [x] LOGGING_SITE_ACCESS permit reward -> free facility unlock
+- [x] Tutorial progression: world-board -> quest-dispatch -> quest-active -> kael-rescue -> reward -> build -> assign -> complete
+- [x] Tutorial quest auto-advance with quest completion, facility build, member assignment
+- [x] Panel gating during tutorial (quest board filtered to tutorial quests, facilities highlighted)
+- [x] Save migration v11→v12 for tutorial step transitions
 
 ### Current Tasks
 - [ ] Performance optimization (target <100ms saves)
@@ -294,6 +302,7 @@
 | Phase 5 Milestone 10 | 2026-04-09 | ✅ Done | 3D Facility Zone Visualization (4 zone markers, level-gated props, assigned member sprites, zone → panel integration) |
 | Phase 5 Milestone 11 | 2026-04-09 | ✅ Done | Facility Rooms with Camera Navigation (4 facility rooms, smooth camera animation, "Enter Room" + home button) |
 | Phase 5 Milestone 12 | 2026-04-10 | ✅ Done | UI Enhancements & New Facilities (+5 stat button, Logging Site, Stone Quarry, WASD camera pan, room nav bar) |
+| Phase 5 Milestone 13 | 2026-04-10 | ✅ Done | Tutorial First-Session Flow (world-board lore, tutorial quest, Kael recruitment, facility unlock, progression gates) |
 | Phase 5 Complete | 2026-04-11 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
 | Phase 6 Start | 2026-04-15 | 📋 Planned | Post-launch content |
 

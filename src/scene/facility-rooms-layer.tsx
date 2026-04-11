@@ -1,15 +1,15 @@
-/** Renders all 4 facility rooms behind the guild hall */
+/** Renders facility 7×7 rooms — only those that have been bought AND placed in a slot */
 
 import { useGameStore } from '@/game/state/store';
 import { FacilityRoom } from './facility-room';
 
-/** All 4 facility 7×7 rooms — always visible in the scene */
 export function FacilityRoomsLayer() {
   const facilities = useGameStore((s) => s.facilities);
+  const placed = facilities.filter((f) => f.level > 0 && f.placedSlot !== null);
 
   return (
     <group>
-      {facilities.map((facility) => (
+      {placed.map((facility) => (
         <FacilityRoom key={facility.type} facility={facility} />
       ))}
     </group>

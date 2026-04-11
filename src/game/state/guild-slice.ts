@@ -1,6 +1,7 @@
 import type { StateCreator } from 'zustand';
 import type { GuildHall, GameSettings, TavernState, Member, FloorTile, PlacedFurniture, GridCell, Rotation, FurnitureType, GuildRank, FacilityType, GuildFacility } from './game-state';
 import type { InventoryState } from './game-state';
+import type { ItemID } from '@/game/data/items';
 import type { FacilityProductionResult } from '@/game/systems/facility-production-system';
 import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
 import { FLOOR_TILE_COST } from '@/game/data/buildings';
@@ -40,6 +41,7 @@ export interface GuildSlice {
   // --- Facility system ---
   facilities: GuildFacility[];
   buildFacility: (type: FacilityType) => boolean;
+  placeFacility: (type: FacilityType, slotIndex: number) => boolean;
   upgradeFacility: (type: FacilityType) => boolean;
   assignMemberToFacility: (memberId: string, type: FacilityType) => boolean;
   unassignMemberFromFacility: (memberId: string, type: FacilityType) => boolean;
@@ -72,12 +74,12 @@ const DEFAULT_TAVERN: TavernState = {
 };
 
 const DEFAULT_FACILITIES: GuildFacility[] = [
-  { type: 'tavern',        level: 1, assignedMemberIds: [] },
-  { type: 'training-yard', level: 0, assignedMemberIds: [] },
-  { type: 'infirmary',     level: 0, assignedMemberIds: [] },
-  { type: 'workshop',      level: 0, assignedMemberIds: [] },
-  { type: 'logging-site',  level: 0, assignedMemberIds: [] },
-  { type: 'stone-quarry',  level: 0, assignedMemberIds: [] },
+  { type: 'tavern',        level: 0, assignedMemberIds: [], placedSlot: null },
+  { type: 'training-yard', level: 0, assignedMemberIds: [], placedSlot: null },
+  { type: 'infirmary',     level: 0, assignedMemberIds: [], placedSlot: null },
+  { type: 'workshop',      level: 0, assignedMemberIds: [], placedSlot: null },
+  { type: 'logging-site',  level: 0, assignedMemberIds: [], placedSlot: null },
+  { type: 'stone-quarry',  level: 0, assignedMemberIds: [], placedSlot: null },
 ];
 
 export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
@@ -357,15 +359,51 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
   buildFacility: (type) => {
     let success = false;
     set((s) => {
-      if (s.guildLevel < 2) return s;
       const facility = s.facilities.find((f) => f.type === type);
       if (!facility || facility.level !== 0) return s;
+
+      const fullState = s as GuildSlice & { inventory: InventoryState };
+      const permitKey: ItemID = 'LOGGING_SITE_ACCESS';
+      const hasPermit = type === 'logging-site'
+        && ((fullState.inventory?.items[permitKey] ?? 0) > 0);
+
+      if (hasPermit) {
+        // Permit path: waive gold + guildLevel requirement, consume item
+        success = true;
+        const newItems = { ...fullState.inventory.items };
+        newItems[permitKey] = (newItems[permitKey] ?? 0) - 1;
+        return {
+          facilities: s.facilities.map((f) => f.type === type ? { ...f, level: 1 } : f),
+          inventory: { ...fullState.inventory, items: newItems },
+        } as unknown as Partial<GuildSlice>;
+      }
+
+      // Normal path: free facilities (buildCost=0) skip guildLevel + gold checks
       const cost = FACILITY_DEFINITIONS[type].buildCost;
+      if (cost > 0 && s.guildLevel < 2) return s;
       if (s.gold < cost) return s;
       success = true;
       return {
         gold: s.gold - cost,
         facilities: s.facilities.map((f) => f.type === type ? { ...f, level: 1 } : f),
+      };
+    });
+    return success;
+  },
+
+  placeFacility: (type, slotIndex) => {
+    let success = false;
+    set((s) => {
+      const facility = s.facilities.find((f) => f.type === type);
+      if (!facility || facility.level === 0) return s;
+      if (slotIndex < 0 || slotIndex > 11) return s;
+      // Reject if another facility already occupies this slot
+      if (s.facilities.some((f) => f.placedSlot === slotIndex)) return s;
+      success = true;
+      return {
+        facilities: s.facilities.map((f) =>
+          f.type === type ? { ...f, placedSlot: slotIndex } : f,
+        ),
       };
     });
     return success;

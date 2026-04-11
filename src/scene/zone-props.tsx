@@ -64,6 +64,18 @@ const ZONE_PROPS: Record<FacilityType, ZonePropsConfig> = {
     ],
     light: { color: '#ffaa22', intensity: 2, distance: 2.5 },
   },
+  'logging-site': {
+    models: [
+      { path: '/models/furnitures/workbench.glb', offset: [0, 0, 0], targetHeight: 1.0, minLevel: 1 },
+    ],
+    light: { color: '#88cc44', intensity: 1.5, distance: 2.5 },
+  },
+  'stone-quarry': {
+    models: [
+      { path: '/models/furnitures/workbench.glb', offset: [0, 0, 0], targetHeight: 1.0, minLevel: 1 },
+    ],
+    light: { color: '#aaaacc', intensity: 1.5, distance: 2.5 },
+  },
 };
 
 /** Clone a GLB scene and auto-scale so the model is targetHeight units tall */

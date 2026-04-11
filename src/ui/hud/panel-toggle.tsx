@@ -13,16 +13,21 @@ const PANELS = [
 interface PanelToggleProps {
   activePanel: PanelId;
   setActivePanel: (id: PanelId) => void;
+  /** Panel ID to highlight (tutorial guidance). Pulses with a gold border. */
+  highlightPanel?: string | null;
 }
 
-export function PanelToggle({ activePanel, setActivePanel }: PanelToggleProps) {
+export function PanelToggle({ activePanel, setActivePanel, highlightPanel }: PanelToggleProps) {
   return (
     <div className="panel-toggle-bar">
       {PANELS
         .map((p) => (
           <button
             key={p.id}
-            className={activePanel === p.id ? 'active' : ''}
+            className={[
+              activePanel === p.id ? 'active' : '',
+              highlightPanel === p.id ? 'tutorial-highlight' : '',
+            ].join(' ').trim()}
             onClick={() => setActivePanel(activePanel === p.id ? null : p.id)}
           >
             {p.label}

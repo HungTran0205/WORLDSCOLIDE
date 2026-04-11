@@ -20,7 +20,7 @@ describe('extractGameSaveData', () => {
     expect(result.founder).toEqual(VALID_MEMBER);
     expect(result.guildHall).toEqual(VALID_GUILD_HALL);
     expect(result.settings).toEqual(VALID_SETTINGS);
-    expect(result.tutorialStep).toBe('sandbox-intro');
+    expect(result.tutorialStep).toBe('complete');
     // Should not contain action functions
     expect('setFounder' in result).toBe(false);
     expect('addGold' in result).toBe(false);
