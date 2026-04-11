@@ -2,8 +2,8 @@ import type { StateCreator } from 'zustand';
 import type { GuildHall, GameSettings, TavernState, Member, FloorTile, PlacedFurniture, GridCell, Rotation, FurnitureType, GuildRank, FacilityType, GuildFacility } from './game-state';
 import type { InventoryState } from './game-state';
 import type { ItemID } from '@/game/data/items';
-import type { FacilityProductionResult } from '@/game/systems/facility-production-system';
-import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
+import type { FacilityProductionResult, LoggingTickResult } from '@/game/systems/facility-production-system';
+import { FACILITY_DEFINITIONS, LOGGING_SITE_CONFIG } from '@/game/data/facility-definitions';
 import { FLOOR_TILE_COST } from '@/game/data/buildings';
 import { getFurnitureDefinition } from '@/game/data/furniture';
 import { checkTileAdjacency, isCellOccupiedByFurniture } from '@/game/systems/building-system';
@@ -45,6 +45,10 @@ export interface GuildSlice {
   upgradeFacility: (type: FacilityType) => boolean;
   assignMemberToFacility: (memberId: string, type: FacilityType) => boolean;
   unassignMemberFromFacility: (memberId: string, type: FacilityType) => boolean;
+  /** Apply per-tick logging site production results (WC XP, reserve depletion) */
+  applyLoggingProduction: (result: LoggingTickResult) => void;
+  /** Remove a depleted (or manually removed) logging site — resets to level 0 */
+  removeFacility: (type: FacilityType) => void;
   // Ephemeral offline facility report — not persisted in save
   offlineFacilityReport: FacilityProductionResult[] | null;
   offlineElapsedHours: number;
@@ -74,12 +78,12 @@ const DEFAULT_TAVERN: TavernState = {
 };
 
 const DEFAULT_FACILITIES: GuildFacility[] = [
-  { type: 'tavern',        level: 0, assignedMemberIds: [], placedSlot: null },
-  { type: 'training-yard', level: 0, assignedMemberIds: [], placedSlot: null },
-  { type: 'infirmary',     level: 0, assignedMemberIds: [], placedSlot: null },
-  { type: 'workshop',      level: 0, assignedMemberIds: [], placedSlot: null },
-  { type: 'logging-site',  level: 0, assignedMemberIds: [], placedSlot: null },
-  { type: 'stone-quarry',  level: 0, assignedMemberIds: [], placedSlot: null },
+  { type: 'tavern',        level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
+  { type: 'training-yard', level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
+  { type: 'infirmary',     level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
+  { type: 'workshop',      level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
+  { type: 'logging-site',  level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
+  { type: 'stone-quarry',  level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
 ];
 
 export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
@@ -364,16 +368,18 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
 
       const fullState = s as GuildSlice & { inventory: InventoryState };
       const permitKey: ItemID = 'LOGGING_SITE_ACCESS';
-      const hasPermit = type === 'logging-site'
-        && ((fullState.inventory?.items[permitKey] ?? 0) > 0);
+      const hasPermit = (fullState.inventory?.items[permitKey] ?? 0) > 0;
 
-      if (hasPermit) {
-        // Permit path: waive gold + guildLevel requirement, consume item
+      if (type === 'logging-site') {
+        // Logging site requires a permit — no gold path
+        if (!hasPermit) return s;
         success = true;
         const newItems = { ...fullState.inventory.items };
         newItems[permitKey] = (newItems[permitKey] ?? 0) - 1;
         return {
-          facilities: s.facilities.map((f) => f.type === type ? { ...f, level: 1 } : f),
+          facilities: s.facilities.map((f) =>
+            f.type === type ? { ...f, level: 1, woodReserve: LOGGING_SITE_CONFIG.woodReserve } : f,
+          ),
           inventory: { ...fullState.inventory, items: newItems },
         } as unknown as Partial<GuildSlice>;
       }
@@ -414,7 +420,9 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
     set((s) => {
       const facility = s.facilities.find((f) => f.type === type);
       if (!facility || facility.level === 0 || facility.level >= 3) return s;
-      const cost = FACILITY_DEFINITIONS[type].upgradeCosts[facility.level - 1];
+      const upgradeCosts = FACILITY_DEFINITIONS[type].upgradeCosts;
+      if (!upgradeCosts) return s; // no upgrade path (e.g. logging-site)
+      const cost = upgradeCosts[facility.level - 1];
       if (s.gold < cost) return s;
       success = true;
       return {
@@ -462,6 +470,74 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
       } as unknown as Partial<GuildSlice>;
     });
     return success;
+  },
+
+  applyLoggingProduction: (result) => {
+    if (result.wcXpGains.length === 0 && result.reserveUpdates.length === 0) return;
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null };
+
+      // Build lookup for WC XP gains
+      const wcGainMap = new Map(result.wcXpGains.map((g) => [g.memberId, g]));
+
+      // Collect member IDs to auto-unassign from depleted facilities
+      const depletedTypes = new Set<string>(result.reserveUpdates.filter((u) => u.depleted).map((u) => u.facilityType));
+      const depletedMemberIds = new Set<string>();
+      for (const f of s.facilities) {
+        if (depletedTypes.has(f.type)) {
+          for (const id of f.assignedMemberIds) depletedMemberIds.add(id);
+        }
+      }
+
+      const updateMember = (m: Member): Member => {
+        const gain = wcGainMap.get(m.id);
+        const isDepleted = depletedMemberIds.has(m.id);
+        if (!gain && !isDepleted) return m;
+        return {
+          ...m,
+          ...(isDepleted ? { status: 'idle' as const } : {}),
+          craftSkills: gain
+            ? { woodcutting: { level: gain.newLevel, xpAccumulated: gain.newXp } }
+            : m.craftSkills,
+        };
+      };
+
+      const updatedFacilities = s.facilities.map((f) => {
+        const update = result.reserveUpdates.find((u) => u.facilityType === f.type);
+        if (!update) return f;
+        return update.depleted
+          ? { ...f, woodReserve: 0, assignedMemberIds: [] }
+          : { ...f, woodReserve: update.newReserve };
+      });
+
+      return {
+        facilities: updatedFacilities,
+        roster: fullState.roster.map(updateMember),
+        ...(fullState.founder ? { founder: updateMember(fullState.founder) } : {}),
+      } as unknown as Partial<GuildSlice>;
+    });
+  },
+
+  removeFacility: (type) => {
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null };
+      const facility = s.facilities.find((f) => f.type === type);
+      if (!facility || facility.level === 0) return s;
+
+      // Reset assigned members to idle
+      const assignedIds = new Set(facility.assignedMemberIds);
+      return {
+        facilities: s.facilities.map((f) =>
+          f.type === type ? { ...f, level: 0, placedSlot: null, assignedMemberIds: [], woodReserve: null } : f,
+        ),
+        roster: fullState.roster.map((m) =>
+          assignedIds.has(m.id) ? { ...m, status: 'idle' as const } : m,
+        ),
+        ...(fullState.founder && assignedIds.has(fullState.founder.id)
+          ? { founder: { ...fullState.founder, status: 'idle' as const } }
+          : {}),
+      } as unknown as Partial<GuildSlice>;
+    });
   },
 
   clearOfflineFacilityReport: () => set({ offlineFacilityReport: null, offlineElapsedHours: 0 }),

@@ -40,6 +40,7 @@ export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
   const upgradeFacility          = useGameStore((s) => s.upgradeFacility);
   const assignMemberToFacility   = useGameStore((s) => s.assignMemberToFacility);
   const unassignMemberFromFacility = useGameStore((s) => s.unassignMemberFromFacility);
+  const removeFacility           = useGameStore((s) => s.removeFacility);
   const hireMercenary            = useGameStore((s) => s.hireMercenary);
 
   const allMembers = founder ? [founder, ...roster] : roster;
@@ -82,30 +83,42 @@ export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
             </p>
           );
         }
-        return placedFacilities.map((facility) => (
-          <div key={facility.type} id={`facility-card-${facility.type}`}>
-            <FacilityCard
-              facility={facility}
-              def={FACILITY_DEFINITIONS[facility.type]}
-              allMembers={allMembers}
-              gold={gold}
-              dailyUpkeep={dailyUpkeep}
-              onUpgrade={() => upgradeFacility(facility.type)}
-              onAssign={(id) => assignMemberToFacility(id, facility.type)}
-              onUnassign={(id) => unassignMemberFromFacility(id, facility.type)}
-            />
-            <button
-              className="panel-btn"
-              style={{ marginBottom: 8, width: '100%' }}
-              onClick={() => {
-                setCameraTarget(FACILITY_SLOTS[facility.placedSlot!]);
-                onClose();
-              }}
-            >
-              Enter Room
-            </button>
-          </div>
-        ));
+        // Sort: depleted logging sites go last
+        const sorted = [...placedFacilities].sort((a, b) => {
+          const aDepleted = a.type === 'logging-site' && a.woodReserve === 0 ? 1 : 0;
+          const bDepleted = b.type === 'logging-site' && b.woodReserve === 0 ? 1 : 0;
+          return aDepleted - bDepleted;
+        });
+        return sorted.map((facility) => {
+          const isDepleted = facility.type === 'logging-site' && facility.woodReserve === 0;
+          return (
+            <div key={facility.type} id={`facility-card-${facility.type}`}>
+              <FacilityCard
+                facility={facility}
+                def={FACILITY_DEFINITIONS[facility.type]}
+                allMembers={allMembers}
+                gold={gold}
+                dailyUpkeep={dailyUpkeep}
+                onUpgrade={() => upgradeFacility(facility.type)}
+                onAssign={(id) => assignMemberToFacility(id, facility.type)}
+                onUnassign={(id) => unassignMemberFromFacility(id, facility.type)}
+                onRemove={() => removeFacility(facility.type)}
+              />
+              {!isDepleted && (
+                <button
+                  className="panel-btn"
+                  style={{ marginBottom: 8, width: '100%' }}
+                  onClick={() => {
+                    setCameraTarget(FACILITY_SLOTS[facility.placedSlot!]);
+                    onClose();
+                  }}
+                >
+                  Enter Room
+                </button>
+              )}
+            </div>
+          );
+        });
       })()}
 
       {/* Tavern mercenaries — always visible when tavern is active */}

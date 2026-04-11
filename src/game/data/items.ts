@@ -28,7 +28,7 @@ export const ITEM_DATABASE: Record<ItemID, ItemTemplate> = {
   WOLF_FANG:  { id: 'WOLF_FANG',  name: 'Wolf Fang',   type: 'MATERIAL', rarity: 'UNCOMMON', basePrice: 10, description: 'Sharp canine tooth.' },
   GOBLIN_EAR: { id: 'GOBLIN_EAR', name: 'Goblin Ear',  type: 'MATERIAL', rarity: 'COMMON',   basePrice: 3,  description: 'Proof of goblin subjugation.' },
   ORC_TUSK:            { id: 'ORC_TUSK',            name: 'Orc Tusk',            type: 'MATERIAL',   rarity: 'UNCOMMON', basePrice: 15, description: 'Massive ivory tusk.' },
-  LOGGING_SITE_ACCESS: { id: 'LOGGING_SITE_ACCESS', name: 'Logging Site Access', type: 'CONSUMABLE', rarity: 'UNCOMMON', basePrice: 0,  description: "A worn permit from the Forester's Guild. Allows construction of a logging site." },
+  LOGGING_SITE_ACCESS: { id: 'LOGGING_SITE_ACCESS', name: 'Logging Permit', type: 'CONSUMABLE', rarity: 'UNCOMMON', basePrice: 0,  description: "Authorization from the Forest Warden to establish a logging site. Consumed on build." },
 };
 
 /** O(1) lookup of item template by ID */

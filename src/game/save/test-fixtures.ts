@@ -22,6 +22,7 @@ export const VALID_MEMBER: Member = {
   isFounder: true,
   rank: 'COMMANDER',
   missionsCompleted: 0,
+  craftSkills: { woodcutting: { level: 0, xpAccumulated: 0 } },
 };
 
 export const VALID_ROSTER_MEMBER: Member = {
@@ -40,6 +41,7 @@ export const VALID_ROSTER_MEMBER: Member = {
   isFounder: false,
   rank: 'RECRUIT',
   missionsCompleted: 0,
+  craftSkills: { woodcutting: { level: 0, xpAccumulated: 0 } },
 };
 
 /** Generate a 6x6 grid of floor tiles starting at (0,0) */
@@ -97,10 +99,12 @@ export const VALID_GAME_SAVE_DATA: GameSaveData = {
   tavern: { lastRefreshTime: 0, availableMercenaries: [] },
   inventory: { items: {} },
   facilities: [
-    { type: 'tavern',        level: 1, assignedMemberIds: [], placedSlot: 8 },
-    { type: 'training-yard', level: 0, assignedMemberIds: [], placedSlot: null },
-    { type: 'infirmary',     level: 0, assignedMemberIds: [], placedSlot: null },
-    { type: 'workshop',      level: 0, assignedMemberIds: [], placedSlot: null },
+    { type: 'tavern',        level: 1, assignedMemberIds: [], placedSlot: 8,    woodReserve: null },
+    { type: 'training-yard', level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
+    { type: 'infirmary',     level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
+    { type: 'workshop',      level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
+    { type: 'logging-site',  level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
+    { type: 'stone-quarry',  level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
   ],
 };
 

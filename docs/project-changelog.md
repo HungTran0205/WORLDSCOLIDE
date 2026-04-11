@@ -2,8 +2,143 @@
 
 All notable changes to Worlds Collide are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
-**Current Version**: 1.17.0
-**Release Date**: 2026-04-10 (Tutorial First-Session Flow)
+**Current Version**: 1.18.0
+**Release Date**: 2026-04-11 (Logging Site Finite Harvest System)
+
+---
+
+## [1.18.0] — 2026-04-11 (Logging Site Finite Harvest System)
+
+### Major Feature: Finite-Resource Logging Site with Woodcutting Skill
+
+#### Woodcutting Occupational Skill (NEW)
+- **Skill Progression**: Level 0–10 tied to wood harvested as XP
+- **Thresholds**: [0, 50, 150, 350, 700, 1200, 2000, 3200, 5000, 7500, 11000] wood
+- **Bonuses**: [0%, 10%, 22%, 38%, 58%, 80%, 105%, 133%, 165%, 200%, 240%] harvest rate per level
+- **Auto-Level**: On each tick, XP is compared to threshold table; level automatically advances
+- **Persistence**: Stored per member as `craftSkills.woodcutting` in save data
+
+#### Finite Wood Reserve System (NEW)
+- **Reserve Pool**: Each logging site starts with 1000 wood (full capacity)
+- **Depletion Rate**: Formula: `woodPerTick = 0.0114 × (baseScore/100) × skillMultiplier`
+  - baseScore = (STR × 0.5) + (END × 0.3) + (DEX × 0.2)
+  - skillMultiplier = 1 + (wcSkillBonusPct / 100)
+  - Calibrated: STR20/END15/DEX0/WC0 depletes 1000 wood in ~7 days
+- **Multiple Members**: Wood per-tick stacks across all assigned members; first member to exceed remaining reserve ends depletion
+- **Clamping**: Wood harvested never exceeds remaining reserve (prevents negatives)
+
+#### Depletion Lifecycle (NEW)
+- **Active State** (0 < reserve ≤ 1000): Normal production, progress bar green
+- **Warning State** (≤25% reserve ~250 wood): Amber progress bar + "⚠ Running Low" badge + ETA display
+- **Critical State** (≤10% reserve ~100 wood): Red progress bar + "🔴 Almost Depleted" badge + short ETA
+- **Depleted State** (reserve = 0): 
+  - All assigned members auto-unassigned to idle status
+  - assignedMemberIds cleared
+  - UI shows "DEPLETED" label, grey disabled card, Remove Site button only
+  - No further production
+
+#### Permit-Based Unlock (NEW)
+- **Build Gate**: Logging site cannot be built with gold — requires 1x Logging Permit
+- **Item Source**: 
+  - Tutorial quest "Into the Clearing" guarantees 1 permit on completion
+  - Forest area quests (5 missions) drop permit at 15% rate
+- **Consumption**: Permit item consumed (quantity decremented) when build confirmed
+- **UI Gate**: Build button disabled + tooltip if player has 0 permits
+
+#### UI/UX Enhancements (NEW)
+- **Facility Card Updates**:
+  - Wood reserve progress bar (fill %/text)
+  - Warning badge + ETA calculation at thresholds
+  - WC skill level displayed as chip on each assigned member
+  - Depleted card variant (grayscale, no assign UI)
+  - Remove Site button (prominent on depleted)
+- **Facilities Panel Updates**:
+  - Depleted sites sorted to bottom of list
+  - Color badges (green/amber/red/grey) for reserve state
+- **Build Menu Updates**:
+  - Logging site entry shows permit requirement instead of gold cost
+  - Tooltip displays available permit count or requirement message
+- **CSS Classes**:
+  - `.wood-reserve-bar-track` / `.wood-reserve-bar-fill` (progress bar)
+  - `.wood-reserve-bar--warning` / `.wood-reserve-bar--critical` (color states)
+  - `.wc-level-badge` (skill chip)
+  - `.facility-card--depleted` (grayscale)
+  - `.depleted-tag` (label)
+
+#### 3D Scene Integration (NEW)
+- **Zone Floor Tinting**:
+  - Green (normal): >25% reserve
+  - Amber (warning): 10%–25% reserve
+  - Red (critical): <10% reserve
+  - Grey (depleted): 0 reserve
+- **Floating Zone Card**: HTML overlay in facility room showing reserve bar + wood/tick rate (via R3F `<Html>` component)
+- **Zone Props**: Tint applied to `ZoneFloorMarker` based on `reservePct` prop passed from `facility-zone-layer.tsx`
+
+#### Save Migration v13→v14 (NEW)
+- **Version Bump**: SAVE_VERSION 13 → 14
+- **Member Migration**: All members get `craftSkills: { woodcutting: { level: 0, xpAccumulated: 0 } }`
+- **Facility Migration**:
+  - Non-logging sites: `woodReserve: null`
+  - Existing built logging sites (level > 0): `woodReserve: 1000` (full capacity)
+- **Tests**: 39/39 save migration tests passing
+- **Backward Compatibility**: Existing saves auto-migrate without data loss
+
+#### Production System Changes (NEW)
+- **Per-Tick Processing**: Logging site production now runs every tick (1s) instead of per-day
+- **New Actions**:
+  - `applyLoggingProduction` — updates member WC XP + facility reserves + handles depletion
+  - `removeFacility` — deletes facility from guild, frees placed slot
+- **Integration**: Wired into `use-game-tick-loop.ts` for continuous per-tick updates
+
+#### Mission System Extension (NEW)
+- **Conditional Drops**: Added `conditionalDrops` field to Mission interface
+  - Entries: `{ itemId, chance: 0–1, quantity }`
+  - Processed on mission success with random roll
+- **Forest Missions**: 5 forest-area missions now have 15% drop chance for logging permits
+
+### Files Added
+- `src/game/data/facility-slot-positions.ts` — Facility slot position constants (new)
+- `src/game/data/tutorial-data.ts` — Updated with Logging Permit definition
+- `src/game/systems/tutorial-quest-handler.ts` — Handles permit grant on quest completion
+- `src/ui/components/facility-slot-picker.tsx` — Slot selection UI for facility placement
+- `src/ui/components/tutorial-dialogue-overlays.tsx` — Extended for permit reward display
+
+### Files Modified
+- `src/game/state/game-state.ts` — Added `WoodcuttingSkill`, `CraftSkills` to Member interface; added `woodReserve` to GuildFacility
+- `src/game/data/facility-definitions.ts` — Added `LOGGING_SITE_CONFIG` export; removed `upgradeCosts` from logging-site
+- `src/game/data/items.ts` — Ensured `LOGGING_SITE_ACCESS` item matches logging-permit use case
+- `src/game/data/missions.ts` — Added `conditionalDrops` field; populated 5 forest missions with 15% permit drop
+- `src/game/save/save-types.ts` — Bumped `SAVE_VERSION` to 14
+- `src/game/save/save-migrations.ts` — Added `migrateV13toV14()` function
+- `src/game/save/save-migrations.test.ts` — Added v13→v14 migration test
+- `src/game/save/test-fixtures.ts` — Updated fixtures with new fields
+- `src/game/save/save-validation.ts` — Added validation for `craftSkills` + `woodReserve`
+- `src/game/state/guild-slice.ts` — Added `applyLoggingProduction`, `removeFacility`, `consumeLoggingPermit` actions
+- `src/game/systems/mission-tick.ts` — Integrated conditional drop processing
+- `src/game/systems/facility-production-system.ts` — Implemented per-tick logging production with WC XP + depletion
+- `src/game/systems/tutorial-manager.ts` — Integrated permit gating for logging-site builds
+- `src/ui/panels/facility-card.tsx` — Added `WoodReserveBar`, WC level chip, `DepletedFacilityCard`, `onRemove` prop
+- `src/ui/panels/facilities-panel.tsx` — Added depleted site sorting + `removeFacility` dispatch
+- `src/ui/panels/build-menu.tsx` — Added permit gate for logging-site build button
+- `src/ui/styles/panels.css` — Added `.wood-reserve-bar*`, `.wc-level-badge`, `.facility-card--depleted`, `.depleted-tag` classes
+- `src/scene/facility-zone-layer.tsx` — Passed `reservePct` to zone floor marker
+- `src/scene/zone-floor-marker.tsx` — Added tint color logic based on reserve thresholds
+- `src/scene/facility-room.tsx` — Added `LoggingSiteZoneCard` inline component + R3F `<Html>` overlay
+
+### Test Coverage
+- ✅ 39/39 save migration tests passing (v13→v14 migration validates)
+- ✅ TypeScript compiles (0 new errors)
+- ✅ WC skill level calculation (thresholds → levels)
+- ✅ Wood depletion formula (per-tick, multi-member, clamping)
+- ✅ Permit consumption (build gate, count decrement)
+- ✅ UI updates (reserve bar colors, WC badge display, depleted card)
+- ✅ 3D zone tint (based on reserve %)
+
+### Backward Compatibility
+- ✅ Existing saves auto-migrate (members get default WC0, facilities get null/1000 reserve per type)
+- ✅ Permit gating only applies to new logging-site builds (existing ones unaffected)
+- ✅ No breaking changes to mission/facility/member schema
+- ✅ Production system expanded, not replaced (other facilities unaffected)
 
 ---
 

@@ -11,6 +11,7 @@ export const MISSIONS: Mission[] = [
     durationMs: 60_000, travelTimeMs: 10_000,
     goldRewardMin: 50, goldRewardMax: 100, expReward: 100,
     enemyIds: ['slime', 'slime', 'slime'], requiredMembers: 1, requiredLevel: 1,
+    conditionalDrops: [{ itemId: 'LOGGING_SITE_ACCESS', chance: 0.15, quantity: 1 }],
     waves: [
       { enemyIds: ['slime','slime','slime','slime','slime','slime'], spawnXOffset: 0, hpMultiplier: 0.4 },
       { enemyIds: ['slime','slime','slime','slime','forest-spider','forest-spider','forest-spider','forest-spider'], spawnXOffset: 15, hpMultiplier: 0.35 },
@@ -24,6 +25,7 @@ export const MISSIONS: Mission[] = [
     durationMs: 70_000, travelTimeMs: 10_000,
     goldRewardMin: 60, goldRewardMax: 110, expReward: 120,
     enemyIds: ['forest-spider', 'forest-spider', 'forest-spider'], requiredMembers: 1, requiredLevel: 1,
+    conditionalDrops: [{ itemId: 'LOGGING_SITE_ACCESS', chance: 0.15, quantity: 1 }],
   },
   {
     id: 'cave-patrol', name: 'Cave Patrol', tier: 'F',
@@ -44,6 +46,7 @@ export const MISSIONS: Mission[] = [
     durationMs: 90_000, travelTimeMs: 10_000,
     goldRewardMin: 70, goldRewardMax: 130, expReward: 150,
     enemyIds: ['bandit', 'bandit'], requiredMembers: 1, requiredLevel: 2,
+    conditionalDrops: [{ itemId: 'LOGGING_SITE_ACCESS', chance: 0.15, quantity: 1 }],
   },
   {
     id: 'slime-king-lair', name: 'Slime King Lair', tier: 'F',
@@ -61,6 +64,7 @@ export const MISSIONS: Mission[] = [
     goldRewardMin: 100, goldRewardMax: 250, expReward: 250,
     enemyIds: ['forest-spider', 'forest-spider', 'queen-spider'], requiredMembers: 2, requiredLevel: 3,
     isBossGate: true,
+    conditionalDrops: [{ itemId: 'LOGGING_SITE_ACCESS', chance: 0.20, quantity: 1 }],
   },
 
   // ========== E-Tier (7 total) ==========
@@ -183,6 +187,7 @@ export const MISSIONS: Mission[] = [
     goldRewardMin: 60, goldRewardMax: 120, expReward: 120,
     enemyIds: ['slime', 'slime', 'forest-spider'], requiredMembers: 1, requiredLevel: 1,
     chainId: 'crumbling-path', chainOrder: 1,
+    conditionalDrops: [{ itemId: 'LOGGING_SITE_ACCESS', chance: 0.15, quantity: 1 }],
   },
   {
     id: 'chain-source', name: 'Collapsed Cave', tier: 'F',

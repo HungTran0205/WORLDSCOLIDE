@@ -6,6 +6,7 @@ import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
 import { ZoneFloorMarker } from './zone-floor-marker';
 import { ZoneProps } from './zone-props';
 import { ZoneMemberSprites } from './zone-member-sprites';
+import { LOGGING_SITE_CONFIG } from '@/game/data/facility-definitions';
 import type { GuildFacility } from '@/game/state/game-state';
 import type { FacilityDef } from '@/game/data/facility-definitions';
 import type { FacilityType } from '@/game/state/game-state';
@@ -17,6 +18,11 @@ interface FacilityZoneProps {
 }
 
 function FacilityZone({ facility, def, onZoneClick }: FacilityZoneProps) {
+  // Compute reserve fraction for logging-site tint
+  const reservePct = facility.type === 'logging-site' && facility.woodReserve !== null && facility.woodReserve !== undefined
+    ? facility.woodReserve / LOGGING_SITE_CONFIG.woodReserve
+    : undefined;
+
   // Only rendered for built facilities (level > 0) — caller filters locked ones out
   return (
     <group
@@ -32,6 +38,7 @@ function FacilityZone({ facility, def, onZoneClick }: FacilityZoneProps) {
         footprint={def.tileFootprint}
         facilityType={facility.type}
         locked={false}
+        reservePct={reservePct}
       />
       <ZoneProps type={facility.type} level={facility.level} />
       {facility.assignedMemberIds.length > 0 && (

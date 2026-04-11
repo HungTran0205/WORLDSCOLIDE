@@ -18,7 +18,7 @@ export function ResourceBar() {
       {HUD_RESOURCES.map((r) => (
         <span key={r.id} className="resource-item" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: r.color }}>
           <GameIcon category="item" id={r.id} size={24} fallbackText={r.label} fallbackColor={r.color} />
-          {inventory.items[r.id] ?? 0}
+          {Math.floor(inventory.items[r.id] ?? 0)}
         </span>
       ))}
     </div>

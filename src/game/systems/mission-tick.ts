@@ -87,6 +87,12 @@ export function processMissionTick(store: GameStore, now: number): MissionTickEv
           for (const [itemId, amount] of Object.entries(result.lootEarned)) {
             if (amount && amount > 0) store.addItem(itemId as ItemID, amount);
           }
+          // Roll conditional drops (e.g. Logging Permit from forest quests)
+          for (const drop of mission.conditionalDrops ?? []) {
+            if (Math.random() < drop.chance) {
+              store.addItem(drop.itemId, drop.quantity);
+            }
+          }
           for (const memberId of result.survivors) {
             store.addMemberExp(memberId, result.expPerMember);
             store.updateMemberStatus(memberId, 'idle');

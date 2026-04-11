@@ -181,11 +181,13 @@ function FacilitiesTab({ onClose, highlightLoggingSite }: { onClose: () => void;
         if (!facility) return null; // guard: save may not have all facility types yet
         const isBuilt   = facility.level > 0;
         const isPlaced  = facility.placedSlot !== null;
-        const hasPermit = def.type === 'logging-site'
-          && (inventory.items['LOGGING_SITE_ACCESS'] ?? 0) > 0;
-        const isFree    = def.buildCost === 0;
-        const canAfford = isFree || hasPermit || gold >= def.buildCost;
-        const meetsLevel = isFree || hasPermit || guildLevel >= 2;
+        const hasPermit = (inventory.items['LOGGING_SITE_ACCESS'] ?? 0) > 0;
+        const permitCount = inventory.items['LOGGING_SITE_ACCESS'] ?? 0;
+        // logging-site requires permit; all other facilities use gold/free logic
+        const isLoggingSite = def.type === 'logging-site';
+        const isFree    = def.buildCost === 0 && !isLoggingSite;
+        const canAfford = isLoggingSite ? hasPermit : isFree || gold >= def.buildCost;
+        const meetsLevel = isLoggingSite ? hasPermit : isFree || guildLevel >= 2;
 
         const isHighlighted = highlightLoggingSite && def.type === 'logging-site';
         return (
@@ -213,13 +215,18 @@ function FacilitiesTab({ onClose, highlightLoggingSite }: { onClose: () => void;
                   disabled={!canAfford || !meetsLevel}
                   onClick={() => handleBuy(def.type)}
                 >
-                  {hasPermit
-                    ? 'Build — Free (Permit)'
+                  {isLoggingSite
+                    ? (hasPermit ? `Build — Permit (${permitCount} available)` : 'Build — Requires Permit')
                     : isFree
                       ? 'Build — Free'
                       : `Build — ${def.buildCost}g`}
                 </button>
-                {!meetsLevel && (
+                {!meetsLevel && isLoggingSite && (
+                  <div style={{ fontSize: '0.72rem', color: '#f59e0b', marginTop: 2 }}>
+                    Requires Logging Permit — found in Outskirts Forest quests
+                  </div>
+                )}
+                {!meetsLevel && !isLoggingSite && (
                   <div style={{ fontSize: '0.72rem', color: '#ff6347', marginTop: 2 }}>
                     Requires Guild Lv.2
                   </div>

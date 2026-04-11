@@ -1,8 +1,8 @@
 # Development Roadmap
 
-**Last Updated**: 2026-04-10
-**Current Phase**: Phase 5 In Progress (Milestone 13 Tutorial First-Session Flow Complete)
-**Overall Progress**: ~99% Complete
+**Last Updated**: 2026-04-11
+**Current Phase**: Phase 5 In Progress (Milestone 14 Logging Site Finite Harvest Complete)
+**Overall Progress**: ~99.5% Complete
 
 ---
 
@@ -206,6 +206,13 @@
 - [x] Tutorial quest auto-advance with quest completion, facility build, member assignment
 - [x] Panel gating during tutorial (quest board filtered to tutorial quests, facilities highlighted)
 - [x] Save migration v11→v12 for tutorial step transitions
+- [x] Logging Site Finite Harvest System (v1.18 released)
+- [x] Woodcutting occupational skill (Lv0–10, XP thresholds, stat bonuses)
+- [x] Finite wood reserve (1000 wood capacity, per-tick depletion, multi-member stacking)
+- [x] Logging permit unlock system (tutorial grant, forest missions 15% drop)
+- [x] Depletion lifecycle UI (warning/critical/depleted states, color thresholds, auto-unassign)
+- [x] Save migration v13→v14 (members get craftSkills, facilities get woodReserve)
+- [x] 3D zone tinting (reserve % → color gradient)
 
 ### Current Tasks
 - [ ] Performance optimization (target <100ms saves)
@@ -303,6 +310,7 @@
 | Phase 5 Milestone 11 | 2026-04-09 | ✅ Done | Facility Rooms with Camera Navigation (4 facility rooms, smooth camera animation, "Enter Room" + home button) |
 | Phase 5 Milestone 12 | 2026-04-10 | ✅ Done | UI Enhancements & New Facilities (+5 stat button, Logging Site, Stone Quarry, WASD camera pan, room nav bar) |
 | Phase 5 Milestone 13 | 2026-04-10 | ✅ Done | Tutorial First-Session Flow (world-board lore, tutorial quest, Kael recruitment, facility unlock, progression gates) |
+| Phase 5 Milestone 14 | 2026-04-11 | ✅ Done | Logging Site Finite Harvest System (woodcutting skill, finite reserve, permit gate, depletion lifecycle, 3D zone tinting, save v14) |
 | Phase 5 Complete | 2026-04-11 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
 | Phase 6 Start | 2026-04-15 | 📋 Planned | Post-launch content |
 
@@ -442,4 +450,4 @@ Documentation automatically updated when:
 - Significant scope changes
 - Resource allocation changes
 
-**Last Updated**: 2026-04-10 by docs-manager (Milestone 12 UI Enhancements & New Facilities v1.16.0 Complete)
+**Last Updated**: 2026-04-11 by project-manager (Milestone 14 Logging Site Finite Harvest v1.18.0 Complete)

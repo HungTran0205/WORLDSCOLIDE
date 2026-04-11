@@ -8,7 +8,7 @@ import { useGameStore } from '@/game/state/store';
 import { processMissionTick, processInjuryRecovery } from '@/game/systems/mission-tick';
 import { shouldAdvanceTutorial, getNextStep } from '@/game/systems/tutorial-manager';
 import { generateMercenaries } from '@/game/systems/mercenary-generator';
-import { processFacilityProduction } from '@/game/systems/facility-production-system';
+import { processFacilityProduction, processLoggingSiteTick } from '@/game/systems/facility-production-system';
 import { calcTotalUpkeep } from '@/game/systems/upkeep-system';
 import { MISSIONS } from '@/game/data/missions';
 import { playSFX } from '@/audio/audio-manager';
@@ -63,6 +63,16 @@ export function useGameTickLoop() {
           playSFX(event.result.outcome === 'full-wipe' ? AUDIO.SFX_HIT : AUDIO.SFX_REWARD);
           break;
         }
+      }
+    }
+
+    // Per-tick logging site production (1s cadence)
+    const allMembersForTick = store.founder ? [store.founder, ...store.roster] : store.roster;
+    const loggingResult = processLoggingSiteTick(store.facilities, allMembersForTick);
+    if (loggingResult.woodProduced > 0 || loggingResult.reserveUpdates.length > 0) {
+      store.applyLoggingProduction(loggingResult);
+      if (loggingResult.woodProduced > 0) {
+        store.addItem('WOOD', loggingResult.woodProduced);
       }
     }
 

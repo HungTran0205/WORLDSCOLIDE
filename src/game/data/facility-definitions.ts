@@ -8,8 +8,8 @@ export interface FacilityDef {
   description: string;
   /** Gold to unlock from level 0 → 1. 0 = free (tavern). guildLevel >= 2 required for cost > 0. */
   buildCost: number;
-  /** Gold costs for lv1→2 and lv2→3 upgrades */
-  upgradeCosts: [number, number];
+  /** Gold costs for lv1→2 and lv2→3 upgrades. Absent = no upgrade path (e.g. logging-site). */
+  upgradeCosts?: [number, number];
   /** Max assigned member slots per level [lv1, lv2, lv3] */
   maxSlots: [number, number, number];
   /** Primary stats label for UI tooltip */
@@ -68,11 +68,11 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
   'logging-site': {
     type: 'logging-site',
     name: 'Logging Site',
-    description: 'Assign members to harvest wood from the forest. STR increases yield.',
-    buildCost: 200,
-    upgradeCosts: [250, 450],
+    description: 'Consume a Logging Permit to establish a site. Wood reserve depletes over time; STR + WC skill increase yield.',
+    buildCost: 0, // permit-only: no gold cost
+    // no upgradeCosts — stays at level 1 forever
     maxSlots: [1, 2, 3],
-    primaryStats: 'STR',
+    primaryStats: 'STR + WC Skill',
     zonePosition: [5, 0, 1],
     tileFootprint: [3, 3],
   },
@@ -88,3 +88,20 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     tileFootprint: [3, 3],
   },
 };
+
+/** Finite-harvest config for the Logging Site facility */
+export const LOGGING_SITE_CONFIG = {
+  /** Starting wood reserve per site */
+  woodReserve: 1000,
+  /** wood/tick per 1 baseScore point — calibrated: STR20/END15/DEX0/WC0 depletes 1000 wood in ~7 days (604 800 ticks) */
+  baseRate: 0.0114,
+  /** XP thresholds for WC levels 0–10 */
+  wcSkillThresholds: [0, 50, 150, 350, 700, 1200, 2000, 3200, 5000, 7500, 11000] as const,
+  /** Bonus harvest % per WC level */
+  wcSkillBonusPct:   [0, 10,  22,  38,  58,   80,  105,  133,  165,  200,   240] as const,
+  wcSkillMaxLevel: 10,
+  /** Reserve fraction below which yellow warning shows */
+  warningLowPct: 0.25,
+  /** Reserve fraction below which red critical badge shows */
+  warningCriticalPct: 0.10,
+} as const;

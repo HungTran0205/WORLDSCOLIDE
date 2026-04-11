@@ -242,6 +242,47 @@ function migrateV12toV13(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+/** v13→v14: Add craftSkills to members; add woodReserve to facilities */
+function migrateV13toV14(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+
+  const DEFAULT_CRAFT_SKILLS = { woodcutting: { level: 0, xpAccumulated: 0 } };
+
+  const migrateMember = (m: AnyRecord): AnyRecord => ({
+    ...m,
+    craftSkills: m.craftSkills ?? DEFAULT_CRAFT_SKILLS,
+  });
+
+  const founder = gs.founder ? migrateMember(gs.founder as AnyRecord) : null;
+  const roster = Array.isArray(gs.roster) ? (gs.roster as AnyRecord[]).map(migrateMember) : [];
+
+  const tavern = gs.tavern as AnyRecord | undefined;
+  let migratedTavern = tavern;
+  if (tavern?.availableMercenaries && Array.isArray(tavern.availableMercenaries)) {
+    migratedTavern = {
+      ...tavern,
+      availableMercenaries: (tavern.availableMercenaries as AnyRecord[]).map(migrateMember),
+    };
+  }
+
+  const facilities = Array.isArray(gs.facilities)
+    ? (gs.facilities as AnyRecord[]).map((f) => ({
+        ...f,
+        woodReserve: f.woodReserve !== undefined
+          ? f.woodReserve
+          : f.type === 'logging-site' && f.level > 0
+            ? 1000   // existing built logging sites start full
+            : null,  // all other facilities get null
+      }))
+    : gs.facilities;
+
+  return {
+    ...envelope,
+    version: 14,
+    gameState: { ...gs, founder, roster, tavern: migratedTavern, facilities } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -250,6 +291,7 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   10: migrateV10toV11,
   11: migrateV11toV12,
   12: migrateV12toV13,
+  13: migrateV13toV14,
 };
 
 /**

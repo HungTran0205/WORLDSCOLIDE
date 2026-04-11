@@ -14,6 +14,15 @@ export interface Stats {
   AGI: number;
 }
 
+export interface WoodcuttingSkill {
+  level: number;         // 0–10
+  xpAccumulated: number; // total wood harvested (acts as XP proxy)
+}
+
+export interface CraftSkills {
+  woodcutting: WoodcuttingSkill;
+}
+
 export interface Skill {
   id: string;
   name: string;
@@ -33,6 +42,8 @@ export interface GuildFacility {
   assignedMemberIds: string[];
   /** Index into FACILITY_SLOTS (0–11). null = bought but not yet placed on map. */
   placedSlot: number | null;
+  /** Wood remaining — null for non-harvesting facilities; 0–1000 for logging-site */
+  woodReserve?: number | null;
 }
 
 /** Guild hierarchy ranks (promotable). MERCENARY is orthogonal — not in hierarchy. */
@@ -55,6 +66,7 @@ export interface Member {
   isFounder: boolean;
   rank: MemberRank;
   missionsCompleted: number;
+  craftSkills?: CraftSkills;
 }
 
 export interface TavernState {
@@ -87,6 +99,8 @@ export interface Mission {
   chainOrder?: number;
   prerequisiteId?: string;
   isBossGate?: boolean;
+  /** Per-item conditional drops rolled on mission success */
+  conditionalDrops?: Array<{ itemId: ItemID; chance: number; quantity: number }>;
 }
 
 export interface ActiveMission {

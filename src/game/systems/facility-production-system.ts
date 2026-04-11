@@ -5,8 +5,93 @@
 
 import type { GuildFacility, Member } from '@/game/state/game-state';
 import type { ItemID } from '@/game/data/items';
-import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
+import { FACILITY_DEFINITIONS, LOGGING_SITE_CONFIG } from '@/game/data/facility-definitions';
 import { calcDerivedGuildStats } from './derived-guild-stats';
+
+// --- Logging Site per-tick production types ---
+
+export interface WcXpGain {
+  memberId: string;
+  xpGained: number;
+  newXp: number;
+  newLevel: number;
+  leveledUp: boolean;
+}
+
+export interface ReserveUpdate {
+  facilityType: 'logging-site';
+  newReserve: number;
+  depleted: boolean;
+}
+
+export interface LoggingTickResult {
+  wcXpGains: WcXpGain[];
+  reserveUpdates: ReserveUpdate[];
+  woodProduced: number;
+}
+
+/** Map total XP accumulated → WC skill level 0–10 */
+export function calcWcLevel(xp: number): number {
+  const thresholds = LOGGING_SITE_CONFIG.wcSkillThresholds;
+  for (let i = thresholds.length - 1; i >= 0; i--) {
+    if (xp >= thresholds[i]) return i;
+  }
+  return 0;
+}
+
+/**
+ * Per-tick logging site production (called every 1s game tick).
+ * Pure function — returns result to be applied by applyLoggingProduction action.
+ */
+export function processLoggingSiteTick(
+  facilities: GuildFacility[],
+  allMembers: Member[],
+): LoggingTickResult {
+  const result: LoggingTickResult = { wcXpGains: [], reserveUpdates: [], woodProduced: 0 };
+
+  for (const facility of facilities) {
+    if (facility.type !== 'logging-site' || facility.level === 0) continue;
+    const reserve = facility.woodReserve;
+    if (reserve === null || reserve === undefined || reserve <= 0) continue;
+    if (facility.assignedMemberIds.length === 0) continue;
+
+    const assignedMembers = allMembers.filter((m) => facility.assignedMemberIds.includes(m.id));
+    if (assignedMembers.length === 0) continue;
+
+    let totalWoodThisTick = 0;
+
+    for (const member of assignedMembers) {
+      const { STR, END, DEX } = member.stats;
+      const baseScore = STR * 0.5 + END * 0.3 + DEX * 0.2;
+      const wcLevel = member.craftSkills?.woodcutting.level ?? 0;
+      const skillMult = 1 + LOGGING_SITE_CONFIG.wcSkillBonusPct[wcLevel] / 100;
+      const woodPerTick = LOGGING_SITE_CONFIG.baseRate * (baseScore / 100) * skillMult;
+
+      const remainingReserve = reserve - totalWoodThisTick;
+      const actualWood = Math.min(woodPerTick, remainingReserve);
+      if (actualWood <= 0) break;
+
+      totalWoodThisTick += actualWood;
+
+      const currentXp = member.craftSkills?.woodcutting.xpAccumulated ?? 0;
+      const newXp = currentXp + actualWood;
+      const newLevel = calcWcLevel(newXp);
+      result.wcXpGains.push({
+        memberId: member.id,
+        xpGained: actualWood,
+        newXp,
+        newLevel,
+        leveledUp: newLevel > wcLevel,
+      });
+    }
+
+    const newReserve = Math.max(0, reserve - totalWoodThisTick);
+    result.woodProduced += totalWoodThisTick;
+    result.reserveUpdates.push({ facilityType: 'logging-site', newReserve, depleted: newReserve === 0 });
+  }
+
+  return result;
+}
 
 export interface FacilityProductionResult {
   facilityType: string;

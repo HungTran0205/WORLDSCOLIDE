@@ -109,8 +109,37 @@ describe('migrateSave', () => {
       version: 11,
     };
     const result = migrateSave(v11Envelope as any);
-    expect(result.version).toBe(13); // chain now goes v11→v12→v13
+    expect(result.version).toBe(14); // chain now goes v11→v12→v13→v14
     expect((result.gameState as any).tutorialStep).toBe('complete');
+  });
+
+  it('migrates v13→v14: adds craftSkills to members', () => {
+    const v13Envelope = {
+      version: 13,
+      savedAt: Date.now(),
+      metadata: { slotId: 1, guildName: 'Test', guildLevel: 1, playTimeMs: 0, founderName: 'F', createdAt: 0, updatedAt: 0 },
+      gameState: {
+        gameTime: 0, realTimeLastTick: 0, guildName: 'Test', guildLevel: 1, gold: 100,
+        guildHall: { level: 1, floorTiles: [{ x: 0, z: 0, color: '#DAA520' }], furniture: [] },
+        settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true },
+        founder: { id: 'f1', name: 'Founder', level: 5, exp: 0, stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 }, unallocatedPoints: 0, skill: null, status: 'idle', injuredUntil: null, civilization: 'LinhSon', isFounder: true, rank: 'COMMANDER', missionsCompleted: 0 },
+        roster: [],
+        activeMissions: [], completedMissions: [], tutorialStep: 'complete',
+        tavern: { lastRefreshTime: 0, availableMercenaries: [] },
+        inventory: { items: {} },
+        facilities: [
+          { type: 'tavern',       level: 1, assignedMemberIds: [], placedSlot: 0 },
+          { type: 'logging-site', level: 1, assignedMemberIds: [], placedSlot: 1 },
+        ],
+      },
+    };
+    const result = migrateSave(v13Envelope as any);
+    expect(result.version).toBe(14);
+    expect((result.gameState as any).founder.craftSkills).toEqual({ woodcutting: { level: 0, xpAccumulated: 0 } });
+    const loggingSite = (result.gameState as any).facilities.find((f: any) => f.type === 'logging-site');
+    expect(loggingSite.woodReserve).toBe(1000);
+    const tavern = (result.gameState as any).facilities.find((f: any) => f.type === 'tavern');
+    expect(tavern.woodReserve).toBe(null);
   });
 
   it('migrates v11→v12: valid steps pass through unchanged', () => {
