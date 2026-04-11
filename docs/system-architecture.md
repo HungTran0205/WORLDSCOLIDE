@@ -91,13 +91,24 @@
 └──────────────────────────────────────────────────────────────┘
 ```
 
-## Combat Arena System (v1.11 — Real-Time Visual Combat)
+## Combat Arena System (v1.11–v1.14 — Real-Time Visual Combat)
 
-### Overview
+**Archived**: Detailed combat arena documentation (formation grid, wave system, entity AI, pathfinding, event stream, camera controls) is in git history and codebase-summary.md. Core systems:
 
-The combat arena provides real-time visual combat as an alternative to text-log auto-resolve. When a mission reaches the "arrived" phase, players can choose "Manual" mode to enter the arena, where they control formation setup and actively cast skills via hotbar.
+- **CombatEngine**: 100ms logic ticks, 60fps R3F rendering
+- **Formation Grid**: 2×3 layout, range-based AI targeting
+- **Wave Manager**: Progressive encounters, multi-wave support
+- **Event Stream**: Damage, heal, skill, death, status effects  
+- **Camera**: 35° isometric angle, multi-wave advancement
 
-### Architecture Diagram
+For detailed implementation, see:
+- `codebase-summary.md` → "v1.10–v1.15 Releases Summary"
+- Git commits v1.11–v1.14
+- Combat system tests in `src/game/systems/*.test.ts`
+
+---
+
+## PLACEHOLDER: Detailed Combat Arena Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -1594,7 +1605,255 @@ Icons appear in 13 components across the UI:
 - No inventory, mission, or enemy data modified
 - Icons purely rendering enhancement (additive feature)
 
+## Logging-Site Finite Harvest System (v1.18)
+
+### Overview
+
+The logging site combines a finite-resource management system with an occupational skill (woodcutting) to create meaningful long-term progression. Players unlock logging sites via permits, assign members, watch them gain skills, and manage resource depletion over time.
+
+### Data Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Game Tick (1s heartbeat from Web Worker)                    │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│ processLoggingSiteTick() (pure function)                     │
+│ ├─ For each logging site:                                   │
+│ │  ├─ For each assigned member:                             │
+│ │  │  ├─ Calculate woodPerTick = baseRate × (STR×0.5 +     │
+│ │  │  │                          END×0.3 + DEX×0.2) / 100 × │
+│ │  │  │                          (1 + wcSkillBonus%)        │
+│ │  │  ├─ Clamp to remaining reserve                         │
+│ │  │  ├─ Update member.craftSkills.woodcutting.xpAccumulated│
+│ │  │  └─ Check level threshold → auto-advance level         │
+│ │  └─ Accumulate woodProduced across members                │
+│ │  └─ Deduct from facility.woodReserve                      │
+│ │  └─ Check depletion (reserve ≤ 0):                        │
+│ │     ├─ Auto-unassign all members                          │
+│ │     └─ Set facility.depletedAt timestamp                  │
+│ └─ Return { memberId → (woodGained, xpGained) }             │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│ applyLoggingProduction (Zustand action)                     │
+│ ├─ Apply XP gains to member craftSkills                     │
+│ ├─ Add WOOD items to inventory                              │
+│ └─ Update facility.woodReserve in store                     │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│ UI Updates (facility-card.tsx, zone-floor-marker.tsx)       │
+│ ├─ WoodReserveBar reflects current %                        │
+│ ├─ Color tint: green/amber/red/grey by state               │
+│ └─ Floating zone card displays rate + remaining wood        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Woodcutting Skill Progression
+
+**Levels & Thresholds:**
+- 11 levels (0–10)
+- XP thresholds: [0, 50, 150, 350, 700, 1200, 2000, 3200, 5000, 7500, 11000]
+- Bonus multipliers: [0%, 10%, 22%, 38%, 58%, 80%, 105%, 133%, 165%, 200%, 240%]
+
+**Auto-Leveling Logic:**
+- Each tick: Compare member's `xpAccumulated` against threshold table
+- On threshold cross: Auto-increment `level`, reset `xpAccumulated = 0`
+- No player action required (passive skill progression)
+
+**Persistence:**
+- Stored as `member.craftSkills.woodcutting: { level, xpAccumulated }`
+- Save migration v13→v14 seeds all members with `{ level: 0, xpAccumulated: 0 }`
+
+### Reserve Depletion Mechanics
+
+**Production Formula:**
+
+```
+woodPerTick = baseRate × baseScore / 100 × (1 + wcSkillBonus%)
+
+where:
+  baseRate = 0.0114 (LOGGING_SITE_CONFIG constant)
+  baseScore = (STR × 0.5) + (END × 0.3) + (DEX × 0.2)
+  wcSkillBonus% = wcSkillBonusPct[member.craftSkills.woodcutting.level]
+```
+
+**Stacking Behavior:**
+- Multiple assigned members produce simultaneously
+- Per-tick wood sums across all members
+- Clamped to remaining reserve (prevents negatives)
+- Depletion check runs after accumulation
+
+**Depletion State Machine:**
+
+```
+┌──────────────────────┐
+│ Active (>25% reserve)│ ← Green tile, normal production
+└──────────────────────┘
+            ↓
+┌──────────────────────────────────┐
+│ Warning (10–25% reserve)         │ ← Amber tile, "⚠ Running Low"
+└──────────────────────────────────┘
+            ↓
+┌──────────────────────────────────┐
+│ Critical (<10% reserve)          │ ← Red tile, "🔴 Almost Depleted"
+└──────────────────────────────────┘
+            ↓
+┌──────────────────────────────────┐
+│ Depleted (reserve = 0)           │ ← Grey tile, auto-unassign members
+└──────────────────────────────────┘
+```
+
+**ETA Calculation:**
+- `eta = remainingWood / (woodPerTickTotal + 1)`
+- Displayed as "~X hours remaining" in warning/critical states
+
+### Permit-Based Unlock System
+
+**Permit Acquisition:**
+1. Tutorial quest "Into the Clearing" → 1 guaranteed permit on completion
+2. Forest area quests (5 missions) → 15% conditional drop chance per completion
+
+**Build Mechanics:**
+- Logging site added to build menu as permit-gated entry
+- Build menu shows "Requires: Logging Permit (N/1)"
+- On build confirmation: `consumeLoggingPermit()` decrements permit quantity
+- Facility placed with `woodReserve: 1000` (full)
+
+**No Gold Cost:**
+- Unlike other facilities, logging site costs 0 gold (permit-only)
+- Permit is consumable item (stackable, limited supply)
+
+### 3D Zone Props & Animation
+
+**Facility Room Scene:**
+- **ground**: Bright green floor (#3d6b2a) with warm sunlight
+- **props**: 3 large trees, 3 pine trees, 1 stump, 1 fallen log (GLB assets)
+- **members**: Up to 4 assigned members rendered at fixed chop spots via RoomMemberSprites
+
+**WoodcuttingAnimator Component:**
+- **Input**: Member data + slot index (0–3)
+- **Animation**: 8-frame east-facing woodcutting sprite loop (8fps)
+- **Frame Atlas**: `/sprites/characters/{CIV}-woodcutter-male/animations/woodcutting-8-frames/east/frame_NNN.png`
+- **Fallback**: Uses idle sprite if woodcutting frames unavailable
+
+**Zone Floor Tinting:**
+- **Reserve %**: Calculated as `currentReserve / 1000`
+- **Tint Color**: Applied to zone-floor-marker mesh based on state
+  - Green: >25% reserve (#4CAF50)
+  - Amber: 10–25% reserve (#FFC107)
+  - Red: <10% reserve (#F44336)
+  - Grey: 0% reserve (#9E9E9E)
+
+**Floating Zone Card:**
+- HTML overlay (via `<Html>` in R3F) pinned to top-left of facility room
+- Shows: Wood reserve bar + current wood/tick production rate
+- Updates every tick with live reserve data
+
+### Save Migration v13 → v14
+
+**Schema Changes:**
+- Member: Added `craftSkills?: { woodcutting: { level, xpAccumulated } }`
+- GuildFacility: Added `woodReserve?: number | null`
+
+**Migration Logic:**
+
+```typescript
+migrateV13toV14(save: SaveData): SaveData {
+  // All members get woodcutting skill
+  save.roster.forEach(member => {
+    member.craftSkills ??= {
+      woodcutting: { level: 0, xpAccumulated: 0 }
+    };
+  });
+
+  // Logging sites get full reserve; others get null
+  save.guild.facilities.forEach(facility => {
+    if (facility.type === 'LOGGING_SITE' && facility.level > 0) {
+      facility.woodReserve = 1000;
+    } else {
+      facility.woodReserve = null;
+    }
+  });
+
+  return save;
+}
+```
+
+**Backward Compat:**
+- Old saves auto-migrate on load (transparent)
+- Woodcutting skill starts at level 0 (no loss of progression data)
+- Non-logging facilities unaffected (woodReserve: null)
+
+## Woodcutting Skill Animation System (v1.18)
+
+### Animation Convention
+
+**Directory Structure:**
+```
+public/sprites/characters/
+├── TS-woodcutter-male/
+│   └── animations/
+│       └── woodcutting-8-frames/
+│           ├── east/
+│           │   ├── frame_000.png
+│           │   ├── frame_001.png
+│           │   ...
+│           │   └── frame_007.png
+│           ├── north/
+│           ├── south/
+│           └── west/
+├── DQ-woodcutter-male/
+├── TL-woodcutter-male/
+└── ...
+```
+
+**Naming Convention:**
+- Prefix: Civilization code (TS, DQ, TL) + archetype prefix
+- Type: `woodcutter` (occupational animator)
+- Gender: `male` / `female`
+- Frames: 8-frame sequence per direction (1-indexed: frame_000 to frame_007)
+- FPS: 8fps playback (125ms per frame)
+
+### WoodcuttingAnimator Component
+
+**Props:**
+```typescript
+{
+  member: Member,           // For civilization/gender lookup
+  slotIndex: number,        // Position in facility room (0–3)
+  isAnimating: boolean,     // Controls playback
+}
+```
+
+**Behavior:**
+- Reads `member.civilization` + `member.gender` to resolve sprite path
+- Defaults to east direction (member facing east while chopping)
+- Loops 8 frames at 8fps (125ms per frame)
+- Falls back to idle SpriteAnimator if woodcutting frames unavailable
+
+**Integration:**
+- Embedded in `room-member-sprites.tsx`
+- Slot 0: WoodcuttingAnimator (working member)
+- Slots 1–3: Idle SpriteAnimator (other members loitering)
+
+### Asset Pipeline
+
+**Generation (One-Time Setup):**
+- PixelLab or manual asset creation generates 8-frame woodcutting sequences per civilization
+- All directional variants (east, north, south, west) created
+- Uploaded to `public/sprites/characters/{CIV}-woodcutter-male/animations/woodcutting-8-frames/{direction}/`
+
+**Loading & Caching:**
+- CanvasTexture atlas created on first render (same approach as SpriteAnimator)
+- Atlas cached in component state (no repeated canvas creation)
+- Fallback to idle sprite if any frame fails to load
+
 ## Browser Compatibility
+
+- **IndexedDB**: IE10+, all modern browsers
 
 - **IndexedDB**: IE10+, all modern browsers
 - **Web Workers**: IE10+

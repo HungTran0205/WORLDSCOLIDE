@@ -158,6 +158,55 @@ Create an engaging idle RPG where players build and manage a thriving guild, rec
 - Save migration transparent; old saves load with correct ranks
 - MERCENARY members unpromotable (UI shows lock icon)
 
+#### FR-11: Guild Facilities System (NEW - v1.12)
+- **FR-11.1**: 4 facility types: Tavern, Training Yard, Infirmary, Workshop (v1.12)
+- **FR-11.2**: 2 additional facilities: Logging Site (finite wood harvest), Stone Quarry (infinite stone production)
+- **FR-11.3**: Members assign to facilities for stat-based production (offline safe)
+- **FR-11.4**: Each facility levels independently with upgrade costs (gold + items)
+- **FR-11.5**: Facilities provide passive income: gold (Tavern), EXP (Training), healing (Infirmary), crafting mats (Workshop/Logging/Quarry)
+- **FR-11.6**: Building placement: max 2 per facility type per guild level, visual zones in guild hall
+- **FR-11.7**: Assigned members block mission dispatch (must unassign first)
+- **FR-11.8**: Auto-unassign on facility depletion (Logging Site only when wood = 0)
+- **FR-11.9**: 3D facility rooms: enter from guild hall, view assigned members working, WASD camera pan
+
+**Acceptance Criteria**:
+- Facilities produce correct quantities per tick (1s heartbeat)
+- Multiple assigned members stack production correctly
+- Upgrade costs deducted atomically
+- Assigned members visible in facility rooms
+- Facility state persists across save/load
+
+#### FR-12: Woodcutting Occupational Skill System (NEW - v1.18)
+- **FR-12.1**: Woodcutting skill: 11 levels (0–10), XP-gated by wood harvested
+- **FR-12.2**: XP thresholds: [0, 50, 150, 350, 700, 1200, 2000, 3200, 5000, 7500, 11000]
+- **FR-12.3**: Bonus multipliers: [0%, 10%, 22%, 38%, 58%, 80%, 105%, 133%, 165%, 200%, 240%] per level
+- **FR-12.4**: Auto-leveling on threshold cross (no player action)
+- **FR-12.5**: Skill progression persists per-member across sessions
+- **FR-12.6**: Woodcutting animation: 8-frame directed sprite loop per civilization (east-facing in facility room)
+
+**Acceptance Criteria**:
+- Woodcutting skill XP accumulates from Logging Site production
+- Level-up auto-triggers on threshold cross
+- Skill bonus properly scales production rate
+- Woodcutting animations play when member assigned to Logging Site
+
+#### FR-13: Logging Site Finite Harvest System (NEW - v1.18)
+- **FR-13.1**: Logging Site starts with 1000 wood reserve (depletable)
+- **FR-13.2**: Production formula: `woodPerTick = 0.0114 × baseScore/100 × (1 + skillBonus%)`
+  - baseScore = (STR×0.5) + (END×0.3) + (DEX×0.2)
+- **FR-13.3**: Permit-based unlock: requires 1 Logging Permit to build (not gold)
+- **FR-13.4**: Permit sources: Tutorial quest grant + forest missions 15% drop
+- **FR-13.5**: Depletion states: Active (>25%) → Warning (10–25%) → Critical (<10%) → Depleted (0)
+- **FR-13.6**: Depleted site auto-unassigns members, shows removal UI
+- **FR-13.7**: 3D zone tint reflects reserve level: green/amber/red/grey
+
+**Acceptance Criteria**:
+- Wood reserve depletes at calibrated rate (STR20/END15 = ~7 days to zero)
+- Permit consumption atomic on build
+- Depletion state transitions trigger correct UI + unassign logic
+- 3D tinting updates per-tick with reserve %
+- Save migration v13→v14 seeds woodcutting skill + preserves old saves
+
 ### Non-Functional Requirements (NFR)
 
 #### NFR-1: Performance

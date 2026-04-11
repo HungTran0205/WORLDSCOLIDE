@@ -2,7 +2,7 @@
 
 **Worlds Collide** — An HD-2D auto-RPG idle guild builder where civilizations collide. Build your guild hall, recruit members from different civilizations, dispatch quests, and watch your guild grow — even while you're away.
 
-**Last Updated**: 2026-04-09 (Facility Rooms with Camera Navigation v1.15.0)
+**Last Updated**: 2026-04-11 (Logging Site Finite Harvest System v1.18.0)
 
 ## Technology Stack
 
@@ -271,181 +271,19 @@ src/
 - Fallback to 'warrior'/'M' for old saves missing archetype/gender
 - No data model breaking changes (new fields are optional)
 
-## Recent Changes (Auto-Battler Combat Arena — v1.11 LIVE)
+## v1.10–v1.15 Releases Summary
 
-### Real-Time Combat Arena (MAJOR FEATURE — Replaces Text-Log Combat)
-- **CombatEngine Class**: Tick-based real-time simulation (100ms logic ticks, 60fps rendering)
-- **Dual Combat Modes**: Manual (player-controlled arena) vs Auto (existing simulateCombat preserved)
-- **Formation Grid**: 2×3 slots (6 party members) front/back row positioning before battle
-- **3D Beat-Em-Up Arena**: R3F Canvas with sidescroller camera (35° angle from horizontal), billboard sprites, bounded arena (X:[-8,8], Z:[-4,4])
-- **Visual Effects**: HP bars, floating damage numbers, status effect indicators, attack/skill animations
-- **Skill Hotbar**: Keys 1-4 to activate manual skills (cooldown tracking per skill)
-- **Speed Control**: 1x/2x multiplier during combat, realtime combat timer
-- **Victory/Defeat Screen**: Detailed result overlay with rewards (gold, EXP), injuries applied
-- **Mission Integration**: Arena rewards seamlessly applied to mission system (mission-resolver.ts)
-- **Game Tick Pause**: Main game loop paused while combat active (resumes on completion)
-- **Full Backwards Compatibility**: Auto-resolve preserved, existing simulateCombat unchanged
+**v1.10 (Building System Refactor)**: Tile-based architecture, guild-level furniture placement, save migration v9→v10
 
-**Arena Flow**:
-1. Player at mission "Arrived" phase chooses "Manual" mode
-2. enterCombatPrep() initializes arena state + formation
-3. Formation prep UI (CombatPrepPanel) for slot assignment
-4. Player clicks "Start Battle" → startBattle() → arenaPhase='fighting'
-5. CombatFightController runs engine.tick() in useFrame loop
-6. Entities sync visual state (position, animation, HP)
-7. On victory/defeat: endCombat(result) → result screen
-8. Exit arena: exitArena() → apply rewards + return to guild-hall scene
-9. Game tick resumes, mission completes normally
+**v1.11 (Auto-Battler Combat Arena)**: Real-time 3D combat with CombatEngine, 2×3 formation grid, manual/auto modes
 
-**Spatial Combat**:
-- **2×3 Formation Grid**: 6 slots with predictable x/z positions
-  - Front row (closer to enemy): indices 0-2
-  - Back row (farther): indices 3-5
-- **Range-Based AI**: Warrior/scout (melee 1.5-2.0u), mage/scholar (ranged 5.0u)
-- **Movement AI**: Smart pathfinding toward enemies, respects formation grid
-- **Distance Calculation**: 3D Euclidean distance for target selection + ability range checks
+**v1.12–v1.13 (Facility System & HD-2D)**: 4 facility types (Tavern/Training/Infirmary/Workshop), HD-2D forest diorama, 3D GLB props, shadow casting
 
-**UI Layers**:
-- **CombatPrepPanel**: Formation selector (drag/drop or click-assign members to slots)
-- **CombatSkillHotbar**: Active skills (key 1-4) with cooldown progress bars
-- **CombatDamageNumber**: Floating text (green heal, red damage) at entity positions
-- **CombatResultOverlay**: Detailed outcome (victory/defeat, gold/EXP, injuries, loot)
+**v1.14 (Combat Arena HD-2D Redesign)**: Beat-em-up camera (35° angle), arena expansion, tile grid floor, multi-wave encounters, depth-of-field
 
-**Key Files (New)**:
-- `src/game/systems/combat-arena-types.ts` — ArenaEntity, Formation, ARCHETYPE_RANGE constants
-- `src/game/systems/combat-engine.ts` — CombatEngine class (tick loop, skill activation, victory)
-- `src/game/systems/combat-ai.ts` — findTarget(), moveToward(), distance calculations
-- `src/game/systems/arena-result-handler.ts` — Apply arena rewards to mission state
-- `src/game/state/combat-arena-slice.ts` — 9th Zustand slice (9 total now)
-- `src/scene/combat-arena.tsx` — Main Canvas component (orthographic R3F)
-- `src/scene/combat-arena-environment.tsx` — 3D ground plane + lighting setup
-- `src/scene/combat-entity-sprite.tsx` — Billboard sprite + HP bar renderer
-- `src/scene/combat-fight-controller.tsx` — useFrame loop, engine tick, sync to store
-- `src/scene/combat-damage-number.tsx` — Floating damage text VFX
-- `src/scene/combat-vfx-layer.tsx` — VFX manager, damage numbers, effect particles
-- `src/ui/panels/combat-prep-panel.tsx` — Formation setup UI (slot assignment)
-- `src/ui/panels/combat-skill-hotbar.tsx` — Active skill bar (keys 1-4)
-- `src/ui/panels/combat-result-overlay.tsx` — Victory/defeat results screen
+**v1.15 (Facility Rooms with Camera Navigation)**: Enter facility rooms, 3D scene per facility type, camera animation, WASD pan controls, smooth transitions
 
-**Key Files (Modified)**:
-- `combat-types.ts` — Extended CombatEntity with spatial fields (position, animState, etc.)
-- `game-state.ts` — Added CombatArenaSlice interface + GameScene type ('guild-hall' | 'combat-arena')
-- `store.ts` — Combined 9 slices (added combat-arena-slice)
-- `mission-tick.ts` — Trigger enterCombatPrep() on manual mode selection
-- `mission-resolver.ts` — Apply arena results via arena-result-handler.ts
-- `game-screen.tsx` — Render CombatArenaCanvas when gameScene='combat-arena'
-- `active-missions-list.tsx` — Show "Manual/Auto" choice on arrival + mission detail modal
-- `use-game-tick-loop.ts` — Pause tick loop during arenaPhase='fighting'
-- `floor-tile-texture-generator.ts` — (new) Generate floor textures procedurally
-
-**Zero Breaking Changes**:
-- Arena system fully optional (manual mode only, auto-resolve untouched)
-- All existing save data compatible (arenaPhase/formation initialized on prep)
-- No changes to combat formulas, skills, passives, or loot tables
-- Can disable arena UI and use auto-resolve exclusively (backwards compatible)
-
-### Performance & Compatibility
-- **Logic**: 100ms ticks ensure consistent frame-rate independent simulation
-- **Rendering**: 60fps via R3F useFrame (capped by browser refresh rate)
-- **Memory**: ArenaEntity snapshots per update (O(n) where n = 6-12 entities typically)
-- **Assets**: Reuses existing member sprites + enemy models (no new assets required for combat)
-- **Fallback**: Auto-resolve preserved in full for players preferring text-based combat
-
-## Recent Changes (Forest Arena HD-2D Upgrade — v1.13)
-
-### HD-2D Diorama + 3D Props System (NEW - Octopath Traveler Style)
-- **Forest Biome Upgrade**: Replaced 2D parallax background with Octopath Traveler/Triangle Strategy style GLB diorama (ground) + 3D billboard sprite characters
-- **GLB Asset Pipeline**:
-  - Diorama ground model: `/arena/forest/3dtiles/optimized/forestground.glb` (receives shadows)
-  - 9 prop models (trees, logs, rocks, etc.): `/arena/forest/3dprops/optimized/` (cast + receive shadows)
-  - Preloading at module import time prevents hitching during combat
-- **Shadow Casting System**:
-  - Directional light with 1024×512 shadow map, bias tuning for artifact-free shadows
-  - 3D props cast shadows onto ground plane
-  - Billboard character sprites upgraded to `MeshStandardMaterial` (was `MeshBasicMaterial`) to receive shadows
-  - `castShadow` enabled on all prop and sprite meshes
-- **Conditional 3D Rendering**: `is3D = Boolean(config.diorama)` detects 3D biomes; forest + cave biomes now support HD-2D
-- **Backward Compat**: `diorama` and `props3D` are optional in `BiomeConfig` — missing fields gracefully use 2D system
-
-**Key Files (New)**:
-- `src/scene/combat-arena-3d-props.tsx` — `Environment3DModel`, `Prop3DModel`, `Prop3DLayer` components for GLB asset rendering
-
-**Key Files (Modified)**:
-- `src/scene/arena-biome-config.ts` — Added `Prop3D` type, `diorama?`, `props3D?` optional fields to `BiomeConfig`; forest config uses GLB assets
-- `src/scene/combat-arena-environment.tsx` — HD-2D rendering pipeline (conditional 3D/2D), shadow-casting directional light for 3D biomes
-- `src/scene/combat-arena.tsx` — Enabled shadow maps on Canvas (`shadowMap={{ type: PCFShadowShadowMap }}`)
-- `src/scene/combat-character-animator.tsx` — `MeshBasicMaterial` → `MeshStandardMaterial`, `castShadow` on sprites
-- `src/scene/enemy-sprite-animator.tsx` — `MeshBasicMaterial` → `MeshStandardMaterial`, `castShadow` on sprites
-
-### Leva Debug Controls for 3D Props (NEW - Dev Mode)
-- Real-time prop position/rotation/scale tuning via Leva folders
-- Per-prop controls (posX/Y/Z, rotY, scale) + diorama scale slider
-- Dynamic folder generation from `config.props3D[]` (generic for all biomes)
-- Copy-config button logs tuned values to console for quick config updates
-- DEV-gated, zero production impact
-
-### Zero Breaking Changes
-- HD-2D system fully opt-in via BiomeConfig (forest + cave both have 3D support)
-- Backward compat: old saves load with 2D fallback if props3D missing
-- No changes to combat mechanics, AI, or damage formulas
-
-## Recent Changes (Combat Arena HD-2D Redesign — v1.14)
-
-### Beat-Em-Up Camera Angle & Arena Expansion
-- **Camera Redesign**: Shifted from 20° to 35° oblique angle (Tactics Ogre / Octopath Traveler style)
-  - Position: `[0, 8.4, 12]` (was `[0, 3.6, 10]`)
-  - Zoom: 80 (was 114) — preserves sprite scaling at new angle
-- **Arena Expansion**: X bounds expanded from [-8,8] to [-30,30] units (64 units wide)
-  - Accommodates multi-wave progression camera scrolling
-  - Z lanes preserved: back=-2, mid=0, front=+2 (beat-em-up depth)
-- **Background Parallax**: Y offsets adjusted for 35° angle (forest 6.5u, cave 7u)
-
-### Z-Axis Lane Movement (Beat-Em-Up Depth)
-- **Lane Formation**: 3 discrete Z positions (back=-2, mid=0, front=+2) per wave
-- **Formation Positions**: Updated to use lane constants for predictable enemy spawning
-- **AI Lane Targeting**: `findTarget()` adds proximity bonus for same-lane enemies (reduces diagonal beeline)
-- **Movement Split**: `moveToward()` uses 60% Z speed vs X speed for natural lane transitions
-
-### Tile Grid Floor System
-- **InstancedMesh Tiles**: 2 draw calls (primary + accent), deterministic hash distribution
-- **Forest Biome**: Uses tile GLB models (`t_Green_Tile_of_Grass.glb`, `t_Cork_Tile.glb`) + minor elevation variation (±0.05u)
-- **Biome Config**: New fields `tilePrimary`, `tileAccent`, `tileSize` + preloading optimization
-- **File**: `src/scene/combat-tile-grid.tsx` (NEW) — instanced tile renderer
-
-### Foreground Depth-of-Field Blur
-- **EffectComposer**: Post-processing pipeline with DepthOfField + Vignette
-- **Focal Point**: Tracks entity centroid for smooth focus
-- **WebGPU Compatibility**: Confirmed WebGL fallback active; `@react-three/postprocessing` used without guards
-- **Debug Controls**: Leva folder controls (focalLength, bokehScale) in arena debug panel
-
-### Multi-Wave Encounter System
-- **WaveManager Class**: Manages wave progression, victory checks per wave
-- **Wave Definitions**: `WaveDefinition[]` per mission with enemy configs + `hpMultiplier` per wave
-- **Engine Integration**: `CombatEngine.addEnemies()` method spawns next wave cohorts
-- **Wave Cleared Event**: 'wave-cleared' event triggers camera advance lerp (1s transition)
-- **HP Tuning**: Weak enemies (hpMultiplier 0.3-0.4) for high-volume waves; boss waves use 1.5x multiplier
-- **Mission Data**: Updated 4 core missions with 2-3 wave definitions each
-  - slime-extermination: 3 waves (6+8+10 enemies)
-  - cave-patrol: 2 waves (8+10 enemies)
-  - goblin-camp-raid: 3 waves (6+8+12 enemies)
-  - warlord-challenge: 3 waves (6+8+1 elite boss)
-
-**Key Files (New)**:
-- `src/game/systems/combat-wave-manager.ts` — WaveManager class, wave progression logic
-- `src/scene/combat-tile-grid.tsx` — InstancedMesh tile grid renderer
-
-**Key Files (Modified)**:
-- `src/scene/combat-arena.tsx` — Camera position/zoom update
-- `src/scene/combat-arena-environment.tsx` — Arena expansion, tile grid integration
-- `src/scene/combat-arena-debug.tsx` — Camera angle slider, DoF controls
-- `src/scene/combat-post-processing.tsx` — EffectComposer + DoF integration
-- `src/scene/combat-fight-controller.tsx` — WaveManager integration, wave transition flow
-- `src/scene/arena-biome-config.ts` — Tile config fields, foreground layer props
-- `src/game/systems/combat-engine.ts` — addEnemies() method, wave-aware victory check
-- `src/game/systems/combat-arena-types.ts` — LANES constants, getWaveBounds() helper
-- `src/game/systems/combat-ai.ts` — Lane proximity targeting bonus
-- `src/game/state/combat-arena-slice.ts` — waveState tracking in store
-- `src/game/data/missions.ts` — Wave definitions + hpMultiplier per mission
+*Detailed release notes available in git history. Focus: recent features (v1.16+) documented in detail below.*
 
 ### Zero Breaking Changes
 - Backward compat: missions without `waves` field default to single-wave mode
@@ -721,61 +559,21 @@ src/
 - `save-types.ts` — Updated SAVE_VERSION to 8
 - `guild-upgrade-system.ts` — Added member promotion utilities (canPromote, meetsPromotionRequirements)
 
-## Recent Changes (Roster Management & Combat Enhancements — v1.6)
+## v1.6–v1.9 Releases (Roster, Rank System, Civilizations)
 
-### Multi-Member Quest Dispatch (NEW - Major Feature)
-- **Party Flexibility**: Dispatch N+ members above quest minimum on single mission
-- **EXP Sharing**: Reward divided by party size (`Math.max(1, Math.floor(expReward / members.length))`)
-- **Dispatch Display**: Quest board shows "(selected/min+)" format in dispatch button
-- **Mission Integration**: `mission-resolver.ts` divides EXP among survivors
+**v1.6 (Roster Management & Combat Enhancements)**:
+- Multi-member quest dispatch, skill cooldown rebalance, auto-cast toggle
+- Compact roster UI with character detail panel, roster-list-item component
 
-### Skill Cooldown Rebalance (NEW - Gameplay Adjustment)
-- **Dynamic Cooldown**: Skills cooldown for `attackIntervalMs * 2` instead of fixed `cooldownMs`
-- **AGI Scaling**: Higher AGI characters have shorter skill cooldowns
-- **Prevents Spam**: Forces minimum 1 normal attack between skill uses
-- **Combat Logic**: `combat-simulator.ts` updated with new cooldown calculation
+**v1.7–v1.8 (Guild Rank System)**:
+- 5-tier rank hierarchy (RECRUIT→MEMBER→VETERAN→OFFICER→COMMANDER)
+- Mercenary rank, upkeep modifiers (0.8x–1.3x), EXP bonuses (0–20%)
+- Promotion system: level + missions completed + gold cost
 
-### Auto-cast Toggle Feature (NEW)
-- **Store Action**: `toggleAutoCast(memberId)` in roster slice
-- **UI Control**: Toggle in Character Detail panel (new v1.6)
-- **Combat Behavior**: Auto-cast enabled members use skills automatically in combat
-- **Persistence**: Auto-cast state saved with member data
-
-### Compact Roster UI (NEW - Major Refactor)
-- **Condensed List**: Guild Roster panel shows minimized member cards
-- **Detail Panel**: Left-side panel opens on member click
-  - Avatar image (large preview)
-  - Equipment placeholders (5 armor slots)
-  - Skill section with auto-cast toggle
-  - Talent/stat allocation UI
-- **New Components**:
-  - `roster-list-item.tsx` — Compact member card
-  - `character-detail-panel.tsx` — Left panel with details
-- **UI Update**: Guild roster restructured for better information hierarchy
-
-### Quest Board Label Clarity (UI Polish)
-- **Changed**: "Members: N" → "Min Members: N"
-- **Dispatch Button**: Shows "(selected/min+)" indicating available party sizes
-- **Modal Display**: Selected members labeled with "(N selected)"
-
-**Key Files (New)**:
-- `src/ui/panels/character-detail-panel.tsx` — Character detail panel component
-- `src/ui/components/roster-list-item.tsx` — Compact roster item component
-
-**Key Files (Modified)**:
-- `mission-resolver.ts` — EXP division by party size
-- `combat-simulator.ts` — Dynamic skill cooldown calculation
-- `roster-slice.ts` — Added `autoCastEnabled` map + `toggleAutoCast()` action
-- `guild-roster.tsx` — Restructured layout with detail panel
-- `quest-board.tsx` — Updated label format "(selected/min+)"
-- `quest-detail-modal.tsx` — Multi-member party display
-- `save-types.ts` — `SAVE_VERSION: 6`, auto-cast field
-- `save-migrations.ts` — `migrateV5toV6()` migration
-
-**Save Migration v5 → v6**:
-- **Version Bump**: `SAVE_VERSION` incremented to 6
-- **Auto-Migration**: `migrateV5toV6()` adds `autoCastEnabled` map to roster
-- **Backward Compatibility**: Old saves load with auto-cast disabled for all members
+**v1.9 (Milestone 2 Vertical Slice)**:
+- 3 civilizations (Human, Orc, Elf) with 3 combat passives
+- 22 missions, 15 enemy types, 7 skills, 6 audio keys
+- Civilization archetype system, icon asset integration (60+ pixel-art icons)
 
 ## Recent Changes (Inventory & Multi-Resource Economy — v1.5)
 
@@ -825,80 +623,18 @@ src/
 
 **Test Coverage**: Full test suite passing with inventory/loot/cost validation
 
-## Recent Changes (Build Mode Advanced — v1.3)
+## Earlier Versions Summary (v1.2–v1.5)
 
-### Build Mode Toggle & Grid Visibility (NEW)
-- **Build Mode State**: `isBuildMode` boolean flag controls UI visibility and interaction modes
-- **Build Toggle Button**: Dedicated button in HUD to enter/exit build mode
-- **Grid Visibility**: Grid displayed during build mode for clear room placement reference
-- **Member Hiding**: All members hidden when in build mode for clean visual workspace
+**v1.3 (Build Mode Advanced)**:
+- Build mode toggle, grid visibility, member hiding during placement
+- Room moving/rotation/pickup mechanics with collision exclusion
+- Context-aware placement hints, 48-test coverage
 
-### Room Moving & Rotation (NEW)
-- **Pick-Up Mechanic**: Click existing rooms to pick up and move them
-- **ActiveBuildItem Interface**: Tracks both new placements and existing room moves
-  - `type: 'new' | 'existing'` — Placement type
-  - `roomType: RoomType` — Room type being placed/moved
-  - `rotation: Rotation` — Current rotation (0|90|180|270)
-  - `roomId?: string` — ID of room being moved (existing only)
-  - `originalPosition?: {x, z}` — Saved for cancel restore
-  - `originalRotation?: Rotation` — Saved for cancel restore
-- **Move Flow**: Click → pick up → drag → rotate (R) → drop (click) or cancel (ESC/right-click)
-- **Collision Exclusion**: Moving rooms exclude themselves from collision checks (don't collide with own old position)
+**v1.4 (Structures Utility)**:
+- Mercenary system, Tavern recruitment, Quest Board tier gating
+- Cost calculations for building placements
 
-### Cancel & Restore (NEW)
-- **ESC/Right-Click**: Cancel active placement or move
-- **Position Restore**: Moved rooms return to originalPosition when cancelled
-- **Rotation Restore**: Moved rooms return to originalRotation when cancelled
-- **Fresh State Pattern**: Each placement/move starts with clean state
-
-### Build Mode Slice Enhanced (v1.3)
-- **toggleBuildMode(on: boolean)**: Enter/exit build mode (resets all placement state)
-- **startMovingRoom(roomId, type, position, rotation)**: Pick up existing room with metadata capture
-- **activeItem: ActiveBuildItem | null**: Tracks what's being placed/moved
-- Maintains consistency between new placements and room moves
-
-### Grid Visibility & Lighting (IMPROVED)
-- **Grid Lines**: 11 vertical + 7 horizontal lines at y=0.01 (always visible in build mode)
-- **Floor Highlighting**: Base floor becomes more visible during build mode
-- **Real-time Updates**: Ghost preview updates as mouse moves and rotation changes
-
-### Build Hint Context-Aware (ENHANCED)
-- **Placement Mode**: Shows "Placing: {room_name} ({rotation}°)" with placement controls
-- **Move Mode**: Shows "Moving: {room_name} ({rotation}°)" with drop controls
-- **Idle Mode**: Shows "Click a room to move it" when in build mode but not actively placing
-- **Controls**: Context-sensitive hints for R (rotate), click (place/drop), ESC/right-click (cancel)
-
-### Tests (EXPANDED)
-- **build-mode-advanced.test.ts**: 48 new tests covering:
-  - toggleBuildMode: entry/exit with state cleanup
-  - startMovingRoom: room capture, position/rotation save
-  - rotatePlacement: rotation cycling for moving rooms
-  - cancelPlacement: restore to original position/rotation
-  - Collision during move: excludes self from collision check
-  - activeItem state: proper initialization and transitions
-
-**Key Files**:
-- `build-mode-slice.ts` — ActiveBuildItem interface, enhanced toggleBuildMode, startMovingRoom
-- `guild-hall.tsx` — RoomMesh onClick handler for pick-up, member hiding when isBuildMode
-- `build-overlay.tsx` — Unified placement/move preview, collision exclusion for moving rooms
-- `build-mode-hint.tsx` — Context-aware hints (idle/placing/moving modes)
-- `member-layer.tsx` — Hidden when isBuildMode is true
-- `camera-controller.tsx` — Pan disabled during any active placement/move
-- `build-mode-advanced.test.ts` — Comprehensive test coverage (48 tests)
-
-- Status Zustand slice drives UI updates
-- Visual feedback for offline play
-
-### Settings Updates
-- Slot-aware import/export (select target slot)
-- Validation before import
-- Return to Title button saves current state
-- Delete slot with confirmation
-
-### Internationalization
-- Vietnamese translations for title screen (slot labels, actions, messages)
-- Save/import dialog strings
-- Status badge messages
+**Note**: Detailed release notes for v1.2–v1.5 archived in git history. Current focus on v1.6+ and recent features.
 
 ## Recent Changes (Member Book UI — v1.14)
 
@@ -937,6 +673,132 @@ src/
 - `src/ui/components/roster-list-item.tsx` — Preserved (bookmark uses avatar from this style)
 - `src/ui/styles/panels.css` — Added book-specific styles (ruled-line texture, spine, page layout)
 - `src/game/state/selectors.ts` — Selector-based derived stats queries
+
+## Recent Changes (UI Enhancements & New Facilities — v1.16)
+
+### +5 Stat Allocation Button (NEW - Gameplay Feature)
+- **Per-Member Allocation**: Members gain 5 free stat points on reach each new level (new feature toggle)
+- **UI Control**: "+5 Stats" button in character-detail-panel and member-book-detail-page
+- **Point Distribution**: Player selects destination stat for each of 5 points
+- **Persistence**: Consumed points tracked in member state
+
+### New Facility Types: Logging Site & Stone Quarry
+- **Logging Site**: STR-based wood production (introduced v1.18 with finite reserve system)
+- **Stone Quarry**: STR-based stone production (similar mechanics, infinite reserve)
+- **Production Formula**: `productPerTick = baseRate × (STR×0.5+END×0.3+DEX×0.2)/100`
+- **Build Cost**: Variable by facility type (Logging Site requires permit, Quarry costs gold)
+
+### WASD Camera Pan Controls (NEW - UI Feature)
+- **Camera Navigation**: WASD keys pan facility room view left/right/forward/back
+- **ESC to Exit**: ESC key returns to guild hall from facility room
+- **Smooth Transitions**: Lerp-based camera movement (no snapping)
+- **Keyboard Focus**: Only active in facility room view
+
+### Room Navigation Bar (NEW - Facility Room UI)
+- **room-nav-bar.tsx**: Top facility room component showing facility icon buttons
+- **Facility Buttons**: Click to switch between assigned facilities (Tavern, Training, etc.)
+- **Home Button**: Return to guild hall
+- **Visual Feedback**: Active facility highlighted
+
+## Recent Changes (Tutorial First-Session Flow — v1.17)
+
+### Narrative Onboarding System (NEW - Player Experience)
+- **World Board Lore Modal**: Initial onboarding screen explaining guild setting
+- **Tutorial Quest Dispatch**: Auto-dispatched "Into the Clearing" mission on first session
+- **Kael NPC Recruitment**: Tutorial quest completion unlocks free hero recruitment
+- **Logging Permit Reward**: Tutorial quest grants 1 Logging Permit item
+- **Facility Build Gate**: Tutorial progression: quest → dispatch → complete → build facility
+
+### Panel Gating During Tutorial (NEW - Feature Gates)
+- **Quest Board Filtering**: Only tutorial-related quests visible during onboarding
+- **Facility Highlights**: New facility slots visually highlighted during build phase
+- **Save Migration v11 → v12**: Adds `tutorialStep` tracking to game state
+
+### Auto-Advance Mechanics (NEW - Quest System)
+- **Quest Completion Trigger**: Tutorial advances on quest completion
+- **Build Trigger**: Tutorial advances after first facility placement
+- **Member Assignment Trigger**: Tutorial advances after assigning member to facility
+- **Multi-Gate Progression**: World board → quest dispatch → quest active → Kael rescue → reward → build → assign → complete
+
+## Recent Changes (Logging Site Finite Harvest System — v1.18)
+
+### Woodcutting Occupational Skill (NEW - Craft Skill System)
+- **Skill Progression**: 11 levels (0–10) tied to wood harvested as XP
+- **XP Thresholds**: [0, 50, 150, 350, 700, 1200, 2000, 3200, 5000, 7500, 11000]
+- **Bonus Scaling**: [0%, 10%, 22%, 38%, 58%, 80%, 105%, 133%, 165%, 200%, 240%] harvest rate multiplier
+- **Auto-Level**: XP compared to threshold table each tick; level auto-advances on threshold cross
+- **Persistence**: Stored as `member.craftSkills.woodcutting` in save data
+- **Per-Member Tracking**: Each assigned member can develop woodcutting skill independently
+
+### Finite Wood Reserve Depletion (NEW - Resource Management)
+- **Reserve Pool**: Each logging site starts at 1000 wood capacity
+- **Depletion Rate**: `woodPerTick = 0.0114 × (baseScore/100) × skillMultiplier`
+  - baseScore = (STR×0.5) + (END×0.3) + (DEX×0.2)
+  - skillMultiplier = 1 + (wcSkillBonusPct / 100)
+  - Calibrated for ~7-day depletion with STR20/END15/DEX0
+- **Multi-Member Stacking**: Per-tick production sums across all assigned members
+- **Clamping**: Wood harvested never exceeds remaining reserve (prevents negatives)
+- **Auto-Unassign**: Members auto-removed from assignment on depletion
+
+### Depletion Lifecycle UI (NEW - State Machine)
+- **Active State** (>25% reserve): Green progress bar, normal production
+- **Warning State** (10–25% reserve): Amber bar + "⚠ Running Low" badge + ETA
+- **Critical State** (<10% reserve): Red bar + "🔴 Almost Depleted" badge + short ETA
+- **Depleted State** (0 reserve): Grey card, "DEPLETED" label, Remove Site button only
+- **Facility Card**: WoodReserveBar component displays reserve % and production rate
+
+### Permit-Based Unlock Gate (NEW - Build System)
+- **Build Gate**: Logging site cannot be built with gold alone; requires 1× Logging Permit
+- **Item Source**: 
+  - Tutorial quest "Into the Clearing" guarantees 1 permit on completion
+  - Forest area quests (5 missions) drop permit at 15% conditional chance
+- **Consumption**: Permit item consumed (quantity decremented) when build confirmed
+- **UI Gate**: Build button disabled + tooltip if player has 0 permits
+
+### 3D Zone Tinting (NEW - Visual Feedback)
+- **Reserve-Based Colors**: Zone floor tint changes by reserve percentage
+  - Green (>25%): Normal production state
+  - Amber (10–25%): Warning state approaching depletion
+  - Red (<10%): Critical depletion warning
+  - Grey (0%): Depleted, no production
+- **Floating Zone Card**: HTML overlay in facility room showing reserve bar + wood/tick rate
+
+### Production System Integration (NEW)
+- **Per-Tick Processing**: Runs every 1-second game tick (not daily)
+- **Zustand Actions**:
+  - `applyLoggingProduction()` — Updates member WC XP, facility reserves, handles depletion
+  - `removeFacility()` — Deletes facility from guild, frees placed slot
+- **Mission System Extension**: Added `conditionalDrops` field to Mission interface
+  - Entries: `{ itemId, chance: 0–1, quantity }`
+  - Processed on mission success with random roll
+- **Offline Integration**: Production continues in background (Web Worker)
+
+### Save Migration v13 → v14 (NEW)
+- **Version Bump**: SAVE_VERSION 13 → 14
+- **Member Migration**: All members get `craftSkills: { woodcutting: { level: 0, xpAccumulated: 0 } }`
+- **Facility Migration**:
+  - Non-logging sites: `woodReserve: null`
+  - Existing built logging sites (level > 0): `woodReserve: 1000` (full capacity)
+- **Tests**: 39/39 save migration tests passing
+- **Backward Compatibility**: Existing saves auto-migrate without data loss
+
+**Key Files (New)**:
+- `src/scene/woodcutting-animator.tsx` — Atlas-based 8-frame woodcutting sprite animator (east direction, 8fps)
+- `src/scene/room-member-sprites.tsx` — Renders up to 4 assigned members at fixed chop spots in facility room
+- `src/game/data/facility-slot-positions.ts` — Facility slot position constants for member placement
+
+**Key Files (Modified)**:
+- `src/game/state/game-state.ts` — Added `WoodcuttingSkill { level, xpAccumulated }`, `CraftSkills` type, `craftSkills?` on Member
+- `src/game/data/facility-definitions.ts` — Added LOGGING_SITE_CONFIG with reserve, rate, skill thresholds, bonus percentages
+- `src/game/systems/facility-production-system.ts` — Added `processLoggingSiteTick()` formula
+- `src/game/state/guild-slice.ts` — Added `applyLoggingProduction`, `removeFacility`, `consumeLoggingPermit` actions
+- `src/ui/hooks/use-game-tick-loop.ts` — Calls `processLoggingSiteTick` each tick
+- `src/ui/panels/facility-card.tsx` — Added WoodReserveBar, WC level badges, DepletedFacilityCard
+- `src/ui/panels/facilities-panel.tsx` — Sort depleted sites to bottom
+- `src/ui/panels/build-menu.tsx` — Permit-gate UI for logging-site
+- `src/scene/facility-room.tsx` — 3D forest room with props (trees, logs, stumps, bushes)
+- `src/scene/zone-props.tsx` — Updated logging-site zone props (tree, pine, stump, bush models)
+- `src/scene/zone-floor-marker.tsx` — Tinting system: green/amber/red/grey by reserve %
 
 ## Development Commands
 

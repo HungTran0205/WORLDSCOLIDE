@@ -11,7 +11,7 @@ import type { MeshStandardMaterial } from 'three';
 import { buildAtlasFromTextures, setAtlasFrame } from './sprite-atlas';
 
 const FRAME_COUNT = 8;
-const ANIMATION_FPS = 6;
+const ANIMATION_FPS = 8;
 
 interface WoodcuttingAnimatorProps {
   basePath: string;

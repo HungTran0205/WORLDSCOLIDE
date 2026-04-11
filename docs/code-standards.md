@@ -462,6 +462,96 @@ const SAVE_DEBOUNCE_MS = 5_000;
 const MAX_ROSTER_SIZE = 50;
 ```
 
+## Sprite Animation Conventions
+
+### Walking Animation Directory Structure
+```
+public/sprites/characters/
+├── TS-warrior-male/
+│   └── animations/
+│       └── walking-8-frames/
+│           ├── east/
+│           │   ├── frame_000.png
+│           │   ├── frame_001.png
+│           │   ...
+│           │   └── frame_007.png
+│           ├── north/
+│           ├── south/
+│           └── west/
+├── DQ-rogue-female/
+├── TL-mage-male/
+└── ...
+```
+
+### Woodcutting Animation Directory Structure (NEW - v1.18)
+```
+public/sprites/characters/
+├── TS-woodcutter-male/
+│   └── animations/
+│       └── woodcutting-8-frames/
+│           ├── east/
+│           │   ├── frame_000.png to frame_007.png
+│           ├── north/
+│           ├── south/
+│           └── west/
+```
+
+### Naming Conventions
+- **Civilization Prefix**: TS (ThienLu), DQ (DeQuoc), TL (LinhSon) — matches character database
+- **Archetype**: warrior, rogue, mage, ranger, paladin, bard, etc. (lowercase)
+- **Occupational**: woodcutter, stonecutter, smith (for craft skill animations)
+- **Gender**: male / female
+- **Animation Type**: walking-8-frames / woodcutting-8-frames / idle
+- **Direction**: east, north, south, west (matches 4-directional camera)
+- **Frame Count**: Always 8 frames per direction (frame_000 to frame_007)
+- **Frame Rate**: 10fps for walking, 8fps for occupational (125ms per frame)
+
+### Sprite Resolution
+- **Standard**: 64×64 pixels per frame (CanvasTexture compatible)
+- **Fallback**: Graceful degradation to idle sprite if direction unavailable
+
+## 3D Facility Props Conventions (NEW - v1.18)
+
+### GLB Asset Paths
+```
+public/arena/forest/3dprops/optimized/
+├── p_tree_large.glb
+├── p_tree_pine.glb
+├── p_stump.glb
+├── p_bush.glb
+└── ... (other prop models)
+```
+
+### Prop Component Pattern
+```typescript
+// All 3D props follow auto-scaling pattern
+<ForestProp
+  model={models.p_tree_large}
+  position={[x, y, z]}
+  targetHeight={2.5}  // Auto-scales GLB to this height
+  rotation={[0, angleY, 0]}
+/>
+```
+
+### Auto-Scaling Logic
+- **Input**: GLB model, desired `targetHeight`
+- **Calculation**: Measure model's bounding box, compute scale factor
+- **Output**: Uniformly scaled mesh preserving proportions
+- **Benefit**: Single asset can be reused at different sizes
+
+### Facility Slot Position Convention (NEW - v1.18)
+```typescript
+// src/game/data/facility-slot-positions.ts
+const LOGGING_SITE_SLOTS = [
+  { x: -1, z: 1 },   // Slot 0 (primary worker)
+  { x: 1, z: 1 },    // Slot 1
+  { x: -1, z: -1 },  // Slot 2
+  { x: 1, z: -1 },   // Slot 3
+];
+
+// Used by room-member-sprites.tsx to position sprites at fixed chop spots
+```
+
 ## Version Control
 
 ### Commit Messages

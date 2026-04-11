@@ -1,11 +1,12 @@
 /**
  * Animated member sprites for the facility room view.
- * Slot 0: woodcutting animation (east) standing left of the stump.
- * Other slots: idle standing pose facing the work area.
+ * Logging-site slot 0: woodcutting animation facing east.
+ * All other facilities: walking patrol animation with per-facility positions.
  */
 
 import { useRef, useMemo, Suspense } from 'react';
 import { Billboard, Html } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
 import { useGameStore } from '@/game/state/store';
 import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
@@ -13,18 +14,79 @@ import { SpriteAnimator } from './sprite-animator';
 import { WoodcuttingAnimator } from './woodcutting-animator';
 import { getSpritePath } from './sprite-path-resolver';
 import type { SpriteDirection } from './sprite-path-resolver';
-import type { Member } from '@/game/state/game-state';
+import type { Member, FacilityType } from '@/game/state/game-state';
+import type { MutableRefObject } from 'react';
 
-// Stump prop is at [cx+2.0, cz-0.4] — slot 0 stands west of it, facing east to chop.
-// Other slots scattered around the work area.
-const CHOP_SPOTS: { offset: [number, number]; facing: SpriteDirection }[] = [
-  { offset: [0.7,  0.2],  facing: 'east'  }, // slot 0: left of stump, chops east
-  { offset: [-1.0, -0.5], facing: 'east'  }, // slot 1: left side
-  { offset: [-1.0,  0.8], facing: 'east'  }, // slot 2: left-front
-  { offset: [ 0.5,  1.2], facing: 'south' }, // slot 3: near fallen log
-];
+interface SpotDef {
+  offset: [number, number]; // [dx, dz] from room center
+  facing: SpriteDirection;
+}
 
-/** Member name label above the sprite */
+/** Per-facility member patrol positions relative to room center */
+const FACILITY_SPOTS: Record<FacilityType, SpotDef[]> = {
+  'logging-site': [
+    { offset: [0.7,  0.2],  facing: 'east'  }, // slot 0: woodcutting east
+    { offset: [-1.0, -0.5], facing: 'east'  },
+    { offset: [-1.0,  0.8], facing: 'east'  },
+    { offset: [ 0.5,  1.2], facing: 'south' },
+  ],
+  tavern: [
+    { offset: [-0.5,  0.8], facing: 'north' }, // behind bar counter
+    { offset: [ 1.2,  0.5], facing: 'west'  },
+    { offset: [-1.5,  0.0], facing: 'east'  },
+    { offset: [ 0.0, -0.5], facing: 'north' },
+  ],
+  'training-yard': [
+    { offset: [ 0.0,  1.2], facing: 'north' }, // facing training dummy
+    { offset: [-1.5,  0.5], facing: 'east'  },
+    { offset: [ 1.5,  0.5], facing: 'west'  },
+    { offset: [ 0.0,  0.0], facing: 'south' },
+  ],
+  infirmary: [
+    { offset: [-1.5,  0.0], facing: 'east'  }, // attending left bed
+    { offset: [ 1.5,  0.0], facing: 'west'  }, // attending right bed
+    { offset: [ 0.0, -1.5], facing: 'south' }, // near alchemy table
+    { offset: [ 0.0,  1.5], facing: 'north' },
+  ],
+  workshop: [
+    { offset: [ 0.0, -1.2], facing: 'north' }, // at workbench
+    { offset: [-1.5,  0.5], facing: 'east'  },
+    { offset: [ 1.5,  0.5], facing: 'west'  },
+    { offset: [ 0.0,  1.5], facing: 'south' },
+  ],
+  'stone-quarry': [
+    { offset: [ 0.5,  1.0], facing: 'north' },
+    { offset: [-0.8, -0.5], facing: 'east'  },
+    { offset: [-0.5,  0.8], facing: 'west'  },
+    { offset: [ 0.8, -0.2], facing: 'south' },
+  ],
+};
+
+const FACING_REVERSE: Record<SpriteDirection, SpriteDirection> = {
+  north: 'south', south: 'north', east: 'west', west: 'east',
+};
+
+/** Flips direction every ~2.5s to simulate back-and-forth patrol */
+function usePatrolAnimation(
+  dirRef: MutableRefObject<SpriteDirection>,
+  isMovingRef: MutableRefObject<boolean>,
+  facing: SpriteDirection,
+) {
+  const timerRef = useRef(0);
+  const fwdRef = useRef(true);
+
+  useFrame((_, delta) => {
+    timerRef.current += delta;
+    if (timerRef.current > 2.5) {
+      timerRef.current = 0;
+      fwdRef.current = !fwdRef.current;
+      dirRef.current = fwdRef.current ? facing : FACING_REVERSE[facing];
+    }
+    isMovingRef.current = true;
+  });
+}
+
+/** Member name label above sprite */
 function NameLabel({ name }: { name: string }) {
   return (
     <Html position={[0, 1.3, 0]} center>
@@ -40,23 +102,29 @@ function NameLabel({ name }: { name: string }) {
   );
 }
 
-function ChoppingMemberSprite({ member, slotIndex, roomCx, roomCz }: {
+function FacilityMemberSprite({ member, facilityType, slotIndex, roomCx, roomCz }: {
   member: Member;
+  facilityType: FacilityType;
   slotIndex: number;
   roomCx: number;
   roomCz: number;
 }) {
-  const idleDirRef = useRef<SpriteDirection>(CHOP_SPOTS[slotIndex].facing);
-  const isMovingRef = useRef(false); // idle pose for non-woodcutting slots
+  const spots = FACILITY_SPOTS[facilityType] ?? FACILITY_SPOTS['training-yard'];
+  const spot = spots[slotIndex] ?? spots[0];
+
+  const dirRef = useRef<SpriteDirection>(spot.facing);
+  const isMovingRef = useRef(true);
+
+  usePatrolAnimation(dirRef, isMovingRef, spot.facing);
 
   const civConfig = CIV_CONFIG[member.civilization as Civilization];
   const archetype = member.archetype ?? civConfig?.archetypes[0] ?? 'warrior';
   const gender = member.gender ?? 'M';
   const basePath = getSpritePath(member.civilization, archetype, gender);
 
-  const { offset } = CHOP_SPOTS[slotIndex];
-  const x = roomCx + offset[0];
-  const z = roomCz + offset[1];
+  const x = roomCx + spot.offset[0];
+  const z = roomCz + spot.offset[1];
+  const isWoodcutting = facilityType === 'logging-site' && slotIndex === 0;
 
   return (
     <group position={[x, 1.05, z]}>
@@ -67,16 +135,10 @@ function ChoppingMemberSprite({ member, slotIndex, roomCx, roomCz }: {
       </mesh>
       <Billboard>
         <Suspense fallback={null}>
-          {slotIndex === 0 ? (
-            /* Slot 0: play woodcutting-8-frames/east animation */
+          {isWoodcutting ? (
             <WoodcuttingAnimator basePath={basePath} />
           ) : (
-            /* Other slots: idle walking sprite (frame 0) */
-            <SpriteAnimator
-              basePath={basePath}
-              directionRef={idleDirRef}
-              isMovingRef={isMovingRef}
-            />
+            <SpriteAnimator basePath={basePath} directionRef={dirRef} isMovingRef={isMovingRef} />
           )}
         </Suspense>
         <NameLabel name={member.name} />
@@ -89,10 +151,11 @@ interface RoomMemberSpritesProps {
   assignedMemberIds: string[];
   roomCx: number;
   roomCz: number;
+  facilityType: FacilityType;
 }
 
-/** Renders up to 4 assigned members at chopping positions in the facility room */
-export function RoomMemberSprites({ assignedMemberIds, roomCx, roomCz }: RoomMemberSpritesProps) {
+/** Renders up to 4 assigned members at facility-appropriate positions */
+export function RoomMemberSprites({ assignedMemberIds, roomCx, roomCz, facilityType }: RoomMemberSpritesProps) {
   const founder = useGameStore((s) => s.founder);
   const roster = useGameStore((s) => s.roster);
 
@@ -112,9 +175,10 @@ export function RoomMemberSprites({ assignedMemberIds, roomCx, roomCz }: RoomMem
   return (
     <group>
       {assignedMembers.map((member, i) => (
-        <ChoppingMemberSprite
+        <FacilityMemberSprite
           key={member.id}
           member={member}
+          facilityType={facilityType}
           slotIndex={i}
           roomCx={roomCx}
           roomCz={roomCz}
