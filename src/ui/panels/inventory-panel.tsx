@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useGameStore } from '@/game/state/store';
-import { getInventorySlots, getMaxSlots, getUsedSlots } from '@/game/state/inventory-slice';
+import { getInventorySlots } from '@/game/state/inventory-slice';
 import type { ItemID } from '@/game/data/items';
 import { InventorySlot } from '@/ui/components/inventory-slot';
 import { ItemDetailPopup } from '@/ui/components/item-detail-popup';
@@ -14,11 +14,8 @@ interface InventoryPanelProps {
 
 export function InventoryPanel({ onClose }: InventoryPanelProps) {
   const items = useGameStore((s) => s.inventory.items);
-  const furniture = useGameStore((s) => s.guildHall.furniture);
 
   const slots = useMemo(() => getInventorySlots(items), [items]);
-  const maxSlots = useMemo(() => getMaxSlots(furniture), [furniture]);
-  const usedSlots = getUsedSlots(items);
 
   // Track selection by itemId (stable across sort changes) instead of index
   const [selectedItemId, setSelectedItemId] = useState<ItemID | null>(null);
@@ -36,10 +33,6 @@ export function InventoryPanel({ onClose }: InventoryPanelProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  // Build empty slots to fill remaining capacity
-  const emptyCount = Math.max(0, maxSlots - usedSlots);
-  const capacityPct = maxSlots > 0 ? Math.min(100, (usedSlots / maxSlots) * 100) : 0;
-
   // Aggregate total quantity per itemId for the detail popup
   const selectedTotalQty = selectedItemId ? (items[selectedItemId] ?? 0) : 0;
 
@@ -52,14 +45,6 @@ export function InventoryPanel({ onClose }: InventoryPanelProps) {
           <button className="inventory-panel__close" onClick={onClose}>✕</button>
         </div>
 
-        {/* Capacity */}
-        <div className="inventory-capacity">
-          {usedSlots}/{maxSlots} slots
-          <div className="inventory-capacity__bar">
-            <div className="inventory-capacity__fill" style={{ width: `${capacityPct}%` }} />
-          </div>
-        </div>
-
         {/* Grid */}
         <div className="inventory-grid">
           {slots.map((slot, i) => (
@@ -69,9 +54,6 @@ export function InventoryPanel({ onClose }: InventoryPanelProps) {
               isSelected={selectedItemId === slot.itemId}
               onClick={() => handleSlotClick(slot.itemId)}
             />
-          ))}
-          {Array.from({ length: emptyCount }, (_, i) => (
-            <InventorySlot key={`empty-${i}`} />
           ))}
         </div>
 
