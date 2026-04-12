@@ -3,6 +3,7 @@ import type { VfxPreset } from '../presets/preset-types'
 import { presetsByCategory, categoryOrder } from '../presets/preset-registry'
 
 const CATEGORY_META: Record<string, { emoji: string; label: string }> = {
+  'weapon-fx': { emoji: '⚔️', label: 'Weapon FX — Slash/Beam/Trail' },
   'linh-son': { emoji: '🔥', label: 'Linh Sơn — Earth/Fire' },
   'de-quoc': { emoji: '⚡', label: 'Đế Quốc — Electric/Tech' },
   'thien-lu': { emoji: '✨', label: 'Thiên Lữ — Celestial/Wind' },

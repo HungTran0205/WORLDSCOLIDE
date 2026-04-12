@@ -128,14 +128,15 @@ export function InstancedSpriteRenderer({
       const isAlive = stateBuffer.getIsAlive(i);
       const animState = stateBuffer.getAnimState(i);
 
+      // --- Scale (read first; needed for ground anchor below) ---
+      const scale = stateBuffer.getScale(i);
+
       // --- Position ---
+      // Sprite art is bottom-anchored in atlas cells, so quad bottom = visual feet.
+      // PlaneGeometry(1,1) is centered → shift up by scaleY/2 to put feet on ground (Y=0).
       const pos = stateBuffer.getCurrentPosition(i);
       const flyingOffset = stateBuffer.isFlying(i) ? 1.2 : 0;
-      // Y offset: sprites render at ~0.65 above ground + flying offset
-      _pos.set(pos.x, 0.65 + flyingOffset, pos.z);
-
-      // --- Scale ---
-      const scale = stateBuffer.getScale(i);
+      _pos.set(pos.x, scale.y * 0.5 + flyingOffset, pos.z);
       const facingRight = stateBuffer.isFacingRight(i);
       const isEnemy = !stateBuffer.isAlly(i);
 

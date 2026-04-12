@@ -191,9 +191,11 @@ export async function buildCombatAtlases(
 
         const col = i % ATLAS_COLS;
         const row = startRow + Math.floor(i / ATLAS_COLS);
-        // Center sprite in cell (handles mixed dimensions, e.g. 84×84 enemy in 132×132 cell)
+        // Bottom-anchor sprite in cell: feet of source art (already shifted to canvas
+        // bottom edge by scripts/anchor-sprites-bottom.py) align with cell bottom edge.
+        // Combined with renderer Y = scaleY/2, this places feet exactly on ground Y=0.
         const ox = Math.floor((cellW - img.width) / 2);
-        const oy = Math.floor((cellH - img.height) / 2);
+        const oy = cellH - img.height;
         ctx.drawImage(img, col * cellW + ox, row * cellH + oy);
       }
 

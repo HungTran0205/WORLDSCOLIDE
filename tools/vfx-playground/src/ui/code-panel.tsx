@@ -27,6 +27,30 @@ function formatValue(key: string, value: unknown): string {
 }
 
 function generateCode(preset: VfxPreset): string {
+  if (preset.kind === 'meshline') {
+    // Meshline export = constructor + configure block
+    const lines: string[] = []
+    lines.push('// makio-meshline')
+    lines.push('const ml = new MeshLine()')
+    lines.push('ml.configure({')
+    lines.push(`  // shape: ${preset.shape}`)
+    lines.push(`  color: new Color("${preset.color}"),`)
+    if (preset.gradientColor) lines.push(`  gradientColor: new Color("${preset.gradientColor}"),`)
+    lines.push(`  lineWidth: ${preset.lineWidth},`)
+    lines.push(`  opacity: ${preset.opacity},`)
+    lines.push('  transparent: true,')
+    lines.push('})')
+    if (preset.additive) {
+      lines.push('ml.material.blending = AdditiveBlending')
+      lines.push('ml.material.depthWrite = false')
+    }
+    if (preset.rotation) {
+      lines.push(`ml.rotation.set(${preset.rotation.join(', ')})`)
+    }
+    lines.push('// shapeParams: ' + JSON.stringify(preset.shapeParams))
+    return lines.join('\n')
+  }
+
   const lines: string[] = ['<VFXParticles']
   const entries = Object.entries(preset.props)
 
