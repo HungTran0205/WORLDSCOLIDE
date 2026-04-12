@@ -142,7 +142,7 @@ export class CombatEngine {
       // and enemy also attacks at T=800, the ally stays 'attacking' for that tick,
       // preventing hit-state from overriding right as the animation finishes.
       if (entity.animStateUntil > 0 && this.time > entity.animStateUntil) {
-        entity.animState = 'idle';
+        entity.animState = 'battle-idle';
         entity.animStateUntil = 0;
       }
 
@@ -189,7 +189,8 @@ export class CombatEngine {
     // Find target
     const target = findTarget(entity, this.entities);
     if (!target) {
-      entity.animState = 'idle';
+      // No target remaining — combat winding down. Battle-idle stance.
+      entity.animState = 'battle-idle';
       return;
     }
     entity.targetId = target.id;
@@ -269,10 +270,12 @@ export class CombatEngine {
     if (entity._hasDeQuocBuff) damage = Math.floor(damage * 1.05);
 
     // Block check (50% damage reduction on proc)
+    let blocked = false;
     if (target.blockRate > 0 && Math.random() < target.blockRate) {
       const reducedDamage = Math.max(1, Math.floor(damage * 0.5));
       this.eventQueue.push({ type: 'block', attackerId: entity.id, targetId: target.id, reducedDamage });
       damage = reducedDamage;
+      blocked = true;
     }
 
     target.currentHp -= damage;
@@ -283,11 +286,21 @@ export class CombatEngine {
     // Anim states
     entity.animState = 'attacking';
     entity.animStateUntil = this.time + ANIM_ATTACK_DURATION;
-    // Don't interrupt target's own attack animation — hit-flash is driven by
-    // recentEvents in CombatEntitySprite and doesn't need animState='hit'
-    if (target.currentHp > 0 && target.animState !== 'attacking' && target.animState !== 'skill') {
-      target.animState = 'hit';
-      target.animStateUntil = this.time + 200;
+    // Block animation has highest priority — overrides attacking/skill so the
+    // player actually sees the defensive reaction. Hit still defers to ongoing
+    // attack/skill swings to avoid interrupting player animations.
+    if (target.currentHp > 0 && target.animState !== 'dead') {
+      if (blocked) {
+        target.animState = 'blocking';
+        target.animStateUntil = this.time + 400;
+      } else if (
+        target.animState !== 'blocking' &&
+        target.animState !== 'attacking' &&
+        target.animState !== 'skill'
+      ) {
+        target.animState = 'hit';
+        target.animStateUntil = this.time + 200;
+      }
     }
 
     // Track passive stacks

@@ -42,6 +42,8 @@ function animStateToAtlasAnim(state: number, isEnemy: boolean): string {
     case ANIM_STATE.skill: return 'attack'; // skill reuses attack sprites
     case ANIM_STATE.dead: return isEnemy ? 'death' : 'walk';
     case ANIM_STATE.hit: return 'walk'; // hit uses walk frame 0
+    case ANIM_STATE['battle-idle']: return 'battle-idle';
+    case ANIM_STATE.blocking: return 'blocking';
     case ANIM_STATE.idle:
     default: return 'walk'; // idle = walk frame 0
   }

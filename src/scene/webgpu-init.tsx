@@ -1,13 +1,17 @@
 /**
- * Renderer factory for R3F v9 — WebGPU with automatic WebGL fallback.
+ * Renderer factory for R3F v9 — WebGPU default, WebGL only when hardware
+ * genuinely can't do WebGPU.
  *
- * WebGPU and WebGL share GPU context — if WebGPU renderer is created first,
- * it consumes the context and WebGL can't create one until page reload.
- * We solve this by persisting WebGPU viability in localStorage:
+ * Policy:
+ * 1. Hardware/browser has no `navigator.gpu` → fallback WebGL (terminal)
+ * 2. `requestAdapter()` returns null → no GPU adapter → fallback WebGL (terminal)
+ * 3. `WebGPURenderer.init()` throws → fallback WebGL for THIS page load only;
+ *    no persisted flag — next reload will retry WebGPU.
+ * 4. Device lost mid-session → warn + reload (no persisted flag, will retry).
  *
- * 1. First visit: try WebGPU → if device lost → save flag → auto-reload
- * 2. Subsequent visits: flag exists → skip WebGPU → use WebGL directly
- * 3. Settings can clear the flag to retry WebGPU after driver updates
+ * Why no persisted flag: transient driver/context failures should not
+ * permanently downgrade the user to WebGL. Hardware capability is
+ * re-checked each load; only real absence blocks WebGPU.
  */
 import { useEffect, useRef } from 'react';
 import { InstancedBufferGeometry, WebGLRenderer } from 'three';
@@ -33,51 +37,52 @@ Object.defineProperty(InstancedBufferGeometry.prototype, 'instanceCount', {
   enumerable: true,
 });
 
-const WEBGPU_FAILED_KEY = 'webgpu-device-failed';
-
-/** Check if WebGPU previously failed on this system */
-export function isWebGPUBlocked(): boolean {
-  return localStorage.getItem(WEBGPU_FAILED_KEY) === '1';
-}
-
-/** Clear the WebGPU failure flag (e.g. from Settings after driver update) */
-export function clearWebGPUBlock(): void {
-  localStorage.removeItem(WEBGPU_FAILED_KEY);
-}
-
 /** Async renderer factory for R3F Canvas gl prop */
 export async function createWebGPURenderer(props: Record<string, unknown>) {
   // alpha: true so canvas is transparent — lets CSS background show through
   const glProps = { ...props, alpha: true };
 
-  /* Try WebGPU only if not previously blocked */
-  if (!isWebGPUBlocked() && navigator.gpu) {
-    try {
-      const { WebGPURenderer } = await import('three/webgpu');
-      const renderer = new WebGPURenderer(glProps as any);
-      await renderer.init();
-
-      /* Watch for device loss — if it happens, persist flag and reload
-       * so next load goes straight to WebGL with a clean GPU context. */
-      const device = (renderer as any).backend?.device as GPUDevice | undefined;
-      if (device) {
-        device.lost.then(() => {
-          console.warn('[Renderer] WebGPU device lost — saving flag and reloading');
-          localStorage.setItem(WEBGPU_FAILED_KEY, '1');
-          window.location.reload();
-        });
-      }
-
-      console.log('[Renderer] WebGPU active');
-      return renderer;
-    } catch (e) {
-      console.warn('[Renderer] WebGPU init failed:', e);
-      localStorage.setItem(WEBGPU_FAILED_KEY, '1');
-    }
+  // Hardware capability check — the only reason we permanently downgrade
+  if (!navigator.gpu) {
+    console.log('[Renderer] WebGL active — navigator.gpu unavailable');
+    return new WebGLRenderer(glProps as any);
   }
 
-  console.log('[Renderer] WebGL active');
-  return new WebGLRenderer(glProps as any);
+  // Probe adapter before constructing the renderer — null means no
+  // compatible GPU (blocklisted driver, software rasterizer only, etc.)
+  try {
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) {
+      console.log('[Renderer] WebGL active — no WebGPU adapter available');
+      return new WebGLRenderer(glProps as any);
+    }
+  } catch (e) {
+    console.warn('[Renderer] WebGPU adapter probe failed, falling back to WebGL:', e);
+    return new WebGLRenderer(glProps as any);
+  }
+
+  // Try WebGPU init — transient failures here fall back for this load only,
+  // but leave no persistent flag so the next reload retries.
+  try {
+    const { WebGPURenderer } = await import('three/webgpu');
+    const renderer = new WebGPURenderer(glProps as any);
+    await renderer.init();
+
+    // Device loss: warn + reload. No flag — next load retries WebGPU.
+    const device = (renderer as any).backend?.device as GPUDevice | undefined;
+    if (device) {
+      device.lost.then((info) => {
+        console.warn('[Renderer] WebGPU device lost — reloading to retry', info);
+        window.location.reload();
+      });
+    }
+
+    console.log('[Renderer] WebGPU active');
+    return renderer;
+  } catch (e) {
+    console.warn('[Renderer] WebGPU init failed, falling back to WebGL:', e);
+    return new WebGLRenderer(glProps as any);
+  }
 }
 
 /** Place inside Canvas with frameloop="demand" — ensures first frames render after mount */

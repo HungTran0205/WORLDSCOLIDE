@@ -7,7 +7,7 @@
  */
 
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import type { MeshLine } from 'makio-meshline';
 import { createSlashMeshline } from './combat-slash-meshline';
 
@@ -68,10 +68,16 @@ interface SlotMeta {
 export const CombatSlashPool = forwardRef<CombatSlashPoolHandle>(
   function CombatSlashPool(_, ref) {
     const orderRef = useRef(0);
+    // makio-meshline uses WebGPU-only TSL NodeMaterial — the generated shader
+    // is invalid on the WebGL fallback renderer and crashes program compilation
+    // in three.js `resolveIncludes`. Skip instantiation entirely when WebGL.
+    const gl = useThree(s => s.gl);
+    const isWebGPU = 'isWebGPURenderer' in gl;
 
     const { pool, meta } = useMemo(() => {
       const instances: MeshLine[] = [];
       const slotMeta: SlotMeta[] = [];
+      if (!isWebGPU) return { pool: instances, meta: slotMeta };
       for (let i = 0; i < POOL_SIZE; i++) {
         const ml = createSlashMeshline();
         ml.visible = false;
@@ -80,7 +86,7 @@ export const CombatSlashPool = forwardRef<CombatSlashPoolHandle>(
         slotMeta.push({ active: false, elapsed: 0, order: 0 });
       }
       return { pool: instances, meta: slotMeta };
-    }, []);
+    }, [isWebGPU]);
 
     // Re-apply renderOrder post-mount (makio-meshline's lazy build can reset
     // it on first render) + dispose geometry/material on unmount.
@@ -97,6 +103,8 @@ export const CombatSlashPool = forwardRef<CombatSlashPoolHandle>(
 
     useImperativeHandle(ref, () => ({
       spawn(x, z, facingRight) {
+        // Pool empty on WebGL fallback — spawn is a no-op.
+        if (pool.length === 0) return;
         // Prefer inactive slot; otherwise recycle the oldest.
         let slot = -1;
         for (let i = 0; i < meta.length; i++) {

@@ -7,17 +7,30 @@
 import * as THREE from 'three';
 import { SpriteRegistry } from './sprite-registry';
 import type { SpriteTypeEntry } from './sprite-registry';
-import { getSpritePath, getRunningFramePath, getAttackFramePath, getEnemyAnimFramePath } from '../sprite-path-resolver';
+import {
+  getSpritePath,
+  getRunningFramePath,
+  getAttackFramePath,
+  getBattleIdleFramePath,
+  getBlockingFramePath,
+  getEnemyAnimFramePath,
+} from '../sprite-path-resolver';
 import type { Member } from '@/game/state/game-state';
 import type { EnemyTemplate } from '@/game/data/enemies';
 
-/** Max atlas dimension — safe GPU limit */
-const MAX_ATLAS_SIZE = 4096;
+/** Max atlas dimension — WebGPU min spec `maxTextureDimension2D` is 8192,
+ *  safe on all modern GPUs. Previous 4096 caused row overflow once battle-idle
+ *  and blocking anims bumped total row count past the 4096/cellH threshold
+ *  (e.g. 38+ rows × 168px cellH = ~6.4k px, clipped at 4096 → sprites missing
+ *  + WebGPU device loss under pressure). */
+const MAX_ATLAS_SIZE = 8192;
 /** Columns per row in atlas packing */
 const ATLAS_COLS = 8;
 
 const WALK_FRAMES = 8;
 const ATTACK_FRAMES = 4;
+const BATTLE_IDLE_FRAMES = 4;
+const BLOCKING_FRAMES = 4;
 const ENEMY_WALK_FRAMES = 8;
 const ENEMY_ATTACK_FRAMES = 4;
 const ENEMY_DEATH_FRAMES = 8;
@@ -94,6 +107,26 @@ export async function buildCombatAtlases(
     // Only add if at least one frame loaded
     if (atkImgs.some(img => img !== null)) {
       animations.set('attack', { frames: atkImgs });
+    }
+
+    // Battle-idle frames (combat stance loop) — east direction
+    const biUrls: string[] = [];
+    for (let i = 0; i < BATTLE_IDLE_FRAMES; i++) {
+      biUrls.push(getBattleIdleFramePath(basePath, 'east', i));
+    }
+    const biImgs = await loadImages(biUrls);
+    if (biImgs.some(img => img !== null)) {
+      animations.set('battle-idle', { frames: biImgs });
+    }
+
+    // Blocking frames (one-shot, hold last frame) — east direction
+    const blkUrls: string[] = [];
+    for (let i = 0; i < BLOCKING_FRAMES; i++) {
+      blkUrls.push(getBlockingFramePath(basePath, 'east', i));
+    }
+    const blkImgs = await loadImages(blkUrls);
+    if (blkImgs.some(img => img !== null)) {
+      animations.set('blocking', { frames: blkImgs });
     }
 
     // Determine frame size from first valid image

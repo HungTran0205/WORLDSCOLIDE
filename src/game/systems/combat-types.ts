@@ -33,7 +33,7 @@ export interface CombatEntity {
   targetId?: string | null;
   attackRange?: number;
   moveSpeed?: number;
-  animState?: 'idle' | 'walking' | 'attacking' | 'skill' | 'hit' | 'dead';
+  animState?: 'idle' | 'walking' | 'attacking' | 'skill' | 'hit' | 'dead' | 'battle-idle' | 'blocking';
   facingRight?: boolean;
   archetype?: string;
   gender?: 'M' | 'F';

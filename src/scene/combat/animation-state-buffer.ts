@@ -12,12 +12,16 @@ export const ANIM_STATE = {
   skill: 3,
   hit: 4,
   dead: 5,
+  'battle-idle': 6,
+  blocking: 7,
 } as const;
 
 export type AnimStateName = keyof typeof ANIM_STATE;
 
-/** Map numeric anim state back to string */
-const ANIM_STATE_NAMES: AnimStateName[] = ['idle', 'walking', 'attacking', 'skill', 'hit', 'dead'];
+/** Map numeric anim state back to string — index MUST match numeric enum value */
+const ANIM_STATE_NAMES: AnimStateName[] = [
+  'idle', 'walking', 'attacking', 'skill', 'hit', 'dead', 'battle-idle', 'blocking',
+];
 
 export function animStateToName(state: number): AnimStateName {
   return ANIM_STATE_NAMES[state] ?? 'idle';
@@ -78,6 +82,8 @@ const DEFAULT_FPS: Record<number, number> = {
   [ANIM_STATE.skill]: 12,
   [ANIM_STATE.hit]: 10,
   [ANIM_STATE.dead]: 8,
+  [ANIM_STATE['battle-idle']]: 6,
+  [ANIM_STATE.blocking]: 10,
 };
 
 /** Default frame counts per animation state */
@@ -88,6 +94,8 @@ const DEFAULT_FRAME_COUNT: Record<number, number> = {
   [ANIM_STATE.skill]: 4,
   [ANIM_STATE.hit]: 1,
   [ANIM_STATE.dead]: 8,
+  [ANIM_STATE['battle-idle']]: 4,
+  [ANIM_STATE.blocking]: 4,
 };
 
 /** Hit flash duration in seconds */
@@ -290,8 +298,8 @@ export class AnimationStateBuffer {
         this.data[base + O_ELAPSED] -= frameInterval;
         const currentFrame = this.data[base + O_FRAME_INDEX];
 
-        if (animState === ANIM_STATE.dead) {
-          // Death: play once, freeze on last frame
+        if (animState === ANIM_STATE.dead || animState === ANIM_STATE.blocking) {
+          // Play once, freeze on last frame
           if (currentFrame < totalFrames - 1) {
             this.data[base + O_FRAME_INDEX] = currentFrame + 1;
           }

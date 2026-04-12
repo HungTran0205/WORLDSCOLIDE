@@ -20,6 +20,8 @@ import type { DamageNumberPoolHandle } from './combat/damage-number-pool';
 import { CombatBloomPost } from './combat-bloom-post';
 import { CombatSlashPool } from './combat-slash-pool';
 import type { CombatSlashPoolHandle } from './combat-slash-pool';
+import { CombatArrowPool } from './combat-arrow-pool';
+import type { CombatArrowPoolHandle } from './combat-arrow-pool';
 
 /** Target FPS — pixel art looks best at 24-30fps (Octopath style) */
 const TARGET_FPS = 30;
@@ -58,9 +60,11 @@ function FrameRateLimiter() {
 function InstancedCombatRenderer({
   damagePoolRef,
   slashPoolRef,
+  arrowPoolRef,
 }: {
   damagePoolRef: React.RefObject<DamageNumberPoolHandle | null>;
   slashPoolRef: React.RefObject<CombatSlashPoolHandle | null>;
+  arrowPoolRef: React.RefObject<CombatArrowPoolHandle | null>;
 }) {
   const renderState = getCombatRenderState();
 
@@ -82,6 +86,7 @@ function InstancedCombatRenderer({
       <CombatTextLayer stateBuffer={bridge.buffer} />
       <DamageNumberPool ref={damagePoolRef} />
       <CombatSlashPool ref={slashPoolRef} />
+      <CombatArrowPool ref={arrowPoolRef} />
     </>
   );
 }
@@ -91,6 +96,7 @@ export function CombatArenaCanvas() {
   const missionId = useGameStore(s => s.arenaMissionId);
   const damagePoolRef = useRef<DamageNumberPoolHandle | null>(null);
   const slashPoolRef = useRef<CombatSlashPoolHandle | null>(null);
+  const arrowPoolRef = useRef<CombatArrowPoolHandle | null>(null);
 
   const zone = useMemo(() => {
     if (!missionId) return undefined;
@@ -105,7 +111,7 @@ export function CombatArenaCanvas() {
         frameloop="demand"
         orthographic
         shadows
-        camera={{ zoom: 80, position: [0, 8.4, 12], near: 0.1, far: 1000 }}
+        camera={{ zoom: 76, position: [0, 11.7, 12], near: 0.1, far: 1000 }}
         dpr={1}
         gl={createWebGPURenderer}
         style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}
@@ -115,6 +121,7 @@ export function CombatArenaCanvas() {
         <CombatFightController
           damagePoolRef={damagePoolRef}
           slashPoolRef={slashPoolRef}
+          arrowPoolRef={arrowPoolRef}
         />
         <color attach="background" args={[biome.fogColor]} />
 
@@ -126,6 +133,7 @@ export function CombatArenaCanvas() {
           <InstancedCombatRenderer
             damagePoolRef={damagePoolRef}
             slashPoolRef={slashPoolRef}
+            arrowPoolRef={arrowPoolRef}
           />
           {/* Bloom postprocessing — mounts last so it sees the finished frame */}
           <CombatBloomPost />

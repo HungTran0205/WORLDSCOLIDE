@@ -17,8 +17,6 @@ useGLTF.preload('/arena/forest/3dprops/optimized/p_stump.glb');
 useGLTF.preload('/arena/forest/3dprops/optimized/p_bush.glb');
 useGLTF.preload('/arena/forest/3dprops/optimized/p_boulder.glb');
 useGLTF.preload('/arena/forest/3dprops/optimized/p_mush_glow.glb');
-useGLTF.preload('/arena/forest/3dprops/optimized/p_log_fallen.glb');
-useGLTF.preload('/arena/forest/3dprops/optimized/p_rock_small.glb');
 
 // Preload fire sprite
 useTexture.preload('/arena/cave/props/fire-flame.png');

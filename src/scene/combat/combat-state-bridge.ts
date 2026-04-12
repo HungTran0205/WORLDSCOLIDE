@@ -17,6 +17,7 @@ import type { SpriteRegistry } from './sprite-registry';
 import { getSpritePath } from '../sprite-path-resolver';
 import type { DamageNumberPoolHandle } from './damage-number-pool';
 import type { CombatSlashPoolHandle } from '../combat-slash-pool';
+import type { CombatArrowPoolHandle } from '../combat-arrow-pool';
 
 const DEFAULT_SPRITE_SCALE = 2.1;
 const BOSS_SPRITE_SCALE = 3.0;
@@ -28,6 +29,8 @@ export class CombatStateBridge {
   private damagePoolRef: React.RefObject<DamageNumberPoolHandle | null> | null = null;
   /** Ref to slash VFX pool (LS-WARRIOR auto-attack) */
   private slashPoolRef: React.RefObject<CombatSlashPoolHandle | null> | null = null;
+  /** Ref to arrow projectile pool (LS-SCOUT auto-attack) */
+  private arrowPoolRef: React.RefObject<CombatArrowPoolHandle | null> | null = null;
 
   constructor(maxEntities = 48) {
     this.buffer = new AnimationStateBuffer(maxEntities);
@@ -41,6 +44,11 @@ export class CombatStateBridge {
   /** Set the slash VFX pool ref (spawned on LS-WARRIOR auto-attacks) */
   setSlashPool(ref: React.RefObject<CombatSlashPoolHandle | null>): void {
     this.slashPoolRef = ref;
+  }
+
+  /** Set the arrow projectile pool ref (spawned on LS-SCOUT auto-attacks) */
+  setArrowPool(ref: React.RefObject<CombatArrowPoolHandle | null>): void {
+    this.arrowPoolRef = ref;
   }
 
   /** Initialize buffer slots from engine entities (call once when combat starts) */
@@ -125,6 +133,7 @@ export class CombatStateBridge {
   emitCombatEvents(events: CombatEvent[], engine: CombatEngine): void {
     const pool = this.damagePoolRef?.current;
     const slashPool = this.slashPoolRef?.current;
+    const arrowPool = this.arrowPoolRef?.current;
 
     for (const event of events) {
       if (event.type === 'auto-attack' || event.type === 'skill-use') {
@@ -143,15 +152,30 @@ export class CombatStateBridge {
           }
         }
 
-        // Spawn LS-WARRIOR slash VFX on auto-attack only
-        if (slashPool && event.type === 'auto-attack') {
+        // Archetype-specific attacker VFX (auto-attack only)
+        if (event.type === 'auto-attack') {
           const attacker = engine.entities.find(e => e.id === event.attackerId);
-          if (attacker && this.isWarrior(attacker)) {
-            slashPool.spawn(
-              attacker.position.x,
-              attacker.position.z,
-              attacker.facingRight,
-            );
+          if (attacker) {
+            // LS-WARRIOR slash arc
+            if (slashPool && this.isWarrior(attacker)) {
+              slashPool.spawn(
+                attacker.position.x,
+                attacker.position.z,
+                attacker.facingRight,
+              );
+            }
+            // LS-SCOUT straight-line arrow projectile (allies only)
+            if (arrowPool && attacker.isAlly && this.isScout(attacker)) {
+              const tgt = engine.entities.find(e => e.id === event.targetId);
+              if (tgt) {
+                arrowPool.spawn(
+                  attacker.position.x,
+                  attacker.position.z,
+                  tgt.position.x,
+                  tgt.position.z,
+                );
+              }
+            }
           }
         }
       }
@@ -212,11 +236,17 @@ export class CombatStateBridge {
     this.entitySlotMap.clear();
     this.damagePoolRef = null;
     this.slashPoolRef = null;
+    this.arrowPoolRef = null;
   }
 
   /** LS-WARRIOR identity — both genders, scoped to LinhSon civilization. */
   private isWarrior(e: ArenaEntity): boolean {
     return e.civilization === 'LinhSon' && e.archetype === 'warrior';
+  }
+
+  /** LS-SCOUT identity — both genders, scoped to LinhSon civilization. */
+  private isScout(e: ArenaEntity): boolean {
+    return e.civilization === 'LinhSon' && e.archetype === 'scout';
   }
 
   // --- Private helpers ---
@@ -256,6 +286,8 @@ export class CombatStateBridge {
         case 'walk': animState = 1; break;
         case 'attack': animState = 2; break;
         case 'death': animState = 5; break;
+        case 'battle-idle': animState = 6; break;
+        case 'blocking': animState = 7; break;
         default: continue;
       }
       this.buffer.setAnimFrameCount(slot, animState, animInfo.frameCount);

@@ -45,6 +45,18 @@ export function getAttackFramePath(basePath: string, direction: SpriteDirection,
   return `${basePath}/animations/attack/${direction}/frame_${padded}.png`;
 }
 
+/** Build path to a character battle-idle animation frame (combat stance) */
+export function getBattleIdleFramePath(basePath: string, direction: SpriteDirection, frame: number): string {
+  const padded = String(frame).padStart(3, '0');
+  return `${basePath}/animations/battle-idle/${direction}/frame_${padded}.png`;
+}
+
+/** Build path to a character blocking animation frame */
+export function getBlockingFramePath(basePath: string, direction: SpriteDirection, frame: number): string {
+  const padded = String(frame).padStart(3, '0');
+  return `${basePath}/animations/blocking/${direction}/frame_${padded}.png`;
+}
+
 /** Build path to an enemy animation frame (west direction only on disk) */
 export function getEnemyAnimFramePath(spriteId: string, anim: string, frame: number): string {
   const padded = String(frame).padStart(3, '0');
