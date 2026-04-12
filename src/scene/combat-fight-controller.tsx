@@ -22,6 +22,7 @@ import { CombatStateBridge } from './combat/combat-state-bridge';
 import { preloadCombatAtlases } from './combat/mega-atlas-builder';
 import type { MegaAtlasResult } from './combat/mega-atlas-builder';
 import type { DamageNumberPoolHandle } from './combat/damage-number-pool';
+import type { CombatSlashPoolHandle } from './combat-slash-pool';
 import type { CanvasTexture } from 'three';
 import type { SpriteRegistry } from './combat/sprite-registry';
 
@@ -45,8 +46,10 @@ export function getCombatRenderState(): CombatRenderState | null {
 
 export function CombatFightController({
   damagePoolRef,
+  slashPoolRef,
 }: {
   damagePoolRef?: React.RefObject<DamageNumberPoolHandle | null>;
+  slashPoolRef?: React.RefObject<CombatSlashPoolHandle | null>;
 }) {
   const engineRef = useRef<CombatEngine | null>(null);
   const waveManagerRef = useRef<WaveManager | null>(null);
@@ -122,6 +125,7 @@ export function CombatFightController({
       const bridge = new CombatStateBridge();
       bridge.initFromEngine(engine, result.registry);
       if (damagePoolRef) bridge.setDamagePool(damagePoolRef);
+      if (slashPoolRef) bridge.setSlashPool(slashPoolRef);
       bridgeRef.current = bridge;
 
       // Expose render state for CombatArena
@@ -161,6 +165,13 @@ export function CombatFightController({
       bridgeRef.current.setDamagePool(damagePoolRef);
     }
   }, [damagePoolRef]);
+
+  // Update slash pool ref when it changes
+  useEffect(() => {
+    if (bridgeRef.current && slashPoolRef) {
+      bridgeRef.current.setSlashPool(slashPoolRef);
+    }
+  }, [slashPoolRef]);
 
   // Tick engine each frame — skip when debug paused
   const debugPaused = useArenaDebug()?.paused ?? false;

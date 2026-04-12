@@ -17,6 +17,9 @@ import { InstancedHpBars } from './combat/instanced-hp-bars';
 import { CombatTextLayer } from './combat/combat-text-layer';
 import { DamageNumberPool } from './combat/damage-number-pool';
 import type { DamageNumberPoolHandle } from './combat/damage-number-pool';
+import { CombatBloomPost } from './combat-bloom-post';
+import { CombatSlashPool } from './combat-slash-pool';
+import type { CombatSlashPoolHandle } from './combat-slash-pool';
 
 /** Target FPS — pixel art looks best at 24-30fps (Octopath style) */
 const TARGET_FPS = 30;
@@ -54,8 +57,10 @@ function FrameRateLimiter() {
  */
 function InstancedCombatRenderer({
   damagePoolRef,
+  slashPoolRef,
 }: {
   damagePoolRef: React.RefObject<DamageNumberPoolHandle | null>;
+  slashPoolRef: React.RefObject<CombatSlashPoolHandle | null>;
 }) {
   const renderState = getCombatRenderState();
 
@@ -76,6 +81,7 @@ function InstancedCombatRenderer({
       <InstancedHpBars stateBuffer={bridge.buffer} />
       <CombatTextLayer stateBuffer={bridge.buffer} />
       <DamageNumberPool ref={damagePoolRef} />
+      <CombatSlashPool ref={slashPoolRef} />
     </>
   );
 }
@@ -84,6 +90,7 @@ export function CombatArenaCanvas() {
   const entities = useGameStore(s => s.arenaEntities);
   const missionId = useGameStore(s => s.arenaMissionId);
   const damagePoolRef = useRef<DamageNumberPoolHandle | null>(null);
+  const slashPoolRef = useRef<CombatSlashPoolHandle | null>(null);
 
   const zone = useMemo(() => {
     if (!missionId) return undefined;
@@ -105,7 +112,10 @@ export function CombatArenaCanvas() {
       >
         <WebGPUInit />
         <FrameRateLimiter />
-        <CombatFightController damagePoolRef={damagePoolRef} />
+        <CombatFightController
+          damagePoolRef={damagePoolRef}
+          slashPoolRef={slashPoolRef}
+        />
         <color attach="background" args={[biome.fogColor]} />
 
         <Suspense fallback={null}>
@@ -113,7 +123,12 @@ export function CombatArenaCanvas() {
           {/* Shadows still use store entities (static enough for throttled sync) */}
           <CombatShadowLayer entities={entities} />
           {/* New instanced renderers — driven by AnimationStateBuffer */}
-          <InstancedCombatRenderer damagePoolRef={damagePoolRef} />
+          <InstancedCombatRenderer
+            damagePoolRef={damagePoolRef}
+            slashPoolRef={slashPoolRef}
+          />
+          {/* Bloom postprocessing — mounts last so it sees the finished frame */}
+          <CombatBloomPost />
         </Suspense>
 
         {/* Dev-only overlays */}

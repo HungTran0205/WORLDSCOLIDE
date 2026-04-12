@@ -946,9 +946,9 @@ New: Check floorTiles.length > 36 (6x6 grid fully painted)
 Member (archetype, gender, civilization)
     ↓
 getSpritePath(civ, archetype, gender):
-  1. Look up CIV_SPRITE_PREFIX[civ] (TS=LinhSon, DQ=DeQuoc, TL=ThienLu)
+  1. Look up CIV_SPRITE_PREFIX[civ] (LS=LinhSon, DQ=DeQuoc, TL=ThienLu)
   2. Build path: /sprites/characters/{PREFIX}-{ARCH}-{GENDER}
-     → Example: /sprites/characters/TS-WARRIOR-M
+     → Example: /sprites/characters/LS-WARRIOR-M
     ↓
 Returns base path for sprite folder
 ```
@@ -1005,15 +1005,15 @@ Fallback Strategy:
 
 ```
 /sprites/characters/
-├── TS-WARRIOR-M/           # LinhSon Warrior Male
+├── LS-WARRIOR-M/           # LinhSon Warrior Male
 │   └── animations/walking-8-frames/
 │       ├── north/          # 8 walking frames facing north
 │       ├── south/          # 8 walking frames facing south
 │       ├── east/           # 8 walking frames facing east
 │       └── west/           # 8 walking frames facing west
-├── TS-WARRIOR-F/           # LinhSon Warrior Female
-├── TS-SCOUT-M/             # LinhSon Scout Male
-├── TS-SCOUT-F/             # LinhSon Scout Female
+├── LS-WARRIOR-F/           # LinhSon Warrior Female
+├── LS-SCOUT-M/             # LinhSon Scout Male
+├── LS-SCOUT-F/             # LinhSon Scout Female
 ├── DQ-ENGINEER-M/          # DeQuoc Engineer Male
 ├── DQ-ENGINEER-F/
 ├── DQ-SCHOLAR-M/           # DeQuoc Scholar Male

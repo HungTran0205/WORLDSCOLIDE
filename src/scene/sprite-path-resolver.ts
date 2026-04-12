@@ -7,16 +7,16 @@ import type { Civilization } from '@/game/data/civilization-config';
 
 export type SpriteDirection = 'north' | 'south' | 'east' | 'west';
 
-/** Sprite folder prefix per civilization (TS for LinhSon, not LS) */
+/** Sprite folder prefix per civilization — matches CIV_CONFIG.shortName. */
 const CIV_SPRITE_PREFIX: Record<Civilization, string> = {
-  LinhSon: 'TS',
+  LinhSon: 'LS',
   DeQuoc: 'DQ',
   ThienLu: 'TL',
 };
 
 /** Build base path to a character's sprite folder */
 export function getSpritePath(civilization: string, archetype: string, gender: 'M' | 'F'): string {
-  const prefix = CIV_SPRITE_PREFIX[civilization as Civilization] ?? 'TS';
+  const prefix = CIV_SPRITE_PREFIX[civilization as Civilization] ?? 'LS';
   const arch = archetype.toUpperCase();
   return `/sprites/characters/${prefix}-${arch}-${gender}`;
 }

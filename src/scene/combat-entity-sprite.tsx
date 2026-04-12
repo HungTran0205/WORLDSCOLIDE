@@ -109,7 +109,7 @@ export function CombatEntitySprite({ entity }: CombatEntitySpriteProps) {
       return getSpritePath(entity.civilization, entity.archetype, entity.gender ?? 'M');
     }
     if (entity.spriteId) return null;
-    return '/sprites/characters/TS-WARRIOR-M';
+    return '/sprites/characters/LS-WARRIOR-M';
   }, [entity.isAlly, entity.civilization, entity.archetype, entity.gender, entity.spriteId]);
 
   const isDead = entity.animState === 'dead' || entity.currentHp <= 0;

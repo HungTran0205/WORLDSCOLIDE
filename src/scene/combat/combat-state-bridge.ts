@@ -16,6 +16,7 @@ import type { CombatEvent } from '@/game/systems/combat-types';
 import type { SpriteRegistry } from './sprite-registry';
 import { getSpritePath } from '../sprite-path-resolver';
 import type { DamageNumberPoolHandle } from './damage-number-pool';
+import type { CombatSlashPoolHandle } from '../combat-slash-pool';
 
 const DEFAULT_SPRITE_SCALE = 2.1;
 const BOSS_SPRITE_SCALE = 3.0;
@@ -25,6 +26,8 @@ export class CombatStateBridge {
   private entitySlotMap = new Map<string, number>();
   /** Ref to damage number pool for imperative spawning */
   private damagePoolRef: React.RefObject<DamageNumberPoolHandle | null> | null = null;
+  /** Ref to slash VFX pool (LS-WARRIOR auto-attack) */
+  private slashPoolRef: React.RefObject<CombatSlashPoolHandle | null> | null = null;
 
   constructor(maxEntities = 48) {
     this.buffer = new AnimationStateBuffer(maxEntities);
@@ -33,6 +36,11 @@ export class CombatStateBridge {
   /** Set the damage number pool ref for event dispatching */
   setDamagePool(ref: React.RefObject<DamageNumberPoolHandle | null>): void {
     this.damagePoolRef = ref;
+  }
+
+  /** Set the slash VFX pool ref (spawned on LS-WARRIOR auto-attacks) */
+  setSlashPool(ref: React.RefObject<CombatSlashPoolHandle | null>): void {
+    this.slashPoolRef = ref;
   }
 
   /** Initialize buffer slots from engine entities (call once when combat starts) */
@@ -116,6 +124,7 @@ export class CombatStateBridge {
    */
   emitCombatEvents(events: CombatEvent[], engine: CombatEngine): void {
     const pool = this.damagePoolRef?.current;
+    const slashPool = this.slashPoolRef?.current;
 
     for (const event of events) {
       if (event.type === 'auto-attack' || event.type === 'skill-use') {
@@ -131,6 +140,18 @@ export class CombatStateBridge {
               damage: event.damage,
               isCrit: event.isCrit,
             });
+          }
+        }
+
+        // Spawn LS-WARRIOR slash VFX on auto-attack only
+        if (slashPool && event.type === 'auto-attack') {
+          const attacker = engine.entities.find(e => e.id === event.attackerId);
+          if (attacker && this.isWarrior(attacker)) {
+            slashPool.spawn(
+              attacker.position.x,
+              attacker.position.z,
+              attacker.facingRight,
+            );
           }
         }
       }
@@ -190,6 +211,12 @@ export class CombatStateBridge {
     this.buffer.clear();
     this.entitySlotMap.clear();
     this.damagePoolRef = null;
+    this.slashPoolRef = null;
+  }
+
+  /** LS-WARRIOR identity — both genders, scoped to LinhSon civilization. */
+  private isWarrior(e: ArenaEntity): boolean {
+    return e.civilization === 'LinhSon' && e.archetype === 'warrior';
   }
 
   // --- Private helpers ---
@@ -214,7 +241,7 @@ export class CombatStateBridge {
       const basePath = getSpritePath(entity.civilization, entity.archetype, entity.gender ?? 'M');
       return basePath.split('/').pop() ?? basePath;
     }
-    return 'TS-WARRIOR-M'; // fallback
+    return 'LS-WARRIOR-M'; // fallback
   }
 
   /** Update frame counts in buffer from atlas registry for accurate animation */

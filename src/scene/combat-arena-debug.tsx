@@ -15,6 +15,13 @@ export interface DebugBgLayer {
   y: number; z: number; scale: number; opacity: number;
 }
 
+export interface DebugBloom {
+  enabled: boolean;
+  strength: number;
+  radius: number;
+  threshold: number;
+}
+
 export interface ArenaDebugValues {
   bgLayers: [DebugBgLayer];
   groundTileSize: number;
@@ -24,6 +31,7 @@ export interface ArenaDebugValues {
   dioramaScale?: number;
   dioramaY?: number;
   paused: boolean;
+  bloom: DebugBloom;
 }
 
 /* ---------- context ---------- */
@@ -73,6 +81,12 @@ export function ArenaDebugProvider({ config, children }: ProviderProps) {
     }),
     'Vignette': folder({
       vignetteStrength: { value: 0.99, min: 0, max: 1.5, step: 0.01 },
+    }),
+    'Bloom': folder({
+      bloomEnabled:   { value: true,  label: 'enabled' },
+      bloomStrength:  { value: 1.53, min: 0,   max: 3,    step: 0.01, label: 'strength'  },
+      bloomRadius:    { value: 1.00, min: 0,   max: 2,    step: 0.01, label: 'radius'    },
+      bloomThreshold: { value: 0.55, min: 0,   max: 2,    step: 0.01, label: 'threshold' },
     }),
     'Lighting': folder({
       ambientIntensity: { value: config.ambient.intensity, min: 0, max: 3, step: 0.05, label: 'ambient' },
@@ -151,6 +165,12 @@ export function ArenaDebugProvider({ config, children }: ProviderProps) {
       vignette: { strength: ctrl.vignetteStrength },
       lighting: { ambientIntensity: ctrl.ambientIntensity, directionalIntensity: ctrl.directionalIntensity },
       paused: pauseCombat,
+      bloom: {
+        enabled:   ctrl.bloomEnabled,
+        strength:  ctrl.bloomStrength,
+        radius:    ctrl.bloomRadius,
+        threshold: ctrl.bloomThreshold,
+      },
     };
 
     // Reconstruct props3D from Leva values — cast once to avoid repeated unsafe casts
