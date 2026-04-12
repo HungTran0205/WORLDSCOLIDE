@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useGameStore } from '@/game/state/store';
 import { GoldDisplay } from '@/ui/components/gold-display';
 import { ResourceBar } from '@/ui/components/resource-bar';
 import { SaveStatusBadge } from './save-status-badge';
 import { PanelToggle, type PanelId } from './panel-toggle';
 import { RoomNavBar } from './room-nav-bar';
+import { InventoryPanel } from '@/ui/panels/inventory-panel';
 import { formatGameTime } from '@/game/utils/format-game-time';
 import { calcTotalUpkeep } from '@/game/systems/upkeep-system';
 import { getCurrentStep } from '@/game/systems/tutorial-manager';
@@ -29,6 +31,7 @@ export function HUD({ activePanel, setActivePanel }: HUDProps) {
   const dailyUpkeep = useGameStore(selectDailyUpkeep);
   const tutorialStep = useGameStore((s) => s.tutorialStep);
   const memberCount = rosterCount + (hasFounder ? 1 : 0);
+  const [inventoryOpen, setInventoryOpen] = useState(false);
 
   const stepConfig = getCurrentStep(tutorialStep);
   const hintMessage = stepConfig?.message ?? '';
@@ -41,6 +44,7 @@ export function HUD({ activePanel, setActivePanel }: HUDProps) {
         <GoldDisplay amount={gold} />
         <span className="hud-upkeep">Upkeep: {dailyUpkeep}g/day</span>
         <ResourceBar />
+        <button className="hud-inventory-btn" onClick={() => setInventoryOpen(true)}>Inventory</button>
         <span>Members: {memberCount}</span>
         <span>Missions: {missionCount}</span>
         <SaveStatusBadge />
@@ -57,6 +61,7 @@ export function HUD({ activePanel, setActivePanel }: HUDProps) {
         setActivePanel={setActivePanel}
         highlightPanel={highlightPanel}
       />
+      {inventoryOpen && <InventoryPanel onClose={() => setInventoryOpen(false)} />}
     </div>
   );
 }

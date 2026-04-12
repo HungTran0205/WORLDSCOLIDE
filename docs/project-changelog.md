@@ -2,8 +2,96 @@
 
 All notable changes to Worlds Collide are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
-**Current Version**: 1.19.0
-**Release Date**: 2026-04-12 (GPU-Instanced Combat Rendering)
+**Current Version**: 1.20.0
+**Release Date**: 2026-04-12 (Guild Inventory System)
+
+---
+
+## [1.20.0] — 2026-04-12 (Guild Inventory System)
+
+### Major Feature: Guild Inventory with Slot-Based UI and Storage Furniture
+
+#### Inventory System Architecture (NEW)
+- **Flat Dict Model**: Inventory remains `{ items: Partial<Record<ItemID, number>> }`
+  - No save migration required (presentation layer only)
+  - Compatible with facility production system (no overflow loss)
+- **Stackable Items**: Stack limit = 99 per visual slot
+  - `stackable: boolean` added to ItemTemplate
+  - Non-stackable items: 1 slot each regardless of quantity
+  - >99 items automatically split across multiple UI slots
+
+#### Capacity Management (NEW)
+- **Base Capacity**: 10 slots
+- **Storage Chest Furniture**: +20 slots per chest (max 3 chests → max 70 slots)
+  - Cost: 200g + 15 Wood + 5 Iron Ore
+  - 1×1 footprint, category: 'upgrade'
+  - Unlocked at guild level 2
+- **Capacity Logic**:
+  - `getMaxSlots()` → 10 + (20 × chestCount)
+  - `getUsedSlots()` → Σ ceil(qty / 99) per item
+  - `addItem()` → checks capacity, returns boolean
+  - Facility production always succeeds (no item loss)
+
+#### Inventory Panel UI (NEW)
+- **Centered Overlay**: Not a sidebar panel, independent of PanelId system
+- **Chest Theme Styling**: Dark wood background (#1e140a), brown borders (#8B4513), gold accents (#ffd700)
+- **Grid Layout**: 5 columns × N rows, 64px cells, 4px gap
+- **Responsive**: 4 columns on smaller screens
+- **Slot States**:
+  - Empty: dashed gold border
+  - Occupied: solid border, icon + qty badge (bottom-right)
+  - Hovered: brightened border, subtle glow
+  - Selected: gold border, detail popup visible
+- **Rarity Colors**:
+  - COMMON: no tint
+  - UNCOMMON: green tint
+  - RARE: blue tint
+  - EPIC: purple tint
+  - LEGENDARY: gold tint
+
+#### Item Detail Popup (NEW)
+- **Tooltip-Style Card**: Positioned adjacent to slot
+- **Content**: Icon, name, type, rarity badge (color-coded), description, quantity, sell value
+- **Interaction**: Click slot → popup shows; click outside or same slot → close
+- **Responsive**: Mobile fallback to centered mini-modal
+
+#### Inventory Button Integration (NEW)
+- Added "Inventory" button to HUD top bar (backpack icon)
+- Click toggles inventory panel visibility
+- Panel state tracked separately from sidebar panels
+
+#### New Components
+- `src/ui/panels/inventory-panel.tsx` — Main panel, grid rendering, slot tracking
+- `src/ui/components/inventory-slot.tsx` — Individual slot (empty/occupied states, rarity colors)
+- `src/ui/components/item-detail-popup.tsx` — Detail card with item info + sell values
+- `src/ui/styles/inventory.css` — Chest theme, grid layout, animations
+
+#### Data Layer Updates
+- `src/game/data/items.ts` — Added `stackable: boolean` to ItemTemplate, `STACK_LIMIT = 99`
+- `src/game/state/game-state.ts` — Added 'storage-chest' to FurnitureType union
+- `src/game/data/furniture.ts` — Storage chest furniture definition
+- `src/game/data/buildings.ts` — Unlocked storage-chest at guild level 2
+- `src/game/state/inventory-slice.ts` — Added capacity helpers, fixed consumeItems cleanup bug
+
+### Code Quality
+- useMemo for expensive slot computation
+- Defensive cap on non-stackable expansion (prevents infinite loops)
+- selectedItemId index tracking (prevents stale selection on inventory changes)
+- Zero-quantity item cleanup in consumeItems (prevents save bloat)
+
+### Testing & Verification
+- All 9 item types render correctly with icons
+- Stack splitting works (150 wood → 2 slots)
+- Empty/full states display correctly
+- Storage chest correctly increases capacity
+- Item detail popup shows all information
+- Escape key closes panel
+- Backdrop click closes panel
+
+### Migration Notes
+- **Save Compat**: v14→v15 migration transparent (presentation layer only)
+- **No Data Model Change**: Existing save data compatible
+- **Facility Production**: Unaffected, continues to work
 
 ---
 

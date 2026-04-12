@@ -1,0 +1,386 @@
+/* ── Inventory overlay ── */
+.inventory-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 150;
+  animation: invOverlayFadeIn 0.2s ease;
+}
+
+@keyframes invOverlayFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Chest-themed panel ── */
+.inventory-panel {
+  /* Wood-grain base: layered repeating gradients simulate planks + grain */
+  background:
+    repeating-linear-gradient(
+      92deg,
+      transparent,
+      rgba(139, 90, 43, 0.04) 2px,
+      transparent 4px
+    ),
+    repeating-linear-gradient(
+      178deg,
+      transparent,
+      rgba(80, 50, 20, 0.06) 3px,
+      transparent 6px
+    ),
+    linear-gradient(180deg, rgba(45, 30, 16, 0.98) 0%, rgba(28, 18, 8, 0.99) 100%);
+  border: 3px solid #8B4513;
+  border-top-color: #9e5a28;
+  border-bottom-color: #6b3410;
+  border-radius: 12px;
+  padding: 24px 22px 24px;
+  min-width: 380px;
+  max-width: 440px;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 215, 0, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    inset 2px 0 8px rgba(0, 0, 0, 0.2),
+    inset -2px 0 8px rgba(0, 0, 0, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.5),
+    0 12px 40px rgba(0, 0, 0, 0.55);
+  animation: invPanelSlideIn 0.25s ease;
+}
+
+@keyframes invPanelSlideIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Gold corner studs — all four corners.
+   Each pseudo-element stretches the full panel height as a narrow column,
+   painting two stud circles (top + bottom) via positioned radial-gradients. */
+.inventory-panel::before,
+.inventory-panel::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  top: 5px;
+  bottom: 5px;
+  background:
+    radial-gradient(circle at center 7px,
+      #ffe87c 0%, #ffd700 3px, #b8860b 5px, #8B6914 6px, transparent 7px),
+    radial-gradient(circle at center calc(100% - 7px),
+      #ffe87c 0%, #ffd700 3px, #b8860b 5px, #8B6914 6px, transparent 7px);
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.25));
+  z-index: 2;
+  pointer-events: none;
+}
+.inventory-panel::before { left: 5px; }
+.inventory-panel::after  { right: 5px; }
+
+/* Horizontal metal band across the top (like a chest latch stripe) */
+.inventory-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(139, 69, 19, 0.5);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 215, 0, 0.04) 0%,
+    transparent 100%
+  );
+  margin: -4px -2px 6px;
+  padding: 0 2px 8px;
+}
+
+.inventory-panel__title {
+  color: #ffd700;
+  font-size: 1.15rem;
+  font-weight: bold;
+  margin: 0;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  letter-spacing: 0.02em;
+}
+
+/* Close button — riveted metal feel */
+.inventory-panel__close {
+  background: linear-gradient(180deg, rgba(80, 55, 30, 0.6), rgba(50, 30, 15, 0.6));
+  border: 1px solid rgba(139, 69, 19, 0.6);
+  color: #c8b08a;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.inventory-panel__close:hover {
+  background: linear-gradient(180deg, rgba(100, 70, 35, 0.7), rgba(70, 40, 20, 0.7));
+  color: #ffd700;
+  border-color: rgba(255, 215, 0, 0.4);
+}
+.inventory-panel__close:focus-visible {
+  outline: 2px solid #ffd700;
+  outline-offset: 2px;
+}
+
+/* ── Capacity indicator ── */
+.inventory-capacity {
+  color: #a89880;
+  font-size: 0.8rem;
+  margin-bottom: 12px;
+}
+.inventory-capacity__bar {
+  height: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(139, 69, 19, 0.35);
+  border-radius: 3px;
+  margin-top: 5px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.inventory-capacity__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #b8860b, #daa520, #ffd700);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+  box-shadow: 0 0 4px rgba(255, 215, 0, 0.2);
+}
+
+/* ── Grid ── */
+.inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 64px);
+  gap: 4px;
+  justify-content: center;
+  padding: 4px 0;
+}
+
+/* ── Slot base ── */
+.inventory-slot {
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: default;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.2s ease,
+    background 0.15s ease,
+    transform 0.12s ease;
+}
+
+/* Empty slot — subtle recessed look */
+.inventory-slot--empty {
+  border: 1px dashed rgba(139, 69, 19, 0.3);
+  background: rgba(0, 0, 0, 0.15);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Occupied slot — raised plank feel */
+.inventory-slot--occupied {
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  background:
+    linear-gradient(180deg, rgba(60, 42, 22, 0.5) 0%, rgba(35, 24, 12, 0.5) 100%);
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.inventory-slot--occupied:hover {
+  border-color: rgba(255, 215, 0, 0.55);
+  box-shadow:
+    0 0 8px rgba(255, 215, 0, 0.15),
+    0 0 2px rgba(255, 215, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background:
+    linear-gradient(180deg, rgba(70, 50, 28, 0.6) 0%, rgba(45, 30, 16, 0.6) 100%);
+  transform: translateY(-1px);
+}
+.inventory-slot--occupied:active {
+  transform: translateY(0);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.inventory-slot--occupied:focus-visible {
+  outline: 2px solid #ffd700;
+  outline-offset: 1px;
+}
+
+/* Selected slot — prominent gold ring */
+.inventory-slot--selected {
+  border-color: #ffd700 !important;
+  box-shadow:
+    0 0 10px rgba(255, 215, 0, 0.3),
+    0 0 3px rgba(255, 215, 0, 0.15),
+    inset 0 0 6px rgba(255, 215, 0, 0.06);
+}
+
+/* Quantity badge — pill with dark backing */
+.inventory-slot__qty {
+  position: absolute;
+  bottom: 2px;
+  right: 3px;
+  font-size: 0.65rem;
+  font-weight: bold;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 0 4px;
+  border-radius: 3px;
+  line-height: 1.4;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+/* ── Item detail popup ── */
+.item-detail-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 160;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.item-detail-popup {
+  /* Same wood-grain layering as the main panel */
+  background:
+    repeating-linear-gradient(
+      95deg,
+      transparent,
+      rgba(139, 90, 43, 0.03) 2px,
+      transparent 4px
+    ),
+    linear-gradient(180deg, rgba(32, 22, 12, 0.99), rgba(20, 14, 7, 0.99));
+  border: 2px solid #ffd700;
+  border-radius: 10px;
+  padding: 16px 20px;
+  min-width: 240px;
+  max-width: 300px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 215, 0, 0.08),
+    0 4px 16px rgba(0, 0, 0, 0.5),
+    0 8px 32px rgba(0, 0, 0, 0.4);
+  animation: itemPopIn 0.18s ease;
+}
+
+@keyframes itemPopIn {
+  from { opacity: 0; transform: scale(0.93) translateY(4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.item-detail-popup__header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.item-detail-popup__name {
+  color: #ffd700;
+  font-size: 1rem;
+  font-weight: bold;
+  margin: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.item-detail-popup__type {
+  color: #8a7e6e;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.item-detail-popup__rarity {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding: 1px 8px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid currentColor;
+  /* border opacity inherits from the inline rarity color */
+}
+
+.item-detail-popup__desc {
+  color: #b5a898;
+  font-size: 0.85rem;
+  font-style: italic;
+  margin: 0 0 10px;
+  line-height: 1.45;
+  border-top: 1px solid rgba(139, 69, 19, 0.3);
+  padding-top: 8px;
+}
+
+.item-detail-popup__stats {
+  border-top: 1px solid rgba(139, 69, 19, 0.3);
+  padding-top: 8px;
+}
+.item-detail-popup__stats > div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: #ddd;
+  padding: 3px 0;
+}
+.item-detail-popup__stats .label {
+  color: #8a7e6e;
+}
+
+/* ── HUD inventory button ── */
+.hud-inventory-btn {
+  background: linear-gradient(180deg, rgba(139, 69, 19, 0.45), rgba(100, 50, 15, 0.45));
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  color: #ffd700;
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: background 0.15s, border-color 0.15s;
+}
+.hud-inventory-btn:hover {
+  background: linear-gradient(180deg, rgba(160, 80, 25, 0.55), rgba(120, 60, 18, 0.55));
+  border-color: rgba(255, 215, 0, 0.5);
+}
+.hud-inventory-btn:focus-visible {
+  outline: 2px solid #ffd700;
+  outline-offset: 2px;
+}
+
+/* ── Responsive: 4 columns on smaller screens ── */
+@media (max-width: 480px) {
+  .inventory-grid {
+    grid-template-columns: repeat(4, 60px);
+  }
+  .inventory-slot {
+    width: 60px;
+    height: 60px;
+  }
+  .inventory-panel {
+    min-width: 300px;
+    max-width: 340px;
+    padding: 22px 16px 22px;
+  }
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .inventory-overlay,
+  .inventory-panel,
+  .item-detail-popup {
+    animation: none;
+  }
+  .inventory-slot {
+    transition: none;
+  }
+}

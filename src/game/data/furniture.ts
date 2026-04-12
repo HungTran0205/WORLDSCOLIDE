@@ -89,6 +89,11 @@ export const FURNITURE_DEFINITIONS: FurnitureDefinition[] = [
     category: 'upgrade', cost: { gold: 120, items: { WOOD: 5 } }, width: 1, depth: 2,
     maxPerGuild: 2, effect: 'recovery-bonus',
   },
+  {
+    type: 'storage-chest', name: 'Storage Chest', description: 'Adds 20 inventory slots to the guild storage.',
+    category: 'upgrade', cost: { gold: 200, items: { WOOD: 15, IRON_ORE: 5 } }, width: 1, depth: 1,
+    maxPerGuild: 3, effect: 'inventory-capacity',
+  },
 ];
 
 /** Get furniture definition by type */

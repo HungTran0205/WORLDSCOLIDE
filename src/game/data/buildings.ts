@@ -10,7 +10,7 @@ export interface GuildUpgrade {
 
 export const GUILD_UPGRADES: GuildUpgrade[] = [
   { level: 1, cost: 0, unlockedFurniture: ['quest-board'], unlockedFeatures: ['quest-board-f'] },
-  { level: 2, cost: 500, unlockedFurniture: ['bar-counter', 'wine-barrel', 'reception-desk'], unlockedFeatures: ['e-rank-quests'] },
+  { level: 2, cost: 500, unlockedFurniture: ['bar-counter', 'wine-barrel', 'reception-desk', 'storage-chest'], unlockedFeatures: ['e-rank-quests'] },
   { level: 3, cost: 2000, unlockedFurniture: ['training-dummy', 'alchemy-table', 'medical-bed'], unlockedFeatures: ['d-rank-quests'] },
   { level: 4, cost: 8000, unlockedFurniture: ['workbench'], unlockedFeatures: ['c-rank-quests'] },
   { level: 5, cost: 30000, unlockedFurniture: [], unlockedFeatures: ['b-rank-quests'] },

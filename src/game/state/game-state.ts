@@ -132,7 +132,8 @@ export type FurnitureType =
   // Upgrade (purchasable, placeable multiple times)
   | 'reception-desk'
   | 'wine-barrel'
-  | 'medical-bed';
+  | 'medical-bed'
+  | 'storage-chest';
 
 export interface PlacedFurniture {
   id: string;

@@ -1111,6 +1111,167 @@ ResourceBar component:
   4. Update on every inventory change (loot earned, building cost)
 ```
 
+## Guild Inventory System (NEW - v1.20 Milestone 16)
+
+### Overview
+
+Guild inventory provides a visual UI for viewing and managing items collected from missions, looted from combat, or used for building costs. Implements a slot-based system with capacity management via storage furniture and support for stackable items.
+
+### Inventory Capacity Model
+
+```
+Capacity = Base Slots + Storage Furniture
+
+Base Slots: 10 (always available)
+
+Storage Chest Furniture:
+  - Cost: 200g + 15 Wood + 5 Iron Ore
+  - Category: 'upgrade'
+  - Size: 1×1 footprint
+  - Effect: +20 inventory slots per chest
+  - Max per guild: 3 (max capacity = 10 + 60 = 70 slots)
+  - Unlocked: Guild level 2
+
+getMaxSlots() = 10 + (20 × chestCount)
+
+getUsedSlots() = Σ ceil(quantity / STACK_LIMIT) for each item > 0
+  (stackable items split into multiple slots at 99/stack)
+  (non-stackable items: 1 slot each)
+
+isInventoryFull() = getUsedSlots() >= getMaxSlots()
+```
+
+### Stack Limit & Item Categories
+
+```
+STACK_LIMIT = 99 per visual slot
+
+Stackable Items (most materials):
+  - WOOD, STONE, IRON_ORE, SLIME_GEL, BOAR_PELT, WOLF_FANG, etc.
+  - 150 wood → 2 visual slots (99 + 51)
+  - Consolidated in flat dict: { items: { WOOD: 150 } }
+
+Non-Stackable Items:
+  - LOGGING_SITE_ACCESS permit
+  - 1 slot per item regardless of quantity
+  - Consumable flag preserved in ItemTemplate.stackable
+
+addItem(itemId, quantity, capacity):
+  1. Calculate slots required: ceil(qty / STACK_LIMIT) if stackable
+  2. Check if new slots + used slots <= maxSlots
+  3. If fits: add to inventory, return true
+  4. Else: reject, return false
+
+Facility Production:
+  - Production always succeeds (no item loss)
+  - Capacity check not applied to auto-production
+  - Only manual actions (build, buy) respect capacity
+```
+
+### Inventory Panel UI Architecture
+
+```
+InventoryPanel (overlay, centered)
+    ├─ Header: "Guild Inventory" title + close button
+    ├─ Capacity bar: "12/30 slots"
+    ├─ Grid: 5 columns × N rows, 64px cells, 4px gap
+    │   └─ InventorySlot[] (empty or occupied)
+    │       ├─ Empty: dashed gold border
+    │       ├─ Occupied: solid border + GameIcon + qty badge (bottom-right)
+    │       ├─ Rarity color tint (left border):
+    │       │   - COMMON: no tint
+    │       │   - UNCOMMON: green
+    │       │   - RARE: blue
+    │       │   - EPIC: purple
+    │       │   - LEGENDARY: gold
+    │       └─ States: normal, hovered (glow), selected (gold)
+    │
+    └─ ItemDetailPopup (when slot selected)
+        ├─ Icon + name (large)
+        ├─ Type + rarity badge (color-coded)
+        ├─ Description (italic)
+        ├─ Quantity + sell value
+        └─ Click outside or same slot → close
+
+Backdrop: Full-screen overlay, 50% opacity dark
+Theme: Chest-like appearance
+  - Dark wood background (#1e140a)
+  - Brown border (#8B4513)
+  - Gold accents (#ffd700)
+  - 4 corner studs (CSS box-shadow pseudo-elements)
+  - Wood-grain texture effect
+```
+
+### HUD Integration
+
+```
+HUD Top Bar (left side, after ResourceBar):
+    ├─ Inventory Button: backpack icon
+    └─ Click → toggleInventoryPanel()
+
+Panel Visibility:
+    - Tracked in React state (separate from PanelId sidebar system)
+    - Click backdrop or X button → close
+    - Escape key → close
+    - Persists panel state during session (not saved)
+```
+
+### Data Layer Implementation
+
+Files modified:
+- `src/game/data/items.ts` — Added `stackable: boolean` to ItemTemplate, `STACK_LIMIT = 99`
+- `src/game/state/game-state.ts` — Added 'storage-chest' to FurnitureType union
+- `src/game/data/furniture.ts` — Storage chest furniture definition
+- `src/game/data/buildings.ts` — Unlocked storage-chest at guild level 2
+- `src/game/state/inventory-slice.ts` — Capacity helpers + slot layout computation
+
+Inventory slice API:
+```typescript
+getMaxSlots(guildHall): number
+  // 10 + (20 × storage-chest count)
+
+getUsedSlots(inventory: InventoryState): number
+  // Σ ceil(qty / 99) per item
+
+isInventoryFull(inventory, guildHall): boolean
+  // getUsedSlots >= getMaxSlots
+
+getInventorySlots(inventory): { itemId: ItemID; quantity: number }[]
+  // Array of slots, split stacks > 99
+  // Sorted by type, then rarity
+
+addItem(itemId, quantity, guildHall): boolean
+  // Checks capacity before adding; returns success/fail
+  // Facility production bypasses this check
+
+consumeItems(items: ItemQuantityMap): { success: boolean; reason? }
+  // Validates & deducts items atomically
+  // Cleanup: removes zero-quantity entries
+```
+
+### Component Files
+
+- `src/ui/panels/inventory-panel.tsx` — Main panel, grid + header, slot rendering
+- `src/ui/components/inventory-slot.tsx` — Single slot (empty/occupied/selected states)
+- `src/ui/components/item-detail-popup.tsx` — Detail card (name, rarity, description, sell value)
+- `src/ui/styles/inventory.css` — Chest theme, grid layout, animations, rarity colors
+
+### Save Compatibility
+
+- **No migration required**: Inventory remains flat dict at Zustand level
+- **Presentation only**: Capacity + slot visualization computed at runtime
+- **Existing saves**: Load immediately without data model changes
+- **Facility production**: Unaffected by capacity system
+
+### Code Quality Improvements
+
+- `useMemo` for expensive slot computation (prevents re-layout thrashing)
+- Defensive cap on non-stackable slot expansion (prevents infinite loops)
+- `selectedItemId` index tracking (prevents stale detail popup on inventory changes)
+- Zero-quantity cleanup in `consumeItems` (saves bandwidth on serialization)
+
+---
+
 ## Data Flow: Civilization System (NEW - v1.9 Milestone 2)
 
 ### Civilization Selection & Stat Bonus Application
