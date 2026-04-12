@@ -19,8 +19,10 @@ export function getUsedSlots(items: Partial<Record<ItemID, number>>): number {
   let used = 0;
   for (const [id, qty] of Object.entries(items)) {
     if (!qty || qty <= 0) continue;
+    const intQty = Math.floor(qty);
+    if (intQty <= 0) continue;
     const template = ITEM_DATABASE[id as ItemID];
-    used += template?.stackable ? Math.ceil(qty / STACK_LIMIT) : qty;
+    used += template?.stackable ? Math.ceil(intQty / STACK_LIMIT) : intQty;
   }
   return used;
 }
@@ -39,17 +41,19 @@ export function getInventorySlots(items: Partial<Record<ItemID, number>>): Inven
   const slots: InventorySlotEntry[] = [];
   for (const [id, qty] of Object.entries(items)) {
     if (!qty || qty <= 0) continue;
+    const intQty = Math.floor(qty);
+    if (intQty <= 0) continue;
     const itemId = id as ItemID;
     const template = ITEM_DATABASE[itemId];
     if (template?.stackable) {
-      let remaining = qty;
+      let remaining = intQty;
       while (remaining > 0) {
         const chunk = Math.min(remaining, STACK_LIMIT);
         slots.push({ itemId, quantity: chunk });
         remaining -= chunk;
       }
     } else {
-      const cap = Math.min(qty, 200); // defensive cap for corrupted data
+      const cap = Math.min(intQty, 200); // defensive cap for corrupted data
       for (let i = 0; i < cap; i++) slots.push({ itemId, quantity: 1 });
     }
   }
