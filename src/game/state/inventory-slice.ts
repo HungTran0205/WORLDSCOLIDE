@@ -79,10 +79,12 @@ export const createInventorySlice: StateCreator<InventorySlice> = (set, get) => 
 
   addItem: (id, amount) => {
     if (amount <= 0) return;
+    const rounded = Math.floor(amount);
+    if (rounded <= 0) return;
     set((s) => ({
       inventory: {
         ...s.inventory,
-        items: { ...s.inventory.items, [id]: (s.inventory.items[id] ?? 0) + amount },
+        items: { ...s.inventory.items, [id]: (s.inventory.items[id] ?? 0) + rounded },
       },
     }));
   },
