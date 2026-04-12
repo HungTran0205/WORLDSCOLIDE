@@ -69,6 +69,8 @@ export interface BiomeConfig {
   tileAccent?: string;
   /** World-space units per tile side (default 1) */
   tileSize?: number;
+  /** Post-process vignette — darkness at corners */
+  vignette?: { strength: number };
 }
 
 const FOREST_CONFIG: BiomeConfig = {
@@ -87,6 +89,8 @@ const FOREST_CONFIG: BiomeConfig = {
   tileAccent: '/tiles/t_Cork_Tile.glb',
   tileSize: 1.75,
   dioramaScale: 12,
+  dioramaY: 0,
+  vignette: { strength: 0.99 },
   props3D: [
     // Top-edge pine treeline
     { src: '/arena/forest/3dprops/optimized/p_tree_pine.glb', position: [ -2.8, -0.3, -5.5], rotation: [0, -0.5,  0], scale: 0.20 },

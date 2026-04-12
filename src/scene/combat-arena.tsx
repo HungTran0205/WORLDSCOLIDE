@@ -131,7 +131,7 @@ export function CombatArenaCanvas() {
       {/* Vignette overlay — darkens corners for cinematic depth */}
       <div style={{
         position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 2,
-        background: 'radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.65) 100%)',
+        background: `radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,${biome.vignette?.strength ?? 0.65}) 100%)`,
       }} />
     </>
   );
