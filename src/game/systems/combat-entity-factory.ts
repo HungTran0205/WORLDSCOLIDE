@@ -85,5 +85,6 @@ export function enemyToArenaEntity(
     animStateUntil: 0,
     spriteId: template.spriteId,
     flying: template.flying,
+    isBoss: template.isBoss,
   };
 }

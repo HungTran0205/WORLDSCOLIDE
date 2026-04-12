@@ -41,6 +41,8 @@ export interface CombatEntity {
   spriteId?: string;
   /** Flying enemy — elevated above ground in arena */
   flying?: boolean;
+  /** Boss enemy — rendered at larger scale */
+  isBoss?: boolean;
 }
 
 export interface ActiveEffect {

@@ -30,10 +30,14 @@ export interface AnimInfo {
 /** Full registration for a sprite type (one character/enemy model) */
 export interface SpriteTypeEntry {
   typeId: string;
-  /** Pixel width of one frame */
+  /** Pixel width of one atlas cell (uniform across all types in atlas) */
   frameWidth: number;
-  /** Pixel height of one frame */
+  /** Pixel height of one atlas cell (uniform across all types in atlas) */
   frameHeight: number;
+  /** Pixel width of this sprite's native source art (may be < cell for padded sprites) */
+  nativeFrameWidth: number;
+  /** Pixel height of this sprite's native source art */
+  nativeFrameHeight: number;
   /** Animation state name → anim info */
   animations: Map<string, AnimInfo>;
 }

@@ -42,8 +42,7 @@ export class CombatStateBridge {
 
     for (const entity of engine.entities) {
       const typeId = this.getTypeId(entity);
-      const isBoss = (entity as any).isBoss === true;
-      const scale = isBoss ? BOSS_SPRITE_SCALE : DEFAULT_SPRITE_SCALE;
+      const scale = this.computeSpriteScale(entity, typeId, registry);
 
       const slot = this.buffer.addEntity(
         entity.id,
@@ -72,8 +71,7 @@ export class CombatStateBridge {
       if (this.entitySlotMap.has(entity.id)) continue; // already registered
 
       const typeId = this.getTypeId(entity);
-      const isBoss = (entity as any).isBoss === true;
-      const scale = isBoss ? BOSS_SPRITE_SCALE : DEFAULT_SPRITE_SCALE;
+      const scale = this.computeSpriteScale(entity, typeId, registry);
 
       const slot = this.buffer.addEntity(
         entity.id,
@@ -195,6 +193,19 @@ export class CombatStateBridge {
   }
 
   // --- Private helpers ---
+
+  /**
+   * Compute per-entity render scale.
+   * Boss vs default base, then compensated by (cell / native) so sprites that are
+   * smaller than the atlas cell (padded) don't visually shrink when rendered on
+   * the same quad as larger sprites in the same atlas.
+   */
+  private computeSpriteScale(entity: ArenaEntity, typeId: string, registry: SpriteRegistry): number {
+    const base = entity.isBoss ? BOSS_SPRITE_SCALE : DEFAULT_SPRITE_SCALE;
+    const entry = registry.getSpriteType(typeId);
+    if (!entry || entry.nativeFrameWidth <= 0) return base;
+    return base * (entry.frameWidth / entry.nativeFrameWidth);
+  }
 
   /** Derive typeId from entity data */
   private getTypeId(entity: ArenaEntity): string {

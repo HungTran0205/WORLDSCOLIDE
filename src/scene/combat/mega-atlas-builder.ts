@@ -176,6 +176,8 @@ export async function buildCombatAtlases(
       typeId: pack.typeId,
       frameWidth: cellW,
       frameHeight: cellH,
+      nativeFrameWidth: pack.frameWidth,
+      nativeFrameHeight: pack.frameHeight,
       animations: new Map(),
     };
 

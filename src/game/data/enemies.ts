@@ -22,6 +22,8 @@ export interface EnemyTemplate {
   spriteId?: string;
   /** Flying enemy — sprite renders elevated above ground */
   flying?: boolean;
+  /** Boss enemy — renders at BOSS_SPRITE_SCALE (larger than regular enemies) */
+  isBoss?: boolean;
 }
 
 export const ENEMIES: Record<string, EnemyTemplate> = {
@@ -85,7 +87,8 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     stats: { STR: 8, END: 20, INT: 3, DEX: 2, CHA: 0, LCK: 5, AGI: 2 },
     skill: null, abilities: [],
     loot: [{ itemId: 'SLIME_GEL', chance: 1.0, min: 2, max: 4 }, { itemId: 'STONE', chance: 0.5, min: 1, max: 2 }],
-    spriteId: 'slime',
+    spriteId: 'slime-king',
+    isBoss: true,
   },
 
   // --- Level 4 (boss: queen-spider) ---
