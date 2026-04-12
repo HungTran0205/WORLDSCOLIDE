@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useGameStore } from '@/game/state/store';
-import { getInventorySlots } from '@/game/state/inventory-slice';
+import { getInventorySlots, getMaxSlots, getUsedSlots } from '@/game/state/inventory-slice';
 import type { ItemID } from '@/game/data/items';
 import { InventorySlot } from '@/ui/components/inventory-slot';
 import { ItemDetailPopup } from '@/ui/components/item-detail-popup';
@@ -14,8 +14,12 @@ interface InventoryPanelProps {
 
 export function InventoryPanel({ onClose }: InventoryPanelProps) {
   const items = useGameStore((s) => s.inventory.items);
+  const furniture = useGameStore((s) => s.guildHall.furniture);
 
   const slots = useMemo(() => getInventorySlots(items), [items]);
+  const maxSlots = useMemo(() => getMaxSlots(furniture), [furniture]);
+  const usedSlots = getUsedSlots(items);
+  const emptyCount = Math.max(0, maxSlots - usedSlots);
 
   // Track selection by itemId (stable across sort changes) instead of index
   const [selectedItemId, setSelectedItemId] = useState<ItemID | null>(null);
@@ -54,6 +58,9 @@ export function InventoryPanel({ onClose }: InventoryPanelProps) {
               isSelected={selectedItemId === slot.itemId}
               onClick={() => handleSlotClick(slot.itemId)}
             />
+          ))}
+          {Array.from({ length: emptyCount }, (_, i) => (
+            <InventorySlot key={`empty-${i}`} />
           ))}
         </div>
 
