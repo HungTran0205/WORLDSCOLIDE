@@ -49,7 +49,7 @@ const BASE_OPACITY = 1.0;
  * sprite's opaque pixels in 2D screen-space (combat camera is orthographic
  * tilted ~35°, so +Y in world maps to "upward" on screen).
  */
-const Y_OFFSET = 1.4;
+const Y_OFFSET = 1;
 const HAND_OFFSET = 0.5;
 const ROT_TILT_X = Math.PI / 8;
 /** Very high so transparent sort puts the slash last in the render queue. */

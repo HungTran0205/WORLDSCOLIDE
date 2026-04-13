@@ -111,7 +111,7 @@ export function CombatArenaCanvas() {
         frameloop="demand"
         orthographic
         shadows
-        camera={{ zoom: 76, position: [0, 11.7, 12], near: 0.1, far: 1000 }}
+        camera={{ zoom: 76, position: [0, 7.5, 15], near: 0.1, far: 1000 }}
         dpr={1}
         gl={createWebGPURenderer}
         style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}

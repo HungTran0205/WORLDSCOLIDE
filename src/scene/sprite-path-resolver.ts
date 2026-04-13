@@ -68,10 +68,16 @@ export function getEnemyWalkFramePath(spriteId: string, frame: number): string {
   return getEnemyAnimFramePath(spriteId, 'walk', frame);
 }
 
-/** Determine sprite direction from movement delta (isometric camera at [10,10,10]) */
+/** Determine sprite direction from movement delta (isometric camera at [10,10,10]).
+ *  World XZ axes are rotated ~45° relative to the screen, so we rotate the
+ *  movement vector into screen space before bucketing into 4 cardinal directions.
+ *  Without this rotation, screen-horizontal/vertical motion has |dx| ≈ |dz| and
+ *  float jitter flips the chosen direction (e.g. moving left → 'south'). */
 export function getDirectionFromMovement(dx: number, dz: number): SpriteDirection {
-  if (Math.abs(dx) > Math.abs(dz)) {
-    return dx > 0 ? 'east' : 'west';
+  const screenRight = dx - dz;
+  const screenDown = dx + dz;
+  if (Math.abs(screenRight) > Math.abs(screenDown)) {
+    return screenRight > 0 ? 'east' : 'west';
   }
-  return dz > 0 ? 'south' : 'north';
+  return screenDown > 0 ? 'south' : 'north';
 }

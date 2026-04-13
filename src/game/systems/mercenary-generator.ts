@@ -6,8 +6,11 @@
 import { nanoid } from 'nanoid';
 import type { Member, Stats } from '@/game/state/game-state';
 import { CIV_ARCHETYPE_PROFILES } from '@/game/data/characters';
-import { CIVILIZATIONS, CIV_CONFIG, applyCivBonuses } from '@/game/data/civilization-config';
-import type { CivArchetype } from '@/game/data/civilization-config';
+import { CIV_CONFIG, applyCivBonuses } from '@/game/data/civilization-config';
+import type { CivArchetype, Civilization } from '@/game/data/civilization-config';
+
+// MVP: tavern chỉ tuyển Linh Sơn để tập trung một faction trước.
+const MVP_MERCENARY_CIV: Civilization = 'LinhSon';
 
 const BASE_STAT = 5;
 const STAT_POINTS = 20; // total points to distribute per mercenary
@@ -32,9 +35,9 @@ function rollWeightedStats(weights: Record<string, number>): Stats {
 
 /** Generate `count` randomized mercenaries for the tavern pool */
 export function generateMercenaries(count: number): Member[] {
+  const civ = MVP_MERCENARY_CIV;
+  const civConfig = CIV_CONFIG[civ];
   return Array.from({ length: count }, () => {
-    const civ = CIVILIZATIONS[Math.floor(Math.random() * CIVILIZATIONS.length)];
-    const civConfig = CIV_CONFIG[civ];
     const names = civConfig.namePool;
     const name = names[Math.floor(Math.random() * names.length)];
     const civArchetype = civConfig.archetypes[Math.floor(Math.random() * civConfig.archetypes.length)];
@@ -55,7 +58,7 @@ export function generateMercenaries(count: number): Member[] {
       injuredUntil: null,
       civilization: civ,
       archetype: civArchetype,
-      gender: (Math.random() < 0.5 ? 'M' : 'F') as const,
+      gender: Math.random() < 0.5 ? 'M' : 'F',
       isFounder: false,
       rank: 'MERCENARY' as const,
       missionsCompleted: 0,
