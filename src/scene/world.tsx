@@ -6,6 +6,7 @@ import { MemberLayer } from './member-layer';
 import { CameraController } from './camera-controller';
 import { FacilityRoomsLayer } from './facility-rooms-layer';
 import { createWebGPURenderer, WebGPUInit } from './webgpu-init';
+import { WorldBloomPost } from './world-bloom-post';
 
 /** Nulls out scene.background so the CSS cave image shows through the canvas */
 function TransparentBackground() {
@@ -18,7 +19,7 @@ function TransparentBackground() {
 export function World() {
   return (
     <Canvas
-      frameloop="demand"
+      frameloop="always"
       orthographic
       camera={{ zoom: 65, position: [15, 10, 14], near: 0.1, far: 1000 }}
       dpr={[1, 1.5]}
@@ -35,6 +36,7 @@ export function World() {
         <GuildHall />
         <FacilityRoomsLayer />
         <MemberLayer />
+        <WorldBloomPost />
       </Suspense>
     </Canvas>
   );

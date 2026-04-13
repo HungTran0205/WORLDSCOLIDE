@@ -10,7 +10,7 @@ import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import { useControls } from 'leva';
 import * as THREE from 'three';
-import { TorchFireEffect } from './torch-fire-particles';
+import { TorchFireVfx as TorchFireEffect } from './torch-fire-vfx';
 
 // ─── GLB paths ────────────────────────────────────────────────────────────────
 
