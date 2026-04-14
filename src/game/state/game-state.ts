@@ -192,4 +192,5 @@ export interface GameSettings {
   musicVolume: number;
   sfxVolume: number;
   autoSkillDefault: boolean;
+  graphicsQuality: 'high' | 'low';
 }

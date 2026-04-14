@@ -57,8 +57,10 @@ export function SpriteAnimator({ basePath, directionRef, isMovingRef, size = [2.
   }, [allTextures, gl]);
 
   /* Animation loop — only updates UV uniforms, no texture swap */
-  useFrame((_, delta) => {
+  useFrame((_, rawDelta) => {
     if (!materialRef.current) return;
+    // Clamp to prevent frame-bunching after initial load freeze or tab resume
+    const delta = Math.min(rawDelta, 0.1);
 
     if (isMovingRef.current) {
       elapsedRef.current += delta;

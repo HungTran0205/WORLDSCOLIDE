@@ -10,7 +10,9 @@ import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import { useControls } from 'leva';
 import * as THREE from 'three';
-import { TorchFireVfx as TorchFireEffect } from './torch-fire-vfx';
+import { TorchFireVfx } from './torch-fire-vfx';
+import { TorchFireEffect as TorchFireEffectLegacy } from './torch-fire-particles';
+import { useGraphicsQuality } from './world';
 
 // ─── GLB paths ────────────────────────────────────────────────────────────────
 
@@ -72,13 +74,17 @@ function WallTorch({ position, rotationY = 0, label = 'Torch' }: {
   rotationY?: number;
   label?: string;
 }) {
+  const quality = useGraphicsQuality();
   const { scene } = useGLTF(GLB.torch);
   const model = useScaledModel(scene, 0.4);
 
   return (
     <group position={position} rotation={[0, rotationY, 0]}>
       <primitive object={model} />
-      <TorchFireEffect offsetY={0.45} scale={0.6} debugLabel={label} />
+      {quality === 'high'
+        ? <TorchFireVfx offsetY={0.45} scale={0.6} debugLabel={label} />
+        : <TorchFireEffectLegacy offsetY={0.45} scale={0.6} debugLabel={label} />
+      }
       <pointLight position={[0, 0.55, 0]} color="#ff8833" intensity={3} distance={4} decay={2} />
     </group>
   );
@@ -131,6 +137,7 @@ function DragonFatherStatues() {
 }
 
 function DrumFireHolder() {
+  const quality = useGraphicsQuality();
   const { scene } = useGLTF(GLB.drum);
   const model = useScaledModel(scene, 1.0);
   const groupRef = useRef<THREE.Group>(null);
@@ -209,7 +216,10 @@ function DrumFireHolder() {
     <group ref={groupRef} position={[5, 0, 3.5]}>
       <primitive object={model} />
       {/* Fire + smoke particles rising from drum bowl */}
-      <TorchFireEffect offsetY={0.85} scale={1.3} debugLabel="Drum Fire" />
+      {quality === 'high'
+        ? <TorchFireVfx offsetY={0.85} scale={1.3} debugLabel="Drum Fire" />
+        : <TorchFireEffectLegacy offsetY={0.85} scale={1.3} debugLabel="Drum Fire" />
+      }
       <spotLight
         ref={spotRef}
         position={[0, main.posY, 0]}

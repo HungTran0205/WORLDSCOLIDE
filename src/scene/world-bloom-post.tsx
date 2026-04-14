@@ -78,7 +78,9 @@ function WebGPUBloomPass({ strength, radius, threshold }: PassProps) {
   useFrame(() => {
     const current = setup.getCurrent();
     if (!current) return;
-    current.post.renderAsync();
+    // Use sync render() instead of deprecated renderAsync() — avoids frame
+    // queueing when the async work doesn't complete before next frame tick.
+    current.post.render();
   }, 1);
 
   return null;
@@ -102,7 +104,7 @@ function WebGLBloomPass({ strength, radius, threshold }: PassProps) {
 export function WorldBloomPost() {
   const gl = useThree(s => s.gl);
   const bloom = useControls('World Bloom', {
-    enabled:   { value: true },
+    enabled:   { value: false }, // default OFF until diagnosis confirms compat with world canvas
     strength:  { value: 0.80, min: 0, max: 3, step: 0.05 },
     radius:    { value: 0.70, min: 0, max: 2, step: 0.05 },
     threshold: { value: 0.85, min: 0, max: 2, step: 0.01 },

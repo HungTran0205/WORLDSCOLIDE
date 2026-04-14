@@ -66,10 +66,19 @@ export function createDefaultFloor(): GuildHall {
   return { level: 1, floorTiles, furniture: [] };
 }
 
+const GRAPHICS_QUALITY_KEY = 'graphics-quality';
+
+/** Read graphics quality at module load — used by Canvas before store hydrates */
+export function getStoredGraphicsQuality(): 'high' | 'low' {
+  const v = localStorage.getItem(GRAPHICS_QUALITY_KEY);
+  return v === 'low' ? 'low' : 'high';
+}
+
 const DEFAULT_SETTINGS: GameSettings = {
   musicVolume: 0.5,
   sfxVolume: 0.7,
   autoSkillDefault: true,
+  graphicsQuality: 'high',
 };
 
 const DEFAULT_TAVERN: TavernState = {
@@ -119,8 +128,12 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
       guildHall: { ...s.guildHall },
     })),
 
-  updateSettings: (partial) =>
-    set((s) => ({ settings: { ...s.settings, ...partial } })),
+  updateSettings: (partial) => {
+    if (partial.graphicsQuality !== undefined) {
+      localStorage.setItem(GRAPHICS_QUALITY_KEY, partial.graphicsQuality);
+    }
+    set((s) => ({ settings: { ...s.settings, ...partial } }));
+  },
 
   refreshTavern: (mercenaries) =>
     set({ tavern: { lastRefreshTime: Date.now(), availableMercenaries: mercenaries } }),

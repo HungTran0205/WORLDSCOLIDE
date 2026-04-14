@@ -15,6 +15,7 @@ import type { Civilization } from '@/game/data/civilization-config';
 import { SpriteAnimator } from './sprite-animator';
 import { getSpritePath, getDirectionFromMovement } from './sprite-path-resolver';
 import type { SpriteDirection } from './sprite-path-resolver';
+import { useGraphicsQuality } from './world';
 
 /** Collect all cell centers from floor tiles as walkable positions */
 function getAllCellCenters(tiles: { x: number; z: number }[]): { x: number; z: number }[] {
@@ -27,6 +28,7 @@ function seededIndex(seed: number, max: number): number {
 }
 
 function MemberSprite({ member, index }: { member: Member; index: number }) {
+  const quality = useGraphicsQuality();
   const ref = useRef<Group>(null);
   const targetRef = useRef<{ x: number; z: number } | null>(null);
   const waitRef = useRef(0);
@@ -73,10 +75,12 @@ function MemberSprite({ member, index }: { member: Member; index: number }) {
   return (
     <group ref={ref} position={[startPos.x, 1.05, startPos.z]}>
       {/* Blob shadow — flat circle on floor, outside Billboard so it doesn't face camera */}
-      <mesh position={[0, -1.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.35, 8]} />
-        <meshBasicMaterial color="black" transparent opacity={0.25} depthWrite={false} />
-      </mesh>
+      {quality === 'high' && (
+        <mesh position={[0, -1.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[0.35, 8]} />
+          <meshBasicMaterial color="black" transparent opacity={0.25} depthWrite={false} />
+        </mesh>
+      )}
       {/* Single Billboard — sprite + name indicator */}
       <Billboard>
         <SpriteAnimator

@@ -12,8 +12,10 @@ interface TileGridProps {
   width: number;
   /** Gameplay zone depth (tiles fully visible) */
   depth: number;
-  /** Extra rows each side for natural edge fade (default 3) */
+  /** Extra rows on bottom (near) side for edge fade (default 3) */
   fadeRows?: number;
+  /** Extra rows on top (far/background) side — if omitted, uses fadeRows value */
+  fadeRowsTop?: number;
   tileSize: number;
   primarySrc: string;
   accentSrc: string;
@@ -101,7 +103,7 @@ function EdgeFadePlane({
 }
 
 export function CombatTileGrid({
-  width, depth, fadeRows = 3, tileSize, primarySrc, accentSrc, fogColor = '#000000',
+  width, depth, fadeRows = 3, fadeRowsTop, tileSize, primarySrc, accentSrc, fogColor = '#000000',
 }: TileGridProps) {
   const primary = useGLTF(primarySrc);
   const accent = useGLTF(accentSrc);
@@ -109,7 +111,10 @@ export function CombatTileGrid({
   const primaryMesh = useMemo(() => extractMesh(primary.scene), [primary.scene]);
   const accentMesh = useMemo(() => extractMesh(accent.scene), [accent.scene]);
 
-  const totalDepth = depth + fadeRows * 2 * tileSize;
+  // Asymmetric fade: top (far/background) and bottom (near) can differ
+  const topFade = (fadeRowsTop ?? fadeRows) * tileSize;
+  const botFade = fadeRows * tileSize;
+  const totalDepth = depth + topFade + botFade;
   const cols = Math.ceil(width / tileSize);
   const totalRows = Math.ceil(totalDepth / tileSize);
 
@@ -117,7 +122,8 @@ export function CombatTileGrid({
     const p: TilePos[] = [];
     const a: TilePos[] = [];
     const startX = -width / 2 + tileSize / 2;
-    const startZ = -totalDepth / 2 + tileSize / 2;
+    // Start from top fade edge (asymmetric — depends on topFade, not totalDepth/2)
+    const startZ = -(depth / 2) - topFade + tileSize / 2;
     for (let row = 0; row < totalRows; row++) {
       for (let col = 0; col < cols; col++) {
         const x = startX + col * tileSize;
@@ -128,15 +134,14 @@ export function CombatTileGrid({
       }
     }
     return { primaryPos: p, accentPos: a };
-  }, [width, totalDepth, tileSize, cols, totalRows]);
+  }, [width, depth, topFade, tileSize, cols, totalRows]);
 
   if (!primaryMesh) return null;
 
   const halfDepth = depth / 2;
-  const fadeDepth = fadeRows * tileSize;
-  // Gradient plane centers: just outside the gameplay zone
-  const topFadeZ = -(halfDepth + fadeDepth / 2);
-  const botFadeZ = +(halfDepth + fadeDepth / 2);
+  // Gradient plane centers: just outside the gameplay zone, asymmetric
+  const topFadeZ = -(halfDepth + topFade / 2);
+  const botFadeZ = +(halfDepth + botFade / 2);
 
   return (
     <group>
@@ -147,8 +152,8 @@ export function CombatTileGrid({
         <TileInstances geo={accentMesh.geo} mat={accentMesh.mat} positions={accentPos} scale={tileSize} />
       )}
       {/* Gradient fade planes — outer edge opaque (fogColor) → inner edge transparent */}
-      <EdgeFadePlane width={width} zCenter={topFadeZ} planeDepth={fadeDepth} fogColor={fogColor} flipGradient={false} />
-      <EdgeFadePlane width={width} zCenter={botFadeZ} planeDepth={fadeDepth} fogColor={fogColor} flipGradient={true} />
+      <EdgeFadePlane width={width} zCenter={topFadeZ} planeDepth={topFade} fogColor={fogColor} flipGradient={false} />
+      <EdgeFadePlane width={width} zCenter={botFadeZ} planeDepth={botFade} fogColor={fogColor} flipGradient={true} />
     </group>
   );
 }

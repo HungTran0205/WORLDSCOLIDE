@@ -133,6 +133,7 @@ export function CombatArenaEnvironment({ zone }: Props) {
       {config.tilePrimary ? (
         <CombatTileGrid
           width={64} depth={9}
+          fadeRowsTop={1}
           tileSize={config.tileSize ?? 1}
           primarySrc={config.tilePrimary}
           accentSrc={config.tileAccent ?? config.tilePrimary}

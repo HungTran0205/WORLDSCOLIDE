@@ -283,6 +283,24 @@ function migrateV13toV14(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+/** v14→v15: Add graphicsQuality field to settings (default 'high') */
+function migrateV14toV15(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+  const settings = (gs.settings ?? {}) as AnyRecord;
+
+  return {
+    ...envelope,
+    version: 15,
+    gameState: {
+      ...gs,
+      settings: {
+        ...settings,
+        graphicsQuality: settings.graphicsQuality ?? 'high',
+      },
+    } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -292,6 +310,7 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   11: migrateV11toV12,
   12: migrateV12toV13,
   13: migrateV13toV14,
+  14: migrateV14toV15,
 };
 
 /**

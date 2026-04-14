@@ -56,7 +56,7 @@ export function ForestRoomDecor({ cx, cz }: { cx: number; cz: number }) {
       <ForestProp path="/arena/forest/3dprops/p_tree_pine.glb"  position={[cx - 2.6, 0, cz - 1.2]} targetHeight={2.6} rotY={0.6} />
       <ForestProp path="/arena/forest/3dprops/p_tree_pine.glb"  position={[cx + 2.7, 0, cz - 1.5]} targetHeight={2.8} rotY={-1.0} />
       {/* Floor props */}
-      <ForestProp path="/arena/forest/3dprops/p_stump.glb"      position={[cx + 1.0, 0, cz - 0.4]} targetHeight={0.6} rotY={0.8} />
+      <ForestProp path="/arena/forest/3dprops/p_stump.glb"      position={[cx + 1.3, -0.2, cz - 0.1]} targetHeight={0.6} rotY={0.8} />
       <ForestProp path="/arena/forest/3dprops/p_log_fallen.glb" position={[cx + 0.8, 0, cz + 2.0]} targetHeight={0.5} rotY={0.6} />
     </group>
   );
