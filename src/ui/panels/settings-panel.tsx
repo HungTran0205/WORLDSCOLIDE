@@ -23,6 +23,14 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState(false);
 
+  const handleQuality = async (q: 'high' | 'low') => {
+    if (q === settings.graphicsQuality) return;
+    updateSettings({ graphicsQuality: q });
+    // Save first so progress isn't lost on reload
+    await saveManager.save(() => useGameStore.getState() as unknown as Record<string, unknown>, true);
+    window.location.reload();
+  };
+
   const handleMusicVolume = (vol: number) => {
     updateSettings({ musicVolume: vol });
     setMusicVolume(vol);
@@ -105,6 +113,25 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
         <button className="panel-btn" onClick={() => setMute(true)} style={{ marginTop: 8 }}>
           Mute All
         </button>
+      </div>
+
+      <div className="panel-section">
+        <div style={{ marginBottom: 6 }}>Graphics Quality</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {(['high', 'low'] as const).map((q) => (
+            <button
+              key={q}
+              className="panel-btn"
+              style={{
+                borderColor: settings.graphicsQuality === q ? '#4caf50' : undefined,
+                opacity: settings.graphicsQuality === q ? 1 : 0.6,
+              }}
+              onClick={() => handleQuality(q)}
+            >
+              {q === 'high' ? 'High' : 'Low'}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="panel-section">

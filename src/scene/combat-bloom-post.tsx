@@ -11,6 +11,7 @@ import { useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { useArenaDebug } from './combat-arena-debug';
+import { getStoredGraphicsQuality } from '@/game/state/guild-slice';
 
 interface BloomUniform { value: number }
 interface BloomNodeInstance {
@@ -77,7 +78,9 @@ function WebGPUBloomPass({ strength, radius, threshold }: PassProps) {
   useFrame(() => {
     const current = setup.getCurrent();
     if (!current) return;
-    current.post.renderAsync();
+    // three r0.182 deprecated renderAsync in favor of sync render() since
+    // the renderer is already awaited on init. Sync avoids frame queueing.
+    current.post.render();
   }, 1);
 
   return null;
@@ -112,6 +115,7 @@ export function CombatBloomPost() {
   const bloom = debug?.bloom ?? DEFAULT_BLOOM;
 
   if (!bloom.enabled) return null;
+  if (getStoredGraphicsQuality() === 'low') return null;
 
   const isWebGPU = 'isWebGPURenderer' in gl;
 

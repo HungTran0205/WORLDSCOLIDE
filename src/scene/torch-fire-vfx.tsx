@@ -19,6 +19,8 @@ export interface TorchFireVfxProps {
   offsetY: number;
   scale: number;
   debugLabel?: string;
+  /** Reduce particle count to ~40% for a medium-quality path */
+  lowQuality?: boolean;
 }
 
 /** Build a stable unique name for VFXParticles registration based on debugLabel. */
@@ -29,7 +31,7 @@ function useParticleName(debugLabel: string, suffix: 'fire' | 'smoke'): string {
   );
 }
 
-export function TorchFireVfx({ offsetY, scale, debugLabel = 'Fire' }: TorchFireVfxProps) {
+export function TorchFireVfx({ offsetY, scale, debugLabel = 'Fire', lowQuality = false }: TorchFireVfxProps) {
   // Static core flame sprite (same asset as legacy, preserves visual identity)
   const fireTex = useTexture('/arena/cave/props/fire-flame.png');
   fireTex.magFilter = THREE.NearestFilter;
@@ -46,6 +48,7 @@ export function TorchFireVfx({ offsetY, scale, debugLabel = 'Fire' }: TorchFireV
   }, { collapsed: true });
 
   const ps = dbg.spriteScale;
+  const particleScale = lowQuality ? 0.4 : 1;
 
   const fireName  = useParticleName(debugLabel, 'fire');
   const smokeName = useParticleName(debugLabel, 'smoke');
@@ -76,8 +79,8 @@ export function TorchFireVfx({ offsetY, scale, debugLabel = 'Fire' }: TorchFireV
       <VFXParticles
         name={fireName}
         autoStart
-        emitCount={4}
-        maxParticles={Math.max(120, Math.floor(300 * ps))}
+        emitCount={lowQuality ? 2 : 4}
+        maxParticles={Math.max(50, Math.floor(300 * ps * particleScale))}
         emitterShape={EmitterShape.DISK}
         emitterRadius={[0, 0.1 * ps]}
         lifetime={[0.6, 1.2]}
@@ -98,31 +101,31 @@ export function TorchFireVfx({ offsetY, scale, debugLabel = 'Fire' }: TorchFireV
         turbulence={{ intensity: dbg.turbulence, frequency: 2, speed: 1.5 }}
       />
 
-      {/* Smoke particles — normal blending, grey, slow rise above flame */}
+      {/* Smoke particles — normal blending, grey, drifts and spreads above flame */}
       <VFXParticles
         name={smokeName}
         autoStart
         emitCount={2}
-        position={[0, 0.3 * ps, 0]}
+        position={[0, 0.35 * ps, 0]}
         maxParticles={Math.max(60, Math.floor(120 * ps))}
         emitterShape={EmitterShape.DISK}
-        emitterRadius={[0, 0.08 * ps]}
-        lifetime={[1.5, 3.0]}
-        speed={[0.06, 0.12]}
+        emitterRadius={[0.05 * ps, 0.22 * ps]}
+        lifetime={[2.0, 4.0]}
+        speed={[0.14, 0.28]}
         direction={[
-          [-0.1, 0.1],
-          [0.8, 1],
-          [-0.1, 0.1],
+          [-0.35, 0.35],
+          [0.7, 1],
+          [-0.35, 0.35],
         ]}
-        gravity={[0, 0.25, 0]}
-        size={[0.25 * ps, 0.55 * ps]}
-        colorStart={['#888899', '#aaaacc']}
-        colorEnd={['#555566']}
-        fadeOpacity={[0.25, 0]}
-        fadeSize={[0.5, 1.8]}
+        gravity={[0, 0.08, 0]}
+        size={[0.18 * ps, 0.48 * ps]}
+        colorStart={['#777788', '#999aaa']}
+        colorEnd={['#444450', '#555560']}
+        fadeOpacity={[0.14, 0]}
+        fadeSize={[0.4, 2.2]}
         blending={Blending.NORMAL}
-        intensity={0.6}
-        turbulence={{ intensity: 0.5, frequency: 0.8, speed: 0.4 }}
+        intensity={0.5}
+        turbulence={{ intensity: 1, frequency: 0.6, speed: 0.3 }}
       />
     </group>
   );

@@ -108,7 +108,6 @@ const FOREST_CONFIG: BiomeConfig = {
     { src: '/arena/forest/3dprops/optimized/p_tree_pine.glb', position: [  5.0, 0.5, -3.0], rotation: [0, -1.0,  0], scale: 0.31 },
     // Ground details
     { src: '/arena/forest/3dprops/optimized/p_stump.glb',      position: [ 15.0, 0.5,  4.9], rotation: [0,  0.0,  0], scale: 0.10 },
-    { src: '/arena/forest/3dprops/optimized/p_bush.glb',       position: [ 13.5, 0.5,  5.3], rotation: [0,  0.35, 0], scale: 0.33 },
     { src: '/arena/forest/3dprops/optimized/p_boulder.glb',    position: [ 10.4, 0.5,  6.4], rotation: [0,  0.0,  0], scale: 0.83 },
     { src: '/arena/forest/3dprops/optimized/p_mush_glow.glb',  position: [  9.0, 0.5, -4.7], rotation: [0,  0.0,  0], scale: 0.38 },
   ],

@@ -190,8 +190,13 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
 
   return (
     <>
-      {/* Scene switching: guild-hall vs combat-arena */}
-      {gameScene === 'guild-hall' && <World />}
+      {/* Scene switching: guild-hall vs combat-arena.
+          World is always mounted — avoids 5-10s WebGPU re-init freeze on
+          scene switch. CSS hides the canvas; isActive pauses the render
+          loop to save GPU and signals clock drain on re-activation. */}
+      <div style={{ display: gameScene === 'guild-hall' ? 'block' : 'none' }}>
+        <World isActive={gameScene === 'guild-hall'} />
+      </div>
       {gameScene === 'combat-arena' && <CombatArenaCanvas />}
 
       {/* HUD + panels (only in guild-hall) */}
