@@ -89,7 +89,6 @@ external/
 worktrees/
 .agent
 .claude
-.github
 .opencode
 CLAUDE.md
 .gitkeep
