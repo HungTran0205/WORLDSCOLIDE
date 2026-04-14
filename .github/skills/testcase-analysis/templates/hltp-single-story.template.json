@@ -1,0 +1,54 @@
+{
+  "jira_id": "HTM-XXXXX",
+  "title": "Story Title",
+  "account": "Account Name - Description - (SOW Code)",
+  "summary": {
+    "epic": "HTM-XXXXX - Epic Name",
+    "tester": "Tester Name or TBD",
+    "team": "System Test",
+    "sprint": "Sprint Name or empty string",
+    "version": "Release X.Y",
+    "notes": "Test environment or additional notes",
+    "stories": [
+      {
+        "id": "HTM-XXXXX",
+        "description": "Story description from Jira summary",
+        "owner": "Tester Name or TBD",
+        "sheet": "HTM-XXXXX"
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "number": 1,
+      "ac": "AC_01",
+      "category": "Positive",
+      "summary": "Test scenario description",
+      "conditions": {
+        "Condition 1": "Value 1",
+        "Condition 2": "Value 2",
+        "Condition 3": "Value 3"
+      },
+      "expected": "Expected result description"
+    },
+    {
+      "number": 2,
+      "ac": "AC_01",
+      "category": "Negative",
+      "summary": "Negative test scenario",
+      "conditions": {
+        "Condition 1": "Invalid Value",
+        "Condition 2": "Valid",
+        "Condition 3": "Valid"
+      },
+      "expected": "Error message or failure behavior"
+    }
+  ],
+  "summary": {
+    "totalScenarios": 2,
+    "positive": 1,
+    "negative": 1,
+    "edgeCases": 0,
+    "coverage": "100%"
+  }
+}
