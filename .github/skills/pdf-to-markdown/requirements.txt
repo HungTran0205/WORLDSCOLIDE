@@ -1,0 +1,20 @@
+# Requirements for pdf-to-markdown skill
+
+# Core dependencies
+pdfplumber>=0.10.0    # Text and table extraction
+pypdf>=4.0.0          # PDF manipulation and image extraction
+pillow>=10.0.0        # Image processing
+
+# For OCR support (optional)
+pytesseract>=0.3.10   # OCR wrapper for Tesseract
+pdf2image>=1.16.0     # Convert PDF to images
+
+# Optional: For advanced table handling
+pandas>=2.0.0         # DataFrame operations
+
+# Note: System dependencies required for OCR:
+# - Tesseract: https://github.com/tesseract-ocr/tesseract
+# - Poppler (for pdf2image):
+#   - Windows: https://github.com/osber/poppler-windows/releases
+#   - macOS: brew install poppler
+#   - Linux: apt-get install poppler-utils

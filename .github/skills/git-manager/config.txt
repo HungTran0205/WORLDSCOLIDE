@@ -1,0 +1,11 @@
+# Git Manager Configuration
+
+# Branch Naming Format
+# Use {JIRA} as placeholder for Jira ticket ID (e.g., WC-12345)
+FEATURE_BRANCH_FORMAT=feature/{JIRA}
+BUGFIX_BRANCH_FORMAT=bugfix/{JIRA}
+
+# Jira Ticket Pattern (regex)
+# Pattern to extract Jira ID from branch names (e.g., WC-[0-9]+, PROJ-[0-9]+)
+# Leave empty to be prompted on first use
+JIRA_PATTERN=WC-[0-9]+

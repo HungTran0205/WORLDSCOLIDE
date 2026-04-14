@@ -1,0 +1,9 @@
+# Cypher Query Skill - Python Dependencies
+
+# Neo4j driver (compatible with Memgraph via Bolt protocol)
+neo4j>=5.0.0
+
+# Note: This skill is now standalone and does not require code-graph-rag
+# For environment configuration, use:
+#   MEMGRAPH_HOST=localhost (default)
+#   MEMGRAPH_PORT=7687 (default)

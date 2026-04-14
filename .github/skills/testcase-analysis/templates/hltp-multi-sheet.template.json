@@ -1,0 +1,79 @@
+{
+  "_comment": "HLTP Multi-Sheet Template - Copy and modify for your project",
+  "_usage": "python generate_hltp.py --data your-data.json --output output.xlsx",
+  
+  "account": "Client Name - Project Name - (SOW-ID)",
+  "jira_id": "SOW-ID",
+  "title": "Project Title",
+  
+  "summary": {
+    "epic": "HTM-XXXXX - Epic Name",
+    "tester": "Your Name",
+    "team": "System Test",
+    "sprint": "",
+    "version": "XX.X",
+    "notes": "Optional notes about this HLTP",
+    "stories": [
+      {
+        "id": "HTM-11111",
+        "description": "Story 1 Description",
+        "owner": "Tester Name",
+        "sheet": "HTM-11111"
+      },
+      {
+        "id": "HTM-22222",
+        "description": "Story 2 Description",
+        "owner": "Tester Name",
+        "sheet": "HTM-22222"
+      }
+    ]
+  },
+  
+  "sheets": {
+    "HTM-11111": {
+      "scenarios": [
+        {
+          "ac": "AC_01",
+          "number": 1,
+          "summary": "Scenario description - what is being tested",
+          "conditions": {
+            "Condition1": "Value1",
+            "Condition2": "Value2"
+          },
+          "expected": "Expected result after test execution"
+        },
+        {
+          "ac": "AC_01",
+          "number": 2,
+          "summary": "Another scenario for same AC",
+          "conditions": {
+            "Condition1": "Different Value"
+          },
+          "expected": "Different expected result"
+        },
+        {
+          "ac": "AC_02",
+          "number": 3,
+          "summary": "Scenario for AC_02",
+          "conditions": {
+            "Precondition": "Setup required"
+          },
+          "expected": "Expected outcome"
+        }
+      ]
+    },
+    "HTM-22222": {
+      "scenarios": [
+        {
+          "ac": "AC_01",
+          "number": 1,
+          "summary": "First scenario for Story 2",
+          "conditions": {
+            "Input": "Test data"
+          },
+          "expected": "Expected result"
+        }
+      ]
+    }
+  }
+}

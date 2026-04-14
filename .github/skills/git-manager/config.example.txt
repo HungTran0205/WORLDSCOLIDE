@@ -1,0 +1,23 @@
+# Git Manager Configuration Example
+
+# Branch Naming Format
+# Use {JIRA} as placeholder for Jira ticket ID
+FEATURE_BRANCH_FORMAT=feature/{JIRA}
+BUGFIX_BRANCH_FORMAT=bugfix/{JIRA}
+
+# Alternative examples:
+# FEATURE_BRANCH_FORMAT=feat/{JIRA}
+# FEATURE_BRANCH_FORMAT={JIRA}-feature
+# BUGFIX_BRANCH_FORMAT=fix/{JIRA}
+# BUGFIX_BRANCH_FORMAT={JIRA}-bugfix
+
+# Jira Ticket Pattern (regex)
+# Pattern to extract Jira ID from branch names
+# Leave empty to be prompted on first use (defaults to AI-[0-9]+ if not provided)
+JIRA_PATTERN=HTM-[0-9]+
+
+# Alternative examples for different Jira projects:
+# JIRA_PATTERN=PROJ-[0-9]+
+# JIRA_PATTERN=(TEAM1|TEAM2)-[0-9]+
+# JIRA_PATTERN=[A-Z]+-[0-9]+
+# JIRA_PATTERN=AI-[0-9]+

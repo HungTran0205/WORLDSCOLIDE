@@ -1,0 +1,16 @@
+# DOCX to Markdown - Python Dependencies
+
+# Core conversion library (includes pandoc binary)
+pypandoc_binary>=1.13
+
+# Secure XML parsing for OOXML operations
+defusedxml>=0.7.1
+
+# Optional: Track changes support (Windows)
+pywin32>=306; sys_platform == 'win32'
+
+# Optional: Cross-platform track changes (limited support)
+python-docx>=1.1.0
+
+# Optional: Image conversion support
+Pillow>=10.0.0
