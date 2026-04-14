@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "dev-rules-reminder": true
+  },
+  "paths": {
+    "docs": "docs",
+    "plans": "specs"
+  },
+  "docs": {
+    "maxLoc": 800
+  }
+}
