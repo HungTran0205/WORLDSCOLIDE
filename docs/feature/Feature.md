@@ -2,16 +2,16 @@
 
 ## 1. Hệ thống phòng và thu thập tài nguyên
 
-### Phòng khai thác
+### 1.1 Phòng khai thác
 
-#### Chi tiết phòng khai thác gỗ
+#### 1.1.1 Chi tiết phòng khai thác gỗ
 
-##### Các chỉ số cơ bản
+##### 1.1.1.1 Các chỉ số cơ bản
 
 - Capacity room: giới hạn lượng gỗ chứa trong phòng trước khi cần thu hoạch (ví dụ 1000 / 2000 / 4000)
 - Adventure upgrade cost: khi đi adventure có thể farm ra currency rồi dùng currency để nâng cấp phòng khai thác gỗ mở rộng limit chứa gỗ
 
-##### Các chỉ số khi nhân vật được assign vào room
+##### 1.1.1.2 Các chỉ số khi nhân vật được assign vào room
 
 - Tốc độ chặt gỗ: số đơn vị gỗ / giây hoặc chu kỳ (ví dụ 5s / 10 gỗ)
 - Durability / tool break chance: tỉ lệ dụng cụ hỏng mỗi lần khai thác (ví dụ 5% base, giảm khi nâng cấp tool)
@@ -20,20 +20,20 @@
   - Gỗ enchant có thể cho bonus stat dựa trên STR, DEX, AGI, INT, END, LUK, CHA
   - Bonus stat ngẫu nhiên +1 đến +5 cho mỗi chỉ số phù hợp với item hoặc nhân vật
 
-##### Các chỉ số khi có furniture
+##### 1.1.1.3 Các chỉ số khi có furniture
 
 - Bonus modifiers: tăng thêm yield khi room level cao, khi có nhân sự phù hợp, hoặc khi dùng boost item
 
-##### Các cơ chế khác
+##### 1.1.1.4 Các cơ chế khác
 
 - Auto-collect trigger: khi phòng đầy đến limit, tự chuyển gỗ vào kho hoặc giữ để đợi thu hoạch
   - Nếu còn slot inventory: tự nạp gỗ vào kho / nhân vật khi offline
   - Nếu đầy slot inventory: giữ gỗ tại phòng hoặc tạo backlog cho lần thu hoạch tiếp theo sau khi giải phóng slot
 - Risk/reward động lực: tăng tốc độ và tỉ lệ loot hiếm đổi bằng chi phí bảo trì hoặc tool durability
 
-#### Chi tiết phòng khai thác đá
+#### 1.1.2 Chi tiết phòng khai thác đá
 
-##### Các chỉ số cơ bản
+##### 1.1.2.1 Các chỉ số cơ bản
 
 - Capacity room: giới hạn lượng đá chứa trong phòng trước khi cần thu hoạch (ví dụ 100 / 200 / 400)
 - Upgrade tier effect: mỗi cấp mỏ đá mở thêm cơ hội rớt nguyên liệu hiếm khác nhau (ví dụ từ Stone -> Iron Ore -> Crystal -> Rare Ore)
@@ -48,7 +48,7 @@
   - Bonus stat có thể dựa trên STR, DEX, AGI, INT, END, LUK, CHA
   - Ví dụ bonus: +1~+5 STR, +1~+5 DEX, +1~+5 AGI, +1~+5 INT, +1~+5 END, +1~+5 LUK, +1~+5 CHA
 
-##### Các chỉ số khi nhân vật được assign vào room
+##### 1.1.2.2 Các chỉ số khi nhân vật được assign vào room
 
 - Tốc độ khai thác: số đơn vị đá / giây hoặc chu kỳ (ví dụ 5s / 8 đá)
 - Durability / tool break chance: tỉ lệ dụng cụ hỏng mỗi lần khai thác (ví dụ 5% base, giảm khi nâng cấp tool)
@@ -58,9 +58,9 @@
 - Auto-collect trigger: offline, nếu còn slot inventory thì tự chuyển đá vào kho; nếu đầy slot inventory thì giữ đá tại phòng hoặc backlog cho lần thu hoạch tiếp theo
 - Risk/reward động lực: tăng tốc độ và tỉ lệ loot hiếm đổi bằng chi phí bảo trì hoặc tool durability
 
-#### Chi tiết phòng khai thác phép thuật
+#### 1.1.3 Chi tiết phòng khai thác phép thuật
 
-##### Các chỉ số cơ bản
+##### 1.1.3.1 Các chỉ số cơ bản
 
 - Capacity room: giới hạn lượng magic item chứa trong phòng trước khi cần thu hoạch (ví dụ 50 / 100 / 200)
 - Player choice: người chơi phải chọn trước loại magic item muốn thu thập, ví dụ `Buff Spell Fragment`, `Debuff Spell Fragment`, hoặc `Healing Potion Ingredient`
@@ -81,7 +81,7 @@
   - Debuff Spell: tăng duration, debuff %, hoặc negative effect strength
   - Healing Potion: tăng HP amount hoặc regen amount
 
-##### Các chỉ số khi nhân vật được assign vào room
+##### 1.1.3.2 Các chỉ số khi nhân vật được assign vào room
 
 - Tốc độ khai thác phép: số đơn vị item / giây hoặc chu kỳ (ví dụ 6s / 6 items)
 - Durability / tool break chance: tỉ lệ dụng cụ phép hỏng mỗi lần khai thác (ví dụ 7% base, giảm khi nâng cấp tool)
@@ -91,14 +91,14 @@
 - Auto-collect trigger: offline, nếu còn slot inventory thì tự chuyển magic item vào kho; nếu đầy slot inventory thì giữ item tại phòng hoặc backlog cho lần thu hoạch tiếp theo
 - Risk/reward động lực: tăng tốc độ và tỉ lệ loot hiếm đổi bằng chi phí reagent / breakdown chance
 
-#### Chi tiết phòng chế tạo: Vũ khí
+#### 1.1.4 Chi tiết phòng chế tạo: Vũ khí
 
-##### Các chỉ số cơ bản
+##### 1.1.4.1 Các chỉ số cơ bản
 
 - Chỉ số có thể không tiêu hao nguyên liệu (`resource saving chance`)
 - Chỉ số có tỉ lệ tạo ra 2 sản phầm cùng lúc (`double product chance`)
 
-###### Input
+###### 1.1.4.2 Input
 
 - Người chơi chọn
   - Loại quặng (Define later)
@@ -106,19 +106,19 @@
   - Recipe
   - Improve success rate
 
-###### Output
+###### 1.1.4.3 Output
 
 - Rare weapon có success rate thấp hơn và yêu cầu công thức + nguyên liệu hiếm hơn
 - Dùng quặng enchant để tạo ra weapon enchant với bonus stat +1~+5 lên STR / DEX / AGI / INT / END / LUK / CHA
 
-#### Chi tiết phòng chế tạo: Giáp
+#### 1.1.5 Chi tiết phòng chế tạo: Giáp
 
-##### Các chỉ số cơ bản
+##### 1.1.5.1 Các chỉ số cơ bản
 
 - Chỉ số có thể không tiêu hao nguyên liệu (`resource saving chance`)
 - Chỉ số có tỉ lệ tạo ra 2 sản phầm cùng lúc (`double product chance`)
 
-###### Input
+###### 1.1.5.2 Input
 
 - Người chơi chọn
   - Loại quặng (Define later)
@@ -126,7 +126,7 @@
   - Recipe
   - Improve success rate
 
-###### Output
+###### 1.1.5.3 Output
 
 - Rare weapon có success rate thấp hơn và yêu cầu công thức + nguyên liệu hiếm hơn
 - Dùng quặng enchant để tạo ra weapon enchant với bonus stat +1~+5 lên STR / DEX / AGI / INT / END / LUK / CHA
