@@ -1,7 +1,7 @@
 import type { Member } from '@/game/state/game-state';
 import type { EnemyTemplate } from '@/game/data/enemies';
 import type { CombatEntity, CombatTick, CombatEvent, CombatResult, CombatOutcome } from './combat-types';
-import { calcMaxHp, calcAttackInterval, calcAutoAttackDamage, calcSkillDamage, rollCrit } from './combat-formulas';
+import { calcAutoAttackDamage, calcSkillDamage, rollCrit } from './combat-formulas';
 import { calcDerivedCombatStats } from './derived-combat-stats';
 import { applyEffectTick } from './combat-effects';
 import {
