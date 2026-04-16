@@ -3,6 +3,7 @@ import type { GuildHall, GameSettings, TavernState, Member, FloorTile, PlacedFur
 import type { InventoryState } from './game-state';
 import type { ItemID } from '@/game/data/items';
 import type { FacilityProductionResult, LoggingTickResult } from '@/game/systems/facility-production-system';
+import type { StoneQuarryTickResult } from '@/game/systems/stone-quarry-production-system';
 import { FACILITY_DEFINITIONS, LOGGING_SITE_CONFIG } from '@/game/data/facility-definitions';
 import { FLOOR_TILE_COST } from '@/game/data/buildings';
 import { getFurnitureDefinition } from '@/game/data/furniture';
@@ -47,6 +48,8 @@ export interface GuildSlice {
   unassignMemberFromFacility: (memberId: string, type: FacilityType) => boolean;
   /** Apply per-tick logging site production results (WC XP, reserve depletion) */
   applyLoggingProduction: (result: LoggingTickResult) => void;
+  /** Apply per-tick stone quarry production results (MC XP gains) */
+  applyStoneQuarryProduction: (result: StoneQuarryTickResult) => void;
   /** Remove a depleted (or manually removed) logging site — resets to level 0 */
   removeFacility: (type: FacilityType) => void;
   // Ephemeral offline facility report — not persisted in save
@@ -510,7 +513,10 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
           ...m,
           ...(isDepleted ? { status: 'idle' as const } : {}),
           craftSkills: gain
-            ? { woodcutting: { level: gain.newLevel, xpAccumulated: gain.newXp } }
+            ? {
+                woodcutting: { level: gain.newLevel, xpAccumulated: gain.newXp },
+                mining: m.craftSkills?.mining ?? { level: 0, xpAccumulated: 0 },
+              }
             : m.craftSkills,
         };
       };
@@ -525,6 +531,32 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
 
       return {
         facilities: updatedFacilities,
+        roster: fullState.roster.map(updateMember),
+        ...(fullState.founder ? { founder: updateMember(fullState.founder) } : {}),
+      } as unknown as Partial<GuildSlice>;
+    });
+  },
+
+  applyStoneQuarryProduction: (result) => {
+    if (result.mcXpGains.length === 0) return;
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null };
+
+      const mcGainMap = new Map(result.mcXpGains.map((g) => [g.memberId, g]));
+
+      const updateMember = (m: Member): Member => {
+        const gain = mcGainMap.get(m.id);
+        if (!gain) return m;
+        return {
+          ...m,
+          craftSkills: {
+              woodcutting: m.craftSkills?.woodcutting ?? { level: 0, xpAccumulated: 0 },
+              mining: { level: gain.newLevel, xpAccumulated: gain.newXp },
+            },
+        };
+      };
+
+      return {
         roster: fullState.roster.map(updateMember),
         ...(fullState.founder ? { founder: updateMember(fullState.founder) } : {}),
       } as unknown as Partial<GuildSlice>;

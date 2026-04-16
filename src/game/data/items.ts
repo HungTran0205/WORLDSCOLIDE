@@ -1,7 +1,7 @@
 /** Static item database — master data for all game items (read-only definitions). */
 
 export type ItemID =
-  | 'WOOD' | 'STONE' | 'IRON_ORE'
+  | 'WOOD' | 'STONE' | 'IRON_ORE' | 'GEM'
   | 'SLIME_GEL' | 'BOAR_PELT' | 'WOLF_FANG'
   | 'GOBLIN_EAR' | 'ORC_TUSK'
   | 'LOGGING_SITE_ACCESS';
@@ -33,6 +33,7 @@ export const ITEM_DATABASE: Record<ItemID, ItemTemplate> = {
   WOLF_FANG:  { id: 'WOLF_FANG',  name: 'Wolf Fang',   type: 'MATERIAL', rarity: 'UNCOMMON', basePrice: 10, description: 'Sharp canine tooth.',         stackable: true },
   GOBLIN_EAR: { id: 'GOBLIN_EAR', name: 'Goblin Ear',  type: 'MATERIAL', rarity: 'COMMON',   basePrice: 3,  description: 'Proof of goblin subjugation.', stackable: true },
   ORC_TUSK:            { id: 'ORC_TUSK',            name: 'Orc Tusk',       type: 'MATERIAL',   rarity: 'UNCOMMON', basePrice: 15, description: 'Massive ivory tusk.',   stackable: true },
+  GEM:                 { id: 'GEM',                 name: 'Gemstone',       type: 'MATERIAL',   rarity: 'RARE',     basePrice: 50, description: 'A rough gemstone found deep in the quarry.', stackable: true },
   LOGGING_SITE_ACCESS: { id: 'LOGGING_SITE_ACCESS', name: 'Logging Permit', type: 'CONSUMABLE', rarity: 'UNCOMMON', basePrice: 0,  description: "Authorization from the Forest Warden to establish a logging site. Consumed on build.", stackable: false },
 };
 
