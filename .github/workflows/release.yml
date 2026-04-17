@@ -1,0 +1,199 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: 
+  id-token: write
+  pull-requests: write
+  contents: write
+  actions: write  
+  attestations: write
+  issues: write
+  packages: write
+
+jobs:
+  # Common test job that runs for both PRs and releases
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      
+      - name: Install GitHub CLI
+        run: |
+          type -p curl >/dev/null || (sudo apt update && sudo apt install curl -y)
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+          && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+          && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+          && sudo apt update \
+          && sudo apt install gh -y
+      
+      - name: Validate Go module and dependencies
+        run: |
+          echo "🔍 Validating Go module and dependencies..."
+          go mod verify
+          go mod tidy
+          if [ -n "$(git status --porcelain go.mod go.sum)" ]; then
+            echo "❌ Error: go.mod or go.sum files are not up to date"
+            echo "Please run 'go mod tidy' and commit the changes"
+            exit 1
+          fi
+          echo "✅ Go module validation successful"
+      
+      - name: Download Go dependencies
+        run: go mod download
+        
+      - name: Build extension to verify compilation
+        run: CGO_ENABLED=0 go build -ldflags="-s -w" -o gh-nova-tm .
+        
+      - name: Verify binary works
+        run: ./gh-nova-tm --version
+
+  # Build cross-platform binaries (only for main branch, not PRs)
+  build-binaries:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get version
+        id: get-version
+        run: |
+          VERSION=$(cat version.txt | tr -d '\n')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+        
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build cross-platform binaries
+        run: |
+          echo "🔨 Building binaries for all platforms..."
+          
+          # Platforms to build for (matching gh-extension-precompile)
+          platforms=(
+            "linux/amd64"
+            "linux/arm64"
+            "darwin/amd64"
+            "darwin/arm64"
+            "windows/amd64"
+            "windows/arm64"
+            "windows/386"
+          )
+          
+          mkdir -p dist
+          
+          for platform in "${platforms[@]}"; do
+            os="${platform%/*}"
+            arch="${platform#*/}"
+            output="dist/gh-nova-tm-${os}-${arch}"
+            
+            if [ "$os" = "windows" ]; then
+              output="${output}.exe"
+            fi
+            
+            echo "Building for $os/$arch..."
+            CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -ldflags="-s -w" -o "$output" .
+            
+            if [ $? -ne 0 ]; then
+              echo "❌ Failed to build for $os/$arch"
+              exit 1
+            fi
+            
+            echo "✅ Built: $output ($(du -h $output | cut -f1))"
+          done
+          
+          echo "✅ All binaries built successfully"
+          echo ""
+          echo "📦 Binary sizes:"
+          ls -lh dist/
+
+      - name: Upload binaries as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: dist/*
+          retention-days: 1  # Only needed temporarily until uploaded to release
+
+  # Create release (only for main branch)
+  release-please:
+    runs-on: ubuntu-latest
+    needs: build-binaries
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - name: Create Release
+        id: release
+        uses: googleapis/release-please-action@v4.2.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: .release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # Upload binaries to release (only when release is created)
+  upload-binaries:
+    runs-on: ubuntu-latest
+    needs: [build-binaries, release-please]
+    if: needs.release-please.outputs.release_created == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries
+          path: dist
+
+      - name: Upload binaries to release
+        run: |
+          echo "📦 Uploading binaries to release ${{ needs.release-please.outputs.tag_name }}"
+          
+          for file in dist/*; do
+            filename=$(basename $file)
+            echo "Uploading $filename..."
+            gh release upload "${{ needs.release-please.outputs.tag_name }}" "$file" --clobber
+          done
+          
+          echo "✅ All binaries uploaded successfully"
+          echo "🎯 Release available at: https://github.com/${{ github.repository }}/releases/tag/${{ needs.release-please.outputs.tag_name }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Delete artifacts after successful upload
+        run: |
+          echo "🧹 Cleaning up artifacts..."
+          # Get the artifact ID for the binaries artifact
+          artifact_id=$(gh api /repos/${{ github.repository }}/actions/artifacts \
+            --jq '.artifacts[] | select(.name=="binaries") | .id' | head -n 1)
+          
+          if [ -n "$artifact_id" ]; then
+            gh api --method DELETE /repos/${{ github.repository }}/actions/artifacts/$artifact_id
+            echo "✅ Artifact deleted successfully"
+          else
+            echo "⚠️  Artifact not found or already deleted"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

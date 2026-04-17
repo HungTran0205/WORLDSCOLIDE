@@ -2074,6 +2074,44 @@ public/sprites/characters/
 - **localStorage**: All browsers
 - **React 19**: Modern browsers (ES2020+)
 
+## Companion Tools & Editors
+
+### Overview
+
+Separate Vite-based tools to support game development and asset management:
+
+| Tool | Port | Purpose | Status |
+|------|------|---------|--------|
+| **map-playground** | 5175 | Arena map editor (WC-MAPMAKER) | ✅ Complete (Phases 1–10) |
+
+### Map Playground (WC-MAPMAKER Phases 1–10 COMPLETE)
+
+**Purpose**: Visual combat arena map editor. Replaces manual number-tweaking in arena-biome-config.ts with click-to-place workflow. Generates TypeScript BiomeConfig for copy-paste into main game.
+
+**Status**: Production-ready. Full asset editor with code generator.
+
+**Full Documentation**: See `docs/map-playground-guide.md`
+
+**Quick Features**:
+- R3F orthogonal viewport with raycaster click-to-place
+- Asset browser (3D props, backgrounds, VFX effects)
+- Properties panel (position, scale, rotation sliders with live preview)
+- Code generator → BiomeConfig TypeScript export → clipboard
+- Undo/Redo (Ctrl+Z/Y), delete, duplicate (Ctrl+D)
+- Scene objects list, code preview panel
+- Leva debug panel (reactive lighting controls)
+
+**Dev Server**:
+- **Port 5175** (separate from main game)
+- Custom Vite plugin:
+  - `/api/asset-manifest` — Asset listing
+  - `/game-assets/*` — Game assets from public/ folder
+
+**Getting Started**:
+```bash
+npm run map    # Dev server on http://localhost:5175
+```
+
 ## Testing Coverage
 
 - **Save validation**: Unit tests for type guards, migrations

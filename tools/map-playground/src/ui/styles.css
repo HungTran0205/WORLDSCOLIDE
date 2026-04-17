@@ -1,0 +1,147 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #1a1a1e; color: #e0e0e0; font-family: monospace; font-size: 14px; height: 100vh; overflow: hidden; }
+
+/* ── Layout ───────────────────────────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: 300px 1fr 340px;
+  height: 100vh;
+}
+.left-col  { background: #1e1e28; border-right: 1px solid #333; overflow-y: auto; }
+.right-col { background: #1e1e28; border-left:  1px solid #333; overflow-y: auto; }
+.canvas-area {
+  position: relative;
+  background: #111116;
+  cursor: default;
+}
+.canvas-area.placing { cursor: crosshair; }
+
+/* Viewport toolbar — top-left of canvas */
+.viewport-toolbar {
+  position: absolute; top: 10px; left: 10px; z-index: 20;
+  display: flex; gap: 6px;
+}
+.toolbar-btn {
+  background: #2a2a38; border: 1px solid #555; color: #aaa;
+  padding: 6px 12px; border-radius: 6px; cursor: pointer;
+  font-size: 13px; font-family: monospace;
+}
+.toolbar-btn:hover:not(:disabled)  { background: #333348; color: #e0e0e0; }
+.toolbar-btn:disabled { opacity: 0.35; cursor: default; }
+
+/* Camera orbit toggle button — top-right of canvas */
+.cam-toggle-btn {
+  position: absolute; top: 10px; right: 10px; z-index: 20;
+  background: #2a2a38; border: 1px solid #555; color: #aaa;
+  padding: 6px 12px; border-radius: 6px; cursor: pointer;
+  font-size: 13px; font-family: monospace;
+}
+.cam-toggle-btn:hover  { background: #333348; color: #e0e0e0; }
+.cam-toggle-btn.active { background: #3a3a60; border-color: #6666ff; color: #a0a0ff; }
+
+/* ── Asset browser ────────────────────────────────────────────── */
+.asset-browser { padding: 10px; }
+
+.load-template-btn { width: 100%; text-align: left; background: #1e2e1e; border-color: #3a6040; color: #9fd09f; }
+.load-template-btn:hover { background: #253525; }
+
+.biome-selector { display: flex; gap: 6px; margin-bottom: 10px; }
+.biome-btn {
+  flex: 1; background: #2a2a38; border: 1px solid #444; color: #aaa;
+  padding: 7px 10px; border-radius: 4px; cursor: pointer; font-size: 14px;
+}
+.biome-btn.active { background: #3a3a60; border-color: #6666ff; color: #e0e0e0; }
+.biome-btn:hover  { background: #333348; }
+
+.asset-section { margin-bottom: 6px; }
+.asset-section-header {
+  width: 100%; text-align: left; background: none; border: none;
+  color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 8px 0; cursor: pointer;
+}
+.asset-section-header:hover { color: #aaa; }
+.asset-section-body { padding-left: 4px; }
+
+.asset-item {
+  display: block; width: 100%; text-align: left;
+  background: none; border: none; color: #ccc;
+  padding: 6px 10px; border-radius: 3px; cursor: pointer;
+  font-size: 14px; font-family: monospace;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.asset-item:hover  { background: #2a2a38; color: #e0e0e0; }
+.asset-item.active { background: #3a3a60; color: #a0a0ff; }
+
+/* ── Properties panel ─────────────────────────────────────────── */
+.properties-panel { padding: 14px; }
+.properties-panel.empty { color: #555; text-align: center; padding: 28px 14px; font-size: 14px; }
+
+.panel-title {
+  font-size: 14px; font-weight: bold; color: #aaa; margin-bottom: 14px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.panel-section       { margin-bottom: 18px; }
+.panel-section-title { font-size: 12px; color: #666; text-transform: uppercase; margin-bottom: 8px; }
+
+.slider-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.slider-label { font-size: 13px; color: #888; width: 60px; flex-shrink: 0; }
+.slider-row input[type=range] { flex: 1; accent-color: #6666ff; height: 18px; }
+.slider-row input[type=color] { width: 40px; height: 26px; border: none; background: none; cursor: pointer; }
+.slider-value {
+  font-size: 13px; color: #c0c0c0; width: 52px; text-align: right;
+  font-variant-numeric: tabular-nums; flex-shrink: 0;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────── */
+.btn-danger {
+  background: #5a2020; border: 1px solid #8a3030; color: #f08080;
+  padding: 8px 12px; border-radius: 4px; cursor: pointer;
+  font-size: 14px; margin-top: 10px; width: 100%;
+}
+.btn-danger:hover { background: #6a2828; }
+
+/* ── Code preview ─────────────────────────────────────────────── */
+.code-preview {
+  position: absolute;
+  bottom: 36px; left: 0; right: 0;
+  background: #111116dd;
+  border-top: 1px solid #333;
+  z-index: 10;
+}
+.code-preview-toolbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 12px;
+}
+.btn-generate {
+  background: #4a4aff; color: white; border: none; border-radius: 4px;
+  padding: 7px 16px; cursor: pointer; font-size: 14px; font-weight: bold;
+  flex-shrink: 0;
+}
+.btn-generate:hover { background: #6666ff; }
+.btn-clear {
+  background: none; border: none; color: #666; cursor: pointer;
+  font-size: 14px; margin-left: auto; padding: 2px 6px;
+}
+.btn-clear:hover { color: #aaa; }
+.code-preview-hint { font-size: 11px; color: #555; }
+.code-preview-content {
+  padding: 6px 12px; font-size: 11px; color: #80d080;
+  overflow-y: auto; max-height: 150px; white-space: pre-wrap;
+  border-top: 1px solid #2a2a2a;
+}
+
+/* ── Scene objects list ───────────────────────────────────────── */
+.scene-objects-list {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 36px; background: #111116dd; border-top: 1px solid #333;
+  display: flex; align-items: center; gap: 6px; padding: 0 12px;
+  overflow-x: auto; z-index: 10;
+}
+.scene-objects-label { font-size: 10px; color: #555; flex-shrink: 0; }
+.object-chip {
+  background: #2a2a38; border: 1px solid #3a3a50; color: #aaa;
+  padding: 2px 8px; border-radius: 12px; font-size: 10px; cursor: pointer;
+  white-space: nowrap; flex-shrink: 0; font-family: monospace;
+}
+.object-chip.active { background: #3a3a60; border-color: #6666ff; color: #c0c0ff; }
+.object-chip:hover  { background: #333348; }
