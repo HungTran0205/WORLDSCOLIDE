@@ -19,8 +19,14 @@ export interface WoodcuttingSkill {
   xpAccumulated: number; // total wood harvested (acts as XP proxy)
 }
 
+export interface MiningSkill {
+  level: number;         // 0–10
+  xpAccumulated: number; // total stone mined (acts as XP proxy)
+}
+
 export interface CraftSkills {
   woodcutting: WoodcuttingSkill;
+  mining: MiningSkill;
 }
 
 export interface Skill {

@@ -1,6 +1,6 @@
 /** Tile-based building system — adjacency, occupation, world bounds */
 
-import type { FloorTile, GridCell, PlacedFurniture } from '@/game/state/game-state';
+import type { FloorTile, PlacedFurniture } from '@/game/state/game-state';
 import { getFurnitureDefinition } from '@/game/data/furniture';
 import { getFurnitureCells } from './furniture-system';
 

@@ -1,8 +1,8 @@
 # Development Roadmap
 
-**Last Updated**: 2026-04-12
-**Current Phase**: Phase 5 In Progress (Milestone 15 GPU-Instanced Combat Rendering Complete)
-**Overall Progress**: ~99.7% Complete
+**Last Updated**: 2026-04-15
+**Current Phase**: Phase 5 In Progress (Milestone 17 Stone Quarry Mining Skill Complete)
+**Overall Progress**: ~99.8% Complete
 
 ---
 
@@ -333,6 +333,7 @@
 | Phase 6 Milestone 1 | 2026-04-17 | ✅ Done | Map Playground Tool (Phases 1–10 complete, asset browser, R3F viewport, properties panel, code generator, undo/redo) |
 | Phase 5 Complete | 2026-04-12 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
 | Phase 6 Start | 2026-04-15 | 📋 In Progress | Post-launch content |
+
 
 ---
 

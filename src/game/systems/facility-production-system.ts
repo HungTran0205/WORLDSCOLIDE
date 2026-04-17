@@ -5,8 +5,9 @@
 
 import type { GuildFacility, Member } from '@/game/state/game-state';
 import type { ItemID } from '@/game/data/items';
-import { FACILITY_DEFINITIONS, LOGGING_SITE_CONFIG } from '@/game/data/facility-definitions';
+import { FACILITY_DEFINITIONS, LOGGING_SITE_CONFIG, STONE_QUARRY_CONFIG } from '@/game/data/facility-definitions';
 import { calcDerivedGuildStats } from './derived-guild-stats';
+import { calcMcLevel } from './stone-quarry-production-system';
 
 // --- Logging Site per-tick production types ---
 
@@ -244,12 +245,16 @@ export function processFacilityProduction(
       }
 
       case 'stone-quarry': {
-        const combined: Partial<Record<ItemID, number>> = {};
+        // Accumulate daily stone across all members first, then multiply by gameDays
+        let totalDailyStone = 0;
         for (const member of assignedMembers) {
+          const mcXp = member.craftSkills?.mining?.xpAccumulated ?? 0;
+          const mcLevel = calcMcLevel(mcXp);
+          const mcBonus = 1 + STONE_QUARRY_CONFIG.mcSkillYieldPct[mcLevel] / 100;
           const daily = calcExtractionOutput(member, facility.level, QUARRY_BASE);
-          combined.STONE = ((combined.STONE ?? 0) + daily) * gameDays;
+          totalDailyStone += Math.floor(daily * mcBonus);
         }
-        result.itemGains = combined;
+        result.itemGains = { STONE: totalDailyStone * gameDays };
         break;
       }
     }

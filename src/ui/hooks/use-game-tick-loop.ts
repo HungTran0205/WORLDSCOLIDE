@@ -9,6 +9,8 @@ import { processMissionTick, processInjuryRecovery } from '@/game/systems/missio
 import { shouldAdvanceTutorial, getNextStep } from '@/game/systems/tutorial-manager';
 import { generateMercenaries } from '@/game/systems/mercenary-generator';
 import { processFacilityProduction, processLoggingSiteTick } from '@/game/systems/facility-production-system';
+import { processStoneQuarryTick } from '@/game/systems/stone-quarry-production-system';
+import type { ItemID } from '@/game/data/items';
 import { calcTotalUpkeep } from '@/game/systems/upkeep-system';
 import { MISSIONS } from '@/game/data/missions';
 import { playSFX } from '@/audio/audio-manager';
@@ -73,6 +75,18 @@ export function useGameTickLoop() {
       store.applyLoggingProduction(loggingResult);
       if (loggingResult.woodProduced > 0) {
         store.addItem('WOOD', loggingResult.woodProduced);
+      }
+    }
+
+    // Per-tick stone quarry production (1s cadence) — infinite reserve, MC skill + vein strikes
+    const quarryResult = processStoneQuarryTick(store.facilities, allMembersForTick);
+    if (quarryResult.stoneProduced > 0 || quarryResult.mcXpGains.length > 0) {
+      store.applyStoneQuarryProduction(quarryResult);
+      if (quarryResult.stoneProduced > 0) {
+        store.addItem('STONE', quarryResult.stoneProduced);
+      }
+      for (const [itemId, qty] of Object.entries(quarryResult.bonusItemGains)) {
+        if (qty > 0) store.addItem(itemId as ItemID, qty);
       }
     }
 

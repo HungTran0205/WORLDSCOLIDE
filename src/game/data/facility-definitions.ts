@@ -79,15 +79,45 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
   'stone-quarry': {
     type: 'stone-quarry',
     name: 'Stone Quarry',
-    description: 'Assign members to mine stone from the quarry. STR increases yield.',
+    description: 'Mine stone continuously. STR controls yield. LCK unlocks rare vein strikes (Iron Ore, Gems). MC skill amplifies both.',
     buildCost: 250,
     upgradeCosts: [300, 500],
     maxSlots: [1, 2, 3],
-    primaryStats: 'STR',
+    primaryStats: 'STR + LCK',
     zonePosition: [7, 0, 1],
     tileFootprint: [3, 3],
   },
 };
+
+/** Infinite-production config for the Stone Quarry facility */
+export const STONE_QUARRY_CONFIG = {
+  /** stone/tick per unit of (STR×0.5)/100 — baseScore is normalized by /100 to keep the rate small.
+   *  Calibrated: STR20 → baseScore=10 → baseScore/100=0.1 → 0.002315×0.1×86400 ≈ 20 stone/day at lv1, MC0. */
+  baseRate: 0.002315,
+  /** Level production multipliers [lv1, lv2, lv3] */
+  levelMult: [1.0, 2.0, 3.5] as const,
+  /** MC skill XP thresholds (cumulative stone mined) — 25% harder than WC */
+  mcSkillThresholds: [0, 100, 250, 563, 1063, 1875, 3125, 5000, 7500, 11250, 16250] as const,
+  /** Yield bonus % per MC level */
+  mcSkillYieldPct: [0, 8, 18, 32, 50, 72, 98, 128, 162, 200, 245] as const,
+  /** Additive daily vein strike chance per MC level (decimal, not %) */
+  mcSkillStrikePct: [0, 0.003, 0.006, 0.01, 0.015, 0.02, 0.025, 0.03, 0.035, 0.04, 0.05] as const,
+  /** Base vein strike chance per game-day */
+  baseStrikeChancePerDay: 0.01,
+  /** fortune stat bonus per point to daily strike chance (fortune = LCK×3 + CHA×0.5) */
+  fortuneStrikeScale: 0.0002,
+  /** Level bonus to daily vein strike chance [lv1, lv2, lv3] */
+  levelStrikeBonus: [0, 0.015, 0.035] as const,
+  /** Ticks per game-day — used to convert daily strike probability to per-tick */
+  ticksPerDay: 86400,
+  mcSkillMaxLevel: 10,
+  /** Vein type cumulative thresholds: roll < weights[0] → iron, < weights[1] → richStone, else gem */
+  veinWeights: [0.65, 0.90] as const,
+  /** Iron ore quantity range [min, max] inclusive */
+  ironOreRange: [2, 4] as const,
+  /** Rich stone pocket STONE bonus range [min, max] inclusive */
+  richStoneBonusRange: [10, 20] as const,
+} as const;
 
 /** Finite-harvest config for the Logging Site facility */
 export const LOGGING_SITE_CONFIG = {

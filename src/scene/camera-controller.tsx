@@ -20,6 +20,7 @@ const ARRIVE_THRESHOLD = 0.01;
 export function CameraController() {
   const isBuildMode = useGameStore((s) => s.isBuildMode);
   const cameraTarget = useGameStore((s) => s.cameraTarget);
+  const setCameraSettled = useGameStore((s) => s.setCameraSettled);
   const { camera, invalidate } = useThree();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -43,7 +44,10 @@ export function CameraController() {
     const distCamera = camera.position.distanceTo(goalPosition.current);
 
     // Stop lerping when arrived — demand frameloop won't fire unless invalidated
-    if (distTarget < ARRIVE_THRESHOLD && distCamera < ARRIVE_THRESHOLD) return;
+    if (distTarget < ARRIVE_THRESHOLD && distCamera < ARRIVE_THRESHOLD) {
+      setCameraSettled(true);
+      return;
+    }
 
     controls.target.lerp(goalTarget.current, LERP_SPEED);
     camera.position.lerp(goalPosition.current, LERP_SPEED);

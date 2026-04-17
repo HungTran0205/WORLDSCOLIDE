@@ -3,7 +3,7 @@
 import type {
   GridCell, Rotation, FurnitureType, GuildHall,
 } from '@/game/state/game-state';
-import { FURNITURE_DEFINITIONS, getFurnitureDefinition } from '@/game/data/furniture';
+import { getFurnitureDefinition } from '@/game/data/furniture';
 import { getUnlockedFurniture } from '@/game/data/buildings';
 import type { PlacementResult } from './building-system';
 

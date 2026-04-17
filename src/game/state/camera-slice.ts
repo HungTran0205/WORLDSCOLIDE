@@ -7,14 +7,20 @@ export const GUILD_HALL_CAMERA_TARGET: [number, number, number] = [5, 0, 3.5];
 export interface CameraSlice {
   /** World-space target the camera animates toward. Default = guild hall center. */
   cameraTarget: [number, number, number];
+  /** True once the camera has finished lerping to cameraTarget. Resets to false on each navigation. */
+  cameraSettled: boolean;
   setCameraTarget: (target: [number, number, number]) => void;
+  setCameraSettled: (settled: boolean) => void;
   resetCameraToGuildHall: () => void;
 }
 
 export const createCameraSlice: StateCreator<CameraSlice> = (set) => ({
   cameraTarget: GUILD_HALL_CAMERA_TARGET,
+  cameraSettled: true,
 
-  setCameraTarget: (target) => set({ cameraTarget: target }),
+  setCameraTarget: (target) => set({ cameraTarget: target, cameraSettled: false }),
 
-  resetCameraToGuildHall: () => set({ cameraTarget: GUILD_HALL_CAMERA_TARGET }),
+  setCameraSettled: (settled) => set({ cameraSettled: settled }),
+
+  resetCameraToGuildHall: () => set({ cameraTarget: GUILD_HALL_CAMERA_TARGET, cameraSettled: false }),
 });

@@ -301,6 +301,40 @@ function migrateV14toV15(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+/** v15→v16: Add mining skill to craftSkills for all members */
+function migrateV15toV16(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+
+  const DEFAULT_MINING_SKILL = { level: 0, xpAccumulated: 0 };
+
+  const migrateMember = (m: AnyRecord): AnyRecord => {
+    const skills = (m.craftSkills ?? {}) as AnyRecord;
+    if (skills.mining !== undefined) return m; // already migrated
+    return {
+      ...m,
+      craftSkills: { ...skills, mining: DEFAULT_MINING_SKILL },
+    };
+  };
+
+  const founder = gs.founder ? migrateMember(gs.founder as AnyRecord) : null;
+  const roster = Array.isArray(gs.roster) ? (gs.roster as AnyRecord[]).map(migrateMember) : [];
+
+  const tavern = gs.tavern as AnyRecord | undefined;
+  let migratedTavern = tavern;
+  if (tavern?.availableMercenaries && Array.isArray(tavern.availableMercenaries)) {
+    migratedTavern = {
+      ...tavern,
+      availableMercenaries: (tavern.availableMercenaries as AnyRecord[]).map(migrateMember),
+    };
+  }
+
+  return {
+    ...envelope,
+    version: 16,
+    gameState: { ...gs, founder, roster, tavern: migratedTavern } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -311,6 +345,7 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   12: migrateV12toV13,
   13: migrateV13toV14,
   14: migrateV14toV15,
+  15: migrateV15toV16,
 };
 
 /**
