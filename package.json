@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "vfx": "cd tools/vfx-playground && npm run dev"
+    "vfx": "cd tools/vfx-playground && npm run dev",
+    "map": "cd tools/map-playground && npm run dev"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",

@@ -265,6 +265,21 @@
 **Target Start**: 2026-04-15
 **Duration**: TBD (depends on post-launch feedback)
 
+### Completed Features
+- [x] **WC-MAPMAKER** (Map Playground Tool) — Phases 1–10 complete (full feature parity)
+  - Asset browser (3D props, BG layers, VFX effects, filtering)
+  - R3F canvas viewport with orthogonal camera, floor raycaster, click-to-place
+  - Properties panel (position, scale, rotation sliders with live preview)
+  - Background layer editor (z-depth, y-offset, scale, opacity)
+  - Reactive lighting (Leva debug panel, ambient/directional/fog controls)
+  - Atmospheric VFX placements (fog-mist, cave-ember, forest-spore, dust-motes)
+  - TypeScript code generator → clipboard (BiomeConfig export for arena-biome-config.ts)
+  - Undo/Redo (Ctrl+Z/Y), delete (Delete), duplicate (Ctrl+D)
+  - Scene objects list panel (selectable object hierarchy)
+  - Ghost preview on asset placement (green/red validation)
+  - Keyboard shortcuts (Esc to cancel placement, Delete to remove, Ctrl+D to duplicate)
+  - Vite dev server on port 5175 with custom plugin for game asset serving
+
 ### Planned Features
 - [ ] New civilizations (2 additional factions)
 - [ ] Seasonal quest lines (time-limited content)
@@ -315,9 +330,10 @@
 | Phase 5 Milestone 14 | 2026-04-11 | ✅ Done | Logging Site Finite Harvest System (woodcutting skill, finite reserve, permit gate, depletion lifecycle, 3D zone tinting, save v14) |
 | Phase 5 Milestone 15 | 2026-04-12 | ✅ Done | GPU-Instanced Combat Rendering (mega-atlas, animation buffer, 1 draw call, WebGPU fixes, canvas-texture UI) |
 | Phase 5 Milestone 16 | 2026-04-12 | ✅ Done | Guild Inventory System (slot-based UI, chest furniture, 99-item stacks, capacity management, item detail popup) |
-| Phase 5 Milestone 17 | 2026-04-15 | ✅ Done | Stone Quarry Mining Skill (per-tick production, MC skill 0–10, vein strikes, GEM item, save v16) |
-| Phase 5 Complete | 2026-04-15 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
-| Phase 6 Start | 2026-04-15 | 📋 Planned | Post-launch content |
+| Phase 6 Milestone 1 | 2026-04-17 | ✅ Done | Map Playground Tool (Phases 1–10 complete, asset browser, R3F viewport, properties panel, code generator, undo/redo) |
+| Phase 5 Complete | 2026-04-12 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
+| Phase 6 Start | 2026-04-15 | 📋 In Progress | Post-launch content |
+
 
 ---
 
