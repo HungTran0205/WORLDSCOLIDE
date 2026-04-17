@@ -89,31 +89,50 @@
 - Auto-collect trigger: offline, nếu còn slot inventory thì tự chuyển magic item vào kho; nếu đầy slot inventory thì giữ item tại phòng hoặc backlog cho lần thu hoạch tiếp theo
 - Risk/reward động lực: tăng tốc độ và tỉ lệ loot hiếm đổi bằng chi phí reagent / breakdown chance
 
-#### 1.1.4 Chi tiết phòng chế tạo: Vũ khí
+#### 1.1.4 Chi tiết Workshop: Chế tạo Vũ khí, Giáp, và Đúc Quặng
 
-##### 1.1.4.1 Các chỉ số cơ bản
+##### 1.1.4.1 Tổng quan Workshop
 
-- Chỉ số có thể không tiêu hao nguyên liệu (`resource saving chance`)
-- Chỉ số có tỉ lệ tạo ra 2 sản phầm cùng lúc (`double product chance`)
+Workshop là phòng chế tạo thống nhất, kết hợp chức năng đúc quặng, chế tạo vũ khí, chế tạo giáp, sửa chữa, và tháo rời. Người chơi chỉ có thể chọn 1 chế độ hoạt động tại một thời điểm: Đúc Quặng, Chế tạo Vũ khí, hoặc Chế tạo Giáp. Các chế độ khác (sửa chữa, tháo rời) là instant actions không chiếm slot chế độ.
 
-###### 1.1.4.2 Input
+##### 1.1.4.2 Chế độ Đúc Quặng (Ore Smelting)
 
-- Người chơi chọn
-  - Loại quặng (Define later)
-  - Gỗ (Define later)
-  - Recipe
-  - Improve success rate tăng +10~+25% success rate
-    - Normal: 90-95%
-    - Rare: 75-85%
-    - Epic: 50-70%
-    - Legendary: 30-50%
+- **Mục đích:** Chuyển đổi quặng thô thành quặng tinh luyện để dùng cho chế tạo.
+- **Input:** Quặng thô (Stone, Iron Ore, Crystal, Rare Ore), nhiên liệu (Wood hoặc Essence).
+- **Output:** Quặng tinh luyện với tỉ lệ thành công cao (95% base), thất bại tiêu tốn nhiên liệu nhưng giữ nguyên quặng.
+- **Thời gian:** Chu kỳ 10-30 giây tùy level workshop.
+- **Bonus:** Double smelt chance (10% base), Enchanted Ore chance (2% base) cho bonus stat +1~+5.
 
-###### 1.1.4.3 Output
+##### 1.1.4.3 Chế độ Chế tạo Vũ khí / Giáp (Crafting)
 
-- Rare weapon có success rate thấp hơn và yêu cầu công thức + nguyên liệu hiếm hơn
-- Dùng quặng enchant để tạo ra weapon enchant với bonus stat +1~+5 lên STR / DEX / AGI / INT / END / LUK / CHA
+- **Hybrid System Recommendation:** Kết hợp time-based queue cho guaranteed progress với optional success rate boosts cho instant attempts.
+- **Core Mechanic:** Queue-based crafting đảm bảo thành công sau thời gian (5-15 phút tùy rarity), phù hợp idle gameplay. Offline completion tích lũy items.
+- **Optional Instant Attempt:** Người chơi có thể "rush" craft với success rate (70-90% cho rare, 50-70% cho epic, 30-50% cho legendary). Thất bại tiêu tốn materials nhưng không mất time. Boost success rate bằng catalysts (+10~+25% per catalyst).
+- **Input:** Quặng tinh luyện, Wood/Gỗ, Recipe, optional catalysts.
+- **Output:** Vũ khí/Giáp với rarity và stats. Enchanted items với bonus stat +1~+5.
+- **Double Product Chance:** 5% base, tăng với workshop level.
+- **Resource Saving Chance:** 10% base, giảm tiêu hao materials.
 
-#### 1.1.5 Chi tiết phòng chế tạo: Giáp
+##### 1.1.4.4 Chức năng Sửa chữa (Repair)
+
+- **Hybrid System:** Kết hợp time-based queue cho guaranteed repair với optional instant attempt success rate.
+- **Core Mechanic:** Queue repair đảm bảo phục hồi durability sau thời gian (1-5 phút tùy damage level), phù hợp idle gameplay.
+- **Optional Instant Attempt:** "Rush" repair với success rate (80-95% base, giảm nếu damage nặng). Thất bại giữ nguyên durability, tiêu tốn materials. Boost success rate bằng catalysts (+10~+25%).
+- **Cost:** Tùy % durability còn lại, dùng quặng và wood.
+- **Output:** Item phục hồi full durability nếu thành công.
+
+##### 1.1.4.5 Chức năng Tháo rời (Dismantle)
+
+- **Instant Action:** Phá hủy item để lấy lại materials (70-90% recovery rate).
+- **Output:** Quặng và wood từ item, enchanted items giữ bonus nhưng recovery thấp hơn.
+
+##### 1.1.4.6 Các chỉ số cơ bản
+
+- Capacity: Giới hạn queue slots (3-10 tùy level).
+- Upgrade: Tăng tốc độ, success rates, double chances, capacity.
+- Auto-collect: Items hoàn thành tự chuyển vào inventory nếu có slot.
+
+#### 1.1.5 Chi tiết phòng chế tạo: Phép thuật và máu
 
 ##### 1.1.5.1 Các chỉ số cơ bản
 
@@ -121,31 +140,6 @@
 - Chỉ số có tỉ lệ tạo ra 2 sản phầm cùng lúc (`double product chance`)
 
 ###### 1.1.5.2 Input
-
-- Người chơi chọn
-  - Loại quặng (Define later)
-  - Gỗ (Define later)
-  - Recipe
-  - Improve success rate tăng +10~+25% success rate
-    - Normal: 90-95%
-    - Rare: 75-85%
-    - Epic: 50-70%
-    - Legendary: 30-50%
-
-###### 1.1.5.3 Output
-
-- Rare armor có success rate thấp hơn và yêu cầu công thức + nguyên liệu hiếm hơn
-- Dùng quặng enchant để tạo ra armor enchant với bonus stat +1~+5 lên STR / DEX / AGI / INT / END / LUK / CHA
-  - Tạo enchant mạnh hơn đổi lại success rate thấp hơn ~10-20%
-
-#### 1.1.6 Chi tiết phòng chế tạo: Phép thuật và máu
-
-##### 1.1.6.1 Các chỉ số cơ bản
-
-- Chỉ số có thể không tiêu hao nguyên liệu (`resource saving chance`)
-- Chỉ số có tỉ lệ tạo ra 2 sản phầm cùng lúc (`double product chance`)
-
-###### 1.1.6.2 Input
 
 - Người chơi chọn loại spell mình muốn craft hoặc là portion (Buff, Debuff, Portion)
   - Magic item
@@ -157,7 +151,7 @@
     - Epic: 50-70%
     - Legendary: 30-50%
 
-###### 1.1.6.3 Output
+###### 1.1.5.3 Output
 
 - Rare spell hoặc portion có success rate thấp hơn và yêu cầu công thức + nguyên liệu hiếm hơn
 - Dùng magic item enchant để tạo ra spell hoặc portion enchant với bonus (TBC)
@@ -171,7 +165,7 @@
  - Vì buff/debuff/potion chỉ tồn tại trong 1 map, tier càng cao => giá trị mỗi lần dùng càng quan trọng.
 
 
-###### 1.1.6.4 Buff
+###### 1.1.5.4 Buff
 
 - Buff nên chia thành lớp và có hiệu ứng rõ:
   - Buff damage % (tăng sát thương thường)
@@ -190,7 +184,7 @@
   - Short duration (5-10s) cho map-limited
   - Có stack hay không
 
-###### 1.1.6.5 Debuff
+###### 1.1.5.5 Debuff
 
 - Các debuff khả thi:
   - Reduce damage (giảm damage đầu ra của kẻ thù)
@@ -208,7 +202,7 @@
   - Short duration (5-10s) cho map-limited
   - Có stack hay không
 
-###### 1.1.6.6 Healing portion
+###### 1.1.5.6 Healing portion
 
 - Instant heal: hồi ngay 1 lượng HP
 - Heal-over-time: hồi theo tick trong vài giây
@@ -307,6 +301,22 @@ Option premium / event:
   - overflow penalty nếu full: giảm auto-collect, giữ backlog ở phòng until slot free
   - Nếu không đủ slot, phải lựa chọn sell / salvage / bỏ qua
 
+##### 1.2.1.7 Gear Comparison và Item Details
+
+- **Compare Gear Currently Equipped với Gear trong túi:**
+  - Khi hover hoặc click vào item trong inventory, hiển thị popup so sánh với item đang equip.
+  - Hiển thị stats difference: +5 STR, -2 AGI, etc.
+  - Color coding: xanh cho tốt hơn, đỏ cho kém hơn, vàng cho bằng.
+  - Preview visual của item mới trên nhân vật (sprite change nếu có).
+  - Quick equip button từ popup.
+- **Item Detail, Rarity, Stats hiển thị rõ:**
+  - Tooltip chi tiết khi hover: name, rarity (Common/Rare/Epic/Legendary với màu sắc), stats base + bonuses.
+  - Enchant bonuses: +1~+5 stats, special effects.
+  - Durability bar cho weapons/armor.
+  - Source info: crafted, dropped, bought.
+  - Sell value, dismantle value.
+  - Flavor text hoặc lore snippet cho immersion.
+
 #### 1.2.2 Phòng hồi phục / Infirmary
 
 - Mục tiêu: chữa thương cho nhân vật injured, không phải phòng sản xuất.
@@ -373,9 +383,7 @@ Option premium / event:
   - hoặc giảm thời gian cooldown / tăng tốc độ refill queue.
 
 -----------------------------------------------------------------------------------------------------
-- Nâng cấp phòng tăng công suất, tốc độ, dung lượng
-- Auto-gather / sản xuất theo chu kỳ để tạo cảm giác idle
-- Mỗi phòng có thể mở rộng bằng tài nguyên hoặc điểm tiến trình
+
 
 ## 2. Tài nguyên và nền kinh tế
 
@@ -386,13 +394,6 @@ Option premium / event:
 - Currency phụ: Gem / Token / Premium Shard
 - Hệ thống mua bán, bán thừa, đổi tài nguyên
 
-## 3. Chế tạo vũ khí và mảnh giáp
-
-- Công thức chế tạo armor: chỉ 1 mảnh giáp duy nhất, tier cơ bản tới hiếm
-- Weapon slot: 1 slot vũ khí
-- Armor slot: 1 slot giáp
-- Item quality: Normal, Rare, Epic, Legendary
-- Salvage / dismantle để lấy lại nguyên liệu
 
 ## 4. Combat
 
@@ -427,13 +428,6 @@ Option premium / event:
 - Reward boss cao hơn: blueprint, shard hiếm, premium token
 - Có thể có boss hàng ngày hoặc boss sự kiện
 
-## 8. Inventory
-
-- Inventory quản lý materials, gear, shard
-- Capacity giới hạn và stack materials
-- UI equip / unequip rõ ràng
-- Compare gear currently equipped với gear trong túi
-- Item detail, rarity, stats hiển thị rõ
 
 ## 9. Trade / Market
 
