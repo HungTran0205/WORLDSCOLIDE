@@ -134,12 +134,60 @@ Workshop là phòng chế tạo thống nhất, kết hợp chức năng đúc q
 
 #### 1.1.5 Chi tiết phòng chế tạo: Phép thuật và máu
 
-##### 1.1.5.1 Các chỉ số cơ bản
+##### 1.1.5.1 Tổng quan Alchemy System
+
+Alchemy là hệ thống chế tạo potion thành syringes (ống tiêm - injectable consumables) để tăng hiệu quả và immersion. Recipes tự mở khi nâng level alchemy. Cơ chế combine random nguyên liệu để tạo ra các loại buff/debuff/healing đã define.
+
+##### 1.1.5.2 Cơ chế Unlocking và Slots
+
+- **Level Progression:** Mỗi level alchemy mở thêm slots combine.
+  - Level 1: 1 slot (basic potions).
+  - Level 3: 3 slots (vd: 3 Slime Gel → Super Healing Syringe).
+  - Max Level: 5 slots (random combine đa dạng).
+- **Syringe Benefits:** Injectable consumables, hiệu quả cao hơn potion (vd: healing syringe hồi 150% HP thay vì 100%, hoặc instant inject).
+
+##### 1.1.5.3 Random Combination Mechanics
+
+- **Base Magic Items:** 8 loại (Etherbloom Herb, Mist Essence, Ancient Shard, Mutation Gel, Void Dust, Radiant Fragment, Fogweed, Etheric Slime) với lore ties to Ether, Mist, ancient civilizations, mutations.
+- **Mapping to Enemies/Bosses:**
+  - Slimes: Mutation Gel, Etheric Slime (biological ooze from amorphous creatures).
+  - Mutated Creatures: Radiant Fragment, Mutation Gel (radiation and transmutation from experiments).
+  - Ether Beings: Etherbloom Herb, Etheric Slime, Void Dust (Ether-infused and void-related).
+  - Mist Entities: Mist Essence, Fogweed (Mist vapor and fog-grown herbs).
+- **Combinatorics Calculation:** Với 8 items, max 5 slots, số combinations ≈ 8^5 = 32,768 (order matters, duplicates allowed). Map thành 22 potion types (10 buffs, 9 debuffs, 3 healing) qua random generation, với một số combos tạo same type để balance.
+- **Random Recipe Mapping:** Dưới đây là mapping mẫu cho 22 types (10 buffs, 9 debuffs, 3 healing). Mỗi type có 1-3 combos ví dụ; trong game, random roll dựa trên items selected để tạo variety.
+
+  - **Buff Damage %:** Etherbloom Herb + Radiant Fragment + Void Dust (high chance); Mist Essence + Ancient Shard.
+  - **Buff Defend %:** Etheric Slime + Mutation Gel + Fogweed; Ancient Shard + Void Dust.
+  - **Buff Spell Damage %:** Mist Essence + Etherbloom Herb + Radiant Fragment; Void Dust + Fogweed.
+  - **Buff Resist Spell:** Etheric Slime + Ancient Shard + Mutation Gel; Radiant Fragment + Mist Essence.
+  - **CC Immunity 5s:** Void Dust + Etherbloom Herb + Fogweed; Mutation Gel + Ancient Shard.
+  - **Shield:** Etheric Slime + Radiant Fragment + Void Dust; Fogweed + Mist Essence.
+  - **Buff Ranged Damage Resist:** Ancient Shard + Etherbloom Herb + Mutation Gel; Radiant Fragment + Fogweed.
+  - **Attack % Buff có Stun:** Mist Essence + Void Dust + Etheric Slime; Ancient Shard + Radiant Fragment.
+  - **Summon (TBC):** Etherbloom Herb + Fogweed + Mutation Gel; Void Dust + Mist Essence.
+  - **Giảm Cooldown:** Radiant Fragment + Etheric Slime + Ancient Shard; Fogweed + Void Dust.
+
+  - **Reduce Damage:** Mutation Gel + Void Dust + Fogweed; Etheric Slime + Radiant Fragment.
+  - **Reduce Defense:** Ancient Shard + Mist Essence + Mutation Gel; Void Dust + Etherbloom Herb.
+  - **Silence:** Fogweed + Etheric Slime + Radiant Fragment; Mist Essence + Ancient Shard.
+  - **Reduce Healing %:** Void Dust + Mutation Gel + Etherbloom Herb; Fogweed + Radiant Fragment.
+  - **Slow:** Etheric Slime + Ancient Shard + Mist Essence; Mutation Gel + Void Dust.
+  - **Reduce Attack Speed:** Radiant Fragment + Fogweed + Etherbloom Herb; Ancient Shard + Etheric Slime.
+  - **Increase Miss Chance:** Mist Essence + Void Dust + Mutation Gel; Fogweed + Ancient Shard.
+  - **Hex:** Etherbloom Herb + Radiant Fragment + Fogweed; Void Dust + Etheric Slime.
+  - **Immobilize:** Mutation Gel + Mist Essence + Ancient Shard; Radiant Fragment + Void Dust.
+
+  - **Instant Heal:** Etherbloom Herb + Etheric Slime + Radiant Fragment; Mist Essence + Mutation Gel.
+  - **Heal-over-Time:** Fogweed + Void Dust + Ancient Shard; Etheric Slime + Radiant Fragment.
+  - **Regen Buff:** Mutation Gel + Etherbloom Herb + Mist Essence; Void Dust + Fogweed.
+
+##### 1.1.5.4 Các chỉ số cơ bản
 
 - Chỉ số có thể không tiêu hao nguyên liệu (`resource saving chance`)
 - Chỉ số có tỉ lệ tạo ra 2 sản phầm cùng lúc (`double product chance`)
 
-###### 1.1.5.2 Input
+###### 1.1.5.5 Input
 
 - Người chơi chọn loại spell mình muốn craft hoặc là portion (Buff, Debuff, Portion)
   - Magic item
@@ -151,7 +199,7 @@ Workshop là phòng chế tạo thống nhất, kết hợp chức năng đúc q
     - Epic: 50-70%
     - Legendary: 30-50%
 
-###### 1.1.5.3 Output
+###### 1.1.5.6 Output
 
 - Rare spell hoặc portion có success rate thấp hơn và yêu cầu công thức + nguyên liệu hiếm hơn
 - Dùng magic item enchant để tạo ra spell hoặc portion enchant với bonus (TBC)
@@ -165,7 +213,7 @@ Workshop là phòng chế tạo thống nhất, kết hợp chức năng đúc q
  - Vì buff/debuff/potion chỉ tồn tại trong 1 map, tier càng cao => giá trị mỗi lần dùng càng quan trọng.
 
 
-###### 1.1.5.4 Buff
+###### 1.1.5.7 Buff
 
 - Buff nên chia thành lớp và có hiệu ứng rõ:
   - Buff damage % (tăng sát thương thường)
@@ -184,7 +232,7 @@ Workshop là phòng chế tạo thống nhất, kết hợp chức năng đúc q
   - Short duration (5-10s) cho map-limited
   - Có stack hay không
 
-###### 1.1.5.5 Debuff
+###### 1.1.5.8 Debuff
 
 - Các debuff khả thi:
   - Reduce damage (giảm damage đầu ra của kẻ thù)
@@ -202,7 +250,7 @@ Workshop là phòng chế tạo thống nhất, kết hợp chức năng đúc q
   - Short duration (5-10s) cho map-limited
   - Có stack hay không
 
-###### 1.1.5.6 Healing portion
+###### 1.1.5.9 Healing portion
 
 - Instant heal: hồi ngay 1 lượng HP
 - Heal-over-time: hồi theo tick trong vài giây
