@@ -21,24 +21,37 @@
 ## Project Structure
 
 ```
-src/
-├── game/                    # Core game logic & state
-│   ├── state/              # Zustand store + slices (game, guild, roster, mission, combat, save-status, inventory, build-mode)
-│   ├── systems/            # Game simulation (combat, leveling, economy, missions, building, combat-passives)
-│   │   └── workers/        # Web Worker game loop for offline progression
-│   ├── data/               # Static data (enemies, missions, skills, buildings, characters, civilization-config)
-│   └── save/               # Persistence layer (3-slot IndexedDB + JSON import/export)
-├── scene/                  # React Three Fiber 3D guild hall scene
-├── ui/                     # User interface
-│   ├── screens/            # Full-screen views (title screen with slot selection)
-│   ├── panels/             # Collapsible UI panels (quest board, roster, build, combat, settings)
-│   ├── hud/                # Heads-up display overlay + panel toggle bar + save status badge
-│   ├── components/         # Reusable UI components (stat bars, cards, dialogs, civ-badge, game-icon, cost-display, rank-badge, member-book)
-│   ├── utils/              # Utility functions (icon-paths for convention-based icon resolution)
-│   └── styles/             # CSS for panels, HUD, and screens
-├── audio/                  # Howler.js audio manager + sound key enums (6 new keys)
-├── i18n/                   # i18next localization (Vietnamese default)
-└── main.tsx               # Application entry point
+.
+├── src/                     # Main game application (Vite + React + Zustand)
+│   ├── game/                # Core game logic & state
+│   │   ├── state/           # Zustand store + slices (game, guild, roster, mission, combat, save-status, inventory, build-mode)
+│   │   ├── systems/         # Game simulation (combat, leveling, economy, missions, building, combat-passives)
+│   │   │   └── workers/     # Web Worker game loop for offline progression
+│   │   ├── data/            # Static data (enemies, missions, skills, buildings, characters, civilization-config)
+│   │   └── save/            # Persistence layer (3-slot IndexedDB + JSON import/export)
+│   ├── scene/               # React Three Fiber 3D guild hall scene
+│   ├── ui/                  # User interface
+│   │   ├── screens/         # Full-screen views (title screen with slot selection)
+│   │   ├── panels/          # Collapsible UI panels (quest board, roster, build, combat, settings)
+│   │   ├── hud/             # Heads-up display overlay + panel toggle bar + save status badge
+│   │   ├── components/      # Reusable UI components (stat bars, cards, dialogs, civ-badge, game-icon, cost-display, rank-badge, member-book)
+│   │   ├── utils/           # Utility functions (icon-paths for convention-based icon resolution)
+│   │   └── styles/          # CSS for panels, HUD, and screens
+│   ├── audio/               # Howler.js audio manager + sound key enums (6 new keys)
+│   ├── i18n/                # i18next localization (Vietnamese default)
+│   └── main.tsx             # Application entry point
+│
+└── tools/                   # Companion development tools
+    └── map-playground/      # Map editor & asset prototyping tool (Phase 1 of WC-MAPMAKER)
+        ├── src/
+        │   ├── app.tsx      # 3-column layout (asset browser | viewport | properties)
+        │   ├── main.tsx     # Entry point
+        │   ├── store/
+        │   │   └── scene-store.ts   # Zustand scene state (stub)
+        │   └── ui/
+        │       └── styles.css       # Layout styles
+        ├── vite.config.ts   # Custom plugin: /api/asset-manifest + /game-assets/* server
+        └── package.json     # Vite + React 19 + Zustand setup
 ```
 
 ## Core Systems
@@ -744,6 +757,23 @@ src/
 - **Member Assignment Trigger**: Tutorial advances after assigning member to facility
 - **Multi-Gate Progression**: World board → quest dispatch → quest active → Kael rescue → reward → build → assign → complete
 
+## Recent Changes (Atmospheric VFX System — v1.19)
+
+### Atmospheric Particle VFX Integration (NEW - Map Playground Support)
+- **BiomeConfig Field**: Optional `atmosphericVFX: AtmosphericVFXPlacement[]` in arena config
+- **VFX Presets**: 4 built-in effects (fog-mist, cave-ember, forest-spore, dust-motes) — expandable via ATMOSPHERIC_PRESETS map
+- **R3F-VFX Integration**: Uses r3f-vfx particle system for performant effect rendering
+- **Per-Effect Config**: Position, scale, particle count, colors, lifetime, gravity, blending
+- **Map Playground Export**: Code generator outputs atmospheric VFX placements for copy-paste into BiomeConfig
+- **Backward Compatible**: BiomeConfig without `atmosphericVFX` field renders normally (optional field)
+
+**Key Files (New)**:
+- `src/scene/arena-atmospheric-vfx.tsx` — Component rendering atmospheric VFX array from BiomeConfig
+- `src/scene/arena-biome-config.ts` — Updated with `AtmosphericVFXPlacement` interface + optional `atmosphericVFX?` field
+
+**Key Files (Modified)**:
+- `src/scene/combat-arena-environment.tsx` — Added `<ArenaAtmosphericVFX placements={biomeConfig.atmosphericVFX ?? []} />` render
+
 ## Recent Changes (Logging Site Finite Harvest System — v1.18)
 
 ### Woodcutting Occupational Skill (NEW - Craft Skill System)
@@ -828,12 +858,15 @@ src/
 
 | Command | Purpose |
 |---------|---------|
-| `npm run dev` | Start dev server (Vite) |
+| `npm run dev` | Start main dev server (port 5173, Vite) |
+| `npm run map` | Start map-playground dev server (port 5175, arena map editor) |
 | `npm run build` | TypeScript check + production build |
 | `npm run preview` | Preview production build locally |
 | `npm run test` | Run tests once |
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run lint` | ESLint code quality check |
+
+See `docs/map-playground-guide.md` for editor usage and workflow.
 
 ## Testing Strategy
 
