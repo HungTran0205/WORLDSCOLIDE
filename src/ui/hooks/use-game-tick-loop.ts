@@ -21,6 +21,7 @@ const TAVERN_MERCENARY_COUNT = 3;
 
 export function useGameTickLoop() {
   const workerRef = useRef<Worker | null>(null);
+  const stoneAccumulatorRef = useRef(0);
 
   const handleTick = useCallback((now: number) => {
     const store = useGameStore.getState();
@@ -82,8 +83,12 @@ export function useGameTickLoop() {
     const quarryResult = processStoneQuarryTick(store.facilities, allMembersForTick);
     if (quarryResult.stoneProduced > 0 || quarryResult.mcXpGains.length > 0) {
       store.applyStoneQuarryProduction(quarryResult);
-      if (quarryResult.stoneProduced > 0) {
-        store.addItem('STONE', quarryResult.stoneProduced);
+      // Accumulate fractional stone; addItem floors so we batch until we have >= 1
+      stoneAccumulatorRef.current += quarryResult.stoneProduced;
+      const stoneToAdd = Math.floor(stoneAccumulatorRef.current);
+      if (stoneToAdd > 0) {
+        store.addItem('STONE', stoneToAdd);
+        stoneAccumulatorRef.current -= stoneToAdd;
       }
       for (const [itemId, qty] of Object.entries(quarryResult.bonusItemGains)) {
         if (qty > 0) store.addItem(itemId as ItemID, qty);

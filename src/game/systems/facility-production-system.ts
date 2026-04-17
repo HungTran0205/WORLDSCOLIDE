@@ -245,14 +245,17 @@ export function processFacilityProduction(
       }
 
       case 'stone-quarry': {
-        // Accumulate daily stone across all members first, then multiply by gameDays
+        // Use same per-tick formula as online production scaled to days (skip vein strikes offline)
+        const levelMult = STONE_QUARRY_CONFIG.levelMult[facility.level - 1];
         let totalDailyStone = 0;
         for (const member of assignedMembers) {
+          const { STR } = member.stats;
+          const baseScore = STR * 0.5;
           const mcXp = member.craftSkills?.mining?.xpAccumulated ?? 0;
           const mcLevel = calcMcLevel(mcXp);
-          const mcBonus = 1 + STONE_QUARRY_CONFIG.mcSkillYieldPct[mcLevel] / 100;
-          const daily = calcExtractionOutput(member, facility.level, QUARRY_BASE);
-          totalDailyStone += Math.floor(daily * mcBonus);
+          const yieldMult = 1 + STONE_QUARRY_CONFIG.mcSkillYieldPct[mcLevel] / 100;
+          const dailyStone = STONE_QUARRY_CONFIG.baseRate * (baseScore / 100) * levelMult * yieldMult * STONE_QUARRY_CONFIG.ticksPerDay;
+          totalDailyStone += Math.floor(dailyStone);
         }
         result.itemGains = { STONE: totalDailyStone * gameDays };
         break;
