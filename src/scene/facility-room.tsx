@@ -10,7 +10,7 @@ import { useGameStore } from '@/game/state/store';
 import { RoomMemberSprites } from './room-member-sprites';
 import { ForestRoomDecor, LoggingSiteZoneCard } from './facility-room-forest-decor';
 import { FacilityRoomFurniture } from './facility-room-furniture';
-import { QuarryRoomDecor } from './facility-room-quarry-decor';
+import { QuarryRoomDecor, QuarryZoneCard } from './facility-room-quarry-decor';
 import type { GuildFacility, FacilityType } from '@/game/state/game-state';
 
 const ROOM_SIZE = 7;
@@ -53,6 +53,7 @@ interface FacilityRoomProps {
 export function FacilityRoom({ facility }: FacilityRoomProps) {
   const def = FACILITY_DEFINITIONS[facility.type];
   const cameraTarget = useGameStore((s) => s.cameraTarget);
+  const cameraSettled = useGameStore((s) => s.cameraSettled);
 
   // placedSlot is guaranteed non-null (FacilityRoomsLayer filters before rendering)
   const [cx, , cz] = FACILITY_SLOTS[facility.placedSlot!];
@@ -114,10 +115,14 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
         />
       )}
 
-      {/* Info label */}
-      {isActive && isLoggingSite && facility.woodReserve != null ? (
+      {/* Info label — zone cards only render after camera has settled to avoid mid-lerp misplacement */}
+      {isActive && cameraSettled && isLoggingSite && facility.woodReserve != null ? (
         <Html position={[cx - 6.5, 1, oz + 0.8]} center>
           <LoggingSiteZoneCard facility={facility} />
+        </Html>
+      ) : isActive && cameraSettled && isQuarry ? (
+        <Html position={[cx - 6.5, 1, cz + 0.5]} center>
+          <QuarryZoneCard facility={facility} />
         </Html>
       ) : (
         <Html position={[cx, 1.8, cz]} center>

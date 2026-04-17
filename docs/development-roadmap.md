@@ -1,8 +1,8 @@
 # Development Roadmap
 
-**Last Updated**: 2026-04-12
-**Current Phase**: Phase 5 In Progress (Milestone 15 GPU-Instanced Combat Rendering Complete)
-**Overall Progress**: ~99.7% Complete
+**Last Updated**: 2026-04-15
+**Current Phase**: Phase 5 In Progress (Milestone 17 Stone Quarry Mining Skill Complete)
+**Overall Progress**: ~99.8% Complete
 
 ---
 
@@ -315,7 +315,8 @@
 | Phase 5 Milestone 14 | 2026-04-11 | ✅ Done | Logging Site Finite Harvest System (woodcutting skill, finite reserve, permit gate, depletion lifecycle, 3D zone tinting, save v14) |
 | Phase 5 Milestone 15 | 2026-04-12 | ✅ Done | GPU-Instanced Combat Rendering (mega-atlas, animation buffer, 1 draw call, WebGPU fixes, canvas-texture UI) |
 | Phase 5 Milestone 16 | 2026-04-12 | ✅ Done | Guild Inventory System (slot-based UI, chest furniture, 99-item stacks, capacity management, item detail popup) |
-| Phase 5 Complete | 2026-04-12 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
+| Phase 5 Milestone 17 | 2026-04-15 | ✅ Done | Stone Quarry Mining Skill (per-tick production, MC skill 0–10, vein strikes, GEM item, save v16) |
+| Phase 5 Complete | 2026-04-15 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
 | Phase 6 Start | 2026-04-15 | 📋 Planned | Post-launch content |
 
 ---

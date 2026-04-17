@@ -2,7 +2,8 @@
 
 import type { GuildFacility, Member } from '@/game/state/game-state';
 import type { FacilityDef } from '@/game/data/facility-definitions';
-import { LOGGING_SITE_CONFIG } from '@/game/data/facility-definitions';
+import { LOGGING_SITE_CONFIG, STONE_QUARRY_CONFIG } from '@/game/data/facility-definitions';
+import { calcMcLevel } from '@/game/systems/stone-quarry-production-system';
 import { CivBadge } from '@/ui/components/civ-badge';
 
 interface FacilityCardProps {
@@ -146,12 +147,16 @@ function getBonusPreview(facility: GuildFacility, assignedMembers: Member[], dai
       return `+${total.toFixed(4)} wood/tick`;
     }
     case 'stone-quarry': {
-      const base = [4, 7, 12][lv - 1];
-      const total = assignedMembers.reduce((sum, m) => {
-        const gatherSpeed = m.stats.STR * 0.004;
-        return sum + Math.floor(base * (1 + gatherSpeed));
-      }, 0);
-      return `+${total} Stone/day`;
+      const levelMult = STONE_QUARRY_CONFIG.levelMult[lv - 1];
+      let totalStonePerDay = 0;
+      for (const m of assignedMembers) {
+        const baseScore = m.stats.STR * 0.5;
+        const mcXp = m.craftSkills?.mining?.xpAccumulated ?? 0;
+        const mcLevel = calcMcLevel(mcXp);
+        const yieldMult = 1 + STONE_QUARRY_CONFIG.mcSkillYieldPct[mcLevel] / 100;
+        totalStonePerDay += STONE_QUARRY_CONFIG.baseRate * (baseScore / 100) * levelMult * yieldMult * STONE_QUARRY_CONFIG.ticksPerDay;
+      }
+      return `+${Math.floor(totalStonePerDay)} Stone/day`;
     }
     default:
       return '';
@@ -220,6 +225,11 @@ export function FacilityCard({
             {facility.type === 'logging-site' && (
               <span className="wc-level-badge">
                 WC{member.craftSkills?.woodcutting.level ?? 0}
+              </span>
+            )}
+            {facility.type === 'stone-quarry' && (
+              <span className="wc-level-badge">
+                MC{member.craftSkills?.mining?.level ?? 0}
               </span>
             )}
             <button

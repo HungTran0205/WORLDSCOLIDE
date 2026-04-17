@@ -6,7 +6,7 @@
 
 import { useRef, useMemo, useEffect } from 'react';
 import { useLoader, useFrame, useThree } from '@react-three/fiber';
-import { TextureLoader, MeshStandardMaterial, Mesh, CanvasTexture } from 'three';
+import { TextureLoader, MeshStandardMaterial, Mesh } from 'three';
 import type { RefObject } from 'react';
 import type { SpriteDirection } from './sprite-path-resolver';
 import { getRunningFramePath, getAttackFramePath } from './sprite-path-resolver';
