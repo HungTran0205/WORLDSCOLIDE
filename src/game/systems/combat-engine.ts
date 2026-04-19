@@ -42,6 +42,8 @@ export class CombatEngine {
   private pendingSkills: Set<string> = new Set();
   private pendingAttacks: Set<string> = new Set();
   private nextEnemyIndex = 0;
+  /** Sequential turn lock — id of entity currently executing its full action cycle, or null if queue is idle */
+  private activeActorId: string | null = null;
   /** Total syringes loaded across all ally entities at init — for inventory deduction by caller */
   totalSyringesLoaded = 0;
 
@@ -61,6 +63,7 @@ export class CombatEngine {
     this.finished = false;
     this.pendingSkills.clear();
     this.pendingAttacks.clear();
+    this.activeActorId = null;
     this.manualMode = false;
     this.pausedForAllyTurn = null;
     this.eventQueue = [];
@@ -195,6 +198,8 @@ export class CombatEngine {
 
   getPausedForAllyTurn(): string | null { return this.pausedForAllyTurn; }
 
+  getActiveActorId(): string | null { return this.activeActorId; }
+
   getResult(): CombatResult {
     const alliesAlive = this.entities.filter(e => e.isAlly && e.currentHp > 0);
     const enemiesAlive = this.entities.filter(e => !e.isAlly && e.currentHp > 0);
@@ -220,19 +225,56 @@ export class CombatEngine {
   // --- Private methods ---
 
   private processLogicTick(): void {
+    // Phase A: status tick for ALL alive entities (poison, regen, passives, anim revert)
+    const stunnedThisTick = new Set<string>();
     for (const entity of this.entities) {
       if (entity.currentHp <= 0) continue;
+      const { stunned } = this.processEntityStatus(entity);
+      if (stunned) stunnedThisTick.add(entity.id);
+    }
 
-      // Revert animState if duration expired.
-      // Use strict > (not >=) to avoid same-tick collision: if attack expires at T=800
-      // and enemy also attacks at T=800, the ally stays 'attacking' for that tick,
-      // preventing hit-state from overriding right as the animation finishes.
-      if (entity.animStateUntil > 0 && this.time > entity.animStateUntil) {
-        entity.animState = 'battle-idle';
-        entity.animStateUntil = 0;
+    // Phase B: if active actor exists, continue its movement; don't start new actions this tick
+    if (this.activeActorId !== null) {
+      const actor = this.entities.find(e => e.id === this.activeActorId);
+      if (!actor || actor.currentHp <= 0) {
+        this.activeActorId = null;
+      } else if (stunnedThisTick.has(actor.id)) {
+        // Actor stunned while holding lock — skip turn, release lock
+        actor.nextAttackAt = this.time + actor.attackIntervalMs;
+        actor.attackMoveState = 'home';
+        this.activeActorId = null;
+      } else if (this.isActorDone(actor)) {
+        this.activeActorId = null;
+      } else {
+        this.processActorMovement(actor);
+        return;
       }
+    }
 
-      this.processEntityTick(entity);
+    // Phase C: select next actor — lowest nextAttackAt among entities ready to act
+    const candidates = this.entities
+      .filter(e => e.currentHp > 0 && this.time >= e.nextAttackAt)
+      .sort((a, b) => {
+        if (a.nextAttackAt !== b.nextAttackAt) return a.nextAttackAt - b.nextAttackAt;
+        // Tie-break: allies act first for better player feel
+        if (a.isAlly !== b.isAlly) return a.isAlly ? -1 : 1;
+        return a.id.localeCompare(b.id);
+      });
+
+    const nextActor = candidates[0];
+    if (!nextActor) return;
+
+    // Stun: skip turn, advance timer, release lock
+    if (stunnedThisTick.has(nextActor.id)) {
+      nextActor.nextAttackAt = this.time + nextActor.attackIntervalMs;
+      nextActor.attackMoveState = 'home';
+      return;
+    }
+
+    this.processEntityAction(nextActor);
+    if (nextActor.waitingForInput) return;
+    if (!this.isActorDone(nextActor)) {
+      this.activeActorId = nextActor.id;
     }
   }
 
@@ -246,11 +288,18 @@ export class CombatEngine {
     return findTarget(entity, this.entities);
   }
 
-  private processEntityTick(entity: ArenaEntity): void {
-    // Refresh conditional passive buffs
+  /** Status side-effects for all alive entities each tick: passives, syringe, regen, poison/stun */
+  private processEntityStatus(entity: ArenaEntity): { dead: boolean; stunned: boolean } {
+    // Revert animState if duration expired.
+    // Use strict > (not >=) to avoid same-tick collision: if attack expires at T=800
+    // and enemy also attacks at T=800, the ally stays 'attacking' for that tick.
+    if (entity.animStateUntil > 0 && this.time > entity.animStateUntil) {
+      entity.animState = 'battle-idle';
+      entity.animStateUntil = 0;
+    }
+
     if (entity.passiveState) applyPassiveTick(entity);
 
-    // DeQuoc team buff flag — set by nearby alive ally with active buff
     const deQuocAlly = this.entities.find(e =>
       e.isAlly === entity.isAlly &&
       e.passiveState?.civId === 'DeQuoc' &&
@@ -259,7 +308,6 @@ export class CombatEngine {
     );
     entity._hasDeQuocBuff = !!(deQuocAlly && entity.id !== deQuocAlly.id);
 
-    // Syringe auto-use: fire when HP < threshold and syringes remain
     if (
       entity.isAlly &&
       entity.syringesLoaded !== undefined && entity.syringesLoaded > 0 &&
@@ -272,7 +320,6 @@ export class CombatEngine {
       this.eventQueue.push({ type: 'syringe-used', entityId: entity.id, healAmount: healAmt });
     }
 
-    // HP regen tick
     if (entity.hpRegenPerSec > 0) {
       const regen = Math.round(entity.hpRegenPerSec * LOGIC_TICK_MS / 1000);
       if (regen > 0 && entity.currentHp < entity.maxHp) {
@@ -282,26 +329,50 @@ export class CombatEngine {
       }
     }
 
-    // Apply status effects (poison, stun)
     const effectResult = applyEffectTick(entity);
     if (effectResult.damage > 0) {
       entity.currentHp -= effectResult.damage;
       this.eventQueue.push({ type: 'effect-tick', targetId: entity.id, effect: 'poison', damage: effectResult.damage });
       if (entity.currentHp <= 0) {
         entity.animState = 'dead';
+        entity.attackMoveState = 'home';
         this.eventQueue.push({ type: 'death', entityId: entity.id });
-        return;
+        return { dead: true, stunned: false };
       }
     }
     if (effectResult.skipTurn) {
-      // Snap to home on stun to prevent freezing mid-lerp
       entity.position.x = entity.homeX;
       entity.position.z = entity.homeZ;
       entity.attackMoveState = 'home';
-      return;
     }
 
-    // Find target (respects manual target in manual mode)
+    return { dead: false, stunned: effectResult.skipTurn };
+  }
+
+  /** Advance melee step-forward/returning movement for the active turn owner only */
+  private processActorMovement(actor: ArenaEntity): void {
+    if (isRangedArchetype(actor.archetype)) return;
+
+    const dtSeconds = LOGIC_TICK_MS / 1000;
+
+    if (actor.attackMoveState === 'step-forward') {
+      const target = this.resolveTarget(actor);
+      const arrived = stepForwardToAttack(actor, dtSeconds);
+      if (arrived) {
+        if (target && target.currentHp > 0) this.tryAttack(actor, target);
+        actor.attackMoveState = 'returning';
+      }
+    } else if (actor.attackMoveState === 'returning') {
+      const atHome = returnToHome(actor, dtSeconds);
+      if (atHome) {
+        actor.attackMoveState = 'home';
+        actor.animState = 'battle-idle';
+      }
+    }
+  }
+
+  /** Initiate action for the entity selected as the next turn owner */
+  private processEntityAction(entity: ArenaEntity): void {
     const target = this.resolveTarget(entity);
     if (!target) {
       entity.animState = 'battle-idle';
@@ -309,82 +380,49 @@ export class CombatEngine {
     }
     entity.targetId = target.id;
 
-    const dtSeconds = LOGIC_TICK_MS / 1000;
+    const hasPendingAttack = this.pendingAttacks.has(entity.id);
+    const hasPendingSkill = this.pendingSkills.has(entity.id);
+
+    if (entity.isAlly && this.manualMode) {
+      if (!hasPendingAttack && !hasPendingSkill) {
+        entity.waitingForInput = true;
+        entity.animState = 'battle-idle';
+        return;
+      }
+      entity.waitingForInput = false;
+    } else {
+      entity.waitingForInput = false;
+    }
 
     if (isRangedArchetype(entity.archetype)) {
-      // Ranged: attack from home — no movement
-      if (this.time >= entity.nextAttackAt) {
-        if (entity.isAlly && this.manualMode) {
-          if (this.pendingAttacks.has(entity.id)) {
-            this.pendingAttacks.delete(entity.id);
-            entity.waitingForInput = false;
-            this.tryAttack(entity, target);
-          } else if (this.pendingSkills.has(entity.id)) {
-            entity.waitingForInput = false;
-            // skill fires in the skill section below
-          } else {
-            entity.waitingForInput = true;
-            entity.animState = 'battle-idle';
-          }
-        } else {
-          entity.waitingForInput = false;
+      if (entity.isAlly && this.manualMode) {
+        if (hasPendingAttack) {
+          this.pendingAttacks.delete(entity.id);
           this.tryAttack(entity, target);
         }
+        // only pendingSkill: don't auto-attack, skill fires below
       } else {
-        entity.waitingForInput = false;
+        this.tryAttack(entity, target);
       }
     } else {
-      // Melee: formation step-attack state machine
-      switch (entity.attackMoveState) {
-        case 'home': {
-          if (this.time >= entity.nextAttackAt) {
-            if (entity.isAlly && this.manualMode) {
-              if (this.pendingAttacks.has(entity.id)) {
-                this.pendingAttacks.delete(entity.id);
-                entity.waitingForInput = false;
-                entity.stepTargetX = target.position.x + (entity.isAlly ? -1 : 1) * entity.attackRange * 0.8;
-                entity.stepTargetZ = target.position.z;
-                entity.attackMoveState = 'step-forward';
-                entity.animState = 'walking';
-              } else if (this.pendingSkills.has(entity.id)) {
-                entity.waitingForInput = false;
-                // skill fires below; stay at home
-              } else {
-                entity.waitingForInput = true;
-                entity.animState = 'battle-idle';
-              }
-            } else {
-              entity.waitingForInput = false;
-              entity.stepTargetX = target.position.x + (entity.isAlly ? -1 : 1) * entity.attackRange * 0.8;
-              entity.stepTargetZ = target.position.z;
-              entity.attackMoveState = 'step-forward';
-              entity.animState = 'walking';
-            }
-          } else {
-            entity.waitingForInput = false;
-          }
-          break;
+      // Melee: initiate step-forward
+      if (entity.isAlly && this.manualMode) {
+        if (hasPendingAttack) {
+          this.pendingAttacks.delete(entity.id);
+          entity.stepTargetX = target.position.x + (entity.isAlly ? -1 : 1) * entity.attackRange * 0.8;
+          entity.stepTargetZ = target.position.z;
+          entity.attackMoveState = 'step-forward';
+          entity.animState = 'walking';
         }
-        case 'step-forward': {
-          const arrived = stepForwardToAttack(entity, dtSeconds);
-          if (arrived) {
-            this.tryAttack(entity, target);
-            entity.attackMoveState = 'returning';
-          }
-          break;
-        }
-        case 'returning': {
-          const atHome = returnToHome(entity, dtSeconds);
-          if (atHome) {
-            entity.attackMoveState = 'home';
-            entity.animState = 'battle-idle';
-          }
-          break;
-        }
+        // only pendingSkill: stay at home, skill fires below
+      } else {
+        entity.stepTargetX = target.position.x + (entity.isAlly ? -1 : 1) * entity.attackRange * 0.8;
+        entity.stepTargetZ = target.position.z;
+        entity.attackMoveState = 'step-forward';
+        entity.animState = 'walking';
       }
     }
 
-    // Skill activation (all entity types)
     if (entity.isAlly && this.pendingSkills.has(entity.id)) {
       this.trySkill(entity, target);
       this.pendingSkills.delete(entity.id);
@@ -392,7 +430,7 @@ export class CombatEngine {
       this.trySkill(entity, target);
     }
 
-    // ThienLu Tinh Lo clone hit — extra auto-attack each tick while clone is active
+    // ThienLu clone extra-hit — once per turn
     if (entity.passiveState && isCloneActive(entity.passiveState, this.time)) {
       const cloneTarget = findTarget(entity, this.entities);
       if (cloneTarget && cloneTarget.currentHp > 0) {
@@ -414,6 +452,14 @@ export class CombatEngine {
         }
       }
     }
+  }
+
+  /** True when the turn owner has completed its full action cycle and the lock can be released */
+  private isActorDone(actor: ArenaEntity): boolean {
+    if (isRangedArchetype(actor.archetype)) {
+      return actor.animState !== 'attacking' && actor.animState !== 'skill';
+    }
+    return actor.attackMoveState === 'home';
   }
 
   private tryAttack(entity: ArenaEntity, target: ArenaEntity): void {
