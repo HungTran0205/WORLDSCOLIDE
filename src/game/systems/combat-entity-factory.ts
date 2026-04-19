@@ -11,9 +11,17 @@ import { getAttackRange, DEFAULT_MOVE_SPEED } from './combat-arena-types';
 import { calcDerivedCombatStats } from './derived-combat-stats';
 import { createPassiveState, applyPassiveOnInit, snapshotBaseStats } from './combat-passives';
 
-/** Convert a guild Member into an ArenaEntity at the given position */
-export function memberToArenaEntity(member: Member, pos: { x: number; z: number }): ArenaEntity {
+/**
+ * Convert a guild Member into an ArenaEntity at the given position.
+ * syringeCount: how many HEALING_SYRINGE the member is loading into combat from inventory.
+ */
+export function memberToArenaEntity(
+  member: Member,
+  pos: { x: number; z: number },
+  syringeCount = 0,
+): ArenaEntity {
   const derived = calcDerivedCombatStats(member.stats, member.level);
+  const loadout = member.syringeLoadout;
   const entity: ArenaEntity = {
     id: member.id,
     name: member.name,
@@ -44,6 +52,12 @@ export function memberToArenaEntity(member: Member, pos: { x: number; z: number 
     animState: 'idle',
     facingRight: true,
     animStateUntil: 0,
+    homeX: pos.x,
+    homeZ: pos.z,
+    attackMoveState: 'home',
+    ...(loadout && syringeCount > 0
+      ? { syringeThresholdPct: loadout.autoUseThresholdPct, syringesLoaded: syringeCount }
+      : {}),
   };
   applyPassiveOnInit(entity);
   return entity;
@@ -83,6 +97,9 @@ export function enemyToArenaEntity(
     animState: 'idle',
     facingRight: false,
     animStateUntil: 0,
+    homeX: pos.x,
+    homeZ: pos.z,
+    attackMoveState: 'home',
     spriteId: template.spriteId,
     flying: template.flying,
     isBoss: template.isBoss,

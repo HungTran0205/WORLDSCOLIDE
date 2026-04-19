@@ -15,7 +15,22 @@ export interface ArenaEntity extends CombatEntity {
   facingRight: boolean;
   /** Timestamp when current animState should revert to idle */
   animStateUntil: number;
+  /** Formation home position — entity returns here after each attack */
+  homeX: number;
+  homeZ: number;
+  /** Summoner Wars step-attack state machine */
+  attackMoveState: AttackMoveState;
+  /** Where the entity is stepping toward for this attack */
+  stepTargetX?: number;
+  stepTargetZ?: number;
+  /** Manual mode: ally is waiting for player input before attacking */
+  waitingForInput?: boolean;
+  /** Manual mode: if set, this ally targets this specific enemy id */
+  manualTargetId?: string | null;
 }
+
+/** Step-attack state machine states */
+export type AttackMoveState = 'home' | 'step-forward' | 'returning';
 
 export type ArenaPhase = 'idle' | 'prep' | 'fighting' | 'result';
 
@@ -34,6 +49,11 @@ export const ARCHETYPE_RANGE: Record<string, number> = {
 
 /** Default move speed (units per second) */
 export const DEFAULT_MOVE_SPEED = 3.0;
+
+/** Formation step-attack timing constants */
+export const FORMATION_STEP_DISTANCE = 1.5;   // world units forward toward enemy
+export const FORMATION_STEP_DURATION_MS = 250; // forward lerp duration
+export const FORMATION_RETURN_DURATION_MS = 300; // return-to-home lerp duration
 
 /** Arena boundary limits for invisible walls */
 export const ARENA_BOUNDS = {

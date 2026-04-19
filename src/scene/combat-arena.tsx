@@ -22,6 +22,7 @@ import { CombatSlashPool } from './combat-slash-pool';
 import type { CombatSlashPoolHandle } from './combat-slash-pool';
 import { CombatArrowPool } from './combat-arrow-pool';
 import type { CombatArrowPoolHandle } from './combat-arrow-pool';
+import { CombatTargetSelector } from './combat/combat-target-selector';
 
 /** Target FPS — pixel art looks best at 24-30fps (Octopath style) */
 const TARGET_FPS = 30;
@@ -123,6 +124,7 @@ export function CombatArenaCanvas() {
           slashPoolRef={slashPoolRef}
           arrowPoolRef={arrowPoolRef}
         />
+        <CombatTargetSelector />
         <color attach="background" args={[biome.fogColor]} />
 
         <Suspense fallback={null}>

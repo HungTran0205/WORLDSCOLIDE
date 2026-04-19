@@ -28,6 +28,15 @@ export interface ArenaEntitySnapshot {
   spriteId?: string;
   /** Flying enemy — sprite renders elevated above ground */
   flying?: boolean;
+  /** ATB timeline fields */
+  nextAttackAt: number;
+  attackIntervalMs: number;
+  isBoss?: boolean;
+  attackMoveState?: string;
+  /** Manual mode: ally is waiting for player input */
+  waitingForInput?: boolean;
+  /** Manual mode: current manual target id for this ally */
+  manualTargetId?: string | null;
 }
 
 export interface CombatArenaSlice {

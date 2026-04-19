@@ -4,11 +4,11 @@
  * Reuses all existing formulas/effects/passives — zero duplication with simulateCombat.
  */
 
-import type { Member } from '@/game/state/game-state';
+import type { Member, InventoryState } from '@/game/state/game-state';
 import type { EnemyTemplate } from '@/game/data/enemies';
 import type { CombatEvent, CombatTick, CombatResult, CombatOutcome } from './combat-types';
 import type { ArenaEntity, Formation } from './combat-arena-types';
-import { getFormationPosition } from './combat-arena-types';
+import { getFormationPosition, isRangedArchetype } from './combat-arena-types';
 import { calcAutoAttackDamage, calcSkillDamage, rollCrit } from './combat-formulas';
 import { applyEffectTick } from './combat-effects';
 import {
@@ -16,7 +16,7 @@ import {
   consumeShock, activateTeamBuff, isTeamBuffActive,
   resolveThienLuTimers, isCloneActive,
 } from './combat-passives';
-import { findTarget, getDistance, moveToward, processAbilities } from './combat-ai';
+import { findTarget, stepForwardToAttack, returnToHome, processAbilities } from './combat-ai';
 import { memberToArenaEntity, enemyToArenaEntity } from './combat-entity-factory';
 
 const LOGIC_TICK_MS = 100;
@@ -30,16 +30,27 @@ export class CombatEngine {
   time = 0;
   /** Called when all enemies are dead — return true if more waves exist */
   onWaveCheck?: () => boolean;
+  /** Manual mode: allies wait for player input before attacking */
+  manualMode = false;
   private accumulator = 0;
   private eventQueue: CombatEvent[] = [];
   private ticks: CombatTick[] = [];
   private totalDamageDealt = 0;
   private finished = false;
   private pendingSkills: Set<string> = new Set();
+  private pendingAttacks: Set<string> = new Set();
   private nextEnemyIndex = 0;
+  /** Total syringes loaded across all ally entities at init — for inventory deduction by caller */
+  totalSyringesLoaded = 0;
 
   /** Initialize combat from formation + enemies */
-  init(members: Member[], formation: Formation, enemyTemplates: EnemyTemplate[], hpMultiplier = 1): void {
+  init(
+    members: Member[],
+    formation: Formation,
+    enemyTemplates: EnemyTemplate[],
+    hpMultiplier = 1,
+    inventory?: InventoryState,
+  ): void {
     this.entities = [];
     this.time = 0;
     this.accumulator = 0;
@@ -47,8 +58,25 @@ export class CombatEngine {
     this.totalDamageDealt = 0;
     this.finished = false;
     this.pendingSkills.clear();
+    this.pendingAttacks.clear();
+    this.manualMode = false;
     this.eventQueue = [];
     this.nextEnemyIndex = 0;
+    this.totalSyringesLoaded = 0;
+
+    // Distribute available syringes evenly among formation members who have loadout configured
+    const formationMembers = formation
+      .filter(Boolean)
+      .map((id) => members.find((m) => m.id === id))
+      .filter((m): m is Member => !!m && !!m.syringeLoadout);
+    const totalSyringes = inventory?.items.HEALING_SYRINGE ?? 0;
+    const syringeShare = formationMembers.length > 0
+      ? Math.floor(totalSyringes / formationMembers.length)
+      : 0;
+    const syringeMap = new Map<string, number>(
+      formationMembers.map((m) => [m.id, syringeShare]),
+    );
+    this.totalSyringesLoaded = syringeShare * formationMembers.length;
 
     // Place allies from formation
     formation.forEach((memberId, slotIndex) => {
@@ -56,7 +84,7 @@ export class CombatEngine {
       const member = members.find(m => m.id === memberId);
       if (!member) return;
       const pos = getFormationPosition(slotIndex, 'ally');
-      this.entities.push(memberToArenaEntity(member, pos));
+      this.entities.push(memberToArenaEntity(member, pos, syringeMap.get(member.id) ?? 0));
     });
 
     // Place enemies with optional hp scaling
@@ -107,6 +135,18 @@ export class CombatEngine {
     this.pendingSkills.add(memberId);
   }
 
+  /** Toggle manual mode — allies wait for player input each attack cycle */
+  setManualMode(on: boolean): void { this.manualMode = on; }
+
+  /** Queue a basic attack for a waiting ally (manual mode) */
+  queueAttack(memberId: string): void { this.pendingAttacks.add(memberId); }
+
+  /** Set a specific manual target for an ally (manual mode) */
+  setManualTarget(allyId: string, enemyId: string | null): void {
+    const ally = this.entities.find(e => e.id === allyId && e.isAlly);
+    if (ally) ally.manualTargetId = enemyId;
+  }
+
   isFinished(): boolean { return this.finished; }
 
   getResult(): CombatResult {
@@ -150,6 +190,16 @@ export class CombatEngine {
     }
   }
 
+  /** Resolve attack target: manual target first (if valid), else findTarget */
+  private resolveTarget(entity: ArenaEntity): ArenaEntity | null {
+    if (entity.isAlly && this.manualMode && entity.manualTargetId) {
+      const manual = this.entities.find(e => e.id === entity.manualTargetId);
+      if (manual && manual.currentHp > 0 && manual.isAlly !== entity.isAlly) return manual;
+      entity.manualTargetId = null;
+    }
+    return findTarget(entity, this.entities);
+  }
+
   private processEntityTick(entity: ArenaEntity): void {
     // Refresh conditional passive buffs
     if (entity.passiveState) applyPassiveTick(entity);
@@ -162,6 +212,19 @@ export class CombatEngine {
       e.currentHp > 0,
     );
     entity._hasDeQuocBuff = !!(deQuocAlly && entity.id !== deQuocAlly.id);
+
+    // Syringe auto-use: fire when HP < threshold and syringes remain
+    if (
+      entity.isAlly &&
+      entity.syringesLoaded !== undefined && entity.syringesLoaded > 0 &&
+      entity.syringeThresholdPct !== undefined &&
+      entity.currentHp / entity.maxHp < entity.syringeThresholdPct
+    ) {
+      const healAmt = Math.floor(entity.maxHp * 0.30);
+      entity.currentHp = Math.min(entity.maxHp, entity.currentHp + healAmt);
+      entity.syringesLoaded -= 1;
+      this.eventQueue.push({ type: 'syringe-used', entityId: entity.id, healAmount: healAmt });
+    }
 
     // HP regen tick
     if (entity.hpRegenPerSec > 0) {
@@ -184,34 +247,98 @@ export class CombatEngine {
         return;
       }
     }
-    if (effectResult.skipTurn) return;
+    if (effectResult.skipTurn) {
+      // Snap to home on stun to prevent freezing mid-lerp
+      entity.position.x = entity.homeX;
+      entity.position.z = entity.homeZ;
+      entity.attackMoveState = 'home';
+      return;
+    }
 
-    // Find target
-    const target = findTarget(entity, this.entities);
+    // Find target (respects manual target in manual mode)
+    const target = this.resolveTarget(entity);
     if (!target) {
-      // No target remaining — combat winding down. Battle-idle stance.
       entity.animState = 'battle-idle';
       return;
     }
     entity.targetId = target.id;
 
-    // Check distance vs attack range
-    const dist = getDistance(entity, target);
-    if (dist > entity.attackRange) {
-      // Move toward target
-      moveToward(entity, target.position, entity.attackRange * 0.9, LOGIC_TICK_MS / 1000);
-      if (entity.animState !== 'attacking' && entity.animState !== 'skill') {
-        entity.animState = 'walking';
+    const dtSeconds = LOGIC_TICK_MS / 1000;
+
+    if (isRangedArchetype(entity.archetype)) {
+      // Ranged: attack from home — no movement
+      if (this.time >= entity.nextAttackAt) {
+        if (entity.isAlly && this.manualMode) {
+          if (this.pendingAttacks.has(entity.id)) {
+            this.pendingAttacks.delete(entity.id);
+            entity.waitingForInput = false;
+            this.tryAttack(entity, target);
+          } else if (this.pendingSkills.has(entity.id)) {
+            entity.waitingForInput = false;
+            // skill fires in the skill section below
+          } else {
+            entity.waitingForInput = true;
+            entity.animState = 'battle-idle';
+          }
+        } else {
+          entity.waitingForInput = false;
+          this.tryAttack(entity, target);
+        }
+      } else {
+        entity.waitingForInput = false;
       }
-      return;
+    } else {
+      // Melee: formation step-attack state machine
+      switch (entity.attackMoveState) {
+        case 'home': {
+          if (this.time >= entity.nextAttackAt) {
+            if (entity.isAlly && this.manualMode) {
+              if (this.pendingAttacks.has(entity.id)) {
+                this.pendingAttacks.delete(entity.id);
+                entity.waitingForInput = false;
+                entity.stepTargetX = target.position.x + (entity.isAlly ? -1 : 1) * entity.attackRange * 0.8;
+                entity.stepTargetZ = target.position.z;
+                entity.attackMoveState = 'step-forward';
+                entity.animState = 'walking';
+              } else if (this.pendingSkills.has(entity.id)) {
+                entity.waitingForInput = false;
+                // skill fires below; stay at home
+              } else {
+                entity.waitingForInput = true;
+                entity.animState = 'battle-idle';
+              }
+            } else {
+              entity.waitingForInput = false;
+              entity.stepTargetX = target.position.x + (entity.isAlly ? -1 : 1) * entity.attackRange * 0.8;
+              entity.stepTargetZ = target.position.z;
+              entity.attackMoveState = 'step-forward';
+              entity.animState = 'walking';
+            }
+          } else {
+            entity.waitingForInput = false;
+          }
+          break;
+        }
+        case 'step-forward': {
+          const arrived = stepForwardToAttack(entity, dtSeconds);
+          if (arrived) {
+            this.tryAttack(entity, target);
+            entity.attackMoveState = 'returning';
+          }
+          break;
+        }
+        case 'returning': {
+          const atHome = returnToHome(entity, dtSeconds);
+          if (atHome) {
+            entity.attackMoveState = 'home';
+            entity.animState = 'battle-idle';
+          }
+          break;
+        }
+      }
     }
 
-    // In range — auto-attack if ready
-    if (this.time >= entity.nextAttackAt) {
-      this.tryAttack(entity, target);
-    }
-
-    // Skill activation
+    // Skill activation (all entity types)
     if (entity.isAlly && this.pendingSkills.has(entity.id)) {
       this.trySkill(entity, target);
       this.pendingSkills.delete(entity.id);
@@ -330,6 +457,10 @@ export class CombatEngine {
     if (target.currentHp <= 0) {
       target.animState = 'dead';
       this.eventQueue.push({ type: 'death', entityId: target.id });
+      // Clear manual target references to this dead entity
+      for (const e of this.entities) {
+        if (e.manualTargetId === target.id) e.manualTargetId = null;
+      }
     }
 
     // Process enemy abilities (poison, stun, enrage, heal) — only if target survived

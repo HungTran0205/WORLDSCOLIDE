@@ -227,6 +227,12 @@ export class CombatStateBridge {
       gender: e.gender,
       spriteId: e.spriteId,
       flying: e.flying,
+      nextAttackAt: e.nextAttackAt,
+      attackIntervalMs: e.attackIntervalMs,
+      isBoss: e.isBoss,
+      attackMoveState: e.attackMoveState,
+      waitingForInput: e.waitingForInput,
+      manualTargetId: e.manualTargetId,
     }));
   }
 

@@ -19,6 +19,14 @@ export function CombatSkillHotbar() {
     .slice(0, 4);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Q key: basic attack for first waiting ally (manual mode)
+    if (e.key === 'q' || e.key === 'Q') {
+      const waiting = entities.find(en => en.isAlly && en.currentHp > 0 && en.waitingForInput);
+      if (waiting) {
+        window.dispatchEvent(new CustomEvent('combat-attack', { detail: waiting.id }));
+      }
+      return;
+    }
     const keyIndex = parseInt(e.key) - 1;
     if (keyIndex >= 0 && keyIndex < allySkills.length) {
       const ally = allySkills[keyIndex];
@@ -26,7 +34,7 @@ export function CombatSkillHotbar() {
         window.dispatchEvent(new CustomEvent('combat-skill', { detail: ally.id }));
       }
     }
-  }, [allySkills, arenaTime]);
+  }, [allySkills, arenaTime, entities]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -50,16 +58,23 @@ export function CombatSkillHotbar() {
 
       {/* Skill slots */}
       {allySkills.map((ally, idx) => (
-        <SkillSlot key={ally.id} ally={ally} keyLabel={String(idx + 1)} arenaTime={arenaTime} />
+        <SkillSlot
+          key={ally.id}
+          ally={ally}
+          keyLabel={String(idx + 1)}
+          arenaTime={arenaTime}
+          waiting={ally.waitingForInput ?? false}
+        />
       ))}
     </div>
   );
 }
 
-function SkillSlot({ ally, keyLabel, arenaTime }: {
+function SkillSlot({ ally, keyLabel, arenaTime, waiting }: {
   ally: ArenaEntitySnapshot;
   keyLabel: string;
   arenaTime: number;
+  waiting: boolean;
 }) {
   const isReady = ally.skillCooldownUntil <= arenaTime;
   const isDead = ally.currentHp <= 0;
@@ -72,11 +87,17 @@ function SkillSlot({ ally, keyLabel, arenaTime }: {
     }
   };
 
+  const waitingStyle: React.CSSProperties = waiting ? {
+    boxShadow: '0 0 10px rgba(255,235,59,0.8)',
+    borderColor: 'rgba(255,235,59,0.8)',
+  } : {};
+
   return (
     <div onClick={onClick} style={{
       ...SKILL_SLOT,
       opacity: isDead ? 0.3 : 1,
       cursor: isReady && !isDead ? 'pointer' : 'default',
+      ...waitingStyle,
     }}>
       <div style={KEY_BADGE}>{keyLabel}</div>
       <div style={{ fontSize: '0.7rem', color: '#ffd700', marginTop: 2 }}>{ally.skillName}</div>
