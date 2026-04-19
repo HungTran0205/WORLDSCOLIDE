@@ -42,6 +42,17 @@
   opacity: 0.7;
 }
 
+.timeline-entry.active-turn {
+  outline: 2px solid #ffd700;
+  outline-offset: 1px;
+  animation: turn-pulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes turn-pulse {
+  from { outline-color: #ffd700; }
+  to   { outline-color: #ff8c00; }
+}
+
 .timeline-name {
   font-size: 0.55rem;
   color: #e0e0e0;

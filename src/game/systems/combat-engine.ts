@@ -32,6 +32,8 @@ export class CombatEngine {
   onWaveCheck?: () => boolean;
   /** Manual mode: allies wait for player input before attacking */
   manualMode = false;
+  /** Manual mode: which ally's turn is currently paused for player input */
+  pausedForAllyTurn: string | null = null;
   private accumulator = 0;
   private eventQueue: CombatEvent[] = [];
   private ticks: CombatTick[] = [];
@@ -60,6 +62,7 @@ export class CombatEngine {
     this.pendingSkills.clear();
     this.pendingAttacks.clear();
     this.manualMode = false;
+    this.pausedForAllyTurn = null;
     this.eventQueue = [];
     this.nextEnemyIndex = 0;
     this.totalSyringesLoaded = 0;
@@ -108,6 +111,33 @@ export class CombatEngine {
   /** Advance combat by dt milliseconds. Call from useFrame. */
   tick(dt: number): CombatEvent[] {
     if (this.finished) return [];
+
+    // EC-3: manual mode turned OFF while paused — clear pause state so enemies aren't frozen
+    if (!this.manualMode && this.pausedForAllyTurn !== null) {
+      const ally = this.entities.find(e => e.id === this.pausedForAllyTurn);
+      if (ally) ally.waitingForInput = false;
+      this.pausedForAllyTurn = null;
+    }
+
+    // Manual mode pause: freeze entire engine while waiting for player action
+    if (this.manualMode && this.pausedForAllyTurn !== null) {
+      const pausedAlly = this.entities.find(e => e.id === this.pausedForAllyTurn && e.currentHp > 0);
+      if (!pausedAlly) {
+        // Ally died while waiting — auto-clear and resume
+        this.pausedForAllyTurn = null;
+      } else if (
+        !this.pendingAttacks.has(pausedAlly.id) &&
+        !this.pendingSkills.has(pausedAlly.id)
+      ) {
+        // Still waiting for player — freeze time entirely (enemies don't attack)
+        return [];
+      } else {
+        // Player has acted — clear pause and fall through to process
+        this.pausedForAllyTurn = null;
+        pausedAlly.waitingForInput = false;
+      }
+    }
+
     this.accumulator += dt;
     const frameEvents: CombatEvent[] = [];
 
@@ -119,12 +149,26 @@ export class CombatEngine {
       this.processLogicTick();
       this.checkVictoryCondition();
 
+      // After tick: detect if an ally's turn just fired (manual mode)
+      if (this.manualMode && this.pausedForAllyTurn === null) {
+        const waitingAlly = this.entities
+          .filter(e => e.isAlly && e.currentHp > 0 && e.waitingForInput)
+          .sort((a, b) => a.nextAttackAt - b.nextAttackAt)[0] ?? null;
+        if (waitingAlly) {
+          this.pausedForAllyTurn = waitingAlly.id;
+          this.eventQueue.push({ type: 'ally-turn-start', entityId: waitingAlly.id });
+        }
+      }
+
       if (this.eventQueue.length > 0) {
         this.ticks.push({ time: this.time, events: [...this.eventQueue] });
         frameEvents.push(...this.eventQueue);
       }
 
       if (this.time >= MAX_COMBAT_MS) this.finished = true;
+
+      // Break while loop immediately when we just paused for a turn
+      if (this.manualMode && this.pausedForAllyTurn !== null) break;
     }
 
     return frameEvents;
@@ -148,6 +192,8 @@ export class CombatEngine {
   }
 
   isFinished(): boolean { return this.finished; }
+
+  getPausedForAllyTurn(): string | null { return this.pausedForAllyTurn; }
 
   getResult(): CombatResult {
     const alliesAlive = this.entities.filter(e => e.isAlly && e.currentHp > 0);

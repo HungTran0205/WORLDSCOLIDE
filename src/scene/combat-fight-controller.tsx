@@ -71,6 +71,7 @@ export function CombatFightController({
   );
   const syncArenaState = useGameStore(s => s.syncArenaState);
   const syncWaveState = useGameStore(s => s.syncWaveState);
+  const setActiveAllyTurn = useGameStore(s => s.setActiveAllyTurn);
   const endCombat = useGameStore(s => s.endCombat);
   const founder = useGameStore(s => s.founder);
   const roster = useGameStore(s => s.roster);
@@ -251,6 +252,9 @@ export function CombatFightController({
 
     const dtMs = Math.min(delta * 1000, MAX_FRAME_DT_MS) * speedMultiplier;
     const events = engine.tick(dtMs);
+
+    // Sync active ally turn to store each frame (cheap string or null)
+    setActiveAllyTurn(engine.getPausedForAllyTurn());
 
     // Log combat events
     for (const e of events) {

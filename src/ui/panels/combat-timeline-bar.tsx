@@ -6,12 +6,13 @@
 import { useMemo } from 'react';
 import { useGameStore } from '@/game/state/store';
 import type { ArenaEntitySnapshot } from '@/game/state/combat-arena-slice';
-import './combat-timeline.css';
+import '../styles/combat-timeline.css';
 
 export function CombatTimelineBar() {
   const arenaPhase = useGameStore(s => s.arenaPhase);
   const entities = useGameStore(s => s.arenaEntities);
   const arenaTime = useGameStore(s => s.arenaTime);
+  const activeAllyTurnId = useGameStore(s => s.activeAllyTurnId);
 
   const sorted = useMemo(
     () => entities
@@ -26,13 +27,17 @@ export function CombatTimelineBar() {
   return (
     <div className="combat-timeline">
       {sorted.map(e => (
-        <TimelineEntry key={e.id} entity={e} arenaTime={arenaTime} />
+        <TimelineEntry key={e.id} entity={e} arenaTime={arenaTime} isActiveTurn={e.id === activeAllyTurnId} />
       ))}
     </div>
   );
 }
 
-function TimelineEntry({ entity, arenaTime }: { entity: ArenaEntitySnapshot; arenaTime: number }) {
+function TimelineEntry({ entity, arenaTime, isActiveTurn }: {
+  entity: ArenaEntitySnapshot;
+  arenaTime: number;
+  isActiveTurn: boolean;
+}) {
   const remaining = Math.max(0, entity.nextAttackAt - arenaTime);
   const percent = entity.attackIntervalMs > 0
     ? Math.min(1, Math.max(0, 1 - remaining / entity.attackIntervalMs))
@@ -50,6 +55,7 @@ function TimelineEntry({ entity, arenaTime }: { entity: ArenaEntitySnapshot; are
       isNearReady ? 'near-ready' : '',
       isWaiting ? 'waiting' : '',
       isActing ? 'acting' : '',
+      isActiveTurn ? 'active-turn' : '',
     ].filter(Boolean).join(' ')}>
       {/* Name abbreviation */}
       <div className="timeline-name">{entity.name.slice(0, 4)}</div>
