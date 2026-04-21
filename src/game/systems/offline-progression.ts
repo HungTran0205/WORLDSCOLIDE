@@ -3,7 +3,6 @@ import type { GameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
 import { resolveMission, type MissionResult } from './mission-resolver';
 import { calcTotalUpkeep } from './upkeep-system';
-import { ARRIVAL_TIMEOUT_MS } from './mission-tick';
 
 export interface OfflineMissionOutcome {
   result: MissionResult;
@@ -52,8 +51,9 @@ export function processOfflineTime(
     const missionData = MISSIONS.find((m) => m.id === active.missionId);
     if (!missionData) continue;
 
-    const fullyExpiredAt = active.startTime + missionData.travelTimeMs + ARRIVAL_TIMEOUT_MS;
-    if (fullyExpiredAt >= realNow) continue; // Still in progress — tick handles it
+    // Auto-resolve missions where travel completed while offline (arrived or in-combat)
+    const travelEndAt = active.startTime + missionData.travelTimeMs;
+    if (travelEndAt >= realNow) continue; // Still traveling — tick handles it
 
     const members = allMembers.filter((m) => active.memberIds.includes(m.id));
     const result = resolveMission(missionData, members);

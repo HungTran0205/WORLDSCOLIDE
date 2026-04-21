@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import type { MissionPhase } from '@/game/state/game-state';
 import { useGameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
-import { ARRIVAL_TIMEOUT_MS } from '@/game/systems/mission-tick';
 import { MissionProgressBar } from '@/ui/components/mission-progress-bar';
 import { GameIcon } from '@/ui/components/game-icon';
 import { ArrivalModal } from '@/ui/panels/arrival-modal';
@@ -51,6 +50,7 @@ export function ActiveMissionsList() {
   const [now, setNow] = useState(() => Date.now());
   const [arrivalModalFor, setArrivalModalFor] = useState<string | null>(null);
   const setCombatMode = useGameStore((s) => s.setCombatMode);
+  const updateMissionPhase = useGameStore((s) => s.updateMissionPhase);
   const enterCombatPrep = useGameStore((s) => s.enterCombatPrep);
 
   useEffect(() => {
@@ -66,6 +66,8 @@ export function ActiveMissionsList() {
 
   const handleCombatChoice = (missionId: string, mode: 'auto' | 'manual') => {
     setCombatMode(missionId, mode);
+    // Tick loop pauses when gameScene becomes 'combat-arena', so we update phase explicitly
+    updateMissionPhase(missionId, 'in-combat');
     if (mode === 'manual') {
       enterCombatPrep(missionId);
     }
@@ -79,9 +81,6 @@ export function ActiveMissionsList() {
         const missionData = MISSIONS.find((m) => m.id === am.missionId);
         const badge = PHASE_BADGE[am.phase];
         const isArrived = am.phase === 'arrived';
-        const arrivalSecs = isArrived && am.arrivalTime
-          ? Math.max(0, Math.ceil((am.arrivalTime + ARRIVAL_TIMEOUT_MS - now) / 1000))
-          : null;
 
         return (
           <div
@@ -108,9 +107,9 @@ export function ActiveMissionsList() {
                 now={now}
               />
             )}
-            {isArrived && arrivalSecs !== null && (
+            {isArrived && (
               <div style={{ fontSize: '0.8rem', color: '#f39c12', marginTop: 4 }}>
-                Auto-combat in {arrivalSecs}s — click to choose
+                ⚔️ Click to choose combat mode
               </div>
             )}
             {am.phase === 'in-combat' && (
@@ -130,8 +129,6 @@ export function ActiveMissionsList() {
             missionName={missionData.name}
             zone={missionData.zone ?? ''}
             enemyIds={missionData.enemyIds}
-            arrivalTime={am.arrivalTime}
-            timeoutMs={ARRIVAL_TIMEOUT_MS}
             onChooseManual={() => handleCombatChoice(am.missionId, 'manual')}
             onChooseAuto={() => handleCombatChoice(am.missionId, 'auto')}
             onClose={closeArrival}

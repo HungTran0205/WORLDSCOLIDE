@@ -25,6 +25,13 @@ const MAX_COMBAT_MS = 120_000; // 2 min hard cap
 // extra tick (100ms) past this value, so effective display = 600 + 100 = 700ms.
 const ANIM_ATTACK_DURATION = 600;
 
+// Back animation: 4 frames @ 12fps = 333ms, effective 300ms + engine granularity
+const WARRIOR_BACK_DURATION = 300;
+// Warrior jumps this far from home toward enemy (world units).
+// At step speed 6 u/s → 400ms forward; return at 5 u/s → 400ms back.
+// Both durations fit neatly inside the attack (600ms) and back (300ms) animations.
+const WARRIOR_JUMP_DISTANCE = 2.0;
+
 export class CombatEngine {
   entities: ArenaEntity[] = [];
   time = 0;
@@ -99,6 +106,11 @@ export class CombatEngine {
       const pos = getFormationPosition(slotIndex, 'enemy');
       this.entities.push(enemyToArenaEntity(tmpl, this.nextEnemyIndex++, pos, hpMultiplier));
     });
+
+    // All entities start in combat stance (not frozen idle)
+    for (const entity of this.entities) {
+      entity.animState = 'battle-idle';
+    }
   }
 
   /** Spawn new enemies mid-combat (wave transition) */
@@ -294,8 +306,14 @@ export class CombatEngine {
     // Use strict > (not >=) to avoid same-tick collision: if attack expires at T=800
     // and enemy also attacks at T=800, the ally stays 'attacking' for that tick.
     if (entity.animStateUntil > 0 && this.time > entity.animStateUntil) {
-      entity.animState = 'battle-idle';
-      entity.animStateUntil = 0;
+      if (entity.animState === 'attacking' && entity.archetype === 'warrior') {
+        // Warrior: after 8-frame jump attack, play return-jump animation
+        entity.animState = 'back';
+        entity.animStateUntil = this.time + WARRIOR_BACK_DURATION;
+      } else {
+        entity.animState = 'battle-idle';
+        entity.animStateUntil = 0;
+      }
     }
 
     if (entity.passiveState) applyPassiveTick(entity);
@@ -354,19 +372,33 @@ export class CombatEngine {
     if (isRangedArchetype(actor.archetype)) return;
 
     const dtSeconds = LOGIC_TICK_MS / 1000;
+    const isWarrior = actor.archetype === 'warrior';
 
     if (actor.attackMoveState === 'step-forward') {
       const target = this.resolveTarget(actor);
       const arrived = stepForwardToAttack(actor, dtSeconds);
       if (arrived) {
-        if (target && target.currentHp > 0) this.tryAttack(actor, target);
+        if (target && target.currentHp > 0) {
+          if (isWarrior) {
+            // Warrior: animState/nextAttackAt already set by initiateWarriorJump; just deal damage on arrival
+            if (target.dodgeRate > 0 && Math.random() < target.dodgeRate) {
+              this.eventQueue.push({ type: 'dodge', attackerId: actor.id, targetId: target.id });
+            } else {
+              this.dealDamage(actor, target);
+            }
+          } else {
+            this.tryAttack(actor, target);
+          }
+        }
         actor.attackMoveState = 'returning';
       }
     } else if (actor.attackMoveState === 'returning') {
+      // Warrior stays at midpoint until attack anim expires; processEntityStatus then starts 'back'
+      if (isWarrior && actor.animState === 'attacking') return;
       const atHome = returnToHome(actor, dtSeconds);
       if (atHome) {
         actor.attackMoveState = 'home';
-        actor.animState = 'battle-idle';
+        if (!isWarrior) actor.animState = 'battle-idle';
       }
     }
   }
@@ -404,8 +436,19 @@ export class CombatEngine {
       } else {
         this.tryAttack(entity, target);
       }
+    } else if (entity.archetype === 'warrior') {
+      // Warrior: jump forward to enemy with attack animation, deal damage on arrival
+      if (entity.isAlly && this.manualMode) {
+        if (hasPendingAttack) {
+          this.pendingAttacks.delete(entity.id);
+          this.initiateWarriorJump(entity, target);
+        }
+        // only pendingSkill: stay at home, skill fires below
+      } else {
+        this.initiateWarriorJump(entity, target);
+      }
     } else {
-      // Melee: initiate step-forward
+      // Standard melee: initiate step-forward
       if (entity.isAlly && this.manualMode) {
         if (hasPendingAttack) {
           this.pendingAttacks.delete(entity.id);
@@ -459,7 +502,22 @@ export class CombatEngine {
     if (isRangedArchetype(actor.archetype)) {
       return actor.animState !== 'attacking' && actor.animState !== 'skill';
     }
+    if (actor.archetype === 'warrior') {
+      // Done when physically home (same as standard melee); back anim may still play after
+      return actor.attackMoveState === 'home';
+    }
     return actor.attackMoveState === 'home';
+  }
+
+  /** Warrior jump-forward attack: hop toward enemy midpoint, animation plays once, then back home */
+  private initiateWarriorJump(entity: ArenaEntity, _target: ArenaEntity): void {
+    const dir = entity.isAlly ? 1 : -1;
+    entity.stepTargetX = entity.homeX + dir * WARRIOR_JUMP_DISTANCE;
+    entity.stepTargetZ = entity.homeZ;
+    entity.attackMoveState = 'step-forward';
+    entity.animState = 'attacking';
+    entity.animStateUntil = this.time + ANIM_ATTACK_DURATION;
+    entity.nextAttackAt = this.time + entity.attackIntervalMs;
   }
 
   private tryAttack(entity: ArenaEntity, target: ArenaEntity): void {
@@ -470,6 +528,14 @@ export class CombatEngine {
       return;
     }
 
+    this.dealDamage(entity, target);
+    entity.nextAttackAt = this.time + entity.attackIntervalMs;
+    entity.animState = 'attacking';
+    entity.animStateUntil = this.time + ANIM_ATTACK_DURATION;
+  }
+
+  /** Apply damage, passive effects, and target reactions — no nextAttackAt/animState changes */
+  private dealDamage(entity: ArenaEntity, target: ArenaEntity): void {
     let damage = calcAutoAttackDamage(entity.stats.STR, target.stats.END);
     // Boosted status gives +20% damage
     if (entity.statusEffects.some(e => e.type === 'boosted')) {
@@ -500,11 +566,7 @@ export class CombatEngine {
     target.currentHp -= damage;
     this.totalDamageDealt += entity.isAlly ? damage : 0;
     this.eventQueue.push({ type: 'auto-attack', attackerId: entity.id, targetId: target.id, damage, isCrit });
-    entity.nextAttackAt = this.time + entity.attackIntervalMs;
 
-    // Anim states
-    entity.animState = 'attacking';
-    entity.animStateUntil = this.time + ANIM_ATTACK_DURATION;
     // Block animation has highest priority — overrides attacking/skill so the
     // player actually sees the defensive reaction. Hit still defers to ongoing
     // attack/skill swings to avoid interrupting player animations.

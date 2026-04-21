@@ -182,11 +182,13 @@ function formatEvent(event: CombatEvent, getName: (id: string) => string): strin
       return `${getName(event.targetId)} dodges ${getName(event.attackerId)}'s attack!`;
     case 'heal':
       return `${getName(event.healerId)} heals ${getName(event.targetId)} for ${event.amount} HP`;
+    case 'block':
+      return `${getName(event.attackerId)} blocks ${getName(event.targetId)}'s attack! (${event.reducedDamage} reduced)`;
+    case 'wave-cleared':
+      return `Wave ${event.waveIndex + 1} cleared!`;
     case 'victory':
       return 'Victory!';
     case 'wipe':
       return 'Party wiped...';
-    default:
-      return '';
   }
 }

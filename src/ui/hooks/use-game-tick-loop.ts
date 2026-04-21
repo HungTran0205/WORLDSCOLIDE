@@ -21,6 +21,7 @@ const TAVERN_MERCENARY_COUNT = 3;
 
 export function useGameTickLoop() {
   const workerRef = useRef<Worker | null>(null);
+  const stoneAccumulatorRef = useRef(0);
 
   const handleTick = useCallback((now: number) => {
     const store = useGameStore.getState();
@@ -82,13 +83,20 @@ export function useGameTickLoop() {
     const quarryResult = processStoneQuarryTick(store.facilities, allMembersForTick);
     if (quarryResult.stoneProduced > 0 || quarryResult.mcXpGains.length > 0) {
       store.applyStoneQuarryProduction(quarryResult);
-      if (quarryResult.stoneProduced > 0) {
-        store.addItem('STONE', quarryResult.stoneProduced);
+      // Accumulate fractional stone; addItem floors so we batch until we have >= 1
+      stoneAccumulatorRef.current += quarryResult.stoneProduced;
+      const stoneToAdd = Math.floor(stoneAccumulatorRef.current);
+      if (stoneToAdd > 0) {
+        store.addItem('STONE', stoneToAdd);
+        stoneAccumulatorRef.current -= stoneToAdd;
       }
       for (const [itemId, qty] of Object.entries(quarryResult.bonusItemGains)) {
         if (qty > 0) store.addItem(itemId as ItemID, qty);
       }
     }
+
+    // Tick alchemy craft queues — decrement timers, produce completed items
+    store.tickAlchemyQueues();
 
     // Recover injured members whose timer expired
     processInjuryRecovery(store, now);
@@ -117,7 +125,9 @@ export function useGameTickLoop() {
       if (gameDays > 0) {
         const allMembers = store.founder ? [store.founder, ...store.roster] : store.roster;
         const dailyUpkeep = calcTotalUpkeep(allMembers);
-        const results = processFacilityProduction(store.facilities, allMembers, gameDays, dailyUpkeep);
+        const results = processFacilityProduction(
+          store.facilities, allMembers, gameDays, dailyUpkeep, store.inventory.items,
+        );
 
         // Apply EXP gains
         for (const result of results) {
@@ -126,10 +136,24 @@ export function useGameTickLoop() {
           }
         }
 
-        // Apply item gains
+        // Apply item gains and consumed items
         for (const result of results) {
           for (const [itemId, qty] of Object.entries(result.itemGains)) {
             if (qty && qty > 0) store.addItem(itemId as Parameters<typeof store.addItem>[0], qty);
+          }
+          for (const [itemId, qty] of Object.entries(result.itemConsumed)) {
+            if (qty && qty > 0) store.removeItem(itemId as Parameters<typeof store.addItem>[0], qty);
+          }
+          // Apply alchemy XP gains
+          if (result.alchemyXpGains) {
+            store.applyAlchemyProduction({
+              syringesProduced: (result.itemGains.HEALING_SYRINGE ?? 0),
+              gelConsumed: (result.itemConsumed.SLIME_GEL ?? 0),
+              acXpGains: Object.entries(result.alchemyXpGains).map(([memberId, g]) => ({
+                memberId, xpGained: 0, newXp: g.newXp, newLevel: g.newLevel, leveledUp: false,
+              })),
+              blockedMemberIds: [],
+            });
           }
         }
 

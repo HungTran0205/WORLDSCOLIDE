@@ -85,6 +85,15 @@ function WorkshopFurniture({ cx, cz }: { cx: number; cz: number }) {
   );
 }
 
+function AlchemyLabFurniture({ cx, cz }: { cx: number; cz: number }) {
+  return (
+    <group>
+      <RoomProp path="/models/furnitures/alchemy-table.glb" position={[cx, 0, cz - 2.0]} targetHeight={1.1} rotY={0} />
+      <RoomProp path="/models/furnitures/alchemy-table.glb" position={[cx - 2.0, 0, cz - 0.5]} targetHeight={1.0} rotY={Math.PI / 2} />
+    </group>
+  );
+}
+
 interface FacilityRoomFurnitureProps {
   type: FacilityType;
   cx: number;
@@ -98,6 +107,7 @@ export function FacilityRoomFurniture({ type, cx, cz }: FacilityRoomFurniturePro
     case 'training-yard': return <TrainingYardFurniture cx={cx} cz={cz} />;
     case 'infirmary':     return <InfirmaryFurniture cx={cx} cz={cz} />;
     case 'workshop':      return <WorkshopFurniture cx={cx} cz={cz} />;
+    case 'alchemy-lab':   return <AlchemyLabFurniture cx={cx} cz={cz} />;
     default:              return null;
   }
 }

@@ -28,6 +28,10 @@ import { ANIM_STATE } from './animation-state-buffer';
 /** Max instances — 48 entities + buffer */
 const MAX_INSTANCES = 48;
 
+/** Parabolic arc for melee step-forward attack */
+const ARC_HEIGHT = 2;
+const STEP_DURATION_S = 0.25; // matches FORMATION_STEP_DURATION_MS
+
 // Reusable temporaries to avoid per-frame allocation
 const _pos = new Vector3();
 const _quat = new Quaternion();
@@ -44,6 +48,7 @@ function animStateToAtlasAnim(state: number, isEnemy: boolean): string {
     case ANIM_STATE.hit: return 'walk'; // hit uses walk frame 0
     case ANIM_STATE['battle-idle']: return 'battle-idle';
     case ANIM_STATE.blocking: return 'blocking';
+    case ANIM_STATE.back: return 'back'; // warrior return-jump after attack
     case ANIM_STATE.idle:
     default: return 'walk'; // idle = walk frame 0
   }
@@ -85,6 +90,11 @@ export function InstancedSpriteRenderer({
 
     return () => { cancelled = true; };
   }, [atlasTextures, gl]);
+
+  // Arc jump state — local to renderer, no React state
+  const arcElapsedTimers = useRef(new Float32Array(MAX_INSTANCES));
+  const arcVisualY = useRef(new Float32Array(MAX_INSTANCES));
+  const prevStepForwardFlags = useRef(new Uint8Array(MAX_INSTANCES));
 
   // Create instanced attributes
   const attrs = useMemo(() => createSpriteInstanceAttributes(MAX_INSTANCES), []);
@@ -138,7 +148,22 @@ export function InstancedSpriteRenderer({
       // PlaneGeometry(1,1) is centered → shift up by scaleY/2 to put feet on ground (Y=0).
       const pos = stateBuffer.getCurrentPosition(i);
       const flyingOffset = stateBuffer.isFlying(i) ? 1.2 : 0;
-      _pos.set(pos.x, scale.y * 0.5 + flyingOffset, pos.z);
+
+      // Parabolic arc for melee step-forward
+      const isStepForward = stateBuffer.getIsStepForward(i);
+      if (isStepForward && !prevStepForwardFlags.current[i]) {
+        arcElapsedTimers.current[i] = 0; // reset on entry
+      }
+      prevStepForwardFlags.current[i] = isStepForward ? 1 : 0;
+      let arcTargetY = 0;
+      if (isStepForward) {
+        arcElapsedTimers.current[i] = Math.min(arcElapsedTimers.current[i] + delta, STEP_DURATION_S);
+        const t = arcElapsedTimers.current[i] / STEP_DURATION_S;
+        arcTargetY = ARC_HEIGHT * Math.sin(Math.PI * t);
+      }
+      arcVisualY.current[i] += (arcTargetY - arcVisualY.current[i]) * 0.3;
+
+      _pos.set(pos.x, scale.y * 0.5 + flyingOffset + arcVisualY.current[i], pos.z);
       const facingRight = stateBuffer.isFacingRight(i);
       const isEnemy = !stateBuffer.isAlly(i);
 

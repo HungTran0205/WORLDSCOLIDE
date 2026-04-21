@@ -11,6 +11,7 @@ import { RoomMemberSprites } from './room-member-sprites';
 import { ForestRoomDecor, LoggingSiteZoneCard } from './facility-room-forest-decor';
 import { FacilityRoomFurniture } from './facility-room-furniture';
 import { QuarryRoomDecor, QuarryZoneCard } from './facility-room-quarry-decor';
+import { AlchemyZoneCard } from './facility-room-alchemy-decor';
 import type { GuildFacility, FacilityType } from '@/game/state/game-state';
 
 const ROOM_SIZE = 7;
@@ -24,6 +25,7 @@ const ROOM_FLOOR_COLORS: Record<FacilityType, string> = {
   workshop: '#1a1508',
   'logging-site': '#3d6b2a',
   'stone-quarry': '#2a2a2a',
+  'alchemy-lab': '#1a0f2a',
 };
 
 const ROOM_WALL_COLORS: Record<FacilityType, string> = {
@@ -33,6 +35,7 @@ const ROOM_WALL_COLORS: Record<FacilityType, string> = {
   workshop: '#1e1a0a',
   'logging-site': '#5a4a2a',
   'stone-quarry': '#252525',
+  'alchemy-lab': '#2a1a3a',
 };
 
 /** Per-facility point light config — color + intensity when room is active */
@@ -43,6 +46,7 @@ const ROOM_LIGHT: Record<FacilityType, { color: string; intensity: number }> = {
   workshop: { color: '#ffcc44', intensity: 5 },
   'logging-site': { color: '#fff5cc', intensity: 18 },
   'stone-quarry': { color: '#aaaacc', intensity: 5 },
+  'alchemy-lab': { color: '#aa66ff', intensity: 6 },
 };
 
 interface FacilityRoomProps {
@@ -68,6 +72,7 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
   const light = ROOM_LIGHT[facility.type];
   const isLoggingSite = facility.type === 'logging-site';
   const isQuarry = facility.type === 'stone-quarry';
+  const isAlchemy = facility.type === 'alchemy-lab';
 
   return (
     <group>
@@ -123,6 +128,10 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
       ) : isActive && cameraSettled && isQuarry ? (
         <Html position={[cx - 6.5, 1, cz + 0.5]} center>
           <QuarryZoneCard facility={facility} />
+        </Html>
+      ) : isActive && cameraSettled && isAlchemy ? (
+        <Html position={[cx - 6.5, 1, cz + 0.5]} center>
+          <AlchemyZoneCard facility={facility} />
         </Html>
       ) : (
         <Html position={[cx, 1.8, cz]} center>

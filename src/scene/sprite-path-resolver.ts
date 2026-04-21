@@ -57,6 +57,12 @@ export function getBlockingFramePath(basePath: string, direction: SpriteDirectio
   return `${basePath}/animations/blocking/${direction}/frame_${padded}.png`;
 }
 
+/** Build path to a character back-jump animation frame (warrior return animation) */
+export function getBackFramePath(basePath: string, direction: SpriteDirection, frame: number): string {
+  const padded = String(frame).padStart(3, '0');
+  return `${basePath}/animations/back/${direction}/frame_${padded}.png`;
+}
+
 /** Build path to an enemy animation frame (west direction only on disk) */
 export function getEnemyAnimFramePath(spriteId: string, anim: string, frame: number): string {
   const padded = String(frame).padStart(3, '0');

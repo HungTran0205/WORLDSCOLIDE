@@ -148,8 +148,9 @@ export function CombatFightController({
         registry: result.registry,
       };
 
-      // Initial sync so entities appear immediately
-      bridge.syncFromEngine(engine);
+      // Initial UI snapshot — don't syncFromEngine here so the buffer
+      // retains the 'idle' state set by addEntity(), giving characters
+      // their proper IDLE starting pose before the first frame renders.
       const snapshots = bridge.buildUISnapshots(engine);
       syncArenaState(snapshots, 0, []);
 

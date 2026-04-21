@@ -23,7 +23,7 @@ const ICON_SLUG: Partial<Record<FacilityType, string>> = {
 };
 
 const FACILITY_ROOM_ORDER: FacilityType[] = [
-  'tavern', 'infirmary', 'training-yard', 'workshop', 'logging-site', 'stone-quarry',
+  'tavern', 'infirmary', 'training-yard', 'workshop', 'logging-site', 'stone-quarry', 'alchemy-lab',
 ];
 
 export function RoomNavBar() {

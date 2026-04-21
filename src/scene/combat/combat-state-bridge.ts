@@ -21,6 +21,7 @@ import type { CombatArrowPoolHandle } from '../combat-arrow-pool';
 
 const DEFAULT_SPRITE_SCALE = 2.1;
 const BOSS_SPRITE_SCALE = 3.0;
+const MELEE_ARCHETYPES = new Set(['warrior', 'dualblade', 'engineer']);
 
 export class CombatStateBridge {
   readonly buffer: AnimationStateBuffer;
@@ -123,6 +124,9 @@ export class CombatStateBridge {
         entity.currentHp / entity.maxHp,
         entity.currentHp > 0,
       );
+      // Arc flag: only for melee allies during step-forward
+      const isMeleeAlly = entity.isAlly && !!entity.archetype && MELEE_ARCHETYPES.has(entity.archetype);
+      this.buffer.setStepForward(entity.id, isMeleeAlly && entity.attackMoveState === 'step-forward');
     }
   }
 
@@ -294,6 +298,7 @@ export class CombatStateBridge {
         case 'death': animState = 5; break;
         case 'battle-idle': animState = 6; break;
         case 'blocking': animState = 7; break;
+        case 'back': animState = 8; break;
         default: continue;
       }
       this.buffer.setAnimFrameCount(slot, animState, animInfo.frameCount);

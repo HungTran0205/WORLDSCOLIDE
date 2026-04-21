@@ -24,9 +24,15 @@ export interface MiningSkill {
   xpAccumulated: number; // total stone mined (acts as XP proxy)
 }
 
+export interface AlchemySkill {
+  level: number;         // 0–10
+  xpAccumulated: number; // total syringes crafted (acts as XP proxy)
+}
+
 export interface CraftSkills {
   woodcutting: WoodcuttingSkill;
   mining: MiningSkill;
+  alchemy: AlchemySkill;
 }
 
 export interface Skill {
@@ -39,7 +45,21 @@ export interface Skill {
 
 export type MemberStatus = 'idle' | 'on-mission' | 'injured' | 'training' | 'assigned';
 
-export type FacilityType = 'tavern' | 'training-yard' | 'infirmary' | 'workshop' | 'logging-site' | 'stone-quarry';
+export type FacilityType = 'tavern' | 'training-yard' | 'infirmary' | 'workshop' | 'logging-site' | 'stone-quarry' | 'alchemy-lab';
+
+export interface SyringeLoadout {
+  /** HP fraction (0–1) below which the syringe auto-fires in combat. e.g. 0.3 = 30% */
+  autoUseThresholdPct: number;
+}
+
+export interface AlchemyCraftJob {
+  id: string;
+  recipeId: string;
+  outputItemId: string;
+  outputQuantity: number;
+  remainingSeconds: number;
+  totalSeconds: number;
+}
 
 export interface GuildFacility {
   type: FacilityType;
@@ -50,6 +70,8 @@ export interface GuildFacility {
   placedSlot: number | null;
   /** Wood remaining — null for non-harvesting facilities; 0–1000 for logging-site */
   woodReserve?: number | null;
+  /** Active craft jobs queued at this alchemy lab */
+  craftQueue?: AlchemyCraftJob[];
 }
 
 /** Guild hierarchy ranks (promotable). MERCENARY is orthogonal — not in hierarchy. */
@@ -73,6 +95,8 @@ export interface Member {
   rank: MemberRank;
   missionsCompleted: number;
   craftSkills?: CraftSkills;
+  /** Syringe auto-use config. null = no syringe equipped. */
+  syringeLoadout?: SyringeLoadout | null;
 }
 
 export interface TavernState {

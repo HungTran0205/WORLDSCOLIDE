@@ -3,7 +3,7 @@
  * Extracted from App to allow hook usage (useGameTickLoop) only when game is active.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { FACILITY_SLOTS } from '@/game/data/facility-slot-positions';
 import { World } from '@/scene/world';
 import { CombatArenaCanvas } from '@/scene/combat-arena';
@@ -22,6 +22,7 @@ import { KaelRescueDialogue, TutorialRewardSplash } from '@/ui/components/tutori
 import { MissionNotification } from '@/ui/components/mission-notification';
 import { ActiveMissionsList } from '@/ui/panels/active-missions-list';
 import { CombatPrepPanel } from '@/ui/panels/combat-prep-panel';
+import { AlchemyCraftPanel } from '@/ui/panels/alchemy-craft-panel';
 import { CombatSkillHotbar } from '@/ui/panels/combat-skill-hotbar';
 import { CombatTimelineBar } from '@/ui/panels/combat-timeline-bar';
 import { CombatResultOverlay } from '@/ui/panels/combat-result-overlay';
@@ -184,6 +185,24 @@ interface GameScreenProps {
 
 export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   const [activePanel, setActivePanel] = useState<PanelId>(null);
+  const [alchemyPanelOpen, setAlchemyPanelOpen] = useState(false);
+
+  // Detect when camera is settled inside an alchemy lab room
+  const cameraTarget = useGameStore((s) => s.cameraTarget);
+  const cameraSettled = useGameStore((s) => s.cameraSettled);
+  const allFacilities = useGameStore((s) => s.facilities);
+
+  const alchemyFacility = useMemo(() => allFacilities.find((f) => {
+    if (f.type !== 'alchemy-lab' || f.level === 0 || f.placedSlot === null) return false;
+    const [fx, , fz] = FACILITY_SLOTS[f.placedSlot];
+    return fx === cameraTarget[0] && fz === cameraTarget[2];
+  }), [allFacilities, cameraTarget]);
+
+  useEffect(() => {
+    if (alchemyFacility && cameraSettled) setAlchemyPanelOpen(true);
+    else setAlchemyPanelOpen(false);
+  }, [alchemyFacility, cameraSettled]);
+
   const currentCombatReplay = useGameStore((s) => s.currentCombatReplay);
   const gameScene = useGameStore((s) => s.gameScene);
   const arenaPhase = useGameStore((s) => s.arenaPhase);
@@ -257,6 +276,12 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
             />
           )}
           {tutorialStep === 'world-board' && <WorldBoardModal />}
+          {alchemyPanelOpen && alchemyFacility && (
+            <AlchemyCraftPanel
+              facility={alchemyFacility}
+              onClose={() => setAlchemyPanelOpen(false)}
+            />
+          )}
           <BuildModeHint />
           <BuildModeToggle />
           <HomeButton />

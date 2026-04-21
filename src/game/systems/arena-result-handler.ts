@@ -36,6 +36,9 @@ export function applyArenaResult(): void {
     store.completeMission(arenaMissionId);
     store.incrementMissionsCompleted(result.survivors);
   } else {
+    for (const memberId of active.memberIds) {
+      store.updateMemberStatus(memberId, 'idle');
+    }
     store.failMission(arenaMissionId);
   }
 
