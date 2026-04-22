@@ -37,19 +37,6 @@
 
 ### 1.2 Consumption Rates (Per Active Member / Assigned to Room)
 
-**Wood Extraction:**
-
-- 10 wood/min (base) per assigned member
-
-**Stone Mining:**
-
-- 8 stone/min (base) per assigned member at Tier 1
-- Ore drops: Iron (3-5%), Crystal (1%), Rare (0%) at Tier 1
-
-**Magic Extraction:**
-
-- 6 magic items/min (base) per assigned member
-
 **Workshop (Crafting Mode):**
 
 - Weapon: 12 iron ore + 8 wood + recipe (per queue slot, 5-15min craft time)
