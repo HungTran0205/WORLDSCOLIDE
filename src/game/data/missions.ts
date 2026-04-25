@@ -14,8 +14,6 @@ export const MISSIONS: Mission[] = [
     conditionalDrops: [{ itemId: 'LOGGING_SITE_ACCESS', chance: 0.15, quantity: 1 }],
     waves: [
       { enemyIds: ['slime','slime','slime','slime','slime','slime'], spawnXOffset: 0, hpMultiplier: 0.4 },
-      { enemyIds: ['slime','slime','slime','slime','forest-spider','forest-spider','forest-spider','forest-spider'], spawnXOffset: 15, hpMultiplier: 0.35 },
-      { enemyIds: ['slime','slime','slime','slime','slime-king'], spawnXOffset: 30, hpMultiplier: 0.5 },
     ],
   },
   {

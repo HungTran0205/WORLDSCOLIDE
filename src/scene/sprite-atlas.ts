@@ -74,9 +74,11 @@ export function buildAtlasFromTextures(
   // Create a single CanvasTexture
   const atlasTexture = new THREE.CanvasTexture(canvas);
   atlasTexture.magFilter = THREE.NearestFilter;
-  atlasTexture.minFilter = THREE.NearestFilter;
+  // NearestMipmapNearestFilter: preserve pixel-art look at zoom-in,
+  // use pre-computed mip levels at distance (avoids random aliasing sampling).
+  atlasTexture.minFilter = THREE.NearestMipmapNearestFilter;
   atlasTexture.colorSpace = THREE.SRGBColorSpace;
-  atlasTexture.generateMipmaps = false;
+  atlasTexture.generateMipmaps = true;
 
   // Set initial frame (0,0)
   atlasTexture.repeat.set(1 / cols, 1 / rows);
@@ -128,9 +130,9 @@ export async function buildAtlasFromUrls(
 
     const atlasTexture = new THREE.CanvasTexture(canvas);
     atlasTexture.magFilter = THREE.NearestFilter;
-    atlasTexture.minFilter = THREE.NearestFilter;
+    atlasTexture.minFilter = THREE.NearestMipmapNearestFilter;
     atlasTexture.colorSpace = THREE.SRGBColorSpace;
-    atlasTexture.generateMipmaps = false;
+    atlasTexture.generateMipmaps = true;
     atlasTexture.repeat.set(1 / cols, 1 / rows);
     atlasTexture.offset.set(0, 1 - 1 / rows);
 

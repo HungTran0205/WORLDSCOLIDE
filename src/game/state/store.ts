@@ -45,6 +45,7 @@ export function resetGameState(): void {
       { type: 'workshop' as const,      level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
       { type: 'logging-site' as const,  level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
       { type: 'stone-quarry' as const,  level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
+      { type: 'alchemy-lab' as const,   level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
     ],
     offlineFacilityReport: null,
     offlineElapsedHours: 0,

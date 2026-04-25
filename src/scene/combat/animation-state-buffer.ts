@@ -14,13 +14,14 @@ export const ANIM_STATE = {
   dead: 5,
   'battle-idle': 6,
   blocking: 7,
+  back: 8, // warrior return-jump animation after attack
 } as const;
 
 export type AnimStateName = keyof typeof ANIM_STATE;
 
 /** Map numeric anim state back to string — index MUST match numeric enum value */
 const ANIM_STATE_NAMES: AnimStateName[] = [
-  'idle', 'walking', 'attacking', 'skill', 'hit', 'dead', 'battle-idle', 'blocking',
+  'idle', 'walking', 'attacking', 'skill', 'hit', 'dead', 'battle-idle', 'blocking', 'back',
 ];
 
 export function animStateToName(state: number): AnimStateName {
@@ -73,6 +74,8 @@ const O_TINT_B = 17;
 
 /** Position lerp factor — higher = faster following */
 const POSITION_LERP = 0.15;
+/** Faster lerp when warrior is mid step-forward jump — lunges toward target */
+const STEP_FORWARD_LERP = 1;
 
 /** Default FPS values per animation state */
 const DEFAULT_FPS: Record<number, number> = {
@@ -84,18 +87,20 @@ const DEFAULT_FPS: Record<number, number> = {
   [ANIM_STATE.dead]: 8,
   [ANIM_STATE['battle-idle']]: 6,
   [ANIM_STATE.blocking]: 10,
+  [ANIM_STATE.back]: 12,
 };
 
 /** Default frame counts per animation state */
 const DEFAULT_FRAME_COUNT: Record<number, number> = {
   [ANIM_STATE.idle]: 1,    // idle = first walk frame
   [ANIM_STATE.walking]: 8,
-  [ANIM_STATE.attacking]: 4,
+  [ANIM_STATE.attacking]: 8, // warrior has 8-frame jump attack
   [ANIM_STATE.skill]: 4,
   [ANIM_STATE.hit]: 1,
   [ANIM_STATE.dead]: 8,
   [ANIM_STATE['battle-idle']]: 4,
   [ANIM_STATE.blocking]: 4,
+  [ANIM_STATE.back]: 4,   // warrior return-jump (4 frames, play once)
 };
 
 /** Hit flash duration in seconds */
@@ -123,12 +128,15 @@ export class AnimationStateBuffer {
   private hitFlashTimers: Float32Array;
   /** Death elapsed timers — tracks total time since death started */
   private deathTimers: Float32Array;
+  /** Step-forward arc flag — 1 if entity is mid step-forward attack arc */
+  private isStepForwardFlags: Uint8Array;
 
   constructor(maxEntities = 48) {
     this.maxEntities = maxEntities;
     this.data = new Float32Array(maxEntities * ENTITY_STRIDE);
     this.hitFlashTimers = new Float32Array(maxEntities);
     this.deathTimers = new Float32Array(maxEntities);
+    this.isStepForwardFlags = new Uint8Array(maxEntities);
     this.typeIds = new Array(maxEntities).fill('');
     this.entityIds = new Array(maxEntities).fill('');
     this.entityNames = new Array(maxEntities).fill('');
@@ -209,6 +217,17 @@ export class AnimationStateBuffer {
   /** Get flying flag for a slot */
   isFlying(slot: number): boolean { return this.flyingFlags[slot]; }
 
+  /** Set/clear step-forward arc flag for a melee entity */
+  setStepForward(entityId: string, active: boolean): void {
+    const slot = this.entitySlots.get(entityId);
+    if (slot !== undefined) this.isStepForwardFlags[slot] = active ? 1 : 0;
+  }
+
+  /** Returns true if this slot is currently in step-forward arc */
+  getIsStepForward(slot: number): boolean {
+    return this.isStepForwardFlags[slot] === 1;
+  }
+
   /** Update entity state from CombatEngine (called every engine tick) */
   updateEntity(
     entityId: string,
@@ -275,8 +294,10 @@ export class AnimationStateBuffer {
         const tz = this.data[base + O_TARGET_Z];
         const cx = this.data[base + O_CURRENT_X];
         const cz = this.data[base + O_CURRENT_Z];
-        this.data[base + O_CURRENT_X] = cx + (tx - cx) * POSITION_LERP;
-        this.data[base + O_CURRENT_Z] = cz + (tz - cz) * POSITION_LERP;
+        // Sprint toward target when mid jump-attack, normal lerp otherwise
+        const lerp = this.isStepForwardFlags[i] ? STEP_FORWARD_LERP : POSITION_LERP;
+        this.data[base + O_CURRENT_X] = cx + (tx - cx) * lerp;
+        this.data[base + O_CURRENT_Z] = cz + (tz - cz) * lerp;
       }
 
       // --- Death timer ---
@@ -298,7 +319,7 @@ export class AnimationStateBuffer {
         this.data[base + O_ELAPSED] -= frameInterval;
         const currentFrame = this.data[base + O_FRAME_INDEX];
 
-        if (animState === ANIM_STATE.dead || animState === ANIM_STATE.blocking) {
+        if (animState === ANIM_STATE.dead || animState === ANIM_STATE.blocking || animState === ANIM_STATE.back) {
           // Play once, freeze on last frame
           if (currentFrame < totalFrames - 1) {
             this.data[base + O_FRAME_INDEX] = currentFrame + 1;
@@ -399,6 +420,7 @@ export class AnimationStateBuffer {
     this.data.fill(0);
     this.hitFlashTimers.fill(0);
     this.deathTimers.fill(0);
+    this.isStepForwardFlags.fill(0);
     this.entitySlots.clear();
     this.typeIds.fill('');
     this.entityIds.fill('');

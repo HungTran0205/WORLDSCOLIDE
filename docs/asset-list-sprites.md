@@ -207,7 +207,7 @@
     "primary": "#2c3e50 (deep indigo, natural dye)",
     "secondary": "#8B6914 (dark gold/bronze)",
     "accent": "#D4A017 (bright bronze)",
-    "skin": "#c49a6c (warm tan, tattoos #1a1a1a black)",
+    "skin": "#c49a6c (warm tan, tattoos #7cc0e7 black)",
     "metal": "#8c7853 (bronze clasp/trigger)"
   },
   "expression": "calm focus, slight head tilt — listening to forest sounds"

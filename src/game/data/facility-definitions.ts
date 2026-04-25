@@ -87,6 +87,17 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     zonePosition: [7, 0, 1],
     tileFootprint: [3, 3],
   },
+  'alchemy-lab': {
+    type: 'alchemy-lab',
+    name: 'Alchemy Lab',
+    description: 'Alchemists brew Healing Syringes from Slime Gel. Higher Alchemy skill → more gels per batch → more syringes produced.',
+    buildCost: 400,
+    upgradeCosts: [500, 800],
+    maxSlots: [1, 2, 3],
+    primaryStats: 'INT + DEX',
+    zonePosition: [5, 0, 5],
+    tileFootprint: [3, 3],
+  },
 };
 
 /** Infinite-production config for the Stone Quarry facility */
@@ -117,6 +128,20 @@ export const STONE_QUARRY_CONFIG = {
   ironOreRange: [2, 4] as const,
   /** Rich stone pocket STONE bonus range [min, max] inclusive */
   richStoneBonusRange: [10, 20] as const,
+} as const;
+
+/** Alchemy Lab crafting config */
+export const ALCHEMY_CONFIG = {
+  /** Heal fraction restored per syringe use (30% max HP) */
+  syringeHealPct: 0.30,
+  /** Slime gels consumed per batch = alchemyLevel + 1. Syringes produced = same number. */
+  ingredientCountFormula: (acLevel: number) => acLevel + 1,
+  /** Batches per game-day per member: floor(INT×0.08 + DEX×0.04 + facilityLevel + 1) */
+  batchesPerDay: (intStat: number, dexStat: number, facilityLevel: number) =>
+    Math.max(1, Math.floor(intStat * 0.08 + dexStat * 0.04 + facilityLevel + 1)),
+  /** AC skill XP thresholds (cumulative syringes crafted) */
+  acSkillThresholds: [0, 10, 25, 50, 100, 200, 400, 700, 1100, 1700, 2500] as const,
+  acSkillMaxLevel: 10,
 } as const;
 
 /** Finite-harvest config for the Logging Site facility */

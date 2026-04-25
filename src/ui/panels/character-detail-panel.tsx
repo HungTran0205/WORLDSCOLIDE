@@ -1,4 +1,4 @@
-import type { Member, StatKey } from '@/game/state/game-state';
+import type { Member, StatKey, SyringeLoadout } from '@/game/state/game-state';
 import { StatBar } from '@/ui/components/stat-bar';
 import { RankBadge } from '@/ui/components/rank-badge';
 import { RankPromotionSection } from '@/ui/components/rank-promotion-section';
@@ -8,6 +8,8 @@ import { getCivColor, CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
 import { STAT_KEYS } from '@/game/systems/stat-allocation';
 import { expToNextLevel } from '@/game/systems/leveling-system';
+
+const THRESHOLD_OPTIONS = [0.20, 0.30, 0.40, 0.50] as const;
 
 interface CharacterDetailPanelProps {
   member: Member;
@@ -19,12 +21,14 @@ interface CharacterDetailPanelProps {
   onPromote?: () => void;
   canAffordPromote?: boolean;
   onClose: () => void;
+  syringeCount?: number;
+  onSetSyringeLoadout?: (loadout: SyringeLoadout | null) => void;
 }
 
 const EQUIPMENT_SLOTS = ['Head', 'Armor', 'Pants', 'Boots', 'Weapon'] as const;
 
 /** Character detail split-view — avatar, equipment, skill, talents */
-export function CharacterDetailPanel({ member, onAllocateStat, onToggleAutoCast, onInviteMercenary, inviteCost, canAffordInvite, onPromote, canAffordPromote, onClose }: CharacterDetailPanelProps) {
+export function CharacterDetailPanel({ member, onAllocateStat, onToggleAutoCast, onInviteMercenary, inviteCost, canAffordInvite, onPromote, canAffordPromote, onClose, syringeCount = 0, onSetSyringeLoadout }: CharacterDetailPanelProps) {
   const expNeeded = expToNextLevel(member.level);
   const expPct = Math.min(100, Math.floor((member.exp / expNeeded) * 100));
   const civColor = getCivColor(member.civilization);
@@ -123,6 +127,63 @@ export function CharacterDetailPanel({ member, onAllocateStat, onToggleAutoCast,
           ))}
         </div>
       </div>
+
+      {/* Box: Healing Syringe Loadout */}
+      {onSetSyringeLoadout && (
+        <div className="panel-section">
+          <div style={{ color: '#ffd700', fontSize: '0.85rem', marginBottom: 8 }}>Healing Syringe</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: '0.75rem', color: '#aaa' }}>
+              Available: <span style={{ color: syringeCount > 0 ? '#2ecc71' : '#e74c3c' }}>{syringeCount}</span>
+            </span>
+            {member.syringeLoadout ? (
+              <button
+                className="panel-btn"
+                onClick={() => onSetSyringeLoadout(null)}
+                style={{ fontSize: '0.7rem', padding: '2px 8px', background: 'rgba(231,76,60,0.2)', borderColor: 'rgba(231,76,60,0.5)' }}
+              >
+                Unequip
+              </button>
+            ) : (
+              <button
+                className="panel-btn"
+                disabled={syringeCount === 0}
+                onClick={() => onSetSyringeLoadout({ autoUseThresholdPct: 0.30 })}
+                style={{ fontSize: '0.7rem', padding: '2px 8px' }}
+              >
+                Equip
+              </button>
+            )}
+          </div>
+          {member.syringeLoadout && (
+            <div>
+              <div style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: 4 }}>Auto-use threshold:</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {THRESHOLD_OPTIONS.map((pct) => (
+                  <button
+                    key={pct}
+                    className="panel-btn"
+                    onClick={() => onSetSyringeLoadout({ autoUseThresholdPct: pct })}
+                    style={{
+                      fontSize: '0.7rem', padding: '2px 8px',
+                      background: member.syringeLoadout?.autoUseThresholdPct === pct
+                        ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.05)',
+                      borderColor: member.syringeLoadout?.autoUseThresholdPct === pct
+                        ? 'rgba(255,215,0,0.6)' : 'rgba(255,255,255,0.2)',
+                      color: member.syringeLoadout?.autoUseThresholdPct === pct ? '#ffd700' : '#aaa',
+                    }}
+                  >
+                    {Math.round(pct * 100)}%
+                  </button>
+                ))}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: '#666', marginTop: 4 }}>
+                Heals 30% HP when HP drops below threshold
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Box 3: Skill + Auto-cast toggle */}
       <div className="panel-section">

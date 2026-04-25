@@ -8,6 +8,8 @@ import { FacilityRoomsLayer } from './facility-rooms-layer';
 import { createWebGPURenderer, WebGPUInit } from './webgpu-init';
 import { WorldBloomPost } from './world-bloom-post';
 import { getStoredGraphicsQuality } from '@/game/state/guild-slice';
+import { useGameStore } from '@/game/state/store';
+import { FACILITY_SLOTS } from '@/game/data/facility-slot-positions';
 
 export type GraphicsQuality = 'high' | 'low';
 const QualityContext = createContext<GraphicsQuality>('high');
@@ -96,6 +98,23 @@ function SceneReadySignal({ onReady }: { onReady: () => void }) {
   return null;
 }
 
+/** Dims global ambient + directional light when camera is inside the alchemy lab */
+function SceneLighting() {
+  const cameraTarget = useGameStore((s) => s.cameraTarget);
+  const facilities = useGameStore((s) => s.facilities);
+  const isInAlchemy = facilities.some(f => {
+    if (f.type !== 'alchemy-lab' || f.placedSlot == null) return false;
+    const [fx, , fz] = FACILITY_SLOTS[f.placedSlot];
+    return Math.abs(cameraTarget[0] - fx) <= 3.5 && Math.abs(cameraTarget[2] - fz) <= 3.5;
+  });
+  return (
+    <>
+      <ambientLight intensity={isInAlchemy ? 0.08 : 0.6} />
+      <directionalLight position={[5, 10, 5]} intensity={isInAlchemy ? 0.1 : 0.8} />
+    </>
+  );
+}
+
 export interface WorldProps {
   /** When false, pauses the render loop (saves GPU during combat). Clock drain
    *  is handled by VisibilityGuard on re-activation. Default: true. */
@@ -126,8 +145,7 @@ export function World({ isActive = true }: WorldProps) {
         <WebGPUInit />
         <TransparentBackground />
         <VisibilityGuard isActive={isActive} />
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[5, 10, 5]} intensity={0.8} />
+        <SceneLighting />
 
         <CameraController />
         <Suspense fallback={null}>

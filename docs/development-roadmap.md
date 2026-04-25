@@ -1,7 +1,7 @@
 # Development Roadmap
 
-**Last Updated**: 2026-04-15
-**Current Phase**: Phase 5 In Progress (Milestone 17 Stone Quarry Mining Skill Complete)
+**Last Updated**: 2026-04-19
+**Current Phase**: Phase 5 In Progress (Milestone 17 Combat ATB Manual Mode Fix Complete)
 **Overall Progress**: ~99.8% Complete
 
 ---
@@ -217,6 +217,7 @@
 - [x] Guild Inventory System (slot-based inventory panel, storage-chest furniture, stack limits, item detail popup)
 
 ### Current Tasks
+- [x] Manual Mode ATB Pause Fix (unity timeline, engine freeze, 5 tests passing)
 - [ ] Performance optimization (target <100ms saves)
 - [ ] Comprehensive testing (combat, economy, offline progression, sprite rendering)
 - [ ] Bug fixes from testing phase
@@ -330,6 +331,8 @@
 | Phase 5 Milestone 14 | 2026-04-11 | ✅ Done | Logging Site Finite Harvest System (woodcutting skill, finite reserve, permit gate, depletion lifecycle, 3D zone tinting, save v14) |
 | Phase 5 Milestone 15 | 2026-04-12 | ✅ Done | GPU-Instanced Combat Rendering (mega-atlas, animation buffer, 1 draw call, WebGPU fixes, canvas-texture UI) |
 | Phase 5 Milestone 16 | 2026-04-12 | ✅ Done | Guild Inventory System (slot-based UI, chest furniture, 99-item stacks, capacity management, item detail popup) |
+| Phase 5 Milestone 17 | 2026-04-19 | ✅ Done | Combat Formation + ATB Timeline + Manual Mode (formation home slots, step-attack state machine, timeline bar, manual attack queue, target selection) |
+| Phase 5 Milestone 18 | 2026-04-19 | ✅ Done | Manual Mode ATB Pause Fix (unified timeline, engine freeze on ally turn, pause clears on action, 5 tests passing) |
 | Phase 6 Milestone 1 | 2026-04-17 | ✅ Done | Map Playground Tool (Phases 1–10 complete, asset browser, R3F viewport, properties panel, code generator, undo/redo) |
 | Phase 5 Complete | 2026-04-12 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
 | Phase 6 Start | 2026-04-15 | 📋 In Progress | Post-launch content |

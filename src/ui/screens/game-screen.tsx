@@ -3,7 +3,7 @@
  * Extracted from App to allow hook usage (useGameTickLoop) only when game is active.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { FACILITY_SLOTS } from '@/game/data/facility-slot-positions';
 import { World } from '@/scene/world';
 import { CombatArenaCanvas } from '@/scene/combat-arena';
@@ -22,7 +22,9 @@ import { KaelRescueDialogue, TutorialRewardSplash } from '@/ui/components/tutori
 import { MissionNotification } from '@/ui/components/mission-notification';
 import { ActiveMissionsList } from '@/ui/panels/active-missions-list';
 import { CombatPrepPanel } from '@/ui/panels/combat-prep-panel';
+import { AlchemyCraftPanel } from '@/ui/panels/alchemy-craft-panel';
 import { CombatSkillHotbar } from '@/ui/panels/combat-skill-hotbar';
+import { CombatTimelineBar } from '@/ui/panels/combat-timeline-bar';
 import { CombatResultOverlay } from '@/ui/panels/combat-result-overlay';
 import { useGameTickLoop } from '@/ui/hooks/use-game-tick-loop';
 import { useGameStore } from '@/game/state/store';
@@ -30,6 +32,40 @@ import { GUILD_HALL_CAMERA_TARGET } from '@/game/state/camera-slice';
 import { playBGM } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
 import type { PanelId } from '@/ui/hud/panel-toggle';
+
+/** Manual-mode toggle button — flips combatMode for the active arena mission */
+function CombatManualToggle() {
+  const missionId = useGameStore(s => s.arenaMissionId);
+  const mode = useGameStore(s =>
+    s.activeMissions.find(m => m.missionId === missionId)?.combatMode ?? 'auto',
+  );
+  const setCombatMode = useGameStore(s => s.setCombatMode);
+
+  const toggle = () => {
+    if (missionId) setCombatMode(missionId, mode === 'auto' ? 'manual' : 'auto');
+  };
+
+  return (
+    <button
+      onClick={toggle}
+      data-mode={mode}
+      style={{
+        position: 'fixed', top: 8, right: 12, zIndex: 50,
+        padding: '5px 13px',
+        background: 'rgba(0,0,0,0.7)',
+        border: `1px solid ${mode === 'manual' ? '#ffb300' : '#888'}`,
+        borderRadius: 4,
+        color: mode === 'manual' ? '#ffb300' : '#ccc',
+        cursor: 'pointer',
+        fontSize: '0.75rem',
+        fontWeight: 'bold',
+        letterSpacing: '0.05em',
+      }}
+    >
+      {mode === 'auto' ? 'AUTO' : 'MANUAL'}
+    </button>
+  );
+}
 
 /** Home button — returns camera to guild hall; visible only when camera is in a facility room */
 function HomeButton() {
@@ -149,6 +185,24 @@ interface GameScreenProps {
 
 export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   const [activePanel, setActivePanel] = useState<PanelId>(null);
+  const [alchemyPanelOpen, setAlchemyPanelOpen] = useState(false);
+
+  // Detect when camera is settled inside an alchemy lab room
+  const cameraTarget = useGameStore((s) => s.cameraTarget);
+  const cameraSettled = useGameStore((s) => s.cameraSettled);
+  const allFacilities = useGameStore((s) => s.facilities);
+
+  const alchemyFacility = useMemo(() => allFacilities.find((f) => {
+    if (f.type !== 'alchemy-lab' || f.level === 0 || f.placedSlot === null) return false;
+    const [fx, , fz] = FACILITY_SLOTS[f.placedSlot];
+    return Math.abs(cameraTarget[0] - fx) <= 3.5 && Math.abs(cameraTarget[2] - fz) <= 3.5;
+  }), [allFacilities, cameraTarget]);
+
+  useEffect(() => {
+    if (alchemyFacility && cameraSettled) setAlchemyPanelOpen(true);
+    else setAlchemyPanelOpen(false);
+  }, [alchemyFacility, cameraSettled]);
+
   const currentCombatReplay = useGameStore((s) => s.currentCombatReplay);
   const gameScene = useGameStore((s) => s.gameScene);
   const arenaPhase = useGameStore((s) => s.arenaPhase);
@@ -222,6 +276,12 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
             />
           )}
           {tutorialStep === 'world-board' && <WorldBoardModal />}
+          {alchemyPanelOpen && alchemyFacility && (
+            <AlchemyCraftPanel
+              facility={alchemyFacility}
+              onClose={() => setAlchemyPanelOpen(false)}
+            />
+          )}
           <BuildModeHint />
           <BuildModeToggle />
           <HomeButton />
@@ -238,7 +298,9 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
 
       {/* Combat arena UI overlays */}
       {gameScene === 'combat-arena' && arenaPhase === 'prep' && <CombatPrepPanel />}
+      {gameScene === 'combat-arena' && arenaPhase === 'fighting' && <CombatTimelineBar />}
       {gameScene === 'combat-arena' && arenaPhase === 'fighting' && <CombatSkillHotbar />}
+      {gameScene === 'combat-arena' && arenaPhase === 'fighting' && <CombatManualToggle />}
       {gameScene === 'combat-arena' && arenaPhase === 'result' && <CombatResultOverlay />}
 
       {isGameOver && gameScene === 'guild-hall' && <GameOverOverlay onReturnToTitle={onReturnToTitle} />}

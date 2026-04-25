@@ -26,6 +26,16 @@ export const FACILITY_SLOTS: [number, number, number][] = [
   [13.5, 0, -44.5],  // slot 11
 ];
 
+/**
+ * Per-facility camera target offset relative to room center [cx, 0, cz].
+ * Used to compensate for character slots that are offset from room center
+ * (e.g. alchemy slot 0 is at z+2.2 from center, so shifting camera +1 in Z
+ * keeps characters more visible in the isometric viewport).
+ */
+export const FACILITY_CAMERA_OFFSETS: Partial<Record<string, [number, number, number]>> = {
+  'alchemy-lab': [0, 0, 1],
+};
+
 /** Default slot assigned to each facility type during v12→v13 save migration */
 export const FACILITY_DEFAULT_SLOTS: Record<string, number> = {
   tavern: 8,

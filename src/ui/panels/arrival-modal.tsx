@@ -1,9 +1,8 @@
 /**
  * Arrival modal — shown when a party reaches their destination.
- * Player chooses Manual or Auto combat within 30s before auto-combat triggers.
+ * Player chooses Manual or Auto combat (no timeout).
  */
 
-import { useState, useEffect } from 'react';
 import { ENEMIES } from '@/game/data/enemies';
 import '@/ui/styles/panels.css';
 
@@ -12,8 +11,6 @@ interface ArrivalModalProps {
   missionName: string;
   zone: string;
   enemyIds: string[];
-  arrivalTime: number;
-  timeoutMs: number;
   onChooseManual: () => void;
   onChooseAuto: () => void;
   onClose: () => void;
@@ -23,28 +20,10 @@ export function ArrivalModal({
   missionName,
   zone,
   enemyIds,
-  arrivalTime,
-  timeoutMs,
   onChooseManual,
   onChooseAuto,
   onClose,
 }: ArrivalModalProps) {
-  const [remaining, setRemaining] = useState(() =>
-    Math.max(0, Math.ceil((arrivalTime + timeoutMs - Date.now()) / 1000)),
-  );
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const secs = Math.max(0, Math.ceil((arrivalTime + timeoutMs - Date.now()) / 1000));
-      setRemaining(secs);
-      if (secs <= 0) {
-        clearInterval(timer);
-        onChooseAuto(); // onChooseAuto calls handleCombatChoice which calls closeArrival/onClose
-      }
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [arrivalTime, timeoutMs, onChooseAuto, onClose]);
-
   // Deduplicate enemy names with counts
   const enemyCounts = enemyIds.reduce<Record<string, number>>((acc, id) => {
     acc[id] = (acc[id] ?? 0) + 1;
@@ -70,10 +49,6 @@ export function ArrivalModal({
               </div>
             );
           })}
-        </div>
-
-        <div style={{ textAlign: 'center', color: '#f39c12', fontSize: '0.85rem', marginBottom: 12 }}>
-          Auto-combat in <strong>{remaining}s</strong>
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>

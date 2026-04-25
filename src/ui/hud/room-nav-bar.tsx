@@ -7,7 +7,7 @@
 import { useGameStore } from '@/game/state/store';
 import { GUILD_HALL_CAMERA_TARGET } from '@/game/state/camera-slice';
 import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
-import { FACILITY_SLOTS } from '@/game/data/facility-slot-positions';
+import { FACILITY_SLOTS, FACILITY_CAMERA_OFFSETS } from '@/game/data/facility-slot-positions';
 import type { FacilityType } from '@/game/state/game-state';
 
 interface RoomEntry {
@@ -23,7 +23,7 @@ const ICON_SLUG: Partial<Record<FacilityType, string>> = {
 };
 
 const FACILITY_ROOM_ORDER: FacilityType[] = [
-  'tavern', 'infirmary', 'training-yard', 'workshop', 'logging-site', 'stone-quarry',
+  'tavern', 'infirmary', 'training-yard', 'workshop', 'logging-site', 'stone-quarry', 'alchemy-lab',
 ];
 
 export function RoomNavBar() {
@@ -48,11 +48,13 @@ export function RoomNavBar() {
         if (!f || f.level === 0 || f.placedSlot === null) return null;
         const def = FACILITY_DEFINITIONS[type];
         const slug = ICON_SLUG[type] ?? type;
+        const [sx, sy, sz] = FACILITY_SLOTS[f.placedSlot];
+        const off = FACILITY_CAMERA_OFFSETS[type] ?? [0, 0, 0];
         return {
           id: type,
           label: def.name,
           icon: `/sprites/icons/icon-room-${slug}.png`,
-          target: FACILITY_SLOTS[f.placedSlot] as [number, number, number],
+          target: [sx + off[0], sy + off[1], sz + off[2]] as [number, number, number],
         };
       })
       .filter((r) => r !== null) as RoomEntry[],

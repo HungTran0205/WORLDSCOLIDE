@@ -337,6 +337,48 @@
   color: #8a7e6e;
 }
 
+/* Drop section */
+.item-detail-popup__drop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(139, 69, 19, 0.3);
+}
+
+.item-detail-popup__drop-input {
+  width: 60px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(200, 60, 60, 0.35);
+  border-radius: 4px;
+  color: #e0d0d0;
+  font-size: 12px;
+  padding: 3px 6px;
+  outline: none;
+  text-align: center;
+}
+.item-detail-popup__drop-input:focus {
+  border-color: rgba(200, 60, 60, 0.7);
+}
+
+.item-detail-popup__drop-btn {
+  flex: 1;
+  background: rgba(200, 60, 60, 0.15);
+  border: 1px solid rgba(200, 60, 60, 0.45);
+  border-radius: 4px;
+  color: #f87171;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.item-detail-popup__drop-btn:hover {
+  background: rgba(200, 60, 60, 0.28);
+  border-color: rgba(200, 60, 60, 0.7);
+}
+
 /* ── HUD inventory button ── */
 .hud-inventory-btn {
   background: linear-gradient(180deg, rgba(139, 69, 19, 0.45), rgba(100, 50, 15, 0.45));

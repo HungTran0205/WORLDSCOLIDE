@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { processMissionTick, processInjuryRecovery, ARRIVAL_TIMEOUT_MS } from '@/game/systems/mission-tick';
+import { processMissionTick, processInjuryRecovery } from '@/game/systems/mission-tick';
 import type { ActiveMission, Member } from '@/game/state/game-state';
 import type { GameStore } from '@/game/state/store';
 
@@ -133,21 +133,12 @@ describe('processMissionTick — arrived phase', () => {
     expect(store.calls).toContain('updatePhase:slime-extermination:in-combat');
   });
 
-  it('auto-sets combatMode to auto after 30s timeout', () => {
+  it('stays in arrived phase with no combatMode — waits for player', () => {
     const am = makeMission('arrived', { arrivalTime: 0, combatMode: null });
     const store = makeStore([am]);
-    const events = processMissionTick(store, ARRIVAL_TIMEOUT_MS + 1);
-    expect(store.calls).toContain('setCombatMode:slime-extermination:auto');
-    expect(store.calls).toContain('updatePhase:slime-extermination:in-combat');
-    expect(events[0]?.type).toBe('combat-start');
-  });
-
-  it('does not trigger on exact timeout boundary — triggers one ms after', () => {
-    const am = makeMission('arrived', { arrivalTime: 0, combatMode: null });
-    const store = makeStore([am]);
-    // Exactly at ARRIVAL_TIMEOUT_MS — now >= arrivalTime + ARRIVAL_TIMEOUT_MS
-    const events = processMissionTick(store, ARRIVAL_TIMEOUT_MS);
-    expect(events[0]?.type).toBe('combat-start');
+    const events = processMissionTick(store, 999_999);
+    expect(events).toHaveLength(0);
+    expect(store.calls).not.toContain('setCombatMode:slime-extermination:auto');
   });
 });
 
@@ -188,12 +179,13 @@ describe('processMissionTick — in-combat phase', () => {
     expect(resolved).toBe(true);
   });
 
-  it('includes combatMode in combat-complete event for manual mode', () => {
+  it('force-resolves stale manual combat as auto when arena is not active', () => {
     const am = makeMission('in-combat', { combatMode: 'manual' });
     const store = makeStore([am]);
+    // gameScene is not 'combat-arena' → stale manual combat, force auto-resolve
     const events = processMissionTick(store, 10_000);
     expect(events).toHaveLength(1);
-    expect(events[0]).toMatchObject({ type: 'combat-complete', combatMode: 'manual' });
+    expect(events[0]).toMatchObject({ type: 'combat-complete', combatMode: 'auto' });
   });
 
   it('defaults combatMode to auto in combat-complete event', () => {

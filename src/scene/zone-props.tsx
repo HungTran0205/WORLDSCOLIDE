@@ -84,6 +84,12 @@ const ZONE_PROPS: Record<FacilityType, ZonePropsConfig> = {
     ],
     light: { color: '#aaaacc', intensity: 1.5, distance: 2.5 },
   },
+  'alchemy-lab': {
+    models: [
+      { path: '/models/furnitures/alchemy-table.glb', offset: [0, 0, 0], targetHeight: 1.1, minLevel: 1 },
+    ],
+    light: { color: '#9966ff', intensity: 2, distance: 3 },
+  },
 };
 
 /** Clone a GLB scene and auto-scale so the model is targetHeight units tall */

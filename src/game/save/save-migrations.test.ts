@@ -109,7 +109,7 @@ describe('migrateSave', () => {
       version: 11,
     };
     const result = migrateSave(v11Envelope as any);
-    expect(result.version).toBe(16); // chain now goes v11→v12→v13→v14→v15→v16
+    expect(result.version).toBe(17); // chain now goes v11→v12→v13→v14→v15→v16
     expect((result.gameState as any).tutorialStep).toBe('complete');
   });
 
@@ -134,10 +134,11 @@ describe('migrateSave', () => {
       },
     };
     const result = migrateSave(v13Envelope as any);
-    expect(result.version).toBe(16);
+    expect(result.version).toBe(17);
     expect((result.gameState as any).founder.craftSkills).toEqual({
       woodcutting: { level: 0, xpAccumulated: 0 },
       mining: { level: 0, xpAccumulated: 0 },
+      alchemy: { level: 0, xpAccumulated: 0 },
     });
     const loggingSite = (result.gameState as any).facilities.find((f: any) => f.type === 'logging-site');
     expect(loggingSite.woodReserve).toBe(1000);
