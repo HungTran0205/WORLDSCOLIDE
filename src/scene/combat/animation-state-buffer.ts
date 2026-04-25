@@ -74,6 +74,8 @@ const O_TINT_B = 17;
 
 /** Position lerp factor — higher = faster following */
 const POSITION_LERP = 0.15;
+/** Faster lerp when warrior is mid step-forward jump — lunges toward target */
+const STEP_FORWARD_LERP = 1;
 
 /** Default FPS values per animation state */
 const DEFAULT_FPS: Record<number, number> = {
@@ -292,8 +294,10 @@ export class AnimationStateBuffer {
         const tz = this.data[base + O_TARGET_Z];
         const cx = this.data[base + O_CURRENT_X];
         const cz = this.data[base + O_CURRENT_Z];
-        this.data[base + O_CURRENT_X] = cx + (tx - cx) * POSITION_LERP;
-        this.data[base + O_CURRENT_Z] = cz + (tz - cz) * POSITION_LERP;
+        // Sprint toward target when mid jump-attack, normal lerp otherwise
+        const lerp = this.isStepForwardFlags[i] ? STEP_FORWARD_LERP : POSITION_LERP;
+        this.data[base + O_CURRENT_X] = cx + (tx - cx) * lerp;
+        this.data[base + O_CURRENT_Z] = cz + (tz - cz) * lerp;
       }
 
       // --- Death timer ---

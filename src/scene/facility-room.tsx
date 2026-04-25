@@ -12,6 +12,7 @@ import { ForestRoomDecor, LoggingSiteZoneCard } from './facility-room-forest-dec
 import { FacilityRoomFurniture } from './facility-room-furniture';
 import { QuarryRoomDecor, QuarryZoneCard } from './facility-room-quarry-decor';
 import { AlchemyZoneCard } from './facility-room-alchemy-decor';
+import { AlchemyWalls } from './facility-room-alchemy-walls';
 import type { GuildFacility, FacilityType } from '@/game/state/game-state';
 
 const ROOM_SIZE = 7;
@@ -46,7 +47,7 @@ const ROOM_LIGHT: Record<FacilityType, { color: string; intensity: number }> = {
   workshop: { color: '#ffcc44', intensity: 5 },
   'logging-site': { color: '#fff5cc', intensity: 18 },
   'stone-quarry': { color: '#aaaacc', intensity: 5 },
-  'alchemy-lab': { color: '#aa66ff', intensity: 6 },
+  'alchemy-lab': { color: '#ffcc44', intensity: 5 },
 };
 
 interface FacilityRoomProps {
@@ -64,8 +65,9 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
   const ox = cx - ROOM_SIZE / 2;
   const oz = cz - ROOM_SIZE / 2;
 
-  // Light active when camera target matches this room's center
-  const isActive = cameraTarget[0] === cx && cameraTarget[2] === cz;
+  // Light active when camera target is within this room's 7×7 footprint
+  // (target may be offset from exact center for per-facility viewport adjustments)
+  const isActive = Math.abs(cameraTarget[0] - cx) <= 3.5 && Math.abs(cameraTarget[2] - cz) <= 3.5;
 
   const floorColor = ROOM_FLOOR_COLORS[facility.type];
   const wallColor = ROOM_WALL_COLORS[facility.type];
@@ -77,7 +79,7 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
   return (
     <group>
       {/* Room point light — only on when camera is here */}
-      {isActive && (
+      {isActive && !isAlchemy && (
         <pointLight
           position={[cx, isLoggingSite ? 8 : 2.5, cz]}
           color={light.color}
@@ -86,24 +88,36 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
           decay={isLoggingSite ? 1 : 2}
         />
       )}
+      {/* Alchemy-lab: two yellow point lights at reactor and silo positions */}
+      {isActive && isAlchemy && (
+        <>
+          <pointLight position={[cx + 0.3, 1.2, cz + 0.5]} color="#ffa060" intensity={5} distance={9} decay={1} />
+        </>
+      )}
 
-      {/* Floor */}
-      <mesh position={[cx, 0.01, cz]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[ROOM_SIZE, ROOM_SIZE]} />
-        <meshStandardMaterial color={floorColor} roughness={0.9} />
-      </mesh>
+      {/* Floor — alchemy-lab uses GLB rock tiles instead */}
+      {!isAlchemy && (
+        <mesh position={[cx, 0.01, cz]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[ROOM_SIZE, ROOM_SIZE]} />
+          <meshStandardMaterial color={floorColor} roughness={0.9} />
+        </mesh>
+      )}
 
-      {/* Back wall */}
-      <mesh position={[cx, WALL_HEIGHT / 2, oz]}>
-        <boxGeometry args={[ROOM_SIZE, WALL_HEIGHT, WALL_THICKNESS]} />
-        <meshStandardMaterial color={wallColor} roughness={0.8} />
-      </mesh>
-
-      {/* Left wall */}
-      <mesh position={[ox, WALL_HEIGHT / 2, cz]}>
-        <boxGeometry args={[WALL_THICKNESS, WALL_HEIGHT, ROOM_SIZE]} />
-        <meshStandardMaterial color={wallColor} roughness={0.8} />
-      </mesh>
+      {/* Walls — alchemy-lab uses GLB models; all others use procedural geometry */}
+      {isAlchemy ? (
+        <AlchemyWalls cx={cx} cz={cz} />
+      ) : (
+        <>
+          <mesh position={[cx, WALL_HEIGHT / 2, oz]}>
+            <boxGeometry args={[ROOM_SIZE, WALL_HEIGHT, WALL_THICKNESS]} />
+            <meshStandardMaterial color={wallColor} roughness={0.8} />
+          </mesh>
+          <mesh position={[ox, WALL_HEIGHT / 2, cz]}>
+            <boxGeometry args={[WALL_THICKNESS, WALL_HEIGHT, ROOM_SIZE]} />
+            <meshStandardMaterial color={wallColor} roughness={0.8} />
+          </mesh>
+        </>
+      )}
 
       {/* Per-facility decor / furniture */}
       {isLoggingSite && <ForestRoomDecor cx={cx} cz={cz} />}
@@ -130,7 +144,7 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
           <QuarryZoneCard facility={facility} />
         </Html>
       ) : isActive && cameraSettled && isAlchemy ? (
-        <Html position={[cx - 6.5, 1, cz + 0.5]} center>
+        <Html position={[cx - 5.0, 1, cz + 0.5]} center>
           <AlchemyZoneCard facility={facility} />
         </Html>
       ) : (

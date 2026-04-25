@@ -33,6 +33,12 @@ export function getRunningFramePath(basePath: string, direction: SpriteDirection
   return `${basePath}/animations/running-8-frames/${direction}/frame_${padded}.png`;
 }
 
+/** Build path to a generic working/crafting animation frame (no direction subdir) */
+export function getWorkingFramePath(basePath: string, frame: number): string {
+  const padded = String(frame).padStart(3, '0');
+  return `${basePath}/animations/working/frame_${padded}.png`;
+}
+
 /** Build path to a woodcutting animation frame */
 export function getWoodcuttingFramePath(basePath: string, direction: SpriteDirection, frame: number): string {
   const padded = String(frame).padStart(3, '0');

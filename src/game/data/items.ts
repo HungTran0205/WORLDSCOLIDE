@@ -35,7 +35,7 @@ export const ITEM_DATABASE: Record<ItemID, ItemTemplate> = {
   GOBLIN_EAR: { id: 'GOBLIN_EAR', name: 'Goblin Ear',  type: 'MATERIAL', rarity: 'COMMON',   basePrice: 3,  description: 'Proof of goblin subjugation.', stackable: true },
   ORC_TUSK:            { id: 'ORC_TUSK',            name: 'Orc Tusk',       type: 'MATERIAL',   rarity: 'UNCOMMON', basePrice: 15, description: 'Massive ivory tusk.',   stackable: true },
   GEM:                 { id: 'GEM',                 name: 'Gemstone',       type: 'MATERIAL',   rarity: 'RARE',     basePrice: 50, description: 'A rough gemstone found deep in the quarry.', stackable: true },
-  LOGGING_SITE_ACCESS: { id: 'LOGGING_SITE_ACCESS', name: 'Logging Permit', type: 'CONSUMABLE', rarity: 'UNCOMMON', basePrice: 0,  description: "Authorization from the Forest Warden to establish a logging site. Consumed on build.", stackable: false },
+  LOGGING_SITE_ACCESS: { id: 'LOGGING_SITE_ACCESS', name: 'Logging Permit', type: 'CONSUMABLE', rarity: 'UNCOMMON', basePrice: 0,  description: "Authorization from the Forest Warden to establish a logging site. Consumed on build.", stackable: true },
   HEALING_SYRINGE:     { id: 'HEALING_SYRINGE',     name: 'Healing Syringe', type: 'CONSUMABLE', rarity: 'COMMON', basePrice: 12, description: 'Alchemical syringe that restores 30% max HP. Auto-uses when HP drops below a set threshold.', stackable: true },
 };
 

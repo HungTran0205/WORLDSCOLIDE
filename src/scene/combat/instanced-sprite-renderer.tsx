@@ -28,9 +28,26 @@ import { ANIM_STATE } from './animation-state-buffer';
 /** Max instances — 48 entities + buffer */
 const MAX_INSTANCES = 48;
 
-/** Parabolic arc for melee step-forward attack */
-const ARC_HEIGHT = 2;
-const STEP_DURATION_S = 0.25; // matches FORMATION_STEP_DURATION_MS
+/** Jump arc for melee step-forward attack */
+const ARC_HEIGHT = 4;
+const STEP_DURATION_S = 0.6; // slightly longer so easing is visible
+
+/**
+ * Custom jump arc curve with gravity feel:
+ * - Ascent  (t 0→0.5): ease-out power — bursts up fast, decelerates near peak
+ * - Descent (t 0.5→1): ease-in power  — lingers at peak, then plummets fast
+ * Power 2.8 gives a noticeably flat apex (warrior "hangs" at top for 1-2 frames)
+ */
+function jumpArcCurve(t: number): number {
+  const POWER = 2.8;
+  if (t < 0.5) {
+    const u = t * 2;                          // 0 → 1 on ascent
+    return 1 - Math.pow(1 - u, POWER);       // ease-out: fast up → slow near peak
+  } else {
+    const u = (t - 0.5) * 2;                 // 0 → 1 on descent
+    return 1 - Math.pow(u, POWER);           // ease-in: slow at peak → fast plunge
+  }
+}
 
 // Reusable temporaries to avoid per-frame allocation
 const _pos = new Vector3();
@@ -159,9 +176,13 @@ export function InstancedSpriteRenderer({
       if (isStepForward) {
         arcElapsedTimers.current[i] = Math.min(arcElapsedTimers.current[i] + delta, STEP_DURATION_S);
         const t = arcElapsedTimers.current[i] / STEP_DURATION_S;
-        arcTargetY = ARC_HEIGHT * Math.sin(Math.PI * t);
+        arcTargetY = ARC_HEIGHT * jumpArcCurve(t);
+        // Use target directly — no lerp blur so the easing curve is felt precisely
+        arcVisualY.current[i] = arcTargetY;
+      } else {
+        // Smooth landing when not in arc (lerp back to 0)
+        arcVisualY.current[i] += (0 - arcVisualY.current[i]) * 0.3;
       }
-      arcVisualY.current[i] += (arcTargetY - arcVisualY.current[i]) * 0.3;
 
       _pos.set(pos.x, scale.y * 0.5 + flyingOffset + arcVisualY.current[i], pos.z);
       const facingRight = stateBuffer.isFacingRight(i);

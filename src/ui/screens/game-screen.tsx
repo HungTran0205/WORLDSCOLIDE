@@ -195,7 +195,7 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   const alchemyFacility = useMemo(() => allFacilities.find((f) => {
     if (f.type !== 'alchemy-lab' || f.level === 0 || f.placedSlot === null) return false;
     const [fx, , fz] = FACILITY_SLOTS[f.placedSlot];
-    return fx === cameraTarget[0] && fz === cameraTarget[2];
+    return Math.abs(cameraTarget[0] - fx) <= 3.5 && Math.abs(cameraTarget[2] - fz) <= 3.5;
   }), [allFacilities, cameraTarget]);
 
   useEffect(() => {

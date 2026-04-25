@@ -116,7 +116,7 @@ export function AlchemyCraftPanel({ facility, onClose }: AlchemyCraftPanelProps)
                   draggable
                   onDragStart={() => setDragging(id)}
                   onDragEnd={() => setDragging(null)}
-                  title={`${def.name} ×${items[id]}`}
+                  title={`${def.name} ×${Math.floor(items[id] ?? 0)}`}
                   style={{
                     ...S.itemCell,
                     border: `1px solid ${RARITY_BORDER[def.rarity] ?? '#444'}`,
@@ -124,13 +124,13 @@ export function AlchemyCraftPanel({ facility, onClose }: AlchemyCraftPanelProps)
                   }}
                 >
                   <GameIcon category="item" id={id} size={30} fallbackText={def.name.slice(0, 3)} />
-                  <span style={{ fontSize: 10, color: '#bbb', marginTop: 2 }}>×{items[id]}</span>
+                  <span style={{ fontSize: 10, color: '#bbb', marginTop: 2 }}>×{Math.floor(items[id] ?? 0)}</span>
                 </div>
               );
             })}
           </div>
           {inventoryItems.length === 0 && (
-            <div style={{ color: '#555', fontSize: 12, marginTop: 8 }}>Inventory trống</div>
+            <div style={{ color: '#555', fontSize: 12, marginTop: 8 }}>Inventory empty</div>
           )}
         </div>
 
@@ -144,7 +144,7 @@ export function AlchemyCraftPanel({ facility, onClose }: AlchemyCraftPanelProps)
           {/* Ingredient slots → output */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
             <div>
-              <div style={{ color: '#666', fontSize: 11, textAlign: 'center', marginBottom: 8 }}>Nguyên Liệu</div>
+              <div style={{ color: '#666', fontSize: 11, textAlign: 'center', marginBottom: 8 }}>Ingredients</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 60px)', gap: 8 }}>
                 {Array.from({ length: 4 }).map((_, i) => {
                   const visible = i < visibleSlots;
@@ -157,8 +157,8 @@ export function AlchemyCraftPanel({ facility, onClose }: AlchemyCraftPanelProps)
                       onClick={() => slotItem && clearSlot(i)}
                       title={
                         slotItem ? `${ITEM_DATABASE[slotItem].name} — click to remove`
-                          : visible ? 'Kéo nguyên liệu vào đây'
-                          : `Mở khóa ở Alchemy Lv.${i + 1}`
+                          : visible ? 'Drag ingredient here'
+                          : `Unlocks at Alchemy Lv.${i + 1}`
                       }
                       style={{
                         ...S.slot,
@@ -189,7 +189,7 @@ export function AlchemyCraftPanel({ facility, onClose }: AlchemyCraftPanelProps)
             <span style={{ color: '#a78bfa', fontSize: 28, fontWeight: 'bold', lineHeight: 1 }}>→</span>
 
             <div>
-              <div style={{ color: '#666', fontSize: 11, textAlign: 'center', marginBottom: 8 }}>Thuốc</div>
+              <div style={{ color: '#666', fontSize: 11, textAlign: 'center', marginBottom: 8 }}>Output</div>
               <div style={{
                 ...S.slot,
                 width: 68, height: 68,
@@ -218,7 +218,7 @@ export function AlchemyCraftPanel({ facility, onClose }: AlchemyCraftPanelProps)
 
           {/* Quantity */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: '#888', fontSize: 12 }}>Số lượng:</span>
+            <span style={{ color: '#888', fontSize: 12 }}>Quantity:</span>
             <input
               type="number" min={1} value={qty}
               onChange={(e) => setQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
