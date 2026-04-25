@@ -68,6 +68,17 @@ export function CombatVfxLayer() {
           });
         }
       }
+      if (event.type === 'syringe-used') {
+        const target = entities.find(e => e.id === event.entityId);
+        if (target) {
+          newNumbers.push({
+            id: nextId++,
+            position: { x: target.position.x, z: target.position.z },
+            damage: event.healAmount,
+            isHeal: true,
+          });
+        }
+      }
     }
 
     if (newNumbers.length > 0) {

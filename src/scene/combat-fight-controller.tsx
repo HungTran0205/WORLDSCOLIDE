@@ -121,8 +121,6 @@ export function CombatFightController({
     // Initialize engine — engine distributes syringes from inventory internally
     const engine = new CombatEngine();
     engine.init(members, formation, enemyTemplates, firstWave.hpMultiplier ?? 1, inventory);
-    // Deduct syringes that were loaded into combat
-    if (engine.totalSyringesLoaded > 0) removeItem('HEALING_SYRINGE', engine.totalSyringesLoaded);
     engine.onWaveCheck = () => waveManagerRef.current?.hasNext() ?? false;
     engine.setManualMode(combatMode === 'manual');
     engineRef.current = engine;
@@ -309,6 +307,8 @@ export function CombatFightController({
       }
       const result = engine.getResult();
       combatLog(`=== COMBAT END === outcome:${result.outcome} duration:${result.durationMs}ms`);
+      // Deduct only syringes actually consumed during combat
+      if (engine.syringesConsumed > 0) removeItem('HEALING_SYRINGE', engine.syringesConsumed);
       downloadCombatLog();
       endCombat(result);
     }

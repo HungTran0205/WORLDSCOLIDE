@@ -205,6 +205,17 @@ export class CombatStateBridge {
           });
         }
       }
+
+      if (event.type === 'syringe-used' && pool) {
+        const target = engine.entities.find(e => e.id === event.entityId);
+        if (target) {
+          pool.spawn({
+            position: { x: target.position.x, z: target.position.z },
+            damage: event.healAmount,
+            isHeal: true,
+          });
+        }
+      }
     }
   }
 
