@@ -120,20 +120,30 @@ def main() -> int:
                     help="Actually write files (default = dry-run)")
     ap.add_argument("--root", default=str(SPRITES_ROOT),
                     help="Sprites root path (default: public/sprites)")
+    ap.add_argument("--dir", default=None,
+                    help="Scan a specific directory directly (bypasses --root/SCAN_SUBDIRS)")
     args = ap.parse_args()
 
-    root = Path(args.root)
-    if not root.exists():
-        print(f"ERROR: {root} does not exist", file=sys.stderr)
-        return 1
-
     targets: list[Path] = []
-    for sub in SCAN_SUBDIRS:
-        sub_path = root / sub
-        if sub_path.exists():
-            targets.extend(collect_groups(sub_path))
 
-    print(f"Scanning {len(targets)} groups under {root}...")
+    if args.dir:
+        direct = Path(args.dir)
+        if not direct.exists():
+            print(f"ERROR: {direct} does not exist", file=sys.stderr)
+            return 1
+        targets.extend(collect_groups(direct))
+    else:
+        root = Path(args.root)
+        if not root.exists():
+            print(f"ERROR: {root} does not exist", file=sys.stderr)
+            return 1
+        for sub in SCAN_SUBDIRS:
+            sub_path = root / sub
+            if sub_path.exists():
+                targets.extend(collect_groups(sub_path))
+
+    scan_label = args.dir if args.dir else str(Path(args.root))
+    print(f"Scanning {len(targets)} groups under {scan_label}...")
     print()
 
     results: list[GroupResult] = []
@@ -164,7 +174,8 @@ def main() -> int:
         print()
         print("Top 15 groups by shift:")
         for r in shifted[:15]:
-            rel = r.directory.relative_to(root)
+            scan_root = Path(args.dir) if args.dir else root
+            rel = r.directory.relative_to(scan_root)
             print(f"  {r.shift:4d}px  ({r.canvas_h}h, {r.frame_count}f)  {rel}")
         print()
 

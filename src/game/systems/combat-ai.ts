@@ -3,7 +3,13 @@
  * Extracted from combat-engine for modularity and testability.
  */
 
-import { ARENA_BOUNDS, type ArenaEntity } from './combat-arena-types';
+import {
+  ARENA_BOUNDS,
+  FORMATION_STEP_DISTANCE,
+  FORMATION_STEP_DURATION_MS,
+  FORMATION_RETURN_DURATION_MS,
+  type ArenaEntity,
+} from './combat-arena-types';
 import type { CombatEvent } from './combat-types';
 
 /** Find best target: nearest alive enemy, weighted toward front-row and same lane */
@@ -77,6 +83,57 @@ export function moveToward(
   const newDx = targetPos.x - entity.position.x;
   const newDz = targetPos.z - entity.position.z;
   return Math.sqrt(newDx * newDx + newDz * newDz) <= stopDistance;
+}
+
+/**
+ * Lerp entity toward its step-target position.
+ * Returns true when arrived (within 0.1 units).
+ */
+export function stepForwardToAttack(entity: ArenaEntity, dtSeconds: number): boolean {
+  if (entity.stepTargetX === undefined || entity.stepTargetZ === undefined) return true;
+  const stepSpeed = FORMATION_STEP_DISTANCE / (FORMATION_STEP_DURATION_MS / 1000);
+  const dx = entity.stepTargetX - entity.position.x;
+  const dz = entity.stepTargetZ - entity.position.z;
+  const dist = Math.sqrt(dx * dx + dz * dz);
+  if (dist <= 0.1) {
+    entity.position.x = entity.stepTargetX;
+    entity.position.z = entity.stepTargetZ;
+    return true;
+  }
+  const move = stepSpeed * dtSeconds;
+  if (move >= dist) {
+    entity.position.x = entity.stepTargetX;
+    entity.position.z = entity.stepTargetZ;
+    return true;
+  }
+  entity.position.x += (dx / dist) * move;
+  entity.position.z += (dz / dist) * move;
+  return false;
+}
+
+/**
+ * Lerp entity back toward its formation home position.
+ * Returns true when arrived (within 0.1 units).
+ */
+export function returnToHome(entity: ArenaEntity, dtSeconds: number): boolean {
+  const returnSpeed = FORMATION_STEP_DISTANCE / (FORMATION_RETURN_DURATION_MS / 1000);
+  const dx = entity.homeX - entity.position.x;
+  const dz = entity.homeZ - entity.position.z;
+  const dist = Math.sqrt(dx * dx + dz * dz);
+  if (dist <= 0.1) {
+    entity.position.x = entity.homeX;
+    entity.position.z = entity.homeZ;
+    return true;
+  }
+  const move = returnSpeed * dtSeconds;
+  if (move >= dist) {
+    entity.position.x = entity.homeX;
+    entity.position.z = entity.homeZ;
+    return true;
+  }
+  entity.position.x += (dx / dist) * move;
+  entity.position.z += (dz / dist) * move;
+  return false;
 }
 
 /** Clamp entity position to arena boundaries */

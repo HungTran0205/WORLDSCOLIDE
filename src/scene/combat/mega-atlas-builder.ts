@@ -11,6 +11,7 @@ import {
   getSpritePath,
   getRunningFramePath,
   getAttackFramePath,
+  getBackFramePath,
   getBattleIdleFramePath,
   getBlockingFramePath,
   getEnemyAnimFramePath,
@@ -28,7 +29,8 @@ const MAX_ATLAS_SIZE = 8192;
 const ATLAS_COLS = 8;
 
 const WALK_FRAMES = 8;
-const ATTACK_FRAMES = 4;
+const MAX_ATTACK_FRAMES = 8; // try 8 frames; warriors have 8, others may have 4
+const BACK_FRAMES = 4;       // warrior return-jump animation
 const BATTLE_IDLE_FRAMES = 4;
 const BLOCKING_FRAMES = 4;
 const ENEMY_WALK_FRAMES = 8;
@@ -61,12 +63,13 @@ export interface MegaAtlasResult {
 
 /**
  * Sprite info collected before packing — intermediate structure.
+ * frames contains only successfully loaded images (no nulls).
  */
 interface SpritePack {
   typeId: string;
   frameWidth: number;
   frameHeight: number;
-  animations: Map<string, { frames: (HTMLImageElement | null)[]; }>;
+  animations: Map<string, { frames: HTMLImageElement[]; }>;
 }
 
 /**
@@ -88,7 +91,7 @@ export async function buildCombatAtlases(
     if (seenCharTypes.has(typeId)) continue;
     seenCharTypes.add(typeId);
 
-    const animations = new Map<string, { frames: (HTMLImageElement | null)[] }>();
+    const animations = new Map<string, { frames: HTMLImageElement[] }>();
 
     // Walk/run frames — east direction only (mirrored for west via X-scale flip)
     const walkUrls: string[] = [];
@@ -96,17 +99,31 @@ export async function buildCombatAtlases(
       walkUrls.push(getRunningFramePath(basePath, 'east', i));
     }
     const walkImgs = await loadImages(walkUrls);
-    animations.set('walk', { frames: walkImgs });
+    const validWalkImgs = walkImgs.filter((img): img is HTMLImageElement => img !== null);
+    animations.set('walk', { frames: validWalkImgs });
 
-    // Attack frames — east direction only (mirrored for west)
+    // Attack frames — east direction only (mirrored for west).
+    // Try up to MAX_ATTACK_FRAMES; use only frames that successfully load.
+    // Warriors have 8 frames, other archetypes may have fewer.
     const atkUrls: string[] = [];
-    for (let i = 0; i < ATTACK_FRAMES; i++) {
+    for (let i = 0; i < MAX_ATTACK_FRAMES; i++) {
       atkUrls.push(getAttackFramePath(basePath, 'east', i));
     }
     const atkImgs = await loadImages(atkUrls);
-    // Only add if at least one frame loaded
-    if (atkImgs.some(img => img !== null)) {
-      animations.set('attack', { frames: atkImgs });
+    const validAtkImgs = atkImgs.filter((img): img is HTMLImageElement => img !== null);
+    if (validAtkImgs.length > 0) {
+      animations.set('attack', { frames: validAtkImgs });
+    }
+
+    // Back animation — warrior return-jump after attack (east direction)
+    const backUrls: string[] = [];
+    for (let i = 0; i < BACK_FRAMES; i++) {
+      backUrls.push(getBackFramePath(basePath, 'east', i));
+    }
+    const backImgs = await loadImages(backUrls);
+    const validBackImgs = backImgs.filter((img): img is HTMLImageElement => img !== null);
+    if (validBackImgs.length > 0) {
+      animations.set('back', { frames: validBackImgs });
     }
 
     // Battle-idle frames (combat stance loop) — east direction
@@ -115,8 +132,9 @@ export async function buildCombatAtlases(
       biUrls.push(getBattleIdleFramePath(basePath, 'east', i));
     }
     const biImgs = await loadImages(biUrls);
-    if (biImgs.some(img => img !== null)) {
-      animations.set('battle-idle', { frames: biImgs });
+    const validBiImgs = biImgs.filter((img): img is HTMLImageElement => img !== null);
+    if (validBiImgs.length > 0) {
+      animations.set('battle-idle', { frames: validBiImgs });
     }
 
     // Blocking frames (one-shot, hold last frame) — east direction
@@ -125,12 +143,13 @@ export async function buildCombatAtlases(
       blkUrls.push(getBlockingFramePath(basePath, 'east', i));
     }
     const blkImgs = await loadImages(blkUrls);
-    if (blkImgs.some(img => img !== null)) {
-      animations.set('blocking', { frames: blkImgs });
+    const validBlkImgs = blkImgs.filter((img): img is HTMLImageElement => img !== null);
+    if (validBlkImgs.length > 0) {
+      animations.set('blocking', { frames: validBlkImgs });
     }
 
-    // Determine frame size from first valid image
-    const firstImg = walkImgs.find(img => img !== null);
+    // Determine frame size from first valid walk image
+    const firstImg = validWalkImgs[0] ?? null;
     const frameWidth = firstImg?.width ?? 128;
     const frameHeight = firstImg?.height ?? 128;
 
@@ -144,7 +163,7 @@ export async function buildCombatAtlases(
     if (seenEnemyTypes.has(spriteId)) continue;
     seenEnemyTypes.add(spriteId);
 
-    const animations = new Map<string, { frames: (HTMLImageElement | null)[] }>();
+    const animations = new Map<string, { frames: HTMLImageElement[] }>();
 
     // Walk frames
     const walkUrls: string[] = [];
@@ -152,7 +171,8 @@ export async function buildCombatAtlases(
       walkUrls.push(getEnemyAnimFramePath(spriteId, 'walk', i));
     }
     const walkImgs = await loadImages(walkUrls);
-    animations.set('walk', { frames: walkImgs });
+    const validEWalkImgs = walkImgs.filter((img): img is HTMLImageElement => img !== null);
+    animations.set('walk', { frames: validEWalkImgs });
 
     // Attack frames
     const atkUrls: string[] = [];
@@ -160,8 +180,9 @@ export async function buildCombatAtlases(
       atkUrls.push(getEnemyAnimFramePath(spriteId, 'attack', i));
     }
     const atkImgs = await loadImages(atkUrls);
-    if (atkImgs.some(img => img !== null)) {
-      animations.set('attack', { frames: atkImgs });
+    const validEAtkImgs = atkImgs.filter((img): img is HTMLImageElement => img !== null);
+    if (validEAtkImgs.length > 0) {
+      animations.set('attack', { frames: validEAtkImgs });
     }
 
     // Death frames
@@ -170,11 +191,12 @@ export async function buildCombatAtlases(
       deathUrls.push(getEnemyAnimFramePath(spriteId, 'death', i));
     }
     const deathImgs = await loadImages(deathUrls);
-    if (deathImgs.some(img => img !== null)) {
-      animations.set('death', { frames: deathImgs });
+    const validEDeathImgs = deathImgs.filter((img): img is HTMLImageElement => img !== null);
+    if (validEDeathImgs.length > 0) {
+      animations.set('death', { frames: validEDeathImgs });
     }
 
-    const firstImg = walkImgs.find(img => img !== null);
+    const firstImg = validEWalkImgs[0] ?? null;
     const frameWidth = firstImg?.width ?? 128;
     const frameHeight = firstImg?.height ?? 128;
 
@@ -220,7 +242,6 @@ export async function buildCombatAtlases(
 
       for (let i = 0; i < frameCount; i++) {
         const img = animData.frames[i];
-        if (!img) continue;
 
         const col = i % ATLAS_COLS;
         const row = startRow + Math.floor(i / ATLAS_COLS);

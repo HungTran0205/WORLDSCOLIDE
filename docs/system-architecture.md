@@ -101,10 +101,13 @@
 - **Event Stream**: Damage, heal, skill, death, status effects  
 - **Camera**: 35° isometric angle, multi-wave advancement
 
+**[v1.20+] Sequential Turn Queue**: Replaced parallel ATB with strict sequential turn execution. Entities claim a turn lock (`activeActorId`) based on lowest `nextAttackAt`, complete full action cycle (melee: step-forward → attack → return-to-home; ranged: fire → anim-revert), then release lock to next entity. Status effects (poison, regen, passives) still tick every logic tick for all entities. Manual mode preserves existing pause behavior.
+
 For detailed implementation, see:
 - `codebase-summary.md` → "v1.10–v1.15 Releases Summary"
 - Git commits v1.11–v1.14
 - Combat system tests in `src/game/systems/*.test.ts`
+- Sequential turn queue plan: `plans/260419-1147-combat-sequential-turn-engine/`
 
 ---
 
@@ -495,6 +498,173 @@ Shifted from isometric (20°) to beat-em-up sidescroller:
 - Missions without `waves` field default to single-wave mode (all enemies at once)
 - Existing formation positions preserved for non-wave combat
 - Post-processing additive (new DoF layers on top of existing vignette)
+
+## Combat Formation Movement (Phase 1 — Positional Attacks)
+
+### Formation Home Slots
+Units occupy fixed **home slots** in the formation grid. Melee units (warriors, dual-blades, engineers) step forward to attack, while ranged units (scouts, scholars, philosophers) attack from home position.
+
+**New Fields in ArenaEntity** (`combat-arena-types.ts`):
+- `homeX`, `homeZ` — Formation grid position (set at combat start)
+- `attackMoveState: AttackMoveState` — State machine: `'home' | 'step-forward' | 'returning'`
+- `stepTargetX?`, `stepTargetZ?` — Where melee unit is stepping toward
+
+**State Transitions**:
+```
+home ─(action ready)→ step-forward ─(after FORMATION_STEP_DURATION_MS)→ returning ─(arrive)→ home
+```
+
+**Timing Constants** (`combat-arena-types.ts`):
+- `FORMATION_STEP_DISTANCE = 1.5` — World units forward
+- `FORMATION_STEP_DURATION_MS = 250` — Forward lerp time
+- `FORMATION_RETURN_DURATION_MS = 300` — Return-to-home lerp time
+
+**AI Impact**:
+- Melee units path to `stepTarget` when attacking
+- Ranged units stay at `homeX, homeZ` (no stepping)
+- Position updated via `AnimationStateBuffer` (GPU instancing)
+
+---
+
+## ATB Timeline Bar (Phase 2 — Attack Order Visualization)
+
+### Timeline Display
+New top-strip component showing all entities sorted by `nextAttackAt`. Updates at Zustand 5Hz sync rate.
+
+**Component**: `combat-timeline-bar.tsx`
+- Shows top 12 entities (max display)
+- Each entry displays:
+  - **Name abbreviation** (4 chars max, e.g., "Kael")
+  - **Cooldown fill bar** (% of attackInterval elapsed)
+  - **Waiting icon** (!) for manual-mode allies awaiting input
+  - **Acting indicator** (step-forward state highlight)
+
+**Styling** (`combat-timeline.css`):
+- Ally entries: blue tint
+- Boss entries: gold tint
+- Enemy entries: red tint
+- "Near ready" state (≥90% cooldown): bright glow
+- "Waiting" state (manual mode): exclamation mark
+- "Acting" state (step-forward): animation pulse
+
+**Visibility**: Only shown during `arenaPhase === 'fighting'`.
+
+**Performance**: `useMemo` caches sort, re-runs only when entities change (batched Zustand update).
+
+---
+
+## Manual Combat Mode (Phase 3 — Player Input Control)
+
+### Overview
+`combatMode: 'auto' | 'manual' | null` added to active mission state. Players toggle via **CombatManualToggle** button (top-right) to switch battle modes.
+
+**Files Modified**:
+- `game-state.ts` — combatMode field added to MissionState
+- `mission-slice.ts` — toggleCombatMode(missionId) action
+- `combat-engine.ts` — setManualMode(enabled) + queuing logic
+- `combat-fight-controller.tsx` — Syncs combatMode to engine on change
+- `game-screen.tsx` — CombatManualToggle button placement
+
+### Manual Mode Mechanics
+
+**When toggled ON**:
+1. Allies switch to `waitingForInput = true` on their attack tick
+2. Hotbar shows "waiting for input" glow on first ready ally
+3. Engine waits for player action before ally attacks
+4. Hotbar actions:
+   - **Q key**: Fire basic auto-attack (first waiting ally)
+   - **1-4 number keys**: Activate skills (if enough resources)
+5. Target selection locked to manually-set target (default: closest enemy)
+
+**When toggled OFF**:
+1. Allies revert to `waitingForInput = false`
+2. Normal auto-attack behavior resumes
+3. Hotbar shows normal cooldown bars
+
+**Waiting State Indicator**:
+- Timeline entry: "!" icon badge
+- Hotbar: Ally name + "Waiting…" glow (yellow border pulse)
+- Member sprite: Optional visual feedback (anim state pending)
+
+### Input Handling
+
+**Combat Skill Hotbar** (`combat-skill-hotbar.tsx`):
+- Listens for `'q'` key → `engine.fireBasicAttack()`
+- Number keys 1-4 → Skill activation (already implemented)
+- Prevents default (no QA in browser search)
+
+**Engine Queuing** (`combat-engine.ts`):
+```typescript
+fireBasicAttack() {
+  const waitingAlly = this.entities
+    .filter(e => e.isAlly && e.waitingForInput)
+    .sort((a, b) => a.nextAttackAt - b.nextAttackAt)[0];
+  
+  if (waitingAlly) {
+    // Clear waitingForInput, enqueue attack
+    waitingAlly.waitingForInput = false;
+    this.enqueueAttack(waitingAlly);
+  }
+}
+```
+
+---
+
+## Target Selection (Phase 4 — Manual Enemy Targeting)
+
+### Overview
+In manual mode, players click enemy entities in the 3D scene to lock target for waiting allies.
+
+**Component**: `combat-target-selector.tsx` (new)
+- Listens for mouse clicks on arena floor/entities
+- R3F raycasting against enemy hitboxes
+- Sets `manualTargetId` on entity
+
+**Integration**:
+- Engine respects `manualTargetId` when choosing attack target
+- Fallback to auto-targeting (closest enemy) if manual target dies
+- Visual feedback: Selected enemy outline/highlight (pending polish)
+
+**Hitbox Setup**:
+- Enemy sprites get invisible clickable meshes
+- Raycast test: `raycaster.intersectObjects(enemyHitboxes)`
+
+---
+
+## Manual Mode Integration (Phase 5 — UI & State Sync)
+
+### CombatManualToggle Button
+Located in top-right of combat UI, near speed controls.
+
+**Appearance**:
+- Button text: "Manual" | "Auto" (toggles on click)
+- Icon: Gamepad/hand cursor icon
+- State-bound: Syncs to mission.combatMode
+
+**Accessibility**:
+- Keyboard shortcut: `Ctrl+M` (pending implementation)
+- Tooltip: "Manual: Control each ally action | Auto: AI controls attacks"
+
+### Hotbar Polish
+`combat-skill-hotbar.tsx` enhancements:
+- First waiting ally shown with yellow "Waiting…" glow
+- Q key hint tooltip: "Press Q or click to attack"
+- Skill buttons disabled if no manual target (optional)
+
+### State Sync
+`combat-fight-controller.tsx` watches `combatMode` from mission state:
+```typescript
+useEffect(() => {
+  engineRef.current?.setManualMode(combatMode === 'manual');
+}, [combatMode]);
+```
+
+Changes apply immediately on next engine tick.
+
+### Save Persistence
+`combatMode` saved in mission state — loaded from last session without explicit toggle.
+
+---
 
 ## Camera Navigation System (v1.15 — Facility Rooms)
 

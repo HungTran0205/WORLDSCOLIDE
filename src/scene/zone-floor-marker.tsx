@@ -11,6 +11,7 @@ const ZONE_COLORS: Record<FacilityType, string> = {
   workshop: '#8B6914',
   'logging-site': '#4A7A30',
   'stone-quarry': '#7A7060',
+  'alchemy-lab': '#9B59B6',
 };
 
 interface ZoneFloorMarkerProps {

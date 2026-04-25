@@ -10,9 +10,6 @@ import { handleTutorialQuestComplete } from './tutorial-quest-handler';
 import type { ItemID } from '@/game/data/items';
 import type { GameStore } from '@/game/state/store';
 
-/** Time player has to choose manual/auto before auto-combat triggers */
-export const ARRIVAL_TIMEOUT_MS = 30_000;
-
 /** Events emitted by processMissionTick for the UI to handle */
 export type MissionTickEvent =
   | { type: 'arrival'; missionId: string; missionName: string; zone: string }
@@ -50,20 +47,12 @@ export function processMissionTick(store: GameStore, now: number): MissionTickEv
       }
 
       case 'arrived': {
-        // Defensive: fall back to now if arrivalTime somehow missing
-        const arrivalTime = active.arrivalTime ?? now;
-        const timedOut = now >= arrivalTime + ARRIVAL_TIMEOUT_MS;
-
         if (active.combatMode) {
           // Player chose — transition to combat
           store.updateMissionPhase(active.missionId, 'in-combat');
           events.push({ type: 'combat-start', missionId: active.missionId });
-        } else if (timedOut) {
-          // 30s timeout — force auto combat
-          store.setCombatMode(active.missionId, 'auto');
-          store.updateMissionPhase(active.missionId, 'in-combat');
-          events.push({ type: 'combat-start', missionId: active.missionId });
         }
+        // No timeout — wait indefinitely for player interaction
         break;
       }
 
@@ -101,6 +90,9 @@ export function processMissionTick(store: GameStore, now: number): MissionTickEv
           // Only survivors get mission credit
           store.incrementMissionsCompleted(result.survivors);
         } else {
+          for (const memberId of active.memberIds) {
+            store.updateMemberStatus(memberId, 'idle');
+          }
           store.failMission(active.missionId);
         }
 

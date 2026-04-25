@@ -1,5 +1,6 @@
 /** Item detail popup — shows full item info when an inventory slot is clicked. */
 
+import { useState } from 'react';
 import type { ItemID } from '@/game/data/items';
 import { ITEM_DATABASE } from '@/game/data/items';
 import { GameIcon } from './game-icon';
@@ -16,13 +17,22 @@ const RARITY_COLORS: Record<string, string> = {
 interface ItemDetailPopupProps {
   itemId: ItemID;
   quantity: number;
+  stackable: boolean;
   onClose: () => void;
+  onDrop?: (amount: number) => void;
 }
 
-export function ItemDetailPopup({ itemId, quantity, onClose }: ItemDetailPopupProps) {
+export function ItemDetailPopup({ itemId, quantity, stackable, onClose, onDrop }: ItemDetailPopupProps) {
   const template = ITEM_DATABASE[itemId];
   const rarityColor = RARITY_COLORS[template.rarity] ?? '#808080';
   const totalValue = template.basePrice * quantity;
+
+  const [dropAmount, setDropAmount] = useState(1);
+
+  function handleDrop() {
+    const amount = stackable ? Math.min(Math.max(1, dropAmount), quantity) : 1;
+    onDrop?.(amount);
+  }
 
   return (
     <div className="item-detail-backdrop" onClick={onClose}>
@@ -54,6 +64,24 @@ export function ItemDetailPopup({ itemId, quantity, onClose }: ItemDetailPopupPr
             </>
           )}
         </div>
+
+        {onDrop && (
+          <div className="item-detail-popup__drop">
+            {stackable && quantity > 1 && (
+              <input
+                type="number"
+                min={1}
+                max={quantity}
+                value={dropAmount}
+                onChange={(e) => setDropAmount(Math.min(quantity, Math.max(1, parseInt(e.target.value, 10) || 1)))}
+                className="item-detail-popup__drop-input"
+              />
+            )}
+            <button className="item-detail-popup__drop-btn" onClick={handleDrop}>
+              Drop{stackable && quantity > 1 ? ` ×${Math.min(Math.max(1, dropAmount), quantity)}` : ''}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

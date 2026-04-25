@@ -22,6 +22,12 @@ export interface CombatEntity {
   // Temporary combat flags (set each tick by engine/simulator)
   _hasDeQuocBuff?: boolean;  // DeQuoc ally team buff: +5% crit/dmg
 
+  // Syringe auto-use (allies only)
+  /** HP fraction threshold below which syringe fires. undefined = no syringe equipped. */
+  syringeThresholdPct?: number;
+  /** How many syringes this entity loaded at combat start (consumed from inventory). */
+  syringesLoaded?: number;
+
   // Derived combat snapshot (set at entity creation)
   dodgeRate: number;
   blockRate: number;
@@ -70,8 +76,10 @@ export type CombatEvent =
   | { type: 'dodge'; attackerId: string; targetId: string }
   | { type: 'block'; attackerId: string; targetId: string; reducedDamage: number }
   | { type: 'heal'; healerId: string; targetId: string; amount: number }
+  | { type: 'syringe-used'; entityId: string; healAmount: number }
   | { type: 'wave-cleared'; waveIndex: number }
   | { type: 'victory' }
+  | { type: 'ally-turn-start'; entityId: string }
   | { type: 'wipe' };
 
 export type CombatOutcome = 'victory' | 'partial-victory' | 'full-wipe';

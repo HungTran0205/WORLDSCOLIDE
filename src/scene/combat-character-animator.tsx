@@ -18,7 +18,7 @@ const DIRECTIONS: SpriteDirection[] = ['north', 'south', 'east', 'west'];
 const FRAME_COUNT = 8;
 const ATTACK_FRAME_COUNT = 4;
 const WALK_FPS = 10;
-const ATTACK_FPS = 12;
+const ATTACK_FPS = 8;
 
 /** Module-level cache — only written when load completes (null = no frames on disk) */
 const ATTACK_ATLAS_CACHE = new Map<string, SpriteAtlas | null>();

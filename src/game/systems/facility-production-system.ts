@@ -8,6 +8,7 @@ import type { ItemID } from '@/game/data/items';
 import { FACILITY_DEFINITIONS, LOGGING_SITE_CONFIG, STONE_QUARRY_CONFIG } from '@/game/data/facility-definitions';
 import { calcDerivedGuildStats } from './derived-guild-stats';
 import { calcMcLevel } from './stone-quarry-production-system';
+import { processAlchemyProduction } from './alchemy-production-system';
 
 // --- Logging Site per-tick production types ---
 
@@ -99,18 +100,21 @@ export interface FacilityProductionResult {
   facilityName: string;
   /** EXP gains keyed by memberId — Training Yard */
   expGains: Record<string, number>;
-  /** Item gains — Workshop */
+  /** Item gains — Workshop, Alchemy Lab */
   itemGains: Partial<Record<ItemID, number>>;
+  /** Items consumed — Alchemy Lab (SLIME_GEL) */
+  itemConsumed: Partial<Record<ItemID, number>>;
   /** Gold saved from upkeep reduction — Tavern CHA bonus */
   upkeepSaved: number;
   /** Whether infirmary recovery multiplier was applied */
   recoveryApplied: boolean;
+  /** Alchemy XP gains keyed by memberId */
+  alchemyXpGains?: Record<string, { newXp: number; newLevel: number }>;
 }
 
 // --- Logging Site + Stone Quarry ---
 
 const LOGGING_BASE: number[] = [5, 9, 15];
-const QUARRY_BASE: number[] = [4, 7, 12];
 
 function calcExtractionOutput(member: Member, level: number, baseTable: number[]): number {
   const { gatherSpeed } = calcDerivedGuildStats(member.stats, member.level);
@@ -179,21 +183,26 @@ export function calcInfirmaryRecoveryMult(assignedMembers: Member[], level: numb
 /**
  * Process facility production for gameDays elapsed.
  * Returns per-facility results — caller applies EXP, items, and gold to store.
+ * inventoryItems: current inventory snapshot needed for alchemy gel consumption.
  */
 export function processFacilityProduction(
   facilities: GuildFacility[],
   allMembers: Member[],
   gameDays: number,
   dailyUpkeep: number,
+  inventoryItems?: Partial<Record<ItemID, number>>,
 ): FacilityProductionResult[] {
   if (gameDays <= 0) return [];
 
   const results: FacilityProductionResult[] = [];
+  // Track remaining gel across all alchemy-lab facilities (shared inventory)
+  let remainingGel = inventoryItems?.SLIME_GEL ?? 0;
 
   for (const facility of facilities) {
     if (facility.level === 0 || facility.assignedMemberIds.length === 0) continue;
 
     const def = FACILITY_DEFINITIONS[facility.type as keyof typeof FACILITY_DEFINITIONS];
+    if (!def) continue;
     const assignedMembers = allMembers.filter((m) => facility.assignedMemberIds.includes(m.id));
     if (assignedMembers.length === 0) continue;
 
@@ -202,6 +211,7 @@ export function processFacilityProduction(
       facilityName: def.name,
       expGains: {},
       itemGains: {},
+      itemConsumed: {},
       upkeepSaved: 0,
       recoveryApplied: false,
     };
@@ -258,6 +268,23 @@ export function processFacilityProduction(
           totalDailyStone += Math.floor(dailyStone);
         }
         result.itemGains = { STONE: totalDailyStone * gameDays };
+        break;
+      }
+
+      case 'alchemy-lab': {
+        const alchemyResult = processAlchemyProduction(
+          [facility], allMembers, remainingGel, gameDays,
+        );
+        if (alchemyResult.syringesProduced > 0) {
+          result.itemGains = { HEALING_SYRINGE: alchemyResult.syringesProduced };
+          result.itemConsumed = { SLIME_GEL: alchemyResult.gelConsumed };
+          remainingGel -= alchemyResult.gelConsumed;
+        }
+        if (alchemyResult.acXpGains.length > 0) {
+          result.alchemyXpGains = Object.fromEntries(
+            alchemyResult.acXpGains.map((g) => [g.memberId, { newXp: g.newXp, newLevel: g.newLevel }]),
+          );
+        }
         break;
       }
     }

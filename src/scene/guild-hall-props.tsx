@@ -23,7 +23,7 @@ const GLB = {
   fairy: '/GuildHall/LinhSon/optimized/p_fairtymotherstatues.glb',
   dragon: '/GuildHall/LinhSon/optimized/p_dragonfatherstatues.glb',
   drum: '/GuildHall/LinhSon/optimized/p_cooperdrumfireholder.glb',
-  pillar: '/GuildHall/LinhSon/optimized/p_woodpillar.glb',
+  pillar: '/GuildHall/LinhSon/optimized/p_woodpillar.glb'
 } as const;
 
 Object.values(GLB).forEach((p) => useGLTF.preload(p));

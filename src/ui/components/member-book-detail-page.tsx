@@ -1,6 +1,6 @@
 /** Two-page book layout for member detail — left page (identity/skill) + right page (talents/stats). */
 
-import type { Member, StatKey } from '@/game/state/game-state';
+import type { Member, StatKey, SyringeLoadout } from '@/game/state/game-state';
 import { StatBar } from '@/ui/components/stat-bar';
 import { RankBadge } from '@/ui/components/rank-badge';
 import { CivBadge } from '@/ui/components/civ-badge';
@@ -11,10 +11,14 @@ import type { Civilization } from '@/game/data/civilization-config';
 import { STAT_KEYS } from '@/game/systems/stat-allocation';
 import { expToNextLevel } from '@/game/systems/leveling-system';
 
+const THRESHOLD_OPTIONS = [0.20, 0.30, 0.40, 0.50] as const;
+
 interface MemberBookDetailPageProps {
   member: Member;
   onAllocateStat: (stat: StatKey, amount?: number) => void;
   onToggleAutoCast: () => void;
+  syringeCount?: number;
+  onSetSyringeLoadout?: (loadout: SyringeLoadout | null) => void;
 }
 
 const EQUIPMENT_SLOTS = ['Head', 'Armor', 'Pants', 'Boots', 'Weapon'] as const;
@@ -22,7 +26,7 @@ const EQUIPMENT_SLOTS = ['Head', 'Armor', 'Pants', 'Boots', 'Weapon'] as const;
 /** Pure-CSS ruled-line paper texture — zero overhead */
 const RULED_BG = 'repeating-linear-gradient(transparent,transparent 23px,rgba(255,255,255,0.04) 23px,rgba(255,255,255,0.04) 24px)';
 
-export function MemberBookDetailPage({ member, onAllocateStat, onToggleAutoCast }: MemberBookDetailPageProps) {
+export function MemberBookDetailPage({ member, onAllocateStat, onToggleAutoCast, syringeCount = 0, onSetSyringeLoadout }: MemberBookDetailPageProps) {
   const expNeeded = expToNextLevel(member.level);
   const expPct = Math.min(100, Math.floor((member.exp / expNeeded) * 100));
   const civColor = getCivColor(member.civilization);
@@ -96,6 +100,58 @@ export function MemberBookDetailPage({ member, onAllocateStat, onToggleAutoCast 
             ))}
           </div>
         </div>
+
+        {/* Healing Syringe Loadout */}
+        {onSetSyringeLoadout && (
+          <div className="panel-section">
+            <div style={{ color: '#ffd700', fontSize: '0.75rem', marginBottom: 6 }}>Healing Syringe</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span style={{ fontSize: '0.68rem', color: '#aaa' }}>
+                In stock: <span style={{ color: syringeCount > 0 ? '#2ecc71' : '#e74c3c' }}>{syringeCount}</span>
+              </span>
+              {member.syringeLoadout ? (
+                <button
+                  className="panel-btn"
+                  onClick={() => onSetSyringeLoadout(null)}
+                  style={{ fontSize: '0.65rem', padding: '1px 7px', marginTop: 0, color: '#e74c3c', borderColor: 'rgba(231,76,60,0.4)' }}
+                >Unequip</button>
+              ) : (
+                <button
+                  className="panel-btn"
+                  disabled={syringeCount === 0}
+                  onClick={() => onSetSyringeLoadout({ autoUseThresholdPct: 0.30 })}
+                  style={{ fontSize: '0.65rem', padding: '1px 7px', marginTop: 0 }}
+                >Equip</button>
+              )}
+            </div>
+            {member.syringeLoadout && (
+              <div>
+                <div style={{ fontSize: '0.65rem', color: '#888', marginBottom: 3 }}>Auto-use when HP below:</div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {THRESHOLD_OPTIONS.map((pct) => {
+                    const active = member.syringeLoadout?.autoUseThresholdPct === pct;
+                    return (
+                      <button
+                        key={pct}
+                        className="panel-btn"
+                        onClick={() => onSetSyringeLoadout({ autoUseThresholdPct: pct })}
+                        style={{
+                          fontSize: '0.65rem', padding: '1px 6px', marginTop: 0,
+                          background: active ? 'rgba(255,215,0,0.25)' : 'rgba(255,255,255,0.04)',
+                          borderColor: active ? 'rgba(255,215,0,0.5)' : 'rgba(255,255,255,0.15)',
+                          color: active ? '#ffd700' : '#888',
+                        }}
+                      >{Math.round(pct * 100)}%</button>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: '0.62rem', color: '#555', marginTop: 4 }}>
+                  Heals 30% HP · auto-fires in combat
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Skill + Auto-cast */}
         <div className="panel-section">

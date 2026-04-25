@@ -4,8 +4,10 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useGameStore } from '@/game/state/store';
 import { getInventorySlots, getMaxSlots, getUsedSlots } from '@/game/state/inventory-slice';
 import type { ItemID } from '@/game/data/items';
+import { ITEM_DATABASE } from '@/game/data/items';
 import { InventorySlot } from '@/ui/components/inventory-slot';
 import { ItemDetailPopup } from '@/ui/components/item-detail-popup';
+import { saveManager } from '@/game/save/save-manager';
 import '@/ui/styles/inventory.css';
 
 interface InventoryPanelProps {
@@ -15,6 +17,7 @@ interface InventoryPanelProps {
 export function InventoryPanel({ onClose }: InventoryPanelProps) {
   const items = useGameStore((s) => s.inventory.items);
   const furniture = useGameStore((s) => s.guildHall.furniture);
+  const removeItem = useGameStore((s) => s.removeItem);
 
   const slots = useMemo(() => getInventorySlots(items), [items]);
   const maxSlots = useMemo(() => getMaxSlots(furniture), [furniture]);
@@ -37,8 +40,17 @@ export function InventoryPanel({ onClose }: InventoryPanelProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  // Aggregate total quantity per itemId for the detail popup
-  const selectedTotalQty = selectedItemId ? (items[selectedItemId] ?? 0) : 0;
+  // Aggregate total quantity per itemId for the detail popup (floor to avoid float display)
+  const selectedTotalQty = selectedItemId ? Math.floor(items[selectedItemId] ?? 0) : 0;
+
+  const handleDrop = useCallback((amount: number) => {
+    if (!selectedItemId) return;
+    removeItem(selectedItemId, amount);
+    const remaining = Math.floor(items[selectedItemId] ?? 0) - amount;
+    if (remaining <= 0) setSelectedItemId(null);
+    // Trigger save immediately so drop persists across reloads
+    saveManager.save(() => useGameStore.getState() as unknown as Record<string, unknown>, true);
+  }, [selectedItemId, removeItem, items]);
 
   return (
     <div className="inventory-overlay" onClick={onClose}>
@@ -69,7 +81,9 @@ export function InventoryPanel({ onClose }: InventoryPanelProps) {
           <ItemDetailPopup
             itemId={selectedItemId}
             quantity={selectedTotalQty}
+            stackable={ITEM_DATABASE[selectedItemId]?.stackable ?? false}
             onClose={handleClosePopup}
+            onDrop={handleDrop}
           />
         )}
       </div>

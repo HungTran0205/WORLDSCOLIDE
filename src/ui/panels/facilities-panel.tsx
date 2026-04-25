@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useGameStore } from '@/game/state/store';
 import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
-import { FACILITY_SLOTS } from '@/game/data/facility-slot-positions';
+import { FACILITY_SLOTS, FACILITY_CAMERA_OFFSETS } from '@/game/data/facility-slot-positions';
 import { calcTotalUpkeep } from '@/game/systems/upkeep-system';
 import { FacilityCard } from './facility-card';
 import { RankBadge } from '@/ui/components/rank-badge';
@@ -109,7 +109,9 @@ export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
                   className="panel-btn"
                   style={{ marginBottom: 8, width: '100%' }}
                   onClick={() => {
-                    setCameraTarget(FACILITY_SLOTS[facility.placedSlot!]);
+                    const [sx, sy, sz] = FACILITY_SLOTS[facility.placedSlot!];
+                    const off = FACILITY_CAMERA_OFFSETS[facility.type] ?? [0, 0, 0];
+                    setCameraTarget([sx + off[0], sy + off[1], sz + off[2]]);
                     onClose();
                   }}
                 >

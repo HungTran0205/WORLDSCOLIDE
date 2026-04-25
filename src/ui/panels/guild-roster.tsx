@@ -4,7 +4,7 @@ import { MemberBookmarkList } from '@/ui/components/member-bookmark-list';
 import { MemberBookDetailPage } from '@/ui/components/member-book-detail-page';
 import { CIVILIZATIONS, CIV_CONFIG } from '@/game/data/civilization-config';
 import { canPromote } from '@/game/data/ranks';
-import type { StatKey } from '@/game/state/game-state';
+import type { StatKey, SyringeLoadout } from '@/game/state/game-state';
 import { ConfirmDialog } from '@/ui/components/confirm-dialog';
 import '@/ui/styles/panels.css';
 
@@ -21,6 +21,8 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
   const inviteMercenary = useGameStore((s) => s.inviteMercenary);
   const promoteMember = useGameStore((s) => s.promoteMember);
   const removeMember = useGameStore((s) => s.removeMember);
+  const setSyringeLoadout = useGameStore((s) => s.setSyringeLoadout);
+  const syringeCount = useGameStore((s) => s.inventory.items.HEALING_SYRINGE ?? 0);
 
   const allMembers = useMemo(() => (founder ? [founder, ...roster] : roster), [founder, roster]);
 
@@ -94,6 +96,8 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
               member={selectedMember}
               onAllocateStat={(stat, amount) => allocateStat(selectedMember.id, stat as StatKey, amount)}
               onToggleAutoCast={() => toggleAutoCast(selectedMember.id)}
+              syringeCount={syringeCount}
+              onSetSyringeLoadout={(loadout: SyringeLoadout | null) => setSyringeLoadout(selectedMember.id, loadout)}
             />
           ) : (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444', fontSize: '0.85rem' }}>

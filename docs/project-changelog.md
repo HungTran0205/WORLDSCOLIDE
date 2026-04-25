@@ -2,8 +2,176 @@
 
 All notable changes to Worlds Collide are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
-**Current Version**: 1.21.0
-**Release Date**: 2026-04-15 (Stone Quarry Mining Skill)
+**Current Version**: 1.22.0
+**Release Date**: 2026-04-19 (Combat Formation + ATB Timeline + Manual Mode)
+
+---
+
+## [1.22.0] — 2026-04-19 (Combat Formation Movement + ATB Timeline Bar + Manual Combat Mode)
+
+### Major Feature: Formation-Based Positioning, ATB Timeline, and Player-Controlled Combat
+
+#### Phase 1: Formation Home Slots & Step-Attack Movement
+Introduces positional combat where units occupy fixed home slots in the formation grid. Melee units step forward to attack, ranged units attack from home.
+
+**New Types** (`combat-arena-types.ts`):
+- `AttackMoveState = 'home' | 'step-forward' | 'returning'` — State machine for melee unit movement
+- Extended `ArenaEntity` with:
+  - `homeX`, `homeZ` — Formation home position (3×2 grid)
+  - `attackMoveState` — Current position state
+  - `stepTargetX?`, `stepTargetZ?` — Attack destination for melee units
+
+**Movement Timing Constants**:
+- `FORMATION_STEP_DISTANCE = 1.5` — Units forward toward target
+- `FORMATION_STEP_DURATION_MS = 250` — Forward lerp duration
+- `FORMATION_RETURN_DURATION_MS = 300` — Return-to-home lerp duration
+
+**AI Behavior**:
+- Melee units (warrior, dualblade, engineer): Path to target, step forward, return home after attack
+- Ranged units (scout, scholar, philosopher): Attack from home slot (no stepping)
+- Position lerping handled by `AnimationStateBuffer` (GPU instancing)
+
+**Files Modified**:
+- `src/game/systems/combat-arena-types.ts` — AttackMoveState type, home/step/return constants
+- `src/game/systems/combat-engine.ts` — Step-attack state transitions, position updates
+- `src/scene/combat/animation-state-buffer.ts` — Position lerp in buffer update
+
+---
+
+#### Phase 2: ATB Timeline Bar — Attack Order Visualization
+New UI component showing all entities sorted by `nextAttackAt` with real-time cooldown progress.
+
+**Component**: `combat-timeline-bar.tsx` (new)
+- **Display**: Top strip showing top 12 entities (allies, enemies, bosses)
+- **Per-Entry**:
+  - 4-char name abbreviation
+  - Cooldown fill bar (% of attackInterval elapsed)
+  - Waiting icon (!) for manual-mode allies
+  - Acting indicator for step-forward state
+- **Styling** (`combat-timeline.css`):
+  - Ally entries: blue tint
+  - Boss entries: gold tint
+  - Enemy entries: red tint
+  - Near-ready (≥90% cooldown): bright glow
+  - Waiting state: exclamation badge
+  - Acting state: animation pulse
+- **Performance**: Memoized sort, updates only when entity list changes
+- **Visibility**: Only during `arenaPhase === 'fighting'`
+
+---
+
+#### Phase 3: Manual Combat Mode — Player Input Control
+Toggles combat between auto-play and manual turn-by-turn control.
+
+**New State** (`game-state.ts`, `mission-slice.ts`):
+- `mission.combatMode: 'auto' | 'manual' | null`
+- `entity.waitingForInput?: boolean` — Ally awaiting player action
+
+**Manual Mode Mechanics**:
+- Allies queue `waitingForInput = true` when ready to attack
+- Engine waits for player input before ally acts
+- Q key: Fire basic attack (first waiting ally)
+- Number keys 1-4: Activate skills (existing hotbar logic)
+- Target: Uses manually-selected enemy or auto-targeting fallback
+
+**UI Components**:
+- `CombatManualToggle` button (top-right, near speed controls)
+  - Toggle text: "Manual" | "Auto"
+  - Icon: Gamepad/hand cursor
+  - Syncs to mission.combatMode instantly
+- **Hotbar Enhancements**:
+  - First waiting ally shown with yellow "Waiting…" glow
+  - Q key hint tooltip
+  - Skill buttons state-aware (pending manual target)
+- **Timeline Integration**: Waiting entries show "!" badge
+
+**Files Modified**:
+- `src/game/state/game-state.ts` — combatMode field
+- `src/game/state/mission-slice.ts` — toggleCombatMode(missionId)
+- `src/game/systems/combat-engine.ts` — setManualMode, fireBasicAttack, queuing
+- `src/scene/combat-fight-controller.tsx` — Syncs combatMode to engine
+- `src/ui/screens/game-screen.tsx` — CombatManualToggle button
+- `src/ui/panels/combat-skill-hotbar.tsx` — Q key listener, waiting glow
+- `src/ui/panels/combat-timeline-bar.tsx` — Timeline display + waiting icons
+
+---
+
+#### Phase 4: Target Selection — Click-to-Target Enemies
+In manual mode, players click enemy entities to lock target.
+
+**Component**: `combat-target-selector.tsx` (new)
+- R3F raycasting against enemy hitboxes
+- Sets `manualTargetId` on ready ally
+- Fallback to auto-targeting if manual target dies
+- Visual feedback: Enemy outline/highlight (polish pending)
+
+**Files Modified**:
+- `src/scene/combat/combat-target-selector.tsx` — **NEW**
+
+---
+
+#### Phase 5: Integration & State Sync
+Ensures manual mode state persists and syncs across engine/UI.
+
+**State Persistence**:
+- `combatMode` saved in mission — loaded from last session
+- Players don't need to re-toggle on reload
+
+**Engine Sync** (`combat-fight-controller.tsx`):
+```typescript
+useEffect(() => {
+  engineRef.current?.setManualMode(combatMode === 'manual');
+}, [combatMode]);
+```
+Changes apply on next engine tick.
+
+---
+
+#### Phase 6: Manual Mode ATB Pause Fix (Hotfix)
+Critical fix ensuring manual mode works correctly with unified ATB timeline.
+
+**Bug**: Manual mode allowed enemies to attack while player was selecting an action, breaking turn fairness.
+
+**Solution**:
+- **New Field**: `CombatEngine.pausedForAllyTurn` — Engine freeze flag
+- **Pause Logic**: When ally turn fires in manual mode, engine stops entirely (enemies don't tick)
+- **Resume Trigger**: Player picks action (Q key or skill) → engine resumes
+- **Timeline Sync**: All entities (allies + enemies) share ONE ATB timeline even in manual mode
+- **Active Turn Indicator**: `activeAllyTurnId` in Zustand store syncs UI
+- **Timeline Bar**: Gold pulsing outline on active-turn ally
+- **Skill Hotbar**: "YOUR TURN" badge + dims non-active ally slots
+- **Edge Case (EC-3)**: Pause clears when manual mode toggled off mid-freeze
+
+**Files Modified**:
+- `src/game/systems/combat-types.ts` — `pausedForAllyTurn` field
+- `src/game/systems/combat-engine.ts` — Freeze logic in `tick()`
+- `src/game/state/combat-arena-slice.ts` — `activeAllyTurnId` state
+- `src/scene/combat-fight-controller.tsx` — Mode toggle → pause sync
+- `src/ui/panels/combat-timeline-bar.tsx` — Gold pulsing outline styling
+- `src/ui/panels/combat-skill-hotbar.tsx` — "YOUR TURN" badge, slot dimming
+
+**Test Coverage**: 5 new tests in `tests/combat-engine-manual-atb.test.ts`
+- Pause on ally turn ready in manual mode
+- Resume on Q key / skill input
+- Enemies don't advance during pause
+- Toggle manual mode clears pause
+- Timeline stays unified
+
+---
+
+### Backward Compatibility
+- `combatMode` defaults to `null` in old saves (treats as `'auto'`)
+- No save migration required (field added with optional chaining)
+- Formation positions preserved for existing combat code
+- Timeline bar non-blocking (hides during non-combat phases)
+- pausedForAllyTurn resets on engine reset
+
+### Performance Notes
+- Timeline sort O(n log n), memoized, runs at Zustand 5Hz sync
+- Manual queuing: O(n) single pass to find waiting allies
+- Pause check: O(1) boolean flag in tick loop
+- Position lerping: GPU-side (AnimationStateBuffer, no JS overhead)
+- No new draw calls or complex raycasting per-frame
 
 ---
 

@@ -66,11 +66,17 @@ export function CombatFightController({
   const formation = useGameStore(s => s.formation);
   const arenaMissionId = useGameStore(s => s.arenaMissionId);
   const speedMultiplier = useGameStore(s => s.speedMultiplier);
+  const combatMode = useGameStore(s =>
+    s.activeMissions.find(m => m.missionId === arenaMissionId)?.combatMode ?? 'auto',
+  );
   const syncArenaState = useGameStore(s => s.syncArenaState);
   const syncWaveState = useGameStore(s => s.syncWaveState);
+  const setActiveAllyTurn = useGameStore(s => s.setActiveAllyTurn);
   const endCombat = useGameStore(s => s.endCombat);
   const founder = useGameStore(s => s.founder);
   const roster = useGameStore(s => s.roster);
+  const inventory = useGameStore(s => s.inventory);
+  const removeItem = useGameStore(s => s.removeItem);
 
   // Initialize engine when fighting starts
   useEffect(() => {
@@ -112,10 +118,13 @@ export function CombatFightController({
     }
     const allEnemyTemplates = [...allEnemyIds].map(id => ENEMIES[id]).filter(Boolean);
 
-    // Initialize engine
+    // Initialize engine — engine distributes syringes from inventory internally
     const engine = new CombatEngine();
-    engine.init(members, formation, enemyTemplates, firstWave.hpMultiplier ?? 1);
+    engine.init(members, formation, enemyTemplates, firstWave.hpMultiplier ?? 1, inventory);
+    // Deduct syringes that were loaded into combat
+    if (engine.totalSyringesLoaded > 0) removeItem('HEALING_SYRINGE', engine.totalSyringesLoaded);
     engine.onWaveCheck = () => waveManagerRef.current?.hasNext() ?? false;
+    engine.setManualMode(combatMode === 'manual');
     engineRef.current = engine;
 
     syncWaveState(0, waveManager.totalWaves());
@@ -139,8 +148,9 @@ export function CombatFightController({
         registry: result.registry,
       };
 
-      // Initial sync so entities appear immediately
-      bridge.syncFromEngine(engine);
+      // Initial UI snapshot — don't syncFromEngine here so the buffer
+      // retains the 'idle' state set by addEntity(), giving characters
+      // their proper IDLE starting pose before the first frame renders.
       const snapshots = bridge.buildUISnapshots(engine);
       syncArenaState(snapshots, 0, []);
 
@@ -153,6 +163,11 @@ export function CombatFightController({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [arenaPhase]);
 
+  // Sync combatMode changes to running engine
+  useEffect(() => {
+    engineRef.current?.setManualMode(combatMode === 'manual');
+  }, [combatMode]);
+
   // Listen for skill activation events from hotbar
   useEffect(() => {
     const handler = (e: Event) => {
@@ -161,6 +176,26 @@ export function CombatFightController({
     };
     window.addEventListener('combat-skill', handler);
     return () => window.removeEventListener('combat-skill', handler);
+  }, []);
+
+  // Listen for manual basic attack dispatch
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const memberId = (e as CustomEvent).detail;
+      engineRef.current?.queueAttack(memberId);
+    };
+    window.addEventListener('combat-attack', handler);
+    return () => window.removeEventListener('combat-attack', handler);
+  }, []);
+
+  // Listen for manual target selection
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { allyId, enemyId } = (e as CustomEvent).detail;
+      engineRef.current?.setManualTarget(allyId, enemyId);
+    };
+    window.addEventListener('combat-target', handler);
+    return () => window.removeEventListener('combat-target', handler);
   }, []);
 
   // Update damage pool ref when it changes
@@ -218,6 +253,9 @@ export function CombatFightController({
 
     const dtMs = Math.min(delta * 1000, MAX_FRAME_DT_MS) * speedMultiplier;
     const events = engine.tick(dtMs);
+
+    // Sync active ally turn to store each frame (cheap string or null)
+    setActiveAllyTurn(engine.getPausedForAllyTurn());
 
     // Log combat events
     for (const e of events) {
@@ -310,5 +348,11 @@ function buildLegacySnapshots(engine: CombatEngine) {
     gender: e.gender,
     spriteId: e.spriteId,
     flying: e.flying,
+    nextAttackAt: e.nextAttackAt,
+    attackIntervalMs: e.attackIntervalMs,
+    isBoss: e.isBoss,
+    attackMoveState: e.attackMoveState,
+    waitingForInput: e.waitingForInput,
+    manualTargetId: e.manualTargetId,
   }));
 }

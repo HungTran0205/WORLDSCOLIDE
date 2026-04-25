@@ -95,6 +95,9 @@ export function useGameTickLoop() {
       }
     }
 
+    // Tick alchemy craft queues — decrement timers, produce completed items
+    store.tickAlchemyQueues();
+
     // Recover injured members whose timer expired
     processInjuryRecovery(store, now);
 
@@ -122,7 +125,9 @@ export function useGameTickLoop() {
       if (gameDays > 0) {
         const allMembers = store.founder ? [store.founder, ...store.roster] : store.roster;
         const dailyUpkeep = calcTotalUpkeep(allMembers);
-        const results = processFacilityProduction(store.facilities, allMembers, gameDays, dailyUpkeep);
+        const results = processFacilityProduction(
+          store.facilities, allMembers, gameDays, dailyUpkeep, store.inventory.items,
+        );
 
         // Apply EXP gains
         for (const result of results) {
@@ -131,10 +136,24 @@ export function useGameTickLoop() {
           }
         }
 
-        // Apply item gains
+        // Apply item gains and consumed items
         for (const result of results) {
           for (const [itemId, qty] of Object.entries(result.itemGains)) {
             if (qty && qty > 0) store.addItem(itemId as Parameters<typeof store.addItem>[0], qty);
+          }
+          for (const [itemId, qty] of Object.entries(result.itemConsumed)) {
+            if (qty && qty > 0) store.removeItem(itemId as Parameters<typeof store.addItem>[0], qty);
+          }
+          // Apply alchemy XP gains
+          if (result.alchemyXpGains) {
+            store.applyAlchemyProduction({
+              syringesProduced: (result.itemGains.HEALING_SYRINGE ?? 0),
+              gelConsumed: (result.itemConsumed.SLIME_GEL ?? 0),
+              acXpGains: Object.entries(result.alchemyXpGains).map(([memberId, g]) => ({
+                memberId, xpGained: 0, newXp: g.newXp, newLevel: g.newLevel, leveledUp: false,
+              })),
+              blockedMemberIds: [],
+            });
           }
         }
 

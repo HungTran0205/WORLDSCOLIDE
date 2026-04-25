@@ -9,22 +9,39 @@
 ##### 1.1.1.1 Các chỉ số cơ bản
 
 - Capacity room: giới hạn lượng gỗ chứa trong phòng trước khi cần thu hoạch (ví dụ 1000 / 2000 / 4000)
-- Adventure upgrade cost: khi đi adventure có thể farm ra currency rồi dùng currency để nâng cấp phòng khai thác gỗ mở rộng limit chứa gỗ
+- **Upgrade System:** 5-tier exponential scaling system
+- **Base Production:** 10 wood/min per member
+- **Upgrade Framework:** Each tier multiplies production by 1.5x, adds +1 assignable member slot
+- **Cost Scaling:** Exponential (doubles each time), starting at 1,000 gold for Tier 1
+- **Member Impact:** Production rate = base_rate × (1 + sum(efficiency_bonus per member)), where efficiency_bonus = 0.25 × (0.8)^(member_index - 1) (diminishing returns)
 
-##### 1.1.1.2 Các chỉ số khi nhân vật được assign vào room
+##### 1.1.1.2 Wood Extraction Upgrade Table
 
-- Tốc độ chặt gỗ: số đơn vị gỗ / giây hoặc chu kỳ (ví dụ 5s / 10 gỗ)
+| Tier | Production Multiplier | Assignable Slots | Cost (Gold) | Cumulative Effect | Notes |
+|------|----------------------|------------------|-------------|-------------------|-------|
+| Base | 1.0x (10 wood/min/member) | 3 | - | Baseline | Basic harvesting |
+| Tier 1 | 1.5x | +1 (4 total) | 1,000 | 15 wood/min/member | Improved tools |
+| Tier 2 | 2.25x | +1 (5 total) | 2,000 | 22.5 wood/min/member | Better techniques |
+| Tier 3 | 3.375x | +1 (6 total) | 4,000 | 33.75 wood/min/member | Enchanted axes |
+| Tier 4 | 5.0625x | +1 (7 total) | 8,000 | 50.625 wood/min/member | Rare materials |
+| Tier 5 | 7.59375x | +1 (8 total) | 16,000 | 75.9375 wood/min/member | Legendary efficiency |
+
+**Member Example (Tier 5, 8 members):** Base 75.94 wood/min → With diminishing returns: ~1.61x total → ~122 wood/min effective.
+
+##### 1.1.1.3 Các chỉ số khi nhân vật được assign vào room
+
+- Tốc độ chặt gỗ: Base 10 wood/min per member (scales with upgrades above)
 - Durability / tool break chance: tỉ lệ dụng cụ hỏng mỗi lần khai thác (ví dụ 5% base, giảm khi nâng cấp tool)
 - Double harvest chance: tỉ lệ nhận gỗ x2 / bonus yield (ví dụ 10% base, tăng khi nâng cấp hoặc buff)
 - Enchanted wood chance: tỉ lệ thu được gỗ enchant hiếm với bonus đặc biệt (ví dụ 2% base)
   - Gỗ enchant có thể cho bonus stat dựa trên STR, DEX, AGI, INT, END, LUK, CHA
   - Bonus stat ngẫu nhiên +1 đến +5 cho mỗi chỉ số phù hợp với item hoặc nhân vật
 
-##### 1.1.1.3 Các chỉ số khi có furniture
+##### 1.1.1.4 Các chỉ số khi có furniture
 
 - Bonus modifiers: tăng thêm yield khi room level cao, khi có nhân sự phù hợp, hoặc khi dùng boost item
 
-##### 1.1.1.4 Các cơ chế khác
+##### 1.1.1.5 Các cơ chế khác
 
 - Auto-collect trigger: khi phòng đầy đến limit, tự chuyển gỗ vào kho hoặc giữ để đợi thu hoạch
   - Nếu còn slot inventory: tự nạp gỗ vào kho / nhân vật khi offline
@@ -36,7 +53,27 @@
 ##### 1.1.2.1 Các chỉ số cơ bản
 
 - Capacity room: giới hạn lượng đá chứa trong phòng trước khi cần thu hoạch (ví dụ 100 / 200 / 400)
-- Upgrade tier effect: mỗi cấp mỏ đá mở thêm cơ hội rớt nguyên liệu hiếm khác nhau (ví dụ từ Stone -> Iron Ore -> Crystal -> Rare Ore)
+- **Upgrade System:** 5-tier exponential scaling system
+- **Base Production:** 8 stone/min per member
+- **Upgrade Framework:** Each tier multiplies production by 1.5x, adds +1 assignable member slot
+- **Cost Scaling:** Exponential (doubles each time), starting at 1,000 gold for Tier 1
+- **Ore Drop Scaling:** Upgrades increase rare ore drop rates (e.g., Tier 5: Iron 30%, Crystal 25%, Rare 20%)
+
+##### 1.1.2.2 Stone Mining Upgrade Table
+
+| Tier | Production Multiplier | Assignable Slots | Cost (Gold) | Cumulative Effect | Notes |
+|------|----------------------|------------------|-------------|-------------------|-------|
+| Base | 1.0x (8 stone/min/member) | 3 | - | Baseline | Basic mining |
+| Tier 1 | 1.5x | +1 (4 total) | 1,000 | 12 stone/min/member | Better pickaxes |
+| Tier 2 | 2.25x | +1 (5 total) | 2,000 | 18 stone/min/member | Deeper shafts |
+| Tier 3 | 3.375x | +1 (6 total) | 4,000 | 27 stone/min/member | Enchanted tools |
+| Tier 4 | 5.0625x | +1 (7 total) | 8,000 | 40.5 stone/min/member | Rare minerals |
+| Tier 5 | 7.59375x | +1 (8 total) | 16,000 | 60.75 stone/min/member | Legendary veins |
+
+**Ore Drop Scaling:** Upgrades increase rare ore drop rates (e.g., Tier 5: Iron 30%, Crystal 25%, Rare 20%).
+
+##### 1.1.2.3 Upgrade tier effect: mỗi cấp mỏ đá mở thêm cơ hội rớt nguyên liệu hiếm khác nhau (ví dụ từ Stone -> Iron Ore -> Crystal -> Rare Ore)
+
 - Rare material drop chance: khi cấp mỏ đá tăng từ 1 lên 10, tỉ lệ rớt Stone giảm và tỉ lệ rớt các loại khoáng hiếm tăng.
   - Level 1: Stone 100%, Iron Ore 0%, Crystal 0%, Rare Ore 0%
   - Level 2: Stone 95%, Iron Ore 3%, Crystal 2%, Rare Ore 0%
@@ -48,12 +85,11 @@
   - Bonus stat có thể dựa trên STR, DEX, AGI, INT, END, LUK, CHA
   - Ví dụ bonus: +1~+5 STR, +1~+5 DEX, +1~+5 AGI, +1~+5 INT, +1~+5 END, +1~+5 LUK, +1~+5 CHA
 
-##### 1.1.2.2 Các chỉ số khi nhân vật được assign vào room
+##### 1.1.2.4 Các chỉ số khi nhân vật được assign vào room
 
-- Tốc độ khai thác: số đơn vị đá / giây hoặc chu kỳ (ví dụ 5s / 8 đá)
+- Tốc độ khai thác: Base 8 stone/min per member (scales with upgrades above)
 - Double harvest chance: tỉ lệ nhận đá x2 / bonus yield (ví dụ 10% base, tăng khi nâng cấp hoặc buff)
 - Bonus modifiers: tăng thêm yield khi room level cao, khi có nhân sự phù hợp, hoặc khi dùng boost item
-- Adventure upgrade cost: khi đi adventure có thể dùng currency để nâng cấp mỏ đá nhanh hơn, tăng tốc độ / tỉ lệ rơi rare và mở rộng limit chứa đá
 - Auto-collect trigger: offline, nếu còn slot inventory thì tự chuyển đá vào kho; nếu đầy slot inventory thì giữ đá tại phòng hoặc backlog cho lần thu hoạch tiếp theo
 - Risk/reward động lực: tăng tốc độ và tỉ lệ loot hiếm đổi bằng chi phí bảo trì hoặc tool durability
 
@@ -62,7 +98,27 @@
 ##### 1.1.3.1 Các chỉ số cơ bản
 
 - Capacity room: giới hạn lượng magic item chứa trong phòng trước khi cần thu hoạch (ví dụ 50 / 100 / 200)
-- Player choice: người chơi phải chọn trước loại magic item muốn thu thập, ví dụ `Buff Spell Fragment`, `Debuff Spell Fragment`, hoặc `Healing Potion Ingredient`
+- **Upgrade System:** 5-tier exponential scaling system
+- **Base Production:** 6 magic items/min per member
+- **Upgrade Framework:** Each tier multiplies production by 1.5x, adds +1 assignable member slot
+- **Cost Scaling:** Exponential (doubles each time), starting at 1,000 gold for Tier 1
+- **Item Tier Scaling:** Upgrades increase rare item drop rates (e.g., Tier 5: Spell Fragment 35%, Potion Ingredient 30%, Enchanted Essence 25%)
+
+##### 1.1.3.2 Magic Extraction Upgrade Table
+
+| Tier | Production Multiplier | Assignable Slots | Cost (Gold) | Cumulative Effect | Notes |
+|------|----------------------|------------------|-------------|-------------------|-------|
+| Base | 1.0x (6 items/min/member) | 3 | - | Baseline | Basic extraction |
+| Tier 1 | 1.5x | +1 (4 total) | 1,000 | 9 items/min/member | Better catalysts |
+| Tier 2 | 2.25x | +1 (5 total) | 2,000 | 13.5 items/min/member | Enhanced rituals |
+| Tier 3 | 3.375x | +1 (6 total) | 4,000 | 20.25 items/min/member | Enchanted chambers |
+| Tier 4 | 5.0625x | +1 (7 total) | 8,000 | 30.375 items/min/member | Rare essences |
+| Tier 5 | 7.59375x | +1 (8 total) | 16,000 | 45.5625 items/min/member | Legendary magic |
+
+**Item Tier Scaling:** Upgrades increase rare item drop rates (e.g., Tier 5: Spell Fragment 35%, Potion Ingredient 30%, Enchanted Essence 25%).
+
+##### 1.1.3.3 Player choice: người chơi phải chọn trước loại magic item muốn thu thập, ví dụ `Buff Spell Fragment`, `Debuff Spell Fragment`, hoặc `Healing Potion Ingredient`
+
 - Magic tier effect: mỗi cấp phòng không mở thêm loại item mới mà cải thiện chỉ số của loại item đã chọn
   - Các buff / debuff / potion chỉ tồn tại trong 1 map duy nhất
 - Drop profile theo cấp phép thuật:
@@ -80,72 +136,141 @@
   - Debuff Spell: tăng duration, debuff %, hoặc negative effect strength
   - Healing Potion: tăng HP amount hoặc regen amount
 
-##### 1.1.3.2 Các chỉ số khi nhân vật được assign vào room
+##### 1.1.3.4 Các chỉ số khi nhân vật được assign vào room
 
-- Tốc độ khai thác phép: số đơn vị item / giây hoặc chu kỳ (ví dụ 6s / 6 items)
+- Tốc độ khai thác phép: Base 6 magic items/min per member (scales with upgrades above)
 - Double harvest chance: tỉ lệ nhận item x2 / bonus yield (ví dụ 8% base, tăng khi nâng cấp hoặc buff)
 - Bonus modifiers: tăng thêm yield khi room level cao, khi có nhân sự phù hợp, hoặc khi dùng spell catalyst
-- Adventure upgrade cost: khi đi adventure có thể dùng currency để nâng cấp phòng phép nhanh hơn, tăng tốc độ / tỉ lệ rơi rare và mở rộng limit chứa item
 - Auto-collect trigger: offline, nếu còn slot inventory thì tự chuyển magic item vào kho; nếu đầy slot inventory thì giữ item tại phòng hoặc backlog cho lần thu hoạch tiếp theo
 - Risk/reward động lực: tăng tốc độ và tỉ lệ loot hiếm đổi bằng chi phí reagent / breakdown chance
 
-#### 1.1.4 Chi tiết phòng chế tạo: Vũ khí
+#### 1.1.4 Chi tiết Workshop: Chế tạo Vũ khí, Giáp, và Đúc Quặng
 
-##### 1.1.4.1 Các chỉ số cơ bản
+##### 1.1.4.1 Tổng quan Workshop
+
+Workshop là phòng chế tạo thống nhất, kết hợp chức năng đúc quặng, chế tạo vũ khí, chế tạo giáp, sửa chữa, và tháo rời. Người chơi chỉ có thể chọn 1 chế độ hoạt động tại một thời điểm: Đúc Quặng, Chế tạo Vũ khí, hoặc Chế tạo Giáp. Các chế độ khác (sửa chữa, tháo rời) là instant actions không chiếm slot chế độ.
+
+**Upgrade System:** Tier unlock system with penalties for higher rarity items.
+
+##### 1.1.4.2 Workshop Upgrade Table
+
+| Tier | Unlocks | Material Cost Multiplier | Success Rate Penalty | Notes |
+|------|---------|------------------------|----------------------|-------|
+| Base | Tier 1 Weapons/Armor | 1.0x | 95% (common) | Baseline crafting |
+| Tier 1 | Tier 2 Weapons/Armor | 1.5x | -10% (85% for rare) | Increased durability |
+| Tier 2 | Tier 3 Weapons/Armor | 2.25x | -20% (75% for epic) | Enchanted stats |
+| Tier 3 | Tier 4 Weapons/Armor | 3.375x | -30% (65% for legendary) | Rare materials required |
+| Tier 4 | Tier 5 Weapons/Armor | 5.0625x | -40% (55% for mythic) | Boss-tier quality |
+
+**Crafting Time:** Scales with tier (5-15 min base, +50% per tier).
+
+##### 1.1.4.3 Chế độ Đúc Quặng (Ore Smelting)
+
+- **Mục đích:** Chuyển đổi quặng thô thành quặng tinh luyện để dùng cho chế tạo.
+- **Input:** Quặng thô (Stone, Iron Ore, Crystal, Rare Ore), nhiên liệu (Wood hoặc Essence).
+- **Output:** Quặng tinh luyện với tỉ lệ thành công cao (95% base), thất bại tiêu tốn nhiên liệu nhưng giữ nguyên quặng.
+- **Thời gian:** Chu kỳ 10-30 giây tùy level workshop.
+- **Bonus:** Double smelt chance (10% base), Enchanted Ore chance (2% base) cho bonus stat +1~+5.
+
+##### 1.1.4.4 Chế độ Chế tạo Vũ khí / Giáp (Crafting)
+
+- **Hybrid System Recommendation:** Kết hợp time-based queue cho guaranteed progress với optional success rate boosts cho instant attempts.
+- **Core Mechanic:** Queue-based crafting đảm bảo thành công sau thời gian (5-15 phút tùy rarity), phù hợp idle gameplay. Offline completion tích lũy items.
+- **Optional Instant Attempt:** Người chơi có thể "rush" craft với success rate (70-90% cho rare, 50-70% cho epic, 30-50% cho legendary). Thất bại tiêu tốn materials nhưng không mất time. Boost success rate bằng catalysts (+10~+25% per catalyst).
+- **Input:** Quặng tinh luyện, Wood/Gỗ, Recipe, optional catalysts.
+- **Output:** Vũ khí/Giáp với rarity và stats. Enchanted items với bonus stat +1~+5.
+- **Double Product Chance:** 5% base, tăng with workshop level.
+- **Resource Saving Chance:** 10% base, giảm tiêu hao materials.
+
+##### 1.1.4.5 Chức năng Sửa chữa (Repair)
+
+- **Hybrid System:** Kết hợp time-based queue cho guaranteed repair với optional instant attempt success rate.
+- **Core Mechanic:** Queue repair đảm bảo phục hồi durability sau thời gian (1-5 phút tùy damage level), phù hợp idle gameplay.
+- **Optional Instant Attempt:** "Rush" repair với success rate (80-95% base, giảm nếu damage nặng). Thất bại giữ nguyên durability, tiêu tốn materials. Boost success rate bằng catalysts (+10~+25%).
+- **Cost:** Tùy % durability còn lại, dùng quặng và wood.
+- **Output:** Item phục hồi full durability nếu thành công.
+
+##### 1.1.4.6 Chức năng Tháo rời (Dismantle)
+
+- **Instant Action:** Phá hủy item để lấy lại materials (70-90% recovery rate).
+- **Output:** Quặng và wood từ item, enchanted items giữ bonus nhưng recovery thấp hơn.
+
+##### 1.1.4.7 Các chỉ số cơ bản
+
+- Capacity: Giới hạn queue slots (3-10 tùy level).
+- Upgrade: Tăng tốc độ, success rates, double chances, capacity.
+- Auto-collect: Items hoàn thành tự chuyển vào inventory nếu có slot.
+
+#### 1.1.5 Chi tiết phòng chế tạo: Phép thuật và máu
+
+##### 1.1.5.1 Tổng quan Alchemy System
+
+Alchemy là hệ thống chế tạo potion thành syringes (ống tiêm - injectable consumables) để tăng hiệu quả và immersion. Recipes tự mở khi nâng level alchemy. Cơ chế combine random nguyên liệu để tạo ra các loại buff/debuff/healing đã define.
+
+**Upgrade System:** Tier unlock system with penalties for higher rarity items.
+
+##### 1.1.5.2 Alchemy Upgrade Table
+
+| Tier | Unlocks | Material Cost Multiplier | Success Rate Penalty | Notes |
+|------|---------|------------------------|----------------------|-------|
+| Base | Basic Syringes | 1.0x | 90-95% | Healing/Buff/Debuff |
+| Tier 1 | Advanced Syringes | 1.5x | -10% (80-85%) | Stronger effects |
+| Tier 2 | Rare Syringes | 2.25x | -20% (70-75%) | Multi-target |
+| Tier 3 | Epic Syringes | 3.375x | -30% (60-65%) | Permanent buffs |
+| Tier 4 | Legendary Syringes | 5.0625x | -40% (50-55%) | Ultimate effects |
+
+**Crafting Time:** Fixed 5-10 min, but random combination complexity increases.
+
+##### 1.1.5.3 Cơ chế Unlocking và Slots
+
+- **Level Progression:** Mỗi level alchemy mở thêm slots combine.
+  - Level 1: 1 slot (basic potions).
+  - Level 3: 3 slots (vd: 3 Slime Gel → Super Healing Syringe).
+  - Max Level: 5 slots (random combine đa dạng).
+- **Syringe Benefits:** Injectable consumables, hiệu quả cao hơn potion (vd: healing syringe hồi 150% HP thay vì 100%, hoặc instant inject).
+
+##### 1.1.5.3 Random Combination Mechanics
+
+- **Base Magic Items:** 8 loại (Etherbloom Herb, Mist Essence, Ancient Shard, Mutation Gel, Void Dust, Radiant Fragment, Fogweed, Etheric Slime) với lore ties to Ether, Mist, ancient civilizations, mutations.
+- **Mapping to Enemies/Bosses:**
+  - Slimes: Mutation Gel, Etheric Slime (biological ooze from amorphous creatures).
+  - Mutated Creatures: Radiant Fragment, Mutation Gel (radiation and transmutation from experiments).
+  - Ether Beings: Etherbloom Herb, Etheric Slime, Void Dust (Ether-infused and void-related).
+  - Mist Entities: Mist Essence, Fogweed (Mist vapor and fog-grown herbs).
+- **Combinatorics Calculation:** Với 8 items, max 5 slots, số combinations ≈ 8^5 = 32,768 (order matters, duplicates allowed). Map thành 22 potion types (10 buffs, 9 debuffs, 3 healing) qua random generation, với một số combos tạo same type để balance.
+- **Random Recipe Mapping:** Dưới đây là mapping mẫu cho 22 types (10 buffs, 9 debuffs, 3 healing). Mỗi type có 1-3 combos ví dụ; trong game, random roll dựa trên items selected để tạo variety.
+
+  - **Buff Damage %:** Etherbloom Herb + Radiant Fragment + Void Dust (high chance); Mist Essence + Ancient Shard.
+  - **Buff Defend %:** Etheric Slime + Mutation Gel + Fogweed; Ancient Shard + Void Dust.
+  - **Buff Spell Damage %:** Mist Essence + Etherbloom Herb + Radiant Fragment; Void Dust + Fogweed.
+  - **Buff Resist Spell:** Etheric Slime + Ancient Shard + Mutation Gel; Radiant Fragment + Mist Essence.
+  - **CC Immunity 5s:** Void Dust + Etherbloom Herb + Fogweed; Mutation Gel + Ancient Shard.
+  - **Shield:** Etheric Slime + Radiant Fragment + Void Dust; Fogweed + Mist Essence.
+  - **Buff Ranged Damage Resist:** Ancient Shard + Etherbloom Herb + Mutation Gel; Radiant Fragment + Fogweed.
+  - **Attack % Buff có Stun:** Mist Essence + Void Dust + Etheric Slime; Ancient Shard + Radiant Fragment.
+  - **Summon (TBC):** Etherbloom Herb + Fogweed + Mutation Gel; Void Dust + Mist Essence.
+  - **Giảm Cooldown:** Radiant Fragment + Etheric Slime + Ancient Shard; Fogweed + Void Dust.
+
+  - **Reduce Damage:** Mutation Gel + Void Dust + Fogweed; Etheric Slime + Radiant Fragment.
+  - **Reduce Defense:** Ancient Shard + Mist Essence + Mutation Gel; Void Dust + Etherbloom Herb.
+  - **Silence:** Fogweed + Etheric Slime + Radiant Fragment; Mist Essence + Ancient Shard.
+  - **Reduce Healing %:** Void Dust + Mutation Gel + Etherbloom Herb; Fogweed + Radiant Fragment.
+  - **Slow:** Etheric Slime + Ancient Shard + Mist Essence; Mutation Gel + Void Dust.
+  - **Reduce Attack Speed:** Radiant Fragment + Fogweed + Etherbloom Herb; Ancient Shard + Etheric Slime.
+  - **Increase Miss Chance:** Mist Essence + Void Dust + Mutation Gel; Fogweed + Ancient Shard.
+  - **Hex:** Etherbloom Herb + Radiant Fragment + Fogweed; Void Dust + Etheric Slime.
+  - **Immobilize:** Mutation Gel + Mist Essence + Ancient Shard; Radiant Fragment + Void Dust.
+
+  - **Instant Heal:** Etherbloom Herb + Etheric Slime + Radiant Fragment; Mist Essence + Mutation Gel.
+  - **Heal-over-Time:** Fogweed + Void Dust + Ancient Shard; Etheric Slime + Radiant Fragment.
+  - **Regen Buff:** Mutation Gel + Etherbloom Herb + Mist Essence; Void Dust + Fogweed.
+
+##### 1.1.5.4 Các chỉ số cơ bản
 
 - Chỉ số có thể không tiêu hao nguyên liệu (`resource saving chance`)
 - Chỉ số có tỉ lệ tạo ra 2 sản phầm cùng lúc (`double product chance`)
 
-###### 1.1.4.2 Input
-
-- Người chơi chọn
-  - Loại quặng (Define later)
-  - Gỗ (Define later)
-  - Recipe
-  - Improve success rate tăng +10~+25% success rate
-    - Normal: 90-95%
-    - Rare: 75-85%
-    - Epic: 50-70%
-    - Legendary: 30-50%
-
-###### 1.1.4.3 Output
-
-- Rare weapon có success rate thấp hơn và yêu cầu công thức + nguyên liệu hiếm hơn
-- Dùng quặng enchant để tạo ra weapon enchant với bonus stat +1~+5 lên STR / DEX / AGI / INT / END / LUK / CHA
-
-#### 1.1.5 Chi tiết phòng chế tạo: Giáp
-
-##### 1.1.5.1 Các chỉ số cơ bản
-
-- Chỉ số có thể không tiêu hao nguyên liệu (`resource saving chance`)
-- Chỉ số có tỉ lệ tạo ra 2 sản phầm cùng lúc (`double product chance`)
-
-###### 1.1.5.2 Input
-
-- Người chơi chọn
-  - Loại quặng (Define later)
-  - Gỗ (Define later)
-  - Recipe
-  - Improve success rate tăng +10~+25% success rate
-    - Normal: 90-95%
-    - Rare: 75-85%
-    - Epic: 50-70%
-    - Legendary: 30-50%
-
-###### 1.1.5.3 Output
-
-- Rare armor có success rate thấp hơn và yêu cầu công thức + nguyên liệu hiếm hơn
-- Dùng quặng enchant để tạo ra armor enchant với bonus stat +1~+5 lên STR / DEX / AGI / INT / END / LUK / CHA
-  - Tạo enchant mạnh hơn đổi lại success rate thấp hơn ~10-20%
-
-#### 1.1.6 Chi tiết phòng chế tạo: Phép thuật và máu
-
-##### 1.1.6.1 Các chỉ số cơ bản
-
-- Chỉ số có thể không tiêu hao nguyên liệu (`resource saving chance`)
-- Chỉ số có tỉ lệ tạo ra 2 sản phầm cùng lúc (`double product chance`)
-
-###### 1.1.6.2 Input
+###### 1.1.5.5 Input
 
 - Người chơi chọn loại spell mình muốn craft hoặc là portion (Buff, Debuff, Portion)
   - Magic item
@@ -157,7 +282,7 @@
     - Epic: 50-70%
     - Legendary: 30-50%
 
-###### 1.1.6.3 Output
+###### 1.1.5.6 Output
 
 - Rare spell hoặc portion có success rate thấp hơn và yêu cầu công thức + nguyên liệu hiếm hơn
 - Dùng magic item enchant để tạo ra spell hoặc portion enchant với bonus (TBC)
@@ -168,10 +293,9 @@
   - Tăng chance stun / silence / miss
   - Giảm cooldown hoặc giảm charge cost
   - Tăng quality nếu dùng Enchanted Essence
- - Vì buff/debuff/potion chỉ tồn tại trong 1 map, tier càng cao => giá trị mỗi lần dùng càng quan trọng.
+- Vì buff/debuff/potion chỉ tồn tại trong 1 map, tier càng cao => giá trị mỗi lần dùng càng quan trọng.
 
-
-###### 1.1.6.4 Buff
+###### 1.1.5.7 Buff
 
 - Buff nên chia thành lớp và có hiệu ứng rõ:
   - Buff damage % (tăng sát thương thường)
@@ -190,7 +314,7 @@
   - Short duration (5-10s) cho map-limited
   - Có stack hay không
 
-###### 1.1.6.5 Debuff
+###### 1.1.5.8 Debuff
 
 - Các debuff khả thi:
   - Reduce damage (giảm damage đầu ra của kẻ thù)
@@ -208,7 +332,7 @@
   - Short duration (5-10s) cho map-limited
   - Có stack hay không
 
-###### 1.1.6.6 Healing portion
+###### 1.1.5.9 Healing portion
 
 - Instant heal: hồi ngay 1 lượng HP
 - Heal-over-time: hồi theo tick trong vài giây
@@ -286,6 +410,7 @@ Option premium / event:
   - auto-stack tự gom cùng loại
 
 ##### 1.2.1.5 UX & cảnh báo
+
 - Thanh capacity rõ: 34 / 60 slots
 - Khi full:
   - cảnh báo Inventory full
@@ -306,6 +431,22 @@ Option premium / event:
   - storage cost để giữ item lâu hơn
   - overflow penalty nếu full: giảm auto-collect, giữ backlog ở phòng until slot free
   - Nếu không đủ slot, phải lựa chọn sell / salvage / bỏ qua
+
+##### 1.2.1.7 Gear Comparison và Item Details
+
+- **Compare Gear Currently Equipped với Gear trong túi:**
+  - Khi hover hoặc click vào item trong inventory, hiển thị popup so sánh với item đang equip.
+  - Hiển thị stats difference: +5 STR, -2 AGI, etc.
+  - Color coding: xanh cho tốt hơn, đỏ cho kém hơn, vàng cho bằng.
+  - Preview visual của item mới trên nhân vật (sprite change nếu có).
+  - Quick equip button từ popup.
+- **Item Detail, Rarity, Stats hiển thị rõ:**
+  - Tooltip chi tiết khi hover: name, rarity (Common/Rare/Epic/Legendary với màu sắc), stats base + bonuses.
+  - Enchant bonuses: +1~+5 stats, special effects.
+  - Durability bar cho weapons/armor.
+  - Source info: crafted, dropped, bought.
+  - Sell value, dismantle value.
+  - Flavor text hoặc lore snippet cho immersion.
 
 #### 1.2.2 Phòng hồi phục / Infirmary
 
@@ -373,30 +514,12 @@ Option premium / event:
   - hoặc giảm thời gian cooldown / tăng tốc độ refill queue.
 
 -----------------------------------------------------------------------------------------------------
-- Nâng cấp phòng tăng công suất, tốc độ, dung lượng
-- Auto-gather / sản xuất theo chu kỳ để tạo cảm giác idle
-- Mỗi phòng có thể mở rộng bằng tài nguyên hoặc điểm tiến trình
 
-## 2. Tài nguyên và nền kinh tế
 
-- Tài nguyên cơ bản: Wood, Stone, Iron, Crystal, Essence
-- Tài nguyên chế tạo: Metal Ore, Cloth, Leather, Alloy
-- Tài nguyên hiếm: Boss Shard, Token, Rare Material
-- Currency chính: Gold / Coin
-- Currency phụ: Gem / Token / Premium Shard
-- Hệ thống mua bán, bán thừa, đổi tài nguyên
-
-## 3. Chế tạo vũ khí và mảnh giáp
-
-- Công thức chế tạo armor: chỉ 1 mảnh giáp duy nhất, tier cơ bản tới hiếm
-- Weapon slot: 1 slot vũ khí
-- Armor slot: 1 slot giáp
-- Item quality: Normal, Rare, Epic, Legendary
-- Salvage / dismantle để lấy lại nguyên liệu
 
 ## 4. Combat
 
-- Combat auto / semi-auto, dễ tiếp cận cho idle game
+- Combat turn base, dễ tiếp cận cho idle game
 - Kết hợp chỉ số nhân vật + vũ khí + giáp
 - Skill/passive đơn giản nhưng có tác dụng chiến thuật
 - Combat result trả thưởng luôn, có thể xem lại log
@@ -427,27 +550,9 @@ Option premium / event:
 - Reward boss cao hơn: blueprint, shard hiếm, premium token
 - Có thể có boss hàng ngày hoặc boss sự kiện
 
-## 8. Inventory
 
-- Inventory quản lý materials, gear, shard
-- Capacity giới hạn và stack materials
-- UI equip / unequip rõ ràng
-- Compare gear currently equipped với gear trong túi
-- Item detail, rarity, stats hiển thị rõ
 
-## 9. Trade / Market
 
-- Shop NPC bán resource và consumable
-- Bán tài nguyên dư thừa lấy vàng
-- Đổi token / boss shard lấy item hiếm
-- Có thể có market daily / offer thay đổi
-
-## 10. Currency và tiến trình
-
-- Gold dùng nâng cấp phòng, craft, trade
-- Gem / Token dùng mua premium, tăng tốc, mở khóa
-- Điểm tiến trình / EXP dùng mở map, unlock room
-- Hệ thống progress gating rõ ràng giữa các phase
 
 ## 11. Tính năng bổ trợ
 
@@ -482,3 +587,5 @@ Với mỗi dấu cộng tương ứng +1 chỉ số tương ứng
 | **CHA** | Charisma / Uy lực | Lãnh đạo, đàm phán, sức ảnh hưởng |
 | **LCK** | Luck / Vận may | Bạo kích, loot, may mắn toàn diện |
 | **AGI** | Agility / Nhanh nhẹn | Tốc độ, phản xạ, linh hoạt |
+
+-----------------------------------------------------------------------------------------------------

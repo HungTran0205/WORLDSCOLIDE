@@ -28,6 +28,15 @@ export interface ArenaEntitySnapshot {
   spriteId?: string;
   /** Flying enemy — sprite renders elevated above ground */
   flying?: boolean;
+  /** ATB timeline fields */
+  nextAttackAt: number;
+  attackIntervalMs: number;
+  isBoss?: boolean;
+  attackMoveState?: string;
+  /** Manual mode: ally is waiting for player input */
+  waitingForInput?: boolean;
+  /** Manual mode: current manual target id for this ally */
+  manualTargetId?: string | null;
 }
 
 export interface CombatArenaSlice {
@@ -47,6 +56,9 @@ export interface CombatArenaSlice {
   /** Current wave progress for HUD display */
   waveState: { current: number; total: number };
 
+  /** Manual mode: which ally's turn is currently paused (null = auto mode or no pause) */
+  activeAllyTurnId: string | null;
+
   // Actions
   setGameScene: (scene: GameScene) => void;
   enterCombatPrep: (missionId: string) => void;
@@ -56,6 +68,7 @@ export interface CombatArenaSlice {
   syncArenaState: (entities: ArenaEntitySnapshot[], time: number, events: CombatEvent[]) => void;
   syncWaveState: (current: number, total: number) => void;
   setSpeedMultiplier: (speed: number) => void;
+  setActiveAllyTurn: (id: string | null) => void;
   endCombat: (result: CombatResult) => void;
   exitArena: () => void;
 }
@@ -73,6 +86,7 @@ export const createCombatArenaSlice: StateCreator<CombatArenaSlice> = (set) => (
   recentEvents: [],
   arenaResult: null,
   waveState: { current: 0, total: 1 },
+  activeAllyTurnId: null,
 
   setGameScene: (scene) => set({ gameScene: scene }),
 
@@ -112,6 +126,8 @@ export const createCombatArenaSlice: StateCreator<CombatArenaSlice> = (set) => (
 
   setSpeedMultiplier: (speed) => set({ speedMultiplier: speed }),
 
+  setActiveAllyTurn: (id) => set({ activeAllyTurnId: id }),
+
   endCombat: (result) => set({
     arenaPhase: 'result',
     arenaResult: result,
@@ -128,5 +144,6 @@ export const createCombatArenaSlice: StateCreator<CombatArenaSlice> = (set) => (
     recentEvents: [],
     speedMultiplier: 1,
     waveState: { current: 0, total: 1 },
+    activeAllyTurnId: null,
   }),
 });

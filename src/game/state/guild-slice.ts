@@ -1,9 +1,10 @@
 import type { StateCreator } from 'zustand';
-import type { GuildHall, GameSettings, TavernState, Member, FloorTile, PlacedFurniture, GridCell, Rotation, FurnitureType, GuildRank, FacilityType, GuildFacility } from './game-state';
+import type { GuildHall, GameSettings, TavernState, Member, FloorTile, PlacedFurniture, GridCell, Rotation, FurnitureType, GuildRank, FacilityType, GuildFacility, SyringeLoadout, AlchemyCraftJob } from './game-state';
 import type { InventoryState } from './game-state';
 import type { ItemID } from '@/game/data/items';
 import type { FacilityProductionResult, LoggingTickResult } from '@/game/systems/facility-production-system';
 import type { StoneQuarryTickResult } from '@/game/systems/stone-quarry-production-system';
+import type { AlchemyProductionResult } from '@/game/systems/alchemy-production-system';
 import { FACILITY_DEFINITIONS, LOGGING_SITE_CONFIG } from '@/game/data/facility-definitions';
 import { FLOOR_TILE_COST } from '@/game/data/buildings';
 import { getFurnitureDefinition } from '@/game/data/furniture';
@@ -50,8 +51,16 @@ export interface GuildSlice {
   applyLoggingProduction: (result: LoggingTickResult) => void;
   /** Apply per-tick stone quarry production results (MC XP gains) */
   applyStoneQuarryProduction: (result: StoneQuarryTickResult) => void;
+  /** Apply alchemy lab production results (AC XP gains) */
+  applyAlchemyProduction: (result: AlchemyProductionResult) => void;
+  /** Set or clear a member's syringe loadout (auto-use config) */
+  setSyringeLoadout: (memberId: string, loadout: SyringeLoadout | null) => void;
   /** Remove a depleted (or manually removed) logging site — resets to level 0 */
   removeFacility: (type: FacilityType) => void;
+  /** Add a craft job to an alchemy lab queue (ingredients already consumed) */
+  addAlchemyCraftJob: (facilityType: FacilityType, job: AlchemyCraftJob) => void;
+  /** Tick all alchemy craft queues by 1s; adds output items for completed jobs */
+  tickAlchemyQueues: () => void;
   // Ephemeral offline facility report — not persisted in save
   offlineFacilityReport: FacilityProductionResult[] | null;
   offlineElapsedHours: number;
@@ -96,6 +105,7 @@ const DEFAULT_FACILITIES: GuildFacility[] = [
   { type: 'workshop',      level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
   { type: 'logging-site',  level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
   { type: 'stone-quarry',  level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
+  { type: 'alchemy-lab',   level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
 ];
 
 export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
@@ -516,6 +526,7 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
             ? {
                 woodcutting: { level: gain.newLevel, xpAccumulated: gain.newXp },
                 mining: m.craftSkills?.mining ?? { level: 0, xpAccumulated: 0 },
+                alchemy: m.craftSkills?.alchemy ?? { level: 0, xpAccumulated: 0 },
               }
             : m.craftSkills,
         };
@@ -550,9 +561,10 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
         return {
           ...m,
           craftSkills: {
-              woodcutting: m.craftSkills?.woodcutting ?? { level: 0, xpAccumulated: 0 },
-              mining: { level: gain.newLevel, xpAccumulated: gain.newXp },
-            },
+            woodcutting: m.craftSkills?.woodcutting ?? { level: 0, xpAccumulated: 0 },
+            mining: { level: gain.newLevel, xpAccumulated: gain.newXp },
+            alchemy: m.craftSkills?.alchemy ?? { level: 0, xpAccumulated: 0 },
+          },
         };
       };
 
@@ -561,6 +573,79 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
         ...(fullState.founder ? { founder: updateMember(fullState.founder) } : {}),
       } as unknown as Partial<GuildSlice>;
     });
+  },
+
+  applyAlchemyProduction: (result) => {
+    if (result.acXpGains.length === 0) return;
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null };
+
+      const acGainMap = new Map(result.acXpGains.map((g) => [g.memberId, g]));
+
+      const updateMember = (m: Member): Member => {
+        const gain = acGainMap.get(m.id);
+        if (!gain) return m;
+        return {
+          ...m,
+          craftSkills: {
+            woodcutting: m.craftSkills?.woodcutting ?? { level: 0, xpAccumulated: 0 },
+            mining: m.craftSkills?.mining ?? { level: 0, xpAccumulated: 0 },
+            alchemy: { level: gain.newLevel, xpAccumulated: gain.newXp },
+          },
+        };
+      };
+
+      return {
+        roster: fullState.roster.map(updateMember),
+        ...(fullState.founder ? { founder: updateMember(fullState.founder) } : {}),
+      } as unknown as Partial<GuildSlice>;
+    });
+  },
+
+  setSyringeLoadout: (memberId, loadout) => {
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null };
+
+      if (fullState.founder?.id === memberId) {
+        return { founder: { ...fullState.founder, syringeLoadout: loadout } } as unknown as Partial<GuildSlice>;
+      }
+      return {
+        roster: fullState.roster.map((m) =>
+          m.id === memberId ? { ...m, syringeLoadout: loadout } : m,
+        ),
+      } as unknown as Partial<GuildSlice>;
+    });
+  },
+
+  addAlchemyCraftJob: (facilityType, job) => {
+    set((s) => ({
+      facilities: s.facilities.map((f) =>
+        f.type === facilityType
+          ? { ...f, craftQueue: [...(f.craftQueue ?? []), job] }
+          : f,
+      ),
+    }));
+  },
+
+  tickAlchemyQueues: () => {
+    const completed: { itemId: string; qty: number }[] = [];
+    set((s) => ({
+      facilities: s.facilities.map((f) => {
+        if (f.type !== 'alchemy-lab' || !f.craftQueue?.length) return f;
+        const newQueue: AlchemyCraftJob[] = [];
+        for (const job of f.craftQueue) {
+          if (job.remainingSeconds <= 1) {
+            completed.push({ itemId: job.outputItemId, qty: job.outputQuantity });
+          } else {
+            newQueue.push({ ...job, remainingSeconds: job.remainingSeconds - 1 });
+          }
+        }
+        return { ...f, craftQueue: newQueue };
+      }),
+    }));
+    for (const { itemId, qty } of completed) {
+      get().addItem(itemId as ItemID, qty);
+    }
   },
 
   removeFacility: (type) => {

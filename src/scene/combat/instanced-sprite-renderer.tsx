@@ -28,6 +28,27 @@ import { ANIM_STATE } from './animation-state-buffer';
 /** Max instances — 48 entities + buffer */
 const MAX_INSTANCES = 48;
 
+/** Jump arc for melee step-forward attack */
+const ARC_HEIGHT = 4;
+const STEP_DURATION_S = 0.6; // slightly longer so easing is visible
+
+/**
+ * Custom jump arc curve with gravity feel:
+ * - Ascent  (t 0→0.5): ease-out power — bursts up fast, decelerates near peak
+ * - Descent (t 0.5→1): ease-in power  — lingers at peak, then plummets fast
+ * Power 2.8 gives a noticeably flat apex (warrior "hangs" at top for 1-2 frames)
+ */
+function jumpArcCurve(t: number): number {
+  const POWER = 2.8;
+  if (t < 0.5) {
+    const u = t * 2;                          // 0 → 1 on ascent
+    return 1 - Math.pow(1 - u, POWER);       // ease-out: fast up → slow near peak
+  } else {
+    const u = (t - 0.5) * 2;                 // 0 → 1 on descent
+    return 1 - Math.pow(u, POWER);           // ease-in: slow at peak → fast plunge
+  }
+}
+
 // Reusable temporaries to avoid per-frame allocation
 const _pos = new Vector3();
 const _quat = new Quaternion();
@@ -44,6 +65,7 @@ function animStateToAtlasAnim(state: number, isEnemy: boolean): string {
     case ANIM_STATE.hit: return 'walk'; // hit uses walk frame 0
     case ANIM_STATE['battle-idle']: return 'battle-idle';
     case ANIM_STATE.blocking: return 'blocking';
+    case ANIM_STATE.back: return 'back'; // warrior return-jump after attack
     case ANIM_STATE.idle:
     default: return 'walk'; // idle = walk frame 0
   }
@@ -85,6 +107,11 @@ export function InstancedSpriteRenderer({
 
     return () => { cancelled = true; };
   }, [atlasTextures, gl]);
+
+  // Arc jump state — local to renderer, no React state
+  const arcElapsedTimers = useRef(new Float32Array(MAX_INSTANCES));
+  const arcVisualY = useRef(new Float32Array(MAX_INSTANCES));
+  const prevStepForwardFlags = useRef(new Uint8Array(MAX_INSTANCES));
 
   // Create instanced attributes
   const attrs = useMemo(() => createSpriteInstanceAttributes(MAX_INSTANCES), []);
@@ -138,7 +165,26 @@ export function InstancedSpriteRenderer({
       // PlaneGeometry(1,1) is centered → shift up by scaleY/2 to put feet on ground (Y=0).
       const pos = stateBuffer.getCurrentPosition(i);
       const flyingOffset = stateBuffer.isFlying(i) ? 1.2 : 0;
-      _pos.set(pos.x, scale.y * 0.5 + flyingOffset, pos.z);
+
+      // Parabolic arc for melee step-forward
+      const isStepForward = stateBuffer.getIsStepForward(i);
+      if (isStepForward && !prevStepForwardFlags.current[i]) {
+        arcElapsedTimers.current[i] = 0; // reset on entry
+      }
+      prevStepForwardFlags.current[i] = isStepForward ? 1 : 0;
+      let arcTargetY = 0;
+      if (isStepForward) {
+        arcElapsedTimers.current[i] = Math.min(arcElapsedTimers.current[i] + delta, STEP_DURATION_S);
+        const t = arcElapsedTimers.current[i] / STEP_DURATION_S;
+        arcTargetY = ARC_HEIGHT * jumpArcCurve(t);
+        // Use target directly — no lerp blur so the easing curve is felt precisely
+        arcVisualY.current[i] = arcTargetY;
+      } else {
+        // Smooth landing when not in arc (lerp back to 0)
+        arcVisualY.current[i] += (0 - arcVisualY.current[i]) * 0.3;
+      }
+
+      _pos.set(pos.x, scale.y * 0.5 + flyingOffset + arcVisualY.current[i], pos.z);
       const facingRight = stateBuffer.isFacingRight(i);
       const isEnemy = !stateBuffer.isAlly(i);
 

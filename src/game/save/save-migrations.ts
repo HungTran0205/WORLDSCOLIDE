@@ -335,6 +335,42 @@ function migrateV15toV16(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+/** v16→v17: Add alchemy skill to all members; add alchemy-lab facility if absent */
+function migrateV16toV17(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+
+  const DEFAULT_ALCHEMY_SKILL = { level: 0, xpAccumulated: 0 };
+
+  const migrateMember = (m: AnyRecord): AnyRecord => {
+    const skills = (m.craftSkills ?? {}) as AnyRecord;
+    if (skills.alchemy !== undefined) return m;
+    return { ...m, craftSkills: { ...skills, alchemy: DEFAULT_ALCHEMY_SKILL } };
+  };
+
+  const founder = gs.founder ? migrateMember(gs.founder as AnyRecord) : null;
+  const roster = Array.isArray(gs.roster) ? (gs.roster as AnyRecord[]).map(migrateMember) : [];
+
+  const tavern = gs.tavern as AnyRecord | undefined;
+  let migratedTavern = tavern;
+  if (tavern?.availableMercenaries && Array.isArray(tavern.availableMercenaries)) {
+    migratedTavern = {
+      ...tavern,
+      availableMercenaries: (tavern.availableMercenaries as AnyRecord[]).map(migrateMember),
+    };
+  }
+
+  const facilities: AnyRecord[] = Array.isArray(gs.facilities) ? [...gs.facilities] : [];
+  if (!facilities.some((f) => f.type === 'alchemy-lab')) {
+    facilities.push({ type: 'alchemy-lab', level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null });
+  }
+
+  return {
+    ...envelope,
+    version: 17,
+    gameState: { ...gs, founder, roster, tavern: migratedTavern, facilities } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -346,6 +382,7 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   13: migrateV13toV14,
   14: migrateV14toV15,
   15: migrateV15toV16,
+  16: migrateV16toV17,
 };
 
 /**

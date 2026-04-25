@@ -12,6 +12,7 @@ import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
 import { SpriteAnimator } from './sprite-animator';
 import { WoodcuttingAnimator } from './woodcutting-animator';
+import { WorkingAnimator } from './working-animator';
 import { getSpritePath } from './sprite-path-resolver';
 import type { SpriteDirection } from './sprite-path-resolver';
 import type { Member, FacilityType } from '@/game/state/game-state';
@@ -60,22 +61,33 @@ const FACILITY_SPOTS: Record<FacilityType, SpotDef[]> = {
     { offset: [-0.5,  0.8], facing: 'west'  },
     { offset: [ 0.8, -0.2], facing: 'south' },
   ],
+  'alchemy-lab': [
+    { offset: [-1.0,  2.2], facing: 'south' }, // slot 0: at alchemy_workbend (front-left)
+    { offset: [ 2.0, -2.2], facing: 'north' }, // slot 1: at alchemists-curio-cab (back-right)
+    { offset: [-2.0, -2.0], facing: 'west'  }, // slot 2: at alchemy_shelf (back-left wall)
+    { offset: [-2.2,  1.2], facing: 'west'  }, // slot 3: at alchemy_silo (left wall)
+  ],
 };
 
 const FACING_REVERSE: Record<SpriteDirection, SpriteDirection> = {
   north: 'south', south: 'north', east: 'west', west: 'east',
 };
 
-/** Flips direction every ~2.5s to simulate back-and-forth patrol */
+/** Flips direction every ~2.5s to simulate back-and-forth patrol. Disabled for stationary workers. */
 function usePatrolAnimation(
   dirRef: MutableRefObject<SpriteDirection>,
   isMovingRef: MutableRefObject<boolean>,
   facing: SpriteDirection,
+  enabled: boolean,
 ) {
   const timerRef = useRef(0);
   const fwdRef = useRef(true);
 
   useFrame((_, delta) => {
+    if (!enabled) {
+      isMovingRef.current = false;
+      return;
+    }
     timerRef.current += delta;
     if (timerRef.current > 2.5) {
       timerRef.current = 0;
@@ -112,10 +124,14 @@ function FacilityMemberSprite({ member, facilityType, slotIndex, roomCx, roomCz 
   const spots = FACILITY_SPOTS[facilityType] ?? FACILITY_SPOTS['training-yard'];
   const spot = spots[slotIndex] ?? spots[0];
 
+  const isWoodcutting = facilityType === 'logging-site' && slotIndex === 0;
+  const isWorking     = facilityType === 'alchemy-lab';
+
   const dirRef = useRef<SpriteDirection>(spot.facing);
   const isMovingRef = useRef(true);
 
-  usePatrolAnimation(dirRef, isMovingRef, spot.facing);
+  // Stationary workers don't patrol; woodcutting and working use fixed-direction animators
+  usePatrolAnimation(dirRef, isMovingRef, spot.facing, !isWoodcutting && !isWorking);
 
   const civConfig = CIV_CONFIG[member.civilization as Civilization];
   const archetype = member.archetype ?? civConfig?.archetypes[0] ?? 'warrior';
@@ -124,7 +140,6 @@ function FacilityMemberSprite({ member, facilityType, slotIndex, roomCx, roomCz 
 
   const x = roomCx + spot.offset[0];
   const z = roomCz + spot.offset[1];
-  const isWoodcutting = facilityType === 'logging-site' && slotIndex === 0;
 
   return (
     <group position={[x, 1.05, z]}>
@@ -137,6 +152,9 @@ function FacilityMemberSprite({ member, facilityType, slotIndex, roomCx, roomCz 
         <Suspense fallback={null}>
           {isWoodcutting ? (
             <WoodcuttingAnimator basePath={basePath} />
+          ) : isWorking ? (
+            // WorkingAnimator with SpriteAnimator (isMoving=false) as fallback via Suspense
+            <WorkingAnimator basePath={basePath} />
           ) : (
             <SpriteAnimator basePath={basePath} directionRef={dirRef} isMovingRef={isMovingRef} />
           )}
