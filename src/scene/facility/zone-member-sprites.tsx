@@ -5,9 +5,9 @@ import { Billboard, Html } from '@react-three/drei';
 import { useGameStore } from '@/game/state/store';
 import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
-import { SpriteAnimator } from './sprite-animator';
-import { getSpritePath } from './sprite-path-resolver';
-import type { SpriteDirection } from './sprite-path-resolver';
+import { SpriteAnimator } from '../sprites/sprite-animator';
+import { getSpritePath } from '../sprites/sprite-path-resolver';
+import type { SpriteDirection } from '../sprites/sprite-path-resolver';
 import type { Member } from '@/game/state/game-state';
 
 /** 2×2 grid slot positions relative to zone center */

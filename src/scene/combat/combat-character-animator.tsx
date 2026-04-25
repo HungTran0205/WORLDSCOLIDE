@@ -8,11 +8,11 @@ import { useRef, useMemo, useEffect } from 'react';
 import { useLoader, useFrame, useThree } from '@react-three/fiber';
 import { TextureLoader, MeshStandardMaterial, Mesh } from 'three';
 import type { RefObject } from 'react';
-import type { SpriteDirection } from './sprite-path-resolver';
-import { getRunningFramePath, getAttackFramePath } from './sprite-path-resolver';
-import { buildAtlasFromTextures, buildAtlasFromUrls, setAtlasFrame } from './sprite-atlas';
+import type { SpriteDirection } from '../sprites/sprite-path-resolver';
+import { getRunningFramePath, getAttackFramePath } from '../sprites/sprite-path-resolver';
+import { buildAtlasFromTextures, buildAtlasFromUrls, setAtlasFrame } from '../sprites/sprite-atlas';
 import { combatLog } from './combat-logger';
-import type { SpriteAtlas } from './sprite-atlas';
+import type { SpriteAtlas } from '../sprites/sprite-atlas';
 
 const DIRECTIONS: SpriteDirection[] = ['north', 'south', 'east', 'west'];
 const FRAME_COUNT = 8;

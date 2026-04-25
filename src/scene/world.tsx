@@ -1,10 +1,10 @@
 import { Suspense, useEffect, useRef, createContext, useContext, useState, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { useThree, useFrame } from '@react-three/fiber';
-import { GuildHall } from './guild-hall';
+import { GuildHall } from './guild-hall/guild-hall';
 import { MemberLayer } from './member-layer';
 import { CameraController } from './camera-controller';
-import { FacilityRoomsLayer } from './facility-rooms-layer';
+import { FacilityRoomsLayer } from './facility/facility-rooms-layer';
 import { createWebGPURenderer, WebGPUInit } from './webgpu-init';
 import { WorldBloomPost } from './world-bloom-post';
 import { getStoredGraphicsQuality } from '@/game/state/guild-slice';

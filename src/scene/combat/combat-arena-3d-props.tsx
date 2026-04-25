@@ -6,7 +6,7 @@
 import { useMemo } from 'react';
 import { useGLTF, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
-import { TorchFireEffect } from './torch-fire-particles';
+import { TorchFireEffect } from '../vfx/torch-fire-particles';
 import type { Prop3D } from './arena-biome-config';
 
 // Preload all forest GLB assets at module import time (R3F standard pattern)

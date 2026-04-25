@@ -3,10 +3,10 @@
  * Extracted from App to allow hook usage (useGameTickLoop) only when game is active.
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { FACILITY_SLOTS } from '@/game/data/facility-slot-positions';
 import { World } from '@/scene/world';
-import { CombatArenaCanvas } from '@/scene/combat-arena';
+import { CombatArenaCanvas } from '@/scene/combat/combat-arena';
 import { HUD } from '@/ui/hud/hud';
 import { QuestBoard } from '@/ui/panels/quest-board';
 import { GuildRoster } from '@/ui/panels/guild-roster';
@@ -186,6 +186,8 @@ interface GameScreenProps {
 export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   const [activePanel, setActivePanel] = useState<PanelId>(null);
   const [alchemyPanelOpen, setAlchemyPanelOpen] = useState(false);
+  // Tracks whether user explicitly closed the panel while still in the room
+  const alchemyUserClosedRef = useRef(false);
 
   // Detect when camera is settled inside an alchemy lab room
   const cameraTarget = useGameStore((s) => s.cameraTarget);
@@ -199,8 +201,13 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   }), [allFacilities, cameraTarget]);
 
   useEffect(() => {
-    if (alchemyFacility && cameraSettled) setAlchemyPanelOpen(true);
-    else setAlchemyPanelOpen(false);
+    if (alchemyFacility && cameraSettled) {
+      // Only auto-open if user hasn't manually closed it this visit
+      if (!alchemyUserClosedRef.current) setAlchemyPanelOpen(true);
+    } else {
+      setAlchemyPanelOpen(false);
+      alchemyUserClosedRef.current = false; // reset when camera leaves room
+    }
   }, [alchemyFacility, cameraSettled]);
 
   const currentCombatReplay = useGameStore((s) => s.currentCombatReplay);
@@ -279,7 +286,7 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
           {alchemyPanelOpen && alchemyFacility && (
             <AlchemyCraftPanel
               facility={alchemyFacility}
-              onClose={() => setAlchemyPanelOpen(false)}
+              onClose={() => { setAlchemyPanelOpen(false); alchemyUserClosedRef.current = true; }}
             />
           )}
           <BuildModeHint />

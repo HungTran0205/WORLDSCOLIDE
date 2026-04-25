@@ -10,11 +10,11 @@ import { useFrame } from '@react-three/fiber';
 import { useGameStore } from '@/game/state/store';
 import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
-import { SpriteAnimator } from './sprite-animator';
-import { WoodcuttingAnimator } from './woodcutting-animator';
-import { WorkingAnimator } from './working-animator';
-import { getSpritePath } from './sprite-path-resolver';
-import type { SpriteDirection } from './sprite-path-resolver';
+import { SpriteAnimator } from '../sprites/sprite-animator';
+import { WoodcuttingAnimator } from '../sprites/woodcutting-animator';
+import { WorkingAnimator } from '../sprites/working-animator';
+import { getSpritePath } from '../sprites/sprite-path-resolver';
+import type { SpriteDirection } from '../sprites/sprite-path-resolver';
 import type { Member, FacilityType } from '@/game/state/game-state';
 import type { MutableRefObject } from 'react';
 

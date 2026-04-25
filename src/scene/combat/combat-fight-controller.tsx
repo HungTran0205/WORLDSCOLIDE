@@ -18,14 +18,14 @@ import { useArenaDebug } from './combat-arena-debug';
 import { WaveManager, legacyToWaves } from '@/game/systems/combat-wave-manager';
 // sprite-path-resolver used internally by mega-atlas-builder
 import { combatLog, clearCombatLog, downloadCombatLog } from './combat-logger';
-import { CombatStateBridge } from './combat/combat-state-bridge';
-import { preloadCombatAtlases } from './combat/mega-atlas-builder';
-import type { MegaAtlasResult } from './combat/mega-atlas-builder';
-import type { DamageNumberPoolHandle } from './combat/damage-number-pool';
+import { CombatStateBridge } from './combat-state-bridge';
+import { preloadCombatAtlases } from './mega-atlas-builder';
+import type { MegaAtlasResult } from './mega-atlas-builder';
+import type { DamageNumberPoolHandle } from './damage-number-pool';
 import type { CombatSlashPoolHandle } from './combat-slash-pool';
 import type { CombatArrowPoolHandle } from './combat-arrow-pool';
 import type { CanvasTexture } from 'three';
-import type { SpriteRegistry } from './combat/sprite-registry';
+import type { SpriteRegistry } from './sprite-registry';
 
 /** Max dt per frame to prevent massive tick bursts after tab suspend */
 const MAX_FRAME_DT_MS = 200;

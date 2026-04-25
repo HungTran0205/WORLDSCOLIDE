@@ -11,8 +11,8 @@ import { RoomMemberSprites } from './room-member-sprites';
 import { ForestRoomDecor, LoggingSiteZoneCard } from './facility-room-forest-decor';
 import { FacilityRoomFurniture } from './facility-room-furniture';
 import { QuarryRoomDecor, QuarryZoneCard } from './facility-room-quarry-decor';
-import { AlchemyZoneCard } from './facility-room-alchemy-decor';
-import { AlchemyWalls } from './facility-room-alchemy-walls';
+import { AlchemyZoneCard } from '../alchemy/facility-room-alchemy-decor';
+import { AlchemyWalls } from '../alchemy/facility-room-alchemy-walls';
 import type { GuildFacility, FacilityType } from '@/game/state/game-state';
 
 const ROOM_SIZE = 7;

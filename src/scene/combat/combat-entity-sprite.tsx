@@ -12,9 +12,9 @@ import type { Group, Mesh, MeshBasicMaterial } from 'three';
 
 import { CombatCharacterAnimator } from './combat-character-animator';
 import type { CombatAnimState } from './combat-character-animator';
-import { EnemySpriteAnimator } from './enemy-sprite-animator';
-import { getSpritePath } from './sprite-path-resolver';
-import type { SpriteDirection } from './sprite-path-resolver';
+import { EnemySpriteAnimator } from '../sprites/enemy-sprite-animator';
+import { getSpritePath } from '../sprites/sprite-path-resolver';
+import type { SpriteDirection } from '../sprites/sprite-path-resolver';
 import type { ArenaEntitySnapshot } from '@/game/state/combat-arena-slice';
 import { useGameStore } from '@/game/state/store';
 import type { CombatEvent } from '@/game/systems/combat-types';

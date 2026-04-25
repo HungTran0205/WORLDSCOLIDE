@@ -8,21 +8,21 @@ import { MISSIONS } from '@/game/data/missions';
 import { CombatArenaEnvironment } from './combat-arena-environment';
 import { CombatFightController, getCombatRenderState } from './combat-fight-controller';
 import { getBiomeConfig } from './arena-biome-config';
-import { createWebGPURenderer, WebGPUInit } from './webgpu-init';
+import { createWebGPURenderer, WebGPUInit } from '../webgpu-init';
 import { ArenaDebugProvider, DebugCameraController, useArenaDebug } from './combat-arena-debug';
 import { CombatShadowLayer } from './combat-shadow-layer';
 // New instanced rendering components (Phase 01-03)
-import { InstancedSpriteRenderer } from './combat/instanced-sprite-renderer';
-import { InstancedHpBars } from './combat/instanced-hp-bars';
-import { CombatTextLayer } from './combat/combat-text-layer';
-import { DamageNumberPool } from './combat/damage-number-pool';
-import type { DamageNumberPoolHandle } from './combat/damage-number-pool';
+import { InstancedSpriteRenderer } from './instanced-sprite-renderer';
+import { InstancedHpBars } from './instanced-hp-bars';
+import { CombatTextLayer } from './combat-text-layer';
+import { DamageNumberPool } from './damage-number-pool';
+import type { DamageNumberPoolHandle } from './damage-number-pool';
 import { CombatBloomPost } from './combat-bloom-post';
 import { CombatSlashPool } from './combat-slash-pool';
 import type { CombatSlashPoolHandle } from './combat-slash-pool';
 import { CombatArrowPool } from './combat-arrow-pool';
 import type { CombatArrowPoolHandle } from './combat-arrow-pool';
-import { CombatTargetSelector } from './combat/combat-target-selector';
+import { CombatTargetSelector } from './combat-target-selector';
 
 /** Target FPS — pixel art looks best at 24-30fps (Octopath style) */
 const TARGET_FPS = 30;
