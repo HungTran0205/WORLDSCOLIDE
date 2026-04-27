@@ -12,7 +12,7 @@ import { TorchFireVfx } from '../vfx/torch-fire-vfx';
 import { TorchFireEffect as TorchFireEffectLegacy } from '../vfx/torch-fire-particles';
 import { DrumFireVfx } from '../vfx/drum-fire-vfx';
 import { useGraphicsQuality } from '../world';
-
+import { applyLitMaterial } from './apply-lit-material';
 
 // ─── GLB paths ────────────────────────────────────────────────────────────────
 
@@ -29,26 +29,6 @@ const GLB = {
 Object.values(GLB).forEach((p) => useGLTF.preload(p));
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
-
-/** MeshBasicMaterial → MeshStandardMaterial so dynamic lights affect the mesh */
-function applyLitMaterial(root: THREE.Group) {
-  root.traverse((obj) => {
-    const mesh = obj as THREE.Mesh;
-    if (!mesh.isMesh) return;
-    const mat = mesh.material as THREE.Material;
-    if (mat.type === 'MeshBasicMaterial') {
-      const b = mat as THREE.MeshBasicMaterial;
-      mesh.material = new THREE.MeshStandardMaterial({
-        map: b.map, color: b.color,
-        transparent: b.transparent, opacity: b.opacity,
-        roughness: 0.8, metalness: 0.1,
-      });
-      b.dispose();
-    }
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-  });
-}
 
 /**
  * Clone a GLB scene, apply lit materials, and auto-scale so the model is

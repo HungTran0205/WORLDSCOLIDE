@@ -12,6 +12,7 @@
 import { Clone, useGLTF } from '@react-three/drei';
 import { useMemo } from 'react';
 import * as THREE from 'three';
+import { applyLitMaterial } from './apply-lit-material';
 
 const FLOOR_GLB = '/GuildHall/LinhSon/optimized/p_floortilset.glb';
 useGLTF.preload(FLOOR_GLB);
@@ -28,6 +29,12 @@ interface LinhSonFloorProps {
 export function LinhSonFloor({ gridWidth = 10, gridDepth = 7 }: LinhSonFloorProps) {
   const { scene } = useGLTF(FLOOR_GLB);
 
+  const litScene = useMemo(() => {
+    const clone = scene.clone(true);
+    applyLitMaterial(clone);
+    return clone;
+  }, [scene]);
+
   const { tileScaleX, tileScaleZ, tileW, tileD } = useMemo(() => {
     const box = new THREE.Box3().setFromObject(scene);
     const size = box.getSize(new THREE.Vector3());
@@ -37,7 +44,7 @@ export function LinhSonFloor({ gridWidth = 10, gridDepth = 7 }: LinhSonFloorProp
     const cellD = gridDepth / ROWS;  // 7  / 4 = 1.75 world units
 
     // Scale each instance so it fills its cell
-    // After Rx(+PI/2): local-X → world-X, local-Y → world-Z
+    // After Rx(-PI/2): local-X → world-X, local-Y → world-Z
     return {
       tileScaleX: cellW / size.x,
       tileScaleZ: cellD / size.y,
@@ -64,11 +71,11 @@ export function LinhSonFloor({ gridWidth = 10, gridDepth = 7 }: LinhSonFloorProp
       {tiles.map(({ x, z }) => (
         <group
           key={`${x},${z}`}
-          position={[x, 0, z]}
+          position={[x, 0 -0.13, z]}
           rotation={[-Math.PI / 2, 0, 0]}
           scale={[tileScaleX, tileScaleZ, 1]}
         >
-          <Clone object={scene} />
+          <Clone object={litScene} />
         </group>
       ))}
     </group>

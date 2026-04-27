@@ -1,6 +1,8 @@
 /**
- * World post-processing — ContactShadows (drei), N8AO SSAO + Bloom (WebGL),
- * or TSL Bloom (WebGPU). All effects driven by Zustand settings store.
+ * World post-processing — N8AO SSAO + Bloom (WebGL) or TSL Bloom (WebGPU).
+ * Native shadow maps are configured in world.tsx (not post-processing).
+ * The `shadowsEnabled` setting also gates N8AO here on WebGL (single toggle
+ * for shadow + AO since N8AO is incompatible with WebGPU).
  *
  * Mounted inside world.tsx Canvas after scene content.
  */

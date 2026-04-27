@@ -1,13 +1,16 @@
 import { useMemo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
+import { applyLitMaterial } from '../guild-hall/apply-lit-material';
 
 /** Scaled GLB prop placed at world-space position inside a room */
-export function RoomProp({ path, position, targetHeight, rotY = 0 }: {
+export function RoomProp({ path, position, targetHeight, rotY = 0, castShadow = false }: {
   path: string;
   position: [number, number, number];
   targetHeight: number;
   rotY?: number;
+  /** Convert materials to MeshStandard and enable castShadow + receiveShadow */
+  castShadow?: boolean;
 }) {
   const { scene } = useGLTF(path);
   const model = useMemo(() => {
@@ -17,8 +20,9 @@ export function RoomProp({ path, position, targetHeight, rotY = 0 }: {
     const s = h > 0 ? targetHeight / h : 1;
     clone.scale.setScalar(s);
     clone.position.y = -box.min.y * s;
+    if (castShadow) applyLitMaterial(clone);
     return clone;
-  }, [scene, targetHeight]);
+  }, [scene, targetHeight, castShadow]);
 
   return (
     <group position={position} rotation={[0, rotY, 0]}>
