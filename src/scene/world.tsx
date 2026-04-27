@@ -1,4 +1,5 @@
 import { Suspense, useEffect, useRef, createContext, useContext, useState, useCallback } from 'react';
+import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
 import { useThree, useFrame } from '@react-three/fiber';
 import { GuildHall } from './guild-hall/guild-hall';
@@ -98,7 +99,8 @@ function SceneReadySignal({ onReady }: { onReady: () => void }) {
   return null;
 }
 
-/** Dims global ambient + directional light when camera is inside the alchemy lab */
+/** Global ambient light — dims when inside alchemy lab.
+ *  Each room (GuildHall, FacilityRooms) owns its own directional + shadow light. */
 function SceneLighting() {
   const cameraTarget = useGameStore((s) => s.cameraTarget);
   const facilities = useGameStore((s) => s.facilities);
@@ -107,12 +109,8 @@ function SceneLighting() {
     const [fx, , fz] = FACILITY_SLOTS[f.placedSlot];
     return Math.abs(cameraTarget[0] - fx) <= 3.5 && Math.abs(cameraTarget[2] - fz) <= 3.5;
   });
-  return (
-    <>
-      <ambientLight intensity={isInAlchemy ? 0.08 : 0.6} />
-      <directionalLight position={[5, 10, 5]} intensity={isInAlchemy ? 0.1 : 0.8} />
-    </>
-  );
+
+  return <ambientLight intensity={isInAlchemy ? 0.08 : 0.6} />;
 }
 
 export interface WorldProps {
@@ -137,6 +135,7 @@ export function World({ isActive = true }: WorldProps) {
       <Canvas
         frameloop={isActive ? 'always' : 'demand'}
         orthographic
+        shadows={{ type: THREE.PCFShadowMap, enabled: true }}
         camera={{ zoom: 65, position: [15, 10, 14], near: 0.1, far: 1000 }}
         dpr={quality === 'low' ? [0.75, 1] : [1, 1.5]}
         gl={createWebGPURenderer}

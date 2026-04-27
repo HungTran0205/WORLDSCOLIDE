@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import * as THREE from 'three';
 import type { PlacedFurniture } from '@/game/state/game-state';
 import { FURNITURE_DEFINITIONS } from '@/game/data/furniture';
+import { applyLitMaterial } from './apply-lit-material';
 
 /** Map furniture type → GLB model path (files live in public/models/furnitures/) */
 const MODEL_PATH: Record<string, string> = {
@@ -62,6 +63,12 @@ export function FurnitureModel({ furniture }: { furniture: PlacedFurniture }) {
     [scene, furniture.type, cellW, cellD],
   );
 
+  const litScene = useMemo(() => {
+    const clone = scene.clone(true);
+    applyLitMaterial(clone);
+    return clone;
+  }, [scene]);
+
   const posX = furniture.position.x + cellW / 2;
   const posZ = furniture.position.z + cellD / 2;
 
@@ -71,7 +78,7 @@ export function FurnitureModel({ furniture }: { furniture: PlacedFurniture }) {
       rotation={[0, (furniture.rotation * Math.PI) / 180, 0]}
     >
       <group scale={scale} position={[0, offsetY, 0]}>
-        <Clone object={scene} />
+        <Clone object={litScene} />
       </group>
     </group>
   );
