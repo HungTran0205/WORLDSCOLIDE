@@ -28,9 +28,8 @@ const ANIM_ATTACK_DURATION = 600;
 // Back animation: 4 frames @ 12fps = 333ms, effective 300ms + engine granularity
 const WARRIOR_BACK_DURATION = 300;
 // Warrior jumps this far from home toward enemy (world units).
-// At step speed 6 u/s → 400ms forward; return at 5 u/s → 400ms back.
-// Both durations fit neatly inside the attack (600ms) and back (300ms) animations.
-const WARRIOR_JUMP_DISTANCE = 2.0;
+// At step speed 6 u/s: 3.5 u → ~583ms forward; fits inside attack anim (600ms).
+const WARRIOR_JUMP_DISTANCE = 3.5;
 
 export class CombatEngine {
   entities: ArenaEntity[] = [];

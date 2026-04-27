@@ -94,7 +94,7 @@ export function AlchemyLabFurniture({ cx, cz }: { cx: number; cz: number }) {
     <group>
       <AlchemyFloor cx={cx} cz={cz} />
       <AlchemyWallDecor cx={cx} cz={cz} />
-
+      <RoomProp path="/models/furnitures/Verdant_Pipe_Crossroa.glb" position={[cx  - 2.55 , 0, cz - 0.2]} targetHeight={0.5} rotY={0} />
       <RoomProp path="/models/furnitures/alchemy_reactor.glb" position={[cx, 0, cz - 0.2]} targetHeight={3.1} rotY={0} />
       <SteamVentEffect position={[cx + 1.5, 3.3, cz - 0.1]} scale={1.5} />
       <RoomProp path="/models/furnitures/alchemy_shelf.glb" position={[cx - 2.7, 0, cz - 2.5]} targetHeight={2.7} rotY={Math.PI / 2} />

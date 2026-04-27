@@ -14,10 +14,10 @@ import type { ArenaEntity } from '@/game/systems/combat-arena-types';
 import type { ArenaEntitySnapshot } from '@/game/state/combat-arena-slice';
 import type { CombatEvent } from '@/game/systems/combat-types';
 import type { SpriteRegistry } from './sprite-registry';
-import { getSpritePath } from '../sprite-path-resolver';
+import { getSpritePath } from '../sprites/sprite-path-resolver';
 import type { DamageNumberPoolHandle } from './damage-number-pool';
-import type { CombatSlashPoolHandle } from '../combat-slash-pool';
-import type { CombatArrowPoolHandle } from '../combat-arrow-pool';
+import type { CombatSlashPoolHandle } from './combat-slash-pool';
+import type { CombatArrowPoolHandle } from './combat-arrow-pool';
 
 const DEFAULT_SPRITE_SCALE = 2.1;
 const BOSS_SPRITE_SCALE = 3.0;

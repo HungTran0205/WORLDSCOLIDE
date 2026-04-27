@@ -128,7 +128,7 @@ export function CombatTileGrid({
       for (let col = 0; col < cols; col++) {
         const x = startX + col * tileSize;
         const z = startZ + row * tileSize;
-        const y = -0.1;
+        const y = -0.5;
         // Zone-based: center lanes (fight zone) = accent/dirt, outer = primary/grass
         (Math.abs(z) < 2.5 ? a : p).push({ x, y, z });
       }

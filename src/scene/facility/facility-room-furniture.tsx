@@ -1,8 +1,8 @@
 import type { FacilityType } from '@/game/state/game-state';
-import { TavernFurniture } from './tavern-furniture';
-import { TrainingYardFurniture } from './training-yard-furniture';
-import { InfirmaryFurniture } from './infirmary-furniture';
-import { WorkshopFurniture } from './workshop-furniture';
+import { TavernFurniture } from '../tavern/tavern-furniture';
+import { TrainingYardFurniture } from '../training-yard/training-yard-furniture';
+import { InfirmaryFurniture } from '../infirmary/infirmary-furniture';
+import { WorkshopFurniture } from '../workshop/workshop-furniture';
 import { AlchemyLabFurniture } from '../alchemy/alchemy-furniture';
 
 interface FacilityRoomFurnitureProps {

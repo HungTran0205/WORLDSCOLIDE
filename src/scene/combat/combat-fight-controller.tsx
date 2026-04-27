@@ -317,15 +317,22 @@ export function CombatFightController({
   return null; // Pure logic component — no visual output
 }
 
-/** Smoothly lerp camera X toward ally centroid */
+/** Smoothly lerp camera X toward midpoint between ally and enemy centroids */
 function advanceCameraFollow(
   engine: CombatEngine,
   camera: RootState['camera'],
 ): void {
   const allies = engine.entities.filter(e => e.isAlly && e.currentHp > 0);
-  if (allies.length === 0) return;
-  const centroidX = allies.reduce((sum, e) => sum + e.position.x, 0) / allies.length;
-  camera.position.x += (centroidX - camera.position.x) * 0.05;
+  const enemies = engine.entities.filter(e => !e.isAlly && e.currentHp > 0);
+  if (allies.length === 0 && enemies.length === 0) return;
+  const allyCentroidX = allies.length > 0
+    ? allies.reduce((sum, e) => sum + e.position.x, 0) / allies.length
+    : camera.position.x;
+  const enemyCentroidX = enemies.length > 0
+    ? enemies.reduce((sum, e) => sum + e.position.x, 0) / enemies.length
+    : camera.position.x;
+  const midX = (allyCentroidX + enemyCentroidX) / 2;
+  camera.position.x += (midX - camera.position.x) * 0.05;
 }
 
 /** Legacy snapshot builder — used before atlas is ready */

@@ -6,5 +6,7 @@
 				"command": "node .github/hooks/dev-rules-reminder.cjs"
 			}
 		]
-	}
+	},    "env": {                                                                                                                                                           
+      "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"                                                                                                                      
+    }      
 }

@@ -1,6 +1,8 @@
 import type { StateCreator } from 'zustand';
 import type { GuildHall, GameSettings, TavernState, Member, FloorTile, PlacedFurniture, GridCell, Rotation, FurnitureType, GuildRank, FacilityType, GuildFacility, SyringeLoadout, AlchemyCraftJob } from './game-state';
 import type { InventoryState } from './game-state';
+import type { InventorySlice } from './inventory-slice';
+import type { RosterSlice } from './roster-slice';
 import type { ItemID } from '@/game/data/items';
 import type { FacilityProductionResult, LoggingTickResult } from '@/game/systems/facility-production-system';
 import type { StoneQuarryTickResult } from '@/game/systems/stone-quarry-production-system';
@@ -108,7 +110,7 @@ const DEFAULT_FACILITIES: GuildFacility[] = [
   { type: 'alchemy-lab',   level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
 ];
 
-export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
+export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & RosterSlice, [], [], GuildSlice> = (set, get) => ({
   guildName: '',
   guildLevel: 1,
   gold: 100,

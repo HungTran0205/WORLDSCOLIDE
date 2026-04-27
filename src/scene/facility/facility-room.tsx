@@ -8,9 +8,11 @@ import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
 import { FACILITY_SLOTS } from '@/game/data/facility-slot-positions';
 import { useGameStore } from '@/game/state/store';
 import { RoomMemberSprites } from './room-member-sprites';
-import { ForestRoomDecor, LoggingSiteZoneCard } from './facility-room-forest-decor';
+import { ForestRoomDecor } from '../logging-site/logging-site-furniture';
+import { LoggingSiteZoneCard } from '../logging-site/facility-room-forest-decor';
 import { FacilityRoomFurniture } from './facility-room-furniture';
-import { QuarryRoomDecor, QuarryZoneCard } from './facility-room-quarry-decor';
+import { QuarryRoomDecor } from '../quarry/quarry-furniture';
+import { QuarryZoneCard } from '../quarry/facility-room-quarry-decor';
 import { AlchemyZoneCard } from '../alchemy/facility-room-alchemy-decor';
 import { AlchemyWalls } from '../alchemy/facility-room-alchemy-walls';
 import type { GuildFacility, FacilityType } from '@/game/state/game-state';
@@ -75,6 +77,7 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
   const isLoggingSite = facility.type === 'logging-site';
   const isQuarry = facility.type === 'stone-quarry';
   const isAlchemy = facility.type === 'alchemy-lab';
+  const isWorkshop = facility.type === 'workshop';
 
   return (
     <group>
@@ -88,6 +91,14 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
           decay={isLoggingSite ? 1 : 2}
         />
       )}
+      {/* Stone quarry ambient fill — cool grey to simulate diffuse cave lighting */}
+      {isActive && isQuarry && (
+        <ambientLight color="#9999bb" intensity={0.6} />
+      )}
+      {/* Workshop ambient fill — warm yellow to complement forge/workbench lighting */}
+      {isActive && isWorkshop && (
+        <ambientLight color="#ffffff" intensity={2} />
+      )}
       {/* Alchemy-lab: two yellow point lights at reactor and silo positions */}
       {isActive && isAlchemy && (
         <>
@@ -95,8 +106,8 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
         </>
       )}
 
-      {/* Floor — alchemy-lab uses GLB rock tiles instead */}
-      {!isAlchemy && (
+      {/* Floor — alchemy-lab and workshop use custom GLB floors */}
+      {!isAlchemy && !isWorkshop && (
         <mesh position={[cx, 0.01, cz]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[ROOM_SIZE, ROOM_SIZE]} />
           <meshStandardMaterial color={floorColor} roughness={0.9} />

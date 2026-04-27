@@ -1,5 +1,5 @@
 import { useGLTF } from '@react-three/drei';
-import { RoomProp } from './room-prop';
+import { RoomProp } from '../facility/room-prop';
 
 useGLTF.preload('/models/furnitures/bar-counter.glb');
 useGLTF.preload('/models/furnitures/wine-barrel.glb');

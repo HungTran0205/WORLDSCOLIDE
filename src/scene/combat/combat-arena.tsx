@@ -51,6 +51,22 @@ function FrameRateLimiter() {
 }
 
 /**
+ * Flushes the THREE.Clock accumulated delta when the tab becomes visible again,
+ * preventing frame bunching after browser minimize/tab-switch.
+ */
+function VisibilityGuard() {
+  const clock = useThree(s => s.clock);
+  useEffect(() => {
+    const handler = () => {
+      if (!document.hidden) clock.getDelta(); // discard stale accumulated time
+    };
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
+  }, [clock]);
+  return null;
+}
+
+/**
  * Instanced combat renderer — replaces per-entity CombatEntitySprite mapping.
  * Reads render state from CombatFightController and renders:
  * - ALL sprites in 1 draw call (InstancedSpriteRenderer)
@@ -119,6 +135,7 @@ export function CombatArenaCanvas() {
       >
         <WebGPUInit />
         <FrameRateLimiter />
+        <VisibilityGuard />
         <CombatFightController
           damagePoolRef={damagePoolRef}
           slashPoolRef={slashPoolRef}
