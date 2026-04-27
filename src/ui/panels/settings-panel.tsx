@@ -23,6 +23,20 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState(false);
 
+  const handleShadows = (enabled: boolean) => {
+    if (enabled === settings.shadowsEnabled) return;
+    updateSettings({ shadowsEnabled: enabled });
+  };
+
+  const handleBloom = (enabled: boolean) => {
+    if (enabled === settings.bloomEnabled) return;
+    updateSettings({ bloomEnabled: enabled });
+  };
+
+  const handleBloomThreshold = (v: number) => {
+    updateSettings({ bloomThreshold: v });
+  };
+
   const handleQuality = async (q: 'high' | 'low') => {
     if (q === settings.graphicsQuality) return;
     updateSettings({ graphicsQuality: q });
@@ -132,6 +146,51 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
             </button>
           ))}
         </div>
+
+        <div style={{ marginTop: 12, marginBottom: 6 }}>Shadows</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {([true, false] as const).map((v) => (
+            <button
+              key={String(v)}
+              className="panel-btn"
+              style={{
+                borderColor: settings.shadowsEnabled === v ? '#4caf50' : undefined,
+                opacity: settings.shadowsEnabled === v ? 1 : 0.6,
+              }}
+              onClick={() => handleShadows(v)}
+            >
+              {v ? 'On' : 'Off'}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ marginTop: 12, marginBottom: 6 }}>Bloom</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {([true, false] as const).map((v) => (
+            <button
+              key={String(v)}
+              className="panel-btn"
+              style={{
+                borderColor: settings.bloomEnabled === v ? '#4caf50' : undefined,
+                opacity: settings.bloomEnabled === v ? 1 : 0.6,
+              }}
+              onClick={() => handleBloom(v)}
+            >
+              {v ? 'On' : 'Off'}
+            </button>
+          ))}
+        </div>
+
+        {settings.bloomEnabled && (
+          <label style={{ display: 'block', marginTop: 8 }}>
+            Threshold: {settings.bloomThreshold.toFixed(2)}
+            <input
+              type="range" min="0" max="1" step="0.05"
+              value={settings.bloomThreshold}
+              onChange={(e) => handleBloomThreshold(Number(e.target.value))}
+            />
+          </label>
+        )}
       </div>
 
       <div className="panel-section">

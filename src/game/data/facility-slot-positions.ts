@@ -27,14 +27,46 @@ export const FACILITY_SLOTS: [number, number, number][] = [
 ];
 
 /**
- * Per-facility camera target offset relative to room center [cx, 0, cz].
- * Used to compensate for character slots that are offset from room center
- * (e.g. alchemy slot 0 is at z+2.2 from center, so shifting camera +1 in Z
- * keeps characters more visible in the isometric viewport).
+ * Per-slot camera offset indexed by slot number (0–11).
+ * Overrides FACILITY_CAMERA_DEFAULT_OFFSET when set.
+ * Tune each slot after placing facilities to get the best isometric framing.
+ *
+ * Column A (slots 0-3, x=-6.5): tends to need positive x to compensate left lean
+ * Column B (slots 4-7, x=3.5):  centered, minimal offset needed
+ * Column C (slots 8-11, x=13.5): tends to need negative x to compensate right lean
  */
-export const FACILITY_CAMERA_OFFSETS: Partial<Record<string, [number, number, number]>> = {
-  'alchemy-lab': [0, 0, 1],
-};
+export const FACILITY_SLOT_CAMERA_OFFSETS: ([number, number, number] | null)[] = [
+  [3, 0, 4.5],   // slot 0 — A0 (x=-6.5, z=-8.5)
+  [-0.5, 0, -1.0],   // slot 1 — A1 (x=-6.5, z=-20.5)
+  [2, 0, -2],   // slot 2 — A2 (x=-6.5, z=-32.5)
+  [0.0, 0, -2],   // slot 3 — A3 (x=-6.5, z=-44.5)
+  [0, 0, -2],   // slot 4 — B4 (x=3.5, z=-8.5)
+  [0, 0, -2],   // slot 5 — B5 (x=3.5, z=-20.5)
+  [0, 0, -2],   // slot 6 — B6 (x=3.5, z=-32.5)
+  [1, 0, -0.5],   // slot 7 — B7 (x=3.5, z=-44.5)
+  [0.5, 0, 2],   // slot 8 — C8 (x=13.5, z=-8.5)
+  [-1.0, 0, 0.0],   // slot 9 — C9 (x=13.5, z=-20.5)
+  [-0.5, 0, 0.0],   // slot 10 — C10 (x=13.5, z=-32.5)
+  [-2, 0, -2],   // slot 11 — C11 (x=13.5, z=-44.5)
+];
+
+export const FACILITY_CAMERA_DEFAULT_OFFSET: [number, number, number] = [0, -1, -2];
+
+
+/**
+ * Dev-only mutable overrides — written by FacilitySlotDebugPanel via Leva.
+ * null = fall through to static FACILITY_SLOT_CAMERA_OFFSETS value.
+ */
+export const _debugSlotOffsets: ([number, number, number] | null)[] = new Array(12).fill(null);
+
+/**
+ * Single access point for slot camera offset.
+ * Priority: per-type override > debug override > per-slot static > default.
+ */
+export function getSlotCameraOffset(slotIndex: number): [number, number, number] {
+if (import.meta.env.DEV && _debugSlotOffsets[slotIndex]) return _debugSlotOffsets[slotIndex]!;
+  return FACILITY_SLOT_CAMERA_OFFSETS[slotIndex] ?? FACILITY_CAMERA_DEFAULT_OFFSET;
+}
 
 /** Default slot assigned to each facility type during v12→v13 save migration */
 export const FACILITY_DEFAULT_SLOTS: Record<string, number> = {

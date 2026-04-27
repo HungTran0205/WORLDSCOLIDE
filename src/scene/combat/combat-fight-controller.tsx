@@ -18,6 +18,7 @@ import { useArenaDebug } from './combat-arena-debug';
 import { WaveManager, legacyToWaves } from '@/game/systems/combat-wave-manager';
 // sprite-path-resolver used internally by mega-atlas-builder
 import { combatLog, clearCombatLog, downloadCombatLog } from './combat-logger';
+import { DEBUG_MODE } from '@/debug';
 import { CombatStateBridge } from './combat-state-bridge';
 import { preloadCombatAtlases } from './mega-atlas-builder';
 import type { MegaAtlasResult } from './mega-atlas-builder';
@@ -309,7 +310,7 @@ export function CombatFightController({
       combatLog(`=== COMBAT END === outcome:${result.outcome} duration:${result.durationMs}ms`);
       // Deduct only syringes actually consumed during combat
       if (engine.syringesConsumed > 0) removeItem('HEALING_SYRINGE', engine.syringesConsumed);
-      downloadCombatLog();
+      if (DEBUG_MODE) downloadCombatLog();
       endCombat(result);
     }
   });

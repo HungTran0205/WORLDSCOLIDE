@@ -32,6 +32,8 @@ import { GUILD_HALL_CAMERA_TARGET } from '@/game/state/camera-slice';
 import { playBGM } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
 import type { PanelId } from '@/ui/hud/panel-toggle';
+import { DEBUG_MODE } from '@/debug';
+import { FacilitySlotDebugPanel } from '@/scene/facility/facility-slot-debug-panel';
 
 /** Manual-mode toggle button — flips combatMode for the active arena mission */
 function CombatManualToggle() {
@@ -311,6 +313,8 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
       {gameScene === 'combat-arena' && arenaPhase === 'result' && <CombatResultOverlay />}
 
       {isGameOver && gameScene === 'guild-hall' && <GameOverOverlay onReturnToTitle={onReturnToTitle} />}
+
+      {DEBUG_MODE && <FacilitySlotDebugPanel />}
     </>
   );
 }

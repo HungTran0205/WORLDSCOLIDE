@@ -6,7 +6,7 @@ import { MemberLayer } from './member-layer';
 import { CameraController } from './camera-controller';
 import { FacilityRoomsLayer } from './facility/facility-rooms-layer';
 import { createWebGPURenderer, WebGPUInit } from './webgpu-init';
-import { WorldBloomPost } from './world-bloom-post';
+import { WorldPostProcessing } from './world-bloom-post';
 import { getStoredGraphicsQuality } from '@/game/state/guild-slice';
 import { useGameStore } from '@/game/state/store';
 import { FACILITY_SLOTS } from '@/game/data/facility-slot-positions';
@@ -152,7 +152,7 @@ export function World({ isActive = true }: WorldProps) {
           <GuildHall />
           <FacilityRoomsLayer />
           <MemberLayer />
-          {quality === 'high' && <WorldBloomPost />}
+          <WorldPostProcessing />
           <SceneReadySignal onReady={onAssetsReady} />
         </Suspense>
       </Canvas>

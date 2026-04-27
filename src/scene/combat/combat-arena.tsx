@@ -10,6 +10,7 @@ import { CombatFightController, getCombatRenderState } from './combat-fight-cont
 import { getBiomeConfig } from './arena-biome-config';
 import { createWebGPURenderer, WebGPUInit } from '../webgpu-init';
 import { ArenaDebugProvider, DebugCameraController, useArenaDebug } from './combat-arena-debug';
+import { DEBUG_MODE } from '@/debug';
 import { CombatShadowLayer } from './combat-shadow-layer';
 // New instanced rendering components (Phase 01-03)
 import { InstancedSpriteRenderer } from './instanced-sprite-renderer';
@@ -178,8 +179,8 @@ export function CombatArenaCanvas() {
     </>
   );
 
-  /* Wrap in Leva provider for dev; key resets controls when biome changes */
-  if (import.meta.env.DEV) {
+  /* Wrap in Leva provider only when debug mode is active */
+  if (DEBUG_MODE) {
     return (
       <ArenaDebugProvider key={biome.biome} config={biome}>
         {canvas}

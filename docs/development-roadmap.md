@@ -218,6 +218,7 @@
 
 ### Current Tasks
 - [x] Manual Mode ATB Pause Fix (unity timeline, engine freeze, 5 tests passing)
+- [x] Shadow & Bloom Settings Toggle (user-facing graphics controls, localStorage, store-driven post-processing)
 - [ ] Performance optimization (target <100ms saves)
 - [ ] Comprehensive testing (combat, economy, offline progression, sprite rendering)
 - [ ] Bug fixes from testing phase
@@ -333,6 +334,7 @@
 | Phase 5 Milestone 16 | 2026-04-12 | ✅ Done | Guild Inventory System (slot-based UI, chest furniture, 99-item stacks, capacity management, item detail popup) |
 | Phase 5 Milestone 17 | 2026-04-19 | ✅ Done | Combat Formation + ATB Timeline + Manual Mode (formation home slots, step-attack state machine, timeline bar, manual attack queue, target selection) |
 | Phase 5 Milestone 18 | 2026-04-19 | ✅ Done | Manual Mode ATB Pause Fix (unified timeline, engine freeze on ally turn, pause clears on action, 5 tests passing) |
+| Phase 5 Milestone 19 | 2026-04-27 | ✅ Done | Shadow & Bloom Settings Toggle (user-facing graphics toggles in Settings Panel, localStorage persistence, store-driven post-processing) |
 | Phase 6 Milestone 1 | 2026-04-17 | ✅ Done | Map Playground Tool (Phases 1–10 complete, asset browser, R3F viewport, properties panel, code generator, undo/redo) |
 | Phase 5 Complete | 2026-04-12 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
 | Phase 6 Start | 2026-04-15 | 📋 In Progress | Post-launch content |

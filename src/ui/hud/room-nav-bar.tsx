@@ -7,14 +7,16 @@
 import { useGameStore } from '@/game/state/store';
 import { GUILD_HALL_CAMERA_TARGET } from '@/game/state/camera-slice';
 import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
-import { FACILITY_SLOTS, FACILITY_CAMERA_OFFSETS } from '@/game/data/facility-slot-positions';
+import { FACILITY_SLOTS, getSlotCameraOffset } from '@/game/data/facility-slot-positions';
 import type { FacilityType } from '@/game/state/game-state';
 
 interface RoomEntry {
   id: string;
   label: string;
   icon: string;
+  /** Pre-computed for isActive comparison. Click handler re-computes fresh for debug reactivity. */
   target: [number, number, number];
+  slotIndex?: number;
 }
 
 // Icon slug overrides for facilities whose type slug differs from filename
@@ -49,12 +51,13 @@ export function RoomNavBar() {
         const def = FACILITY_DEFINITIONS[type];
         const slug = ICON_SLUG[type] ?? type;
         const [sx, sy, sz] = FACILITY_SLOTS[f.placedSlot];
-        const off = FACILITY_CAMERA_OFFSETS[type] ?? [0, 0, 0];
+        const off = getSlotCameraOffset(f.placedSlot);
         return {
           id: type,
           label: def.name,
           icon: `/sprites/icons/icon-room-${slug}.png`,
           target: [sx + off[0], sy + off[1], sz + off[2]] as [number, number, number],
+          slotIndex: f.placedSlot,
         };
       })
       .filter((r) => r !== null) as RoomEntry[],
@@ -74,7 +77,12 @@ export function RoomNavBar() {
       {visibleRooms.map((room) => (
         <button
           key={room.id}
-          onClick={() => setCameraTarget(room.target)}
+          onClick={() => {
+            if (room.slotIndex == null) { setCameraTarget(room.target); return; }
+            const [sx, sy, sz] = FACILITY_SLOTS[room.slotIndex];
+            const off = getSlotCameraOffset(room.slotIndex);
+            setCameraTarget([sx + off[0], sy + off[1], sz + off[2]]);
+          }}
           title={room.label}
           style={{
             width: 52,

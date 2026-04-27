@@ -2235,6 +2235,104 @@ public/sprites/characters/
 - Atlas cached in component state (no repeated canvas creation)
 - Fallback to idle sprite if any frame fails to load
 
+## Graphics Settings & Post-Processing (v1.23)
+
+### Overview
+
+User-facing graphics settings in Settings Panel allow players to control shadows and bloom effects. All settings persist via localStorage and are reactive through Zustand store.
+
+### GameSettings Interface
+
+**Location**: `src/game/state/game-state.ts`
+
+```typescript
+export interface GameSettings {
+  musicVolume: number;
+  sfxVolume: number;
+  autoSkillDefault: boolean;
+  graphicsQuality: 'high' | 'low';
+  shadowsEnabled: boolean;        // NEW (v1.23)
+  bloomEnabled: boolean;          // NEW (v1.23)
+  bloomThreshold: number;         // NEW (v1.23) — range 0–1
+}
+```
+
+**Defaults**:
+- `shadowsEnabled: true` — ContactShadows on guild hall floor + N8AO SSAO in WebGL post-processing
+- `bloomEnabled: true` — World bloom effect enabled
+- `bloomThreshold: 0.5` — Mid-range luminance threshold
+
+**Persistence**:
+- localStorage keys: `shadows-enabled`, `bloom-enabled`, `bloom-threshold`
+- Auto-load on session restore
+- No save migration needed (settings stored separately, not in game state)
+
+### Settings Panel UI
+
+**Location**: `src/ui/panels/settings-panel.tsx`
+
+**Toggles**:
+| Setting | Type | Effect |
+|---------|------|--------|
+| Shadows | On/Off button | Enables ContactShadows + N8AO SSAO |
+| Bloom | On/Off button | Enables post-processing bloom |
+| Threshold | Slider (0–1) | Conditional display (only if Bloom = On) |
+
+**Styling**:
+- Inactive state: 60% opacity, gray border
+- Active state: 100% opacity, green border (#4caf50)
+- Threshold slider visible only when bloomEnabled = true
+
+**Event Handlers**:
+- `handleShadows(enabled)` → `updateSettings({ shadowsEnabled })`
+- `handleBloom(enabled)` → `updateSettings({ bloomEnabled })`
+- `handleBloomThreshold(value)` → `updateSettings({ bloomThreshold })`
+- Changes apply immediately without page reload
+
+### Post-Processing Pipeline
+
+**Guild Hall Rendering** (`src/scene/guild-hall.tsx`):
+- ContactShadows (drei) conditional on `shadowsEnabled`
+- Renders soft floor-level shadows for members
+- Improves spatial clarity in isometric view
+
+**World Post-Processing** (`src/scene/world-bloom-post.tsx`):
+- Dual-path rendering:
+  - **WebGL**: EffectComposer + Bloom + N8AO (N8AO enabled when shadowsEnabled = true)
+  - **WebGPU**: TSL PostProcessing + BloomNode (async-loaded)
+- Both paths subscribe to Zustand for reactive updates
+- Bloom and shadow settings apply per-frame
+
+**Store Integration**:
+```typescript
+const settings = useGameStore(s => s.settings);
+const shadowsEnabled = settings.shadowsEnabled;
+const bloomEnabled = settings.bloomEnabled;
+const bloomThreshold = settings.bloomThreshold;
+```
+
+### Backward Compatibility
+
+- Existing saves (v1.22 and earlier) load with default graphics settings
+- Settings stored in Zustand + localStorage (not in IndexedDB save)
+- No data loss on downgrade (settings are ephemeral)
+- Leva dev panel unaffected (still available for advanced tuning)
+
+### Performance Impact
+
+- Toggle switching: O(1) state update + re-render of affected components
+- Bloom threshold slider: Uniform update per-frame (negligible cost)
+- ContactShadows: GPU-side rendering (mobile devices may see FPS dip with enabled)
+- N8AO SSAO: Optional (expensive on low-end hardware, gated by shadowsEnabled)
+- No new draw calls or complex raycasting
+
+### Future Enhancements
+
+- [ ] Motion blur toggle
+- [ ] Film grain intensity
+- [ ] Contrast/brightness sliders
+- [ ] Anti-aliasing mode selection
+
 ## Browser Compatibility
 
 - **IndexedDB**: IE10+, all modern browsers
