@@ -29,24 +29,12 @@ import { ANIM_STATE } from './animation-state-buffer';
 const MAX_INSTANCES = 48;
 
 /** Jump arc for melee step-forward attack */
-const ARC_HEIGHT = 4;
-const STEP_DURATION_S = 0.6; // slightly longer so easing is visible
+const ARC_HEIGHT = 1.5; // flat rainbow arc — lower Y, more X travel
+const STEP_DURATION_S = 0.6;
 
-/**
- * Custom jump arc curve with gravity feel:
- * - Ascent  (t 0→0.5): ease-out power — bursts up fast, decelerates near peak
- * - Descent (t 0.5→1): ease-in power  — lingers at peak, then plummets fast
- * Power 2.8 gives a noticeably flat apex (warrior "hangs" at top for 1-2 frames)
- */
+/** Simple parabolic rainbow arc: peaks at t=0.5, zero at t=0 and t=1 */
 function jumpArcCurve(t: number): number {
-  const POWER = 2.8;
-  if (t < 0.5) {
-    const u = t * 2;                          // 0 → 1 on ascent
-    return 1 - Math.pow(1 - u, POWER);       // ease-out: fast up → slow near peak
-  } else {
-    const u = (t - 0.5) * 2;                 // 0 → 1 on descent
-    return 1 - Math.pow(u, POWER);           // ease-in: slow at peak → fast plunge
-  }
+  return 4 * t * (1 - t); // standard parabola: f(0)=0, f(0.5)=1, f(1)=0
 }
 
 // Reusable temporaries to avoid per-frame allocation
@@ -146,8 +134,8 @@ export function InstancedSpriteRenderer({
 
     if (activeCount === 0) return;
 
-    // Advance all animation timers
-    stateBuffer.advanceAll(delta);
+    // Advance all animation timers — clamp to avoid frame bunching after tab restore
+    stateBuffer.advanceAll(Math.min(delta, 0.1));
 
     // Extract camera quaternion for billboard (same for all instances)
     camera.getWorldQuaternion(_quat);

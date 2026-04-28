@@ -223,4 +223,7 @@ export interface GameSettings {
   sfxVolume: number;
   autoSkillDefault: boolean;
   graphicsQuality: 'high' | 'low';
+  shadowsEnabled: boolean;
+  bloomEnabled: boolean;
+  bloomThreshold: number;
 }

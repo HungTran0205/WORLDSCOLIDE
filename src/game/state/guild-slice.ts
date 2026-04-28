@@ -1,6 +1,8 @@
 import type { StateCreator } from 'zustand';
 import type { GuildHall, GameSettings, TavernState, Member, FloorTile, PlacedFurniture, GridCell, Rotation, FurnitureType, GuildRank, FacilityType, GuildFacility, SyringeLoadout, AlchemyCraftJob } from './game-state';
 import type { InventoryState } from './game-state';
+import type { InventorySlice } from './inventory-slice';
+import type { RosterSlice } from './roster-slice';
 import type { ItemID } from '@/game/data/items';
 import type { FacilityProductionResult, LoggingTickResult } from '@/game/systems/facility-production-system';
 import type { StoneQuarryTickResult } from '@/game/systems/stone-quarry-production-system';
@@ -79,6 +81,9 @@ export function createDefaultFloor(): GuildHall {
 }
 
 const GRAPHICS_QUALITY_KEY = 'graphics-quality';
+const SHADOWS_KEY = 'shadows-enabled';
+const BLOOM_KEY = 'bloom-enabled';
+const BLOOM_THRESHOLD_KEY = 'bloom-threshold';
 
 /** Read graphics quality at module load — used by Canvas before store hydrates */
 export function getStoredGraphicsQuality(): 'high' | 'low' {
@@ -86,11 +91,27 @@ export function getStoredGraphicsQuality(): 'high' | 'low' {
   return v === 'low' ? 'low' : 'high';
 }
 
+export function getStoredShadows(): boolean {
+  return localStorage.getItem(SHADOWS_KEY) === 'true';
+}
+
+export function getStoredBloom(): boolean {
+  return localStorage.getItem(BLOOM_KEY) === 'true';
+}
+
+export function getStoredBloomThreshold(): number {
+  const v = parseFloat(localStorage.getItem(BLOOM_THRESHOLD_KEY) ?? '');
+  return isNaN(v) ? 0.85 : Math.max(0, Math.min(1, v));
+}
+
 const DEFAULT_SETTINGS: GameSettings = {
   musicVolume: 0.5,
   sfxVolume: 0.7,
   autoSkillDefault: true,
   graphicsQuality: 'high',
+  shadowsEnabled: false,
+  bloomEnabled: false,
+  bloomThreshold: 0.85,
 };
 
 const DEFAULT_TAVERN: TavernState = {
@@ -108,7 +129,7 @@ const DEFAULT_FACILITIES: GuildFacility[] = [
   { type: 'alchemy-lab',   level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
 ];
 
-export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
+export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & RosterSlice, [], [], GuildSlice> = (set, get) => ({
   guildName: '',
   guildLevel: 1,
   gold: 100,
@@ -144,6 +165,15 @@ export const createGuildSlice: StateCreator<GuildSlice> = (set) => ({
   updateSettings: (partial) => {
     if (partial.graphicsQuality !== undefined) {
       localStorage.setItem(GRAPHICS_QUALITY_KEY, partial.graphicsQuality);
+    }
+    if (partial.shadowsEnabled !== undefined) {
+      localStorage.setItem(SHADOWS_KEY, String(partial.shadowsEnabled));
+    }
+    if (partial.bloomEnabled !== undefined) {
+      localStorage.setItem(BLOOM_KEY, String(partial.bloomEnabled));
+    }
+    if (partial.bloomThreshold !== undefined) {
+      localStorage.setItem(BLOOM_THRESHOLD_KEY, String(partial.bloomThreshold));
     }
     set((s) => ({ settings: { ...s.settings, ...partial } }));
   },

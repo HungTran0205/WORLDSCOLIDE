@@ -371,6 +371,26 @@ function migrateV16toV17(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+/** v17→v18: Add shadowsEnabled, bloomEnabled, bloomThreshold to settings */
+function migrateV17toV18(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+  const settings = (gs.settings ?? {}) as AnyRecord;
+
+  return {
+    ...envelope,
+    version: 18,
+    gameState: {
+      ...gs,
+      settings: {
+        ...settings,
+        shadowsEnabled: settings.shadowsEnabled ?? false,
+        bloomEnabled: settings.bloomEnabled ?? false,
+        bloomThreshold: settings.bloomThreshold ?? 0.85,
+      },
+    } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -383,6 +403,7 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   14: migrateV14toV15,
   15: migrateV15toV16,
   16: migrateV16toV17,
+  17: migrateV17toV18,
 };
 
 /**

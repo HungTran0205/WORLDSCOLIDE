@@ -28,9 +28,8 @@ const ANIM_ATTACK_DURATION = 600;
 // Back animation: 4 frames @ 12fps = 333ms, effective 300ms + engine granularity
 const WARRIOR_BACK_DURATION = 300;
 // Warrior jumps this far from home toward enemy (world units).
-// At step speed 6 u/s → 400ms forward; return at 5 u/s → 400ms back.
-// Both durations fit neatly inside the attack (600ms) and back (300ms) animations.
-const WARRIOR_JUMP_DISTANCE = 2.0;
+// At step speed 6 u/s: 3.5 u → ~583ms forward; fits inside attack anim (600ms).
+const WARRIOR_JUMP_DISTANCE = 3.5;
 
 export class CombatEngine {
   entities: ArenaEntity[] = [];
@@ -51,8 +50,10 @@ export class CombatEngine {
   private nextEnemyIndex = 0;
   /** Sequential turn lock — id of entity currently executing its full action cycle, or null if queue is idle */
   private activeActorId: string | null = null;
-  /** Total syringes loaded across all ally entities at init — for inventory deduction by caller */
+  /** Total syringes loaded across all ally entities at init */
   totalSyringesLoaded = 0;
+  /** Syringes actually consumed during combat — deduct this from inventory at combat end */
+  syringesConsumed = 0;
 
   /** Initialize combat from formation + enemies */
   init(
@@ -76,6 +77,7 @@ export class CombatEngine {
     this.eventQueue = [];
     this.nextEnemyIndex = 0;
     this.totalSyringesLoaded = 0;
+    this.syringesConsumed = 0;
 
     // Distribute available syringes evenly among formation members who have loadout configured
     const formationMembers = formation
@@ -335,6 +337,7 @@ export class CombatEngine {
       const healAmt = Math.floor(entity.maxHp * 0.30);
       entity.currentHp = Math.min(entity.maxHp, entity.currentHp + healAmt);
       entity.syringesLoaded -= 1;
+      this.syringesConsumed += 1;
       this.eventQueue.push({ type: 'syringe-used', entityId: entity.id, healAmount: healAmt });
     }
 

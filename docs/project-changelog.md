@@ -2,8 +2,55 @@
 
 All notable changes to Worlds Collide are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
-**Current Version**: 1.22.0
-**Release Date**: 2026-04-19 (Combat Formation + ATB Timeline + Manual Mode)
+**Current Version**: 1.23.0
+**Release Date**: 2026-04-27 (Shadow & Bloom Settings + Manual Mode ATB Pause Fix)
+
+---
+
+## [1.23.0] — 2026-04-27 (Shadow & Bloom Settings Toggle)
+
+### Feature: User-Facing Graphics Settings for Shadows & Bloom
+
+Adds Settings Panel toggles for previously debug-only graphics effects. Players can now control shadow quality and bloom post-processing without code changes.
+
+**New GameSettings Fields** (`game-state.ts`):
+- `shadowsEnabled: boolean` — Enable/disable ContactShadows + N8AO SSAO (localStorage: `shadows-enabled`)
+- `bloomEnabled: boolean` — Enable/disable world bloom post-processing (localStorage: `bloom-enabled`)
+- `bloomThreshold: number` (0–1) — Luminance threshold for bloom effect (localStorage: `bloom-threshold`)
+
+**Settings Panel UI** (`settings-panel.tsx`):
+- **Shadows**: Toggle button (On/Off) — Controls ContactShadows in guild hall floor + N8AO SSAO in WebGL post-processing
+- **Bloom**: Toggle button (On/Off) — Enables world bloom effect via EffectComposer or WebGPU TSL PostProcessing
+- **Bloom Threshold**: Conditional slider (only visible when bloomEnabled = true) — Adjusts luminance threshold in real-time
+
+**Technical Changes**:
+- `src/game/state/game-state.ts` — Added GameSettings interface fields
+- `src/ui/panels/settings-panel.tsx` — New toggles + threshold slider with event handlers
+- `src/scene/world-bloom-post.tsx` — Renamed from `WorldBloomPost` → store-driven, removes dev-panel-only quality gate
+  - WebGPU branch: `WebGPUBloomPass` reads `bloomEnabled`, `bloomThreshold` from Zustand
+  - WebGL branch: `EffectComposer` + `Bloom` + `N8AO` respect settings
+  - `ContactShadows` on guild hall floor controlled by `shadowsEnabled`
+- `src/scene/guild-hall.tsx` — ContactShadows conditional render based on `shadowsEnabled`
+- localStorage persistence (auto-load on session restore)
+
+**User Experience**:
+- Settings persist across sessions (localStorage)
+- Changes apply immediately during gameplay
+- No page reload required
+- Disabled states show 60% opacity styling for inactive options
+- Active state highlights with green border
+
+**Files Modified**:
+- `src/game/state/game-state.ts` — GameSettings interface
+- `src/ui/panels/settings-panel.tsx` — UI implementation
+- `src/scene/world-bloom-post.tsx` — Store-driven post-processing
+- `src/scene/guild-hall.tsx` — ContactShadows condition
+- `src/game/save/save-storage.ts` — No migration needed (optional fields)
+
+**Backward Compatibility**:
+- Existing saves load with `shadowsEnabled: true`, `bloomEnabled: true`, `bloomThreshold: 0.5` (sensible defaults)
+- No save migration required (settings stored separately in Zustand + localStorage)
+- Leva dev panel still available for advanced tuning (co-exists with user toggles)
 
 ---
 
