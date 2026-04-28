@@ -10,6 +10,7 @@ import { getAttackRange, DEFAULT_MOVE_SPEED } from './combat-arena-types';
 // calcMaxHp / calcAttackInterval consumed via calcDerivedCombatStats — no direct import needed
 import { calcDerivedCombatStats } from './derived-combat-stats';
 import { createPassiveState, applyPassiveOnInit, snapshotBaseStats } from './combat-passives';
+import { calcGearBonuses } from './equipment-bonuses';
 
 /**
  * Convert a guild Member into an ArenaEntity at the given position.
@@ -21,13 +22,14 @@ export function memberToArenaEntity(
   syringeCount = 0,
 ): ArenaEntity {
   const derived = calcDerivedCombatStats(member.stats, member.level);
+  const gear = calcGearBonuses(member.equipment);
   const loadout = member.syringeLoadout;
   const entity: ArenaEntity = {
     id: member.id,
     name: member.name,
     isAlly: true,
-    maxHp: derived.maxHp,
-    currentHp: derived.maxHp,
+    maxHp: derived.maxHp + gear.flatHp,
+    currentHp: derived.maxHp + gear.flatHp,
     stats: { ...member.stats },
     skill: member.skill ? { ...member.skill } : null,
     level: member.level,
@@ -39,6 +41,8 @@ export function memberToArenaEntity(
     civilization: member.civilization,
     archetype: member.archetype,
     gender: member.gender,
+    gearFlatDamage: gear.flatDamage,
+    gearFlatDefense: gear.flatDefense,
     baseStats: snapshotBaseStats(member.stats),
     passiveState: createPassiveState(member.civilization),
     dodgeRate: derived.dodgeRate,

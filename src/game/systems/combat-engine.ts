@@ -480,7 +480,7 @@ export class CombatEngine {
     if (entity.passiveState && isCloneActive(entity.passiveState, this.time)) {
       const cloneTarget = findTarget(entity, this.entities);
       if (cloneTarget && cloneTarget.currentHp > 0) {
-        let cloneDmg = calcAutoAttackDamage(entity.stats.STR, cloneTarget.stats.END);
+        let cloneDmg = calcAutoAttackDamage(entity.stats.STR, cloneTarget.stats.END + (cloneTarget.gearFlatDefense ?? 0));
         const cloneCrit = rollCrit(entity.stats.LCK);
         if (cloneCrit) cloneDmg = Math.floor(cloneDmg * entity.critDmg);
         cloneTarget.currentHp -= cloneDmg;
@@ -539,7 +539,8 @@ export class CombatEngine {
 
   /** Apply damage, passive effects, and target reactions — no nextAttackAt/animState changes */
   private dealDamage(entity: ArenaEntity, target: ArenaEntity): void {
-    let damage = calcAutoAttackDamage(entity.stats.STR, target.stats.END);
+    const targetEffDef = target.stats.END + (target.gearFlatDefense ?? 0);
+    let damage = calcAutoAttackDamage(entity.stats.STR, targetEffDef, 1.0, entity.gearFlatDamage ?? 0);
     // Boosted status gives +20% damage
     if (entity.statusEffects.some(e => e.type === 'boosted')) {
       damage = Math.floor(damage * 1.2);
@@ -631,7 +632,8 @@ export class CombatEngine {
     if (entity.level < 5) return;
     if (this.time < entity.skillCooldownUntil) return;
 
-    const baseDmg = calcAutoAttackDamage(entity.stats.STR, target.stats.END);
+    const skillTargetDef = target.stats.END + (target.gearFlatDefense ?? 0);
+    const baseDmg = calcAutoAttackDamage(entity.stats.STR, skillTargetDef, 1.0, entity.gearFlatDamage ?? 0);
     const isCrit2 = rollCrit(entity.stats.LCK);
     let skillDmg = calcSkillDamage(baseDmg, entity.skill.damageMultiplier, entity.stats.DEX);
     if (isCrit2) skillDmg = Math.floor(skillDmg * entity.critDmg);

@@ -1,0 +1,145 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Share+Tech+Mono&family=IM+Fell+English:ital@0;1&display=swap');
+
+/* ─── HD-2D Ink Design Tokens ─────────────────────────────────────────────── */
+:root {
+  /* Surfaces */
+  --ink-bg:              #0e0a18;
+  --ink-bg-deep:         #07050d;
+  --ink-bg-panel:        #1a1326;
+  --ink-bg-panel-alt:    #221735;
+  --ink-bg-hover:        rgba(212, 168, 67, 0.08);
+  --ink-bg-selected:     rgba(212, 168, 67, 0.15);
+
+  /* Borders / Ornaments */
+  --ink-gold:            #d4a843;
+  --ink-gold-dim:        #8a6d2c;
+  --ink-amber:           #c8a060;
+
+  /* Text */
+  --ink-text:            #f0e6d3;
+  --ink-text-dim:        #c8a060;
+  --ink-text-muted:      #6b5a3f;
+
+  /* HP / EXP / Status */
+  --ink-hp-from:         #d4a843;
+  --ink-hp-to:           #c8a060;
+  --ink-exp-from:        #6b4a9f;
+  --ink-exp-to:          #9f7acc;
+  --ink-status-ok:       #6dbf6d;
+  --ink-status-warn:     #d4a843;
+  --ink-status-bad:      #c44a4a;
+
+  /* Faction tints (alpha overlays on card backgrounds) */
+  --ink-faction-knight:  rgba(180, 160, 100, 0.18);
+  --ink-faction-mage:    rgba(120, 100, 200, 0.18);
+  --ink-faction-rogue:   rgba(120, 200, 140, 0.18);
+  --ink-faction-merc:    rgba(200, 120, 100, 0.18);
+
+  /* Typography */
+  --ink-font-title: 'Cinzel', 'Times New Roman', serif;
+  --ink-font-mono:  'Share Tech Mono', 'Consolas', monospace;
+  --ink-font-body:  'IM Fell English', 'Georgia', serif;
+
+  /* Radii / Spacing */
+  --ink-radius-sm:    2px;
+  --ink-radius-md:    4px;
+  --ink-border-w:     2px;
+  --ink-corner-size:  8px;
+
+  /* Shadow / Glow */
+  --ink-glow-gold:    0 0 12px rgba(212, 168, 67, 0.35);
+  --ink-shadow-deep:  0 8px 20px rgba(0, 0, 0, 0.6);
+
+  /* Animation */
+  --ink-ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ink-dur-panel:   200ms;
+  --ink-dur-tab:     150ms;
+
+  /* Scale — desktop default */
+  --ui-scale: 1;
+}
+
+@media (max-width: 1199px) { :root { --ui-scale: 0.9; } }
+@media (max-width: 1023px) { :root { --ui-scale: 0.75; } }
+@media (max-width: 767px)  { :root { --ui-scale: 0.5; } }
+
+/* ─── Panel Shell ─────────────────────────────────────────────────────────── */
+.ink-panel {
+  background: var(--ink-bg-panel);
+  border: var(--ink-border-w) solid var(--ink-gold);
+  border-radius: var(--ink-radius-md);
+  color: var(--ink-text);
+  font-family: var(--ink-font-body);
+  box-shadow: var(--ink-shadow-deep), var(--ink-glow-gold);
+  position: relative;
+  transform: scale(var(--ui-scale));
+  transform-origin: top left;
+}
+
+/* Corner diamond ornaments (TL + TR) */
+.ink-panel::before,
+.ink-panel::after {
+  content: '';
+  position: absolute;
+  width: var(--ink-corner-size);
+  height: var(--ink-corner-size);
+  background: var(--ink-gold);
+  transform: rotate(45deg);
+  z-index: 1;
+}
+.ink-panel::before { top: -5px; left: -5px; }
+.ink-panel::after  { top: -5px; right: -5px; }
+
+/* ─── Typography Utilities ────────────────────────────────────────────────── */
+.ink-title { font-family: var(--ink-font-title); color: var(--ink-gold); letter-spacing: 0.08em; }
+.ink-stat  { font-family: var(--ink-font-mono);  color: var(--ink-text-dim); font-size: 0.85em; }
+.ink-label { font-family: var(--ink-font-mono);  color: var(--ink-text-muted); font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* ─── Bar Utilities ───────────────────────────────────────────────────────── */
+.ink-bar-track {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  overflow: hidden;
+  height: 6px;
+}
+.ink-bar-fill {
+  height: 100%;
+  border-radius: var(--ink-radius-sm);
+  transition: width 300ms var(--ink-ease-out);
+}
+.ink-bar-hp  { background: linear-gradient(90deg, var(--ink-hp-from),  var(--ink-hp-to)); }
+.ink-bar-exp { background: linear-gradient(90deg, var(--ink-exp-from), var(--ink-exp-to)); }
+
+/* ─── Image Utilities ─────────────────────────────────────────────────────── */
+.ink-pixelated,
+.ink-pixelated img {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ─── Tab Utilities ───────────────────────────────────────────────────────── */
+.ink-tab-bar { display: flex; border-bottom: 1px solid var(--ink-gold-dim); }
+.ink-tab {
+  padding: 6px 14px;
+  font-family: var(--ink-font-mono);
+  font-size: 0.75em;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-text-muted);
+  cursor: pointer;
+  border: none;
+  background: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color var(--ink-dur-tab), border-color var(--ink-dur-tab);
+}
+.ink-tab:hover   { color: var(--ink-text-dim); }
+.ink-tab.active  { color: var(--ink-gold); border-bottom-color: var(--ink-gold); }
+
+/* ─── Animation ───────────────────────────────────────────────────────────── */
+@keyframes ink-slide-in {
+  from { opacity: 0; transform: translateY(16px) scale(var(--ui-scale)); }
+  to   { opacity: 1; transform: translateY(0)     scale(var(--ui-scale)); }
+}
+.ink-enter { animation: ink-slide-in var(--ink-dur-panel) var(--ink-ease-out) both; }

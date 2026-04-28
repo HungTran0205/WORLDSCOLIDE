@@ -1,6 +1,21 @@
 /** Core type definitions for game state — all interfaces must be JSON-serializable */
 
 import type { ItemID } from '@/game/data/items';
+import type { EquipmentTemplateId } from '@/game/data/equipment-templates';
+
+export interface EquipmentItem {
+  /** Unique instance ID — uuid */
+  id: string;
+  templateId: EquipmentTemplateId;
+  /** Current durability (0 = broken, gives no stat bonus) */
+  durability: number;
+}
+
+export interface MemberEquipment {
+  weapon?: EquipmentItem | null;
+  armor?: EquipmentItem | null;
+  headgear?: EquipmentItem | null;
+}
 
 export type StatKey = 'STR' | 'END' | 'INT' | 'DEX' | 'CHA' | 'LCK' | 'AGI';
 
@@ -44,6 +59,9 @@ export interface Skill {
 }
 
 export type MemberStatus = 'idle' | 'on-mission' | 'injured' | 'training' | 'assigned';
+
+export type MedicineCondition = 'start' | '80' | '50' | '30' | 'never';
+export interface MedicineSlot { itemId: string | null; condition: MedicineCondition; }
 
 export type FacilityType = 'tavern' | 'training-yard' | 'infirmary' | 'workshop' | 'logging-site' | 'stone-quarry' | 'alchemy-lab';
 
@@ -97,6 +115,10 @@ export interface Member {
   craftSkills?: CraftSkills;
   /** Syringe auto-use config. null = no syringe equipped. */
   syringeLoadout?: SyringeLoadout | null;
+  /** Gear currently equipped by this member */
+  equipment?: MemberEquipment | null;
+  /** Pre-loaded medicine slots for auto-use in combat (intent stored here; consumption is separate) */
+  medicineSlots?: [MedicineSlot, MedicineSlot];
 }
 
 export interface TavernState {
@@ -216,6 +238,8 @@ export type TutorialStep =
 
 export interface InventoryState {
   items: Partial<Record<ItemID, number>>;
+  /** Equipment item instances not currently equipped by any member */
+  equipmentInventory?: EquipmentItem[];
 }
 
 export interface GameSettings {

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameStore } from '@/game/state/store';
+import { useUiStore } from '@/game/state/ui-store';
 import { GoldDisplay } from '@/ui/components/gold-display';
 import { ResourceBar } from '@/ui/components/resource-bar';
 import { SaveStatusBadge } from './save-status-badge';
@@ -32,6 +33,12 @@ export function HUD({ activePanel, setActivePanel }: HUDProps) {
   const tutorialStep = useGameStore((s) => s.tutorialStep);
   const memberCount = rosterCount + (hasFounder ? 1 : 0);
   const [inventoryOpen, setInventoryOpen] = useState(false);
+  const inventoryMode  = useUiStore(s => s.inventoryMode);
+  const closeEquipMode = useUiStore(s => s.closeEquipMode);
+
+  useEffect(() => {
+    if (inventoryMode === 'equip') setInventoryOpen(true);
+  }, [inventoryMode]);
 
   const stepConfig = getCurrentStep(tutorialStep);
   const hintMessage = stepConfig?.message ?? '';
@@ -61,7 +68,7 @@ export function HUD({ activePanel, setActivePanel }: HUDProps) {
         setActivePanel={setActivePanel}
         highlightPanel={highlightPanel}
       />
-      {inventoryOpen && <InventoryPanel onClose={() => setInventoryOpen(false)} />}
+      {inventoryOpen && <InventoryPanel onClose={() => { setInventoryOpen(false); closeEquipMode(); }} />}
     </div>
   );
 }

@@ -1,9 +1,11 @@
 import type { StateCreator } from 'zustand';
-import type { GuildHall, GameSettings, TavernState, Member, FloorTile, PlacedFurniture, GridCell, Rotation, FurnitureType, GuildRank, FacilityType, GuildFacility, SyringeLoadout, AlchemyCraftJob } from './game-state';
+import type { GuildHall, GameSettings, TavernState, Member, FloorTile, PlacedFurniture, GridCell, Rotation, FurnitureType, GuildRank, FacilityType, GuildFacility, SyringeLoadout, AlchemyCraftJob, MemberEquipment, MedicineSlot, MedicineCondition } from './game-state';
 import type { InventoryState } from './game-state';
 import type { InventorySlice } from './inventory-slice';
 import type { RosterSlice } from './roster-slice';
 import type { ItemID } from '@/game/data/items';
+import type { EquipmentSlot } from '@/game/data/equipment-templates';
+import { getEquipmentTemplate } from '@/game/data/equipment-templates';
 import type { FacilityProductionResult, LoggingTickResult } from '@/game/systems/facility-production-system';
 import type { StoneQuarryTickResult } from '@/game/systems/stone-quarry-production-system';
 import type { AlchemyProductionResult } from '@/game/systems/alchemy-production-system';
@@ -57,17 +59,30 @@ export interface GuildSlice {
   applyAlchemyProduction: (result: AlchemyProductionResult) => void;
   /** Set or clear a member's syringe loadout (auto-use config) */
   setSyringeLoadout: (memberId: string, loadout: SyringeLoadout | null) => void;
+  /** Equip an item from equipmentInventory onto a member. Swaps if slot occupied. Returns success. */
+  equipGear: (memberId: string, equipmentItemId: string) => boolean;
+  /** Unequip a gear slot from a member — item returns to equipmentInventory. Returns success. */
+  unequipGear: (memberId: string, slot: EquipmentSlot) => boolean;
   /** Remove a depleted (or manually removed) logging site — resets to level 0 */
   removeFacility: (type: FacilityType) => void;
   /** Add a craft job to an alchemy lab queue (ingredients already consumed) */
   addAlchemyCraftJob: (facilityType: FacilityType, job: AlchemyCraftJob) => void;
   /** Tick all alchemy craft queues by 1s; adds output items for completed jobs */
   tickAlchemyQueues: () => void;
+  /** Set one medicine slot on a member */
+  setMedicineSlot: (memberId: string, slotIdx: 0 | 1, slot: MedicineSlot) => void;
+  /** Clear one medicine slot on a member — itemId → null, condition stays */
+  clearMedicineSlot: (memberId: string, slotIdx: 0 | 1) => void;
   // Ephemeral offline facility report — not persisted in save
   offlineFacilityReport: FacilityProductionResult[] | null;
   offlineElapsedHours: number;
   clearOfflineFacilityReport: () => void;
 }
+
+export const DEFAULT_MEDICINE_SLOTS: [MedicineSlot, MedicineSlot] = [
+  { itemId: null, condition: 'start' as MedicineCondition },
+  { itemId: null, condition: 'start' as MedicineCondition },
+];
 
 /** Generate the default 10x7 diorama floor (no default furniture — quest board is a static scene prop) */
 export function createDefaultFloor(): GuildHall {
@@ -647,6 +662,75 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
     });
   },
 
+  equipGear: (memberId, equipmentItemId) => {
+    let success = false;
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null; inventory: InventoryState };
+      const eqInv = fullState.inventory.equipmentInventory ?? [];
+      const item = eqInv.find((i) => i.id === equipmentItemId);
+      if (!item) return s;
+
+      const template = getEquipmentTemplate(item.templateId);
+      const slot = template.slot;
+
+      const member = fullState.founder?.id === memberId
+        ? fullState.founder
+        : fullState.roster.find((m) => m.id === memberId);
+      if (!member) return s;
+
+      const displaced = member.equipment?.[slot] ?? null;
+      const newEquipment: MemberEquipment = { ...member.equipment, [slot]: item };
+      const newEqInv = eqInv.filter((i) => i.id !== equipmentItemId);
+      if (displaced) newEqInv.push(displaced);
+
+      success = true;
+      const newInventory = { ...fullState.inventory, equipmentInventory: newEqInv };
+
+      if (fullState.founder?.id === memberId) {
+        return {
+          founder: { ...fullState.founder, equipment: newEquipment },
+          inventory: newInventory,
+        } as unknown as Partial<GuildSlice>;
+      }
+      return {
+        roster: fullState.roster.map((m) => m.id === memberId ? { ...m, equipment: newEquipment } : m),
+        inventory: newInventory,
+      } as unknown as Partial<GuildSlice>;
+    });
+    return success;
+  },
+
+  unequipGear: (memberId, slot) => {
+    let success = false;
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null; inventory: InventoryState };
+      const member = fullState.founder?.id === memberId
+        ? fullState.founder
+        : fullState.roster.find((m) => m.id === memberId);
+      if (!member?.equipment?.[slot]) return s;
+
+      const removed = member.equipment[slot]!;
+      const newEquipment = { ...member.equipment, [slot]: null };
+      const newInventory = {
+        ...fullState.inventory,
+        equipmentInventory: [...(fullState.inventory.equipmentInventory ?? []), removed],
+      };
+
+      success = true;
+      if (fullState.founder?.id === memberId) {
+        return {
+          founder: { ...fullState.founder, equipment: newEquipment },
+          inventory: newInventory,
+        } as unknown as Partial<GuildSlice>;
+      }
+      return {
+        roster: fullState.roster.map((m) => m.id === memberId ? { ...m, equipment: newEquipment } : m),
+        inventory: newInventory,
+      } as unknown as Partial<GuildSlice>;
+    });
+    return success;
+  },
+
   addAlchemyCraftJob: (facilityType, job) => {
     set((s) => ({
       facilities: s.facilities.map((f) =>
@@ -701,6 +785,30 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
   },
 
   clearOfflineFacilityReport: () => set({ offlineFacilityReport: null, offlineElapsedHours: 0 }),
+
+  setMedicineSlot: (memberId, slotIdx, slot) => {
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null };
+      const member = fullState.founder?.id === memberId ? fullState.founder : fullState.roster.find(m => m.id === memberId);
+      if (!member) return s;
+      const next: [MedicineSlot, MedicineSlot] = [...(member.medicineSlots ?? DEFAULT_MEDICINE_SLOTS)] as [MedicineSlot, MedicineSlot];
+      next[slotIdx] = slot;
+      if (fullState.founder?.id === memberId) return { founder: { ...fullState.founder, medicineSlots: next } } as unknown as Partial<GuildSlice>;
+      return { roster: fullState.roster.map(m => m.id === memberId ? { ...m, medicineSlots: next } : m) } as unknown as Partial<GuildSlice>;
+    });
+  },
+
+  clearMedicineSlot: (memberId, slotIdx) => {
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null };
+      const member = fullState.founder?.id === memberId ? fullState.founder : fullState.roster.find(m => m.id === memberId);
+      if (!member) return s;
+      const next: [MedicineSlot, MedicineSlot] = [...(member.medicineSlots ?? DEFAULT_MEDICINE_SLOTS)] as [MedicineSlot, MedicineSlot];
+      next[slotIdx] = { ...next[slotIdx], itemId: null };
+      if (fullState.founder?.id === memberId) return { founder: { ...fullState.founder, medicineSlots: next } } as unknown as Partial<GuildSlice>;
+      return { roster: fullState.roster.map(m => m.id === memberId ? { ...m, medicineSlots: next } : m) } as unknown as Partial<GuildSlice>;
+    });
+  },
 
   unassignMemberFromFacility: (memberId, type) => {
     let success = false;

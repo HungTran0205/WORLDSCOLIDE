@@ -1,159 +1,176 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useGameStore } from '@/game/state/store';
-import { MemberBookmarkList } from '@/ui/components/member-bookmark-list';
-import { MemberBookDetailPage } from '@/ui/components/member-book-detail-page';
+import { MemberCard } from '@/ui/components/member-card';
+import { CharacterDetailPanel } from './character-detail-panel';
+import { EquipModePanel } from '@/ui/components/equip-mode-panel';
+import { ConfirmDialog } from '@/ui/components/confirm-dialog';
 import { CIVILIZATIONS, CIV_CONFIG } from '@/game/data/civilization-config';
 import { canPromote } from '@/game/data/ranks';
-import type { StatKey, SyringeLoadout } from '@/game/state/game-state';
-import { ConfirmDialog } from '@/ui/components/confirm-dialog';
-import '@/ui/styles/panels.css';
+import type { MemberStatus, StatKey, SyringeLoadout } from '@/game/state/game-state';
+import type { EquipmentSlot } from '@/game/data/equipment-templates';
+import '@/ui/styles/guild-roster.css';
 
 interface GuildRosterProps {
   onClose: () => void;
 }
 
+type CivFilter = 'all' | string;
+type StatusFilter = 'all' | MemberStatus;
+
+const STATUS_LABELS: Record<string, string> = {
+  idle: 'Available', 'on-mission': 'On Quest', injured: 'Injured', training: 'Training', assigned: 'Assigned',
+};
+
 export function GuildRoster({ onClose }: GuildRosterProps) {
-  const founder = useGameStore((s) => s.founder);
-  const roster = useGameStore((s) => s.roster);
-  const gold = useGameStore((s) => s.gold);
-  const allocateStat = useGameStore((s) => s.allocateStat);
-  const toggleAutoCast = useGameStore((s) => s.toggleAutoCast);
-  const inviteMercenary = useGameStore((s) => s.inviteMercenary);
-  const promoteMember = useGameStore((s) => s.promoteMember);
-  const removeMember = useGameStore((s) => s.removeMember);
-  const setSyringeLoadout = useGameStore((s) => s.setSyringeLoadout);
-  const syringeCount = useGameStore((s) => s.inventory.items.HEALING_SYRINGE ?? 0);
+  const founder          = useGameStore(s => s.founder);
+  const roster           = useGameStore(s => s.roster);
+  const gold             = useGameStore(s => s.gold);
+  const allocateStat     = useGameStore(s => s.allocateStat);
+  const toggleAutoCast   = useGameStore(s => s.toggleAutoCast);
+  const inviteMercenary  = useGameStore(s => s.inviteMercenary);
+  const promoteMember    = useGameStore(s => s.promoteMember);
+  const removeMember     = useGameStore(s => s.removeMember);
+  const setSyringeLoadout = useGameStore(s => s.setSyringeLoadout);
+  const equipGear        = useGameStore(s => s.equipGear);
+  const unequipGear      = useGameStore(s => s.unequipGear);
+  const syringeCount     = useGameStore(s => s.inventory.items.HEALING_SYRINGE ?? 0);
+  const equipmentInventory = useGameStore(s => s.inventory.equipmentInventory ?? []);
 
   const allMembers = useMemo(() => (founder ? [founder, ...roster] : roster), [founder, roster]);
 
-  const [civFilter, setCivFilter] = useState<string>('all');
+  const [view, setView]           = useState<'grid' | 'detail' | 'equip'>('grid');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [query, setQuery]         = useState('');
+  const [civFilter, setCivFilter] = useState<CivFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [releaseTarget, setReleaseTarget] = useState<string | null>(null);
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(() => allMembers[0]?.id ?? null);
 
-  const members = useMemo(
-    () => (civFilter === 'all' ? allMembers : allMembers.filter((m) => m.civilization === civFilter)),
-    [allMembers, civFilter],
-  );
+  const visible = useMemo(() => allMembers
+    .filter(m => !query || m.name.toLowerCase().includes(query.toLowerCase()))
+    .filter(m => civFilter === 'all' || m.civilization === civFilter)
+    .filter(m => statusFilter === 'all' || m.status === statusFilter),
+    [allMembers, query, civFilter, statusFilter]);
 
-  // Fall back to first visible member if current selection is filtered out
-  const selectedMember = useMemo(
-    () => members.find((m) => m.id === selectedMemberId) ?? members[0] ?? null,
-    [members, selectedMemberId],
-  );
+  const selected = allMembers.find(m => m.id === selectedId) ?? null;
+  const isMercenary = selected?.rank === 'MERCENARY';
 
-  const isMercenary = selectedMember?.rank === 'MERCENARY';
-  const inviteCost = (selectedMember?.level ?? 0) * 100;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (view === 'equip') setView('detail');
+      else if (view === 'detail') setView('grid');
+      else onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [view, onClose]);
+  const inviteCost = (selected?.level ?? 0) * 100;
 
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 100, background: 'rgba(0,0,0,0.55)',
-    }}>
-      {/* Book shell — 680px wide */}
-      <div style={{
-        width: 680, maxHeight: '90vh', display: 'flex', flexDirection: 'column',
-        background: 'rgba(14,16,28,0.98)', borderRadius: 10,
-        border: '1px solid rgba(255,215,0,0.22)',
-        boxShadow: '0 16px 56px rgba(0,0,0,0.6)',
-        overflow: 'hidden',
-      }}>
+  function openDetail(id: string) {
+    setSelectedId(id);
+    setView('detail');
+  }
 
-        {/* ── Title bar ── */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '9px 14px', borderBottom: '1px solid rgba(255,215,0,0.14)',
-          background: 'rgba(255,215,0,0.03)', flexShrink: 0,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ color: '#ffd700', fontSize: '0.95rem', fontStyle: 'italic' }}>Guild Roster</span>
-            <span style={{
-              fontSize: '0.62rem', color: '#777', padding: '1px 6px',
-              border: '1px solid rgba(255,215,0,0.18)', borderRadius: 3,
-            }}>{allMembers.length}</span>
-            {/* Civ filter pills */}
-            <div style={{ display: 'flex', gap: 3 }}>
-              <button className="panel-btn" style={{ width: 'auto', padding: '2px 7px', fontSize: '0.65rem', marginTop: 0, opacity: civFilter === 'all' ? 1 : 0.55 }} onClick={() => setCivFilter('all')}>All</button>
-              {CIVILIZATIONS.map((civ) => (
-                <button key={civ} className="panel-btn" style={{ width: 'auto', padding: '2px 7px', fontSize: '0.65rem', marginTop: 0, opacity: civFilter === civ ? 1 : 0.5 }} onClick={() => setCivFilter(civ)}>
-                  {CIV_CONFIG[civ].displayName}
-                </button>
-              ))}
-            </div>
-          </div>
-          <button className="panel-close-btn" onClick={onClose}>Close</button>
-        </div>
+  if (view === 'equip' && selected) {
+    return (
+      <div className="guild-roster-overlay">
+        <EquipModePanel memberId={selected.id} onClose={() => setView('detail')} />
+      </div>
+    );
+  }
 
-        {/* ── Book body: [bookmarks | left page | spine | right page] ── */}
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
-          <MemberBookmarkList
-            members={members}
-            selectedId={selectedMember?.id ?? null}
-            onSelect={setSelectedMemberId}
+  if (view === 'detail' && selected) {
+    return (
+      <div className="guild-roster-overlay">
+        <div className="ink-panel guild-roster ink-enter">
+          <CharacterDetailPanel
+            member={selected}
+            onAllocateStat={(stat, amount) => allocateStat(selected.id, stat as StatKey, amount)}
+            onToggleAutoCast={() => toggleAutoCast(selected.id)}
+            onInviteMercenary={isMercenary ? () => inviteMercenary(selected.id) : undefined}
+            inviteCost={isMercenary ? inviteCost : undefined}
+            canAffordInvite={isMercenary ? gold >= inviteCost : undefined}
+            onPromote={!isMercenary && !selected.isFounder ? () => promoteMember(selected.id) : undefined}
+            canAffordPromote={!isMercenary ? canPromote(selected, gold) : undefined}
+            onClose={() => setView('grid')}
+            syringeCount={syringeCount}
+            onSetSyringeLoadout={loadout => setSyringeLoadout(selected.id, loadout as SyringeLoadout | null)}
+            equipmentInventory={equipmentInventory}
+            onEquipGear={id => equipGear(selected.id, id)}
+            onUnequipGear={slot => unequipGear(selected.id, slot as EquipmentSlot)}
+            onOpenEquipMode={() => setView('equip')}
           />
-
-          {selectedMember ? (
-            <MemberBookDetailPage
-              member={selectedMember}
-              onAllocateStat={(stat, amount) => allocateStat(selectedMember.id, stat as StatKey, amount)}
-              onToggleAutoCast={() => toggleAutoCast(selectedMember.id)}
-              syringeCount={syringeCount}
-              onSetSyringeLoadout={(loadout: SyringeLoadout | null) => setSyringeLoadout(selectedMember.id, loadout)}
-            />
-          ) : (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444', fontSize: '0.85rem' }}>
-              No members
-            </div>
-          )}
-        </div>
-
-        {/* ── Action footer: rank-aware actions ── */}
-        {selectedMember && (
-          <div style={{
-            display: 'flex', gap: 8, padding: '9px 14px',
-            borderTop: '1px solid rgba(255,215,0,0.14)', flexShrink: 0,
-          }}>
-            {!isMercenary && !selectedMember.isFounder && (
+          {!selected.isFounder && (
+            <div style={{ padding: '8px 14px', borderTop: '1px solid var(--ink-gold-dim)', display: 'flex', justifyContent: 'flex-end' }}>
               <button
-                className="panel-btn"
-                disabled={!canPromote(selectedMember, gold)}
-                onClick={() => promoteMember(selectedMember.id)}
-                style={{ marginTop: 0 }}
-              >
-                Promote
-              </button>
-            )}
-            {isMercenary && (
-              <button
-                className="panel-btn"
-                disabled={gold < inviteCost}
-                onClick={() => inviteMercenary(selectedMember.id)}
-                style={{ marginTop: 0 }}
-              >
-                Invite to Guild ({inviteCost}g)
-              </button>
-            )}
-            {!selectedMember.isFounder && (
-              <button
-                className="panel-btn"
-                onClick={() => setReleaseTarget(selectedMember.id)}
-                style={{ marginTop: 0, color: '#e74c3c', borderColor: 'rgba(231,76,60,0.4)' }}
+                className="filter-pill"
+                style={{ color: 'var(--ink-status-bad)', borderColor: 'rgba(196,74,74,0.4)' }}
+                onClick={() => setReleaseTarget(selected.id)}
               >
                 Release
               </button>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
+        {releaseTarget && (
+          <ConfirmDialog
+            message={`Release ${allMembers.find(m => m.id === releaseTarget)?.name ?? 'this member'}? This cannot be undone.`}
+            confirmLabel="Release"
+            danger
+            onConfirm={() => { removeMember(releaseTarget); setReleaseTarget(null); setView('grid'); }}
+            onCancel={() => setReleaseTarget(null)}
+          />
         )}
       </div>
+    );
+  }
 
-      {releaseTarget && (
-        <ConfirmDialog
-          message={`Release ${allMembers.find((m) => m.id === releaseTarget)?.name ?? 'this member'}? This cannot be undone.`}
-          confirmLabel="Release"
-          danger
-          onConfirm={() => { removeMember(releaseTarget); setReleaseTarget(null); setSelectedMemberId(null); }}
-          onCancel={() => setReleaseTarget(null)}
-        />
-      )}
+  return (
+    <div className="guild-roster-overlay">
+      <div className="ink-panel guild-roster ink-enter">
+        {/* Header */}
+        <header className="roster-header">
+          <span>
+            <span className="roster-title">MEMBERS</span>
+            <span className="roster-count">{allMembers.length}</span>
+          </span>
+          <button className="roster-close-btn" onClick={onClose} type="button">Close</button>
+        </header>
+
+        {/* Controls */}
+        <div className="roster-controls">
+          <input
+            className="roster-search"
+            placeholder="Search by name…"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+          />
+          <div className="filter-group">
+            <button className={`filter-pill${civFilter === 'all' ? ' active' : ''}`} onClick={() => setCivFilter('all')}>All</button>
+            {CIVILIZATIONS.map(civ => (
+              <button key={civ} className={`filter-pill${civFilter === civ ? ' active' : ''}`} onClick={() => setCivFilter(civ)}>
+                {CIV_CONFIG[civ].displayName}
+              </button>
+            ))}
+          </div>
+          <div className="filter-group">
+            <button className={`filter-pill${statusFilter === 'all' ? ' active' : ''}`} onClick={() => setStatusFilter('all')}>All Status</button>
+            {(Object.keys(STATUS_LABELS) as MemberStatus[]).map(s => (
+              <button key={s} className={`filter-pill${statusFilter === s ? ' active' : ''}`} onClick={() => setStatusFilter(s)}>
+                {STATUS_LABELS[s]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Grid */}
+        <div className="member-grid">
+          {visible.length === 0
+            ? <p className="roster-empty">No members match filters.</p>
+            : visible.map(m => <MemberCard key={m.id} member={m} onClick={() => openDetail(m.id)} />)
+          }
+        </div>
+      </div>
     </div>
   );
 }

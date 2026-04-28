@@ -1,0 +1,211 @@
+/* ─── Guild Roster Panel ──────────────────────────────────────────────────── */
+.guild-roster-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 40px;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.guild-roster {
+  width: min(920px, 95vw);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  transform: scale(var(--ui-scale));
+  transform-origin: top center;
+  overflow: hidden;
+}
+
+/* Header */
+.roster-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--ink-gold-dim);
+  flex-shrink: 0;
+}
+
+.roster-title {
+  font-family: var(--ink-font-title);
+  font-size: 1rem;
+  color: var(--ink-gold);
+  letter-spacing: 0.1em;
+}
+
+.roster-count {
+  font-family: var(--ink-font-mono);
+  font-size: 0.65rem;
+  color: var(--ink-text-muted);
+  border: 1px solid var(--ink-gold-dim);
+  padding: 1px 6px;
+  border-radius: 2px;
+  margin-left: 8px;
+}
+
+/* Controls */
+.roster-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--ink-gold-dim);
+  flex-shrink: 0;
+}
+
+.roster-search {
+  background: var(--ink-bg-deep);
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  color: var(--ink-text);
+  font-family: var(--ink-font-mono);
+  font-size: 0.8rem;
+  padding: 5px 10px;
+  outline: none;
+  transition: border-color var(--ink-dur-tab);
+  width: 100%;
+}
+.roster-search::placeholder { color: var(--ink-text-muted); }
+.roster-search:focus { border-color: var(--ink-gold); }
+
+.filter-group { display: flex; gap: 4px; flex-wrap: wrap; }
+
+.filter-pill {
+  padding: 3px 10px;
+  font-family: var(--ink-font-mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-text-muted);
+  background: none;
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  cursor: pointer;
+  transition: color var(--ink-dur-tab), border-color var(--ink-dur-tab), background var(--ink-dur-tab);
+}
+.filter-pill:hover  { color: var(--ink-text-dim); border-color: var(--ink-amber); }
+.filter-pill.active { color: var(--ink-gold); border-color: var(--ink-gold); background: var(--ink-bg-selected); }
+
+/* Member Grid */
+.member-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+  padding: 12px 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.roster-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 40px;
+  color: var(--ink-text-muted);
+  font-family: var(--ink-font-mono);
+  font-size: 0.8rem;
+}
+
+/* ─── Member Card ─────────────────────────────────────────────────────────── */
+.member-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--ink-bg-panel-alt);
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-md);
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  color: var(--ink-text);
+  transition: border-color var(--ink-dur-tab), background var(--ink-dur-tab);
+  overflow: hidden;
+  position: relative;
+}
+.member-card:hover {
+  border-color: var(--ink-gold);
+  background: var(--ink-bg-hover);
+}
+
+.card-avatar {
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--ink-bg-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.card-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.card-avatar-initials {
+  font-family: var(--ink-font-title);
+  font-size: 1.8rem;
+  color: var(--ink-gold-dim);
+}
+
+.card-info {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.card-name {
+  font-family: var(--ink-font-body);
+  font-size: 0.9rem;
+  color: var(--ink-text);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.card-rank {
+  font-size: 0.6rem;
+  padding: 1px 4px;
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: 2px;
+}
+.card-civ {
+  font-family: var(--ink-font-mono);
+  font-size: 0.6rem;
+  color: var(--ink-text-muted);
+}
+.card-stats {
+  display: flex;
+  gap: 6px;
+}
+
+.status-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+}
+
+/* ─── Close Button ────────────────────────────────────────────────────────── */
+.roster-close-btn {
+  background: none;
+  border: 1px solid var(--ink-gold-dim);
+  color: var(--ink-text-muted);
+  font-family: var(--ink-font-mono);
+  font-size: 0.7rem;
+  padding: 3px 10px;
+  border-radius: var(--ink-radius-sm);
+  cursor: pointer;
+  transition: color var(--ink-dur-tab), border-color var(--ink-dur-tab);
+}
+.roster-close-btn:hover { color: var(--ink-gold); border-color: var(--ink-gold); }

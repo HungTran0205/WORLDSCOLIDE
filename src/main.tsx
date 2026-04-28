@@ -1,4 +1,5 @@
 import '@/i18n';
+import '@/ui/styles/game-ui-tokens.css';
 import { createRoot } from 'react-dom/client';
 import { App } from '@/ui/app';
 

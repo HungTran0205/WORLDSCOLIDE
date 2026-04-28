@@ -56,7 +56,7 @@ export function resetGameState(): void {
     tutorialStep: 'char-creation' as const,
     pendingResults: [],
     currentCombatReplay: null,
-    inventory: { items: {} },
+    inventory: { items: {}, equipmentInventory: [] },
     // Combat arena defaults
     gameScene: 'guild-hall' as const,
     arenaPhase: 'idle' as const,

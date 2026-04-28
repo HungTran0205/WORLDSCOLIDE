@@ -391,6 +391,65 @@ function migrateV17toV18(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+/** v18→v19: Add equipment slots to all members; add equipmentInventory to inventory state */
+function migrateV18toV19(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+
+  const migrateMember = (m: AnyRecord): AnyRecord => {
+    if (m.equipment !== undefined) return m;
+    return { ...m, equipment: null };
+  };
+
+  const founder = gs.founder ? migrateMember(gs.founder as AnyRecord) : null;
+  const roster = Array.isArray(gs.roster)
+    ? (gs.roster as AnyRecord[]).map(migrateMember)
+    : [];
+
+  const tavern = gs.tavern as AnyRecord | undefined;
+  let migratedTavern = tavern;
+  if (tavern?.availableMercenaries && Array.isArray(tavern.availableMercenaries)) {
+    migratedTavern = {
+      ...tavern,
+      availableMercenaries: (tavern.availableMercenaries as AnyRecord[]).map(migrateMember),
+    };
+  }
+
+  const inventory = (gs.inventory ?? {}) as AnyRecord;
+  const migratedInventory = {
+    ...inventory,
+    equipmentInventory: inventory.equipmentInventory ?? [],
+  };
+
+  return {
+    ...envelope,
+    version: 19,
+    gameState: {
+      ...gs,
+      founder,
+      roster,
+      tavern: migratedTavern,
+      inventory: migratedInventory,
+    } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
+const DEFAULT_MED_SLOTS = [
+  { itemId: null, condition: 'start' },
+  { itemId: null, condition: 'start' },
+];
+
+function migrateV19toV20(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as AnyRecord;
+  const addMed = (m: AnyRecord) => m.medicineSlots ? m : { ...m, medicineSlots: DEFAULT_MED_SLOTS };
+  const founder = gs.founder ? addMed(gs.founder as AnyRecord) : null;
+  const roster = Array.isArray(gs.roster) ? (gs.roster as AnyRecord[]).map(addMed) : [];
+  const tavern = gs.tavern as AnyRecord | undefined;
+  const migratedTavern = tavern?.availableMercenaries && Array.isArray(tavern.availableMercenaries)
+    ? { ...tavern, availableMercenaries: (tavern.availableMercenaries as AnyRecord[]).map(addMed) }
+    : tavern;
+  return { ...envelope, version: 20, gameState: { ...gs, founder, roster, tavern: migratedTavern } as unknown as SaveEnvelope['gameState'] };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -404,6 +463,8 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   15: migrateV15toV16,
   16: migrateV16toV17,
   17: migrateV17toV18,
+  18: migrateV18toV19,
+  19: migrateV19toV20,
 };
 
 /**
