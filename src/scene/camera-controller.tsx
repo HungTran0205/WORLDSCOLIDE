@@ -36,7 +36,7 @@ export function CameraController() {
     invalidate();
   }, [cameraTarget, invalidate]);
 
-  useFrame(() => {
+  useFrame((_state, delta) => {
     const controls = controlsRef.current;
     if (!controls) return;
 
@@ -45,12 +45,22 @@ export function CameraController() {
 
     // Stop lerping when arrived — demand frameloop won't fire unless invalidated
     if (distTarget < ARRIVE_THRESHOLD && distCamera < ARRIVE_THRESHOLD) {
+      if (distTarget > 0 || distCamera > 0) {
+        controls.target.copy(goalTarget.current);
+        camera.position.copy(goalPosition.current);
+        controls.update();
+        invalidate();
+      }
       setCameraSettled(true);
       return;
     }
 
-    controls.target.lerp(goalTarget.current, LERP_SPEED);
-    camera.position.lerp(goalPosition.current, LERP_SPEED);
+    // Frame-rate independent lerp using delta time to fix lag/stutter
+    const dt = Math.min(delta, 0.1); // Clamp delta to max 100ms
+    const step = 1 - Math.exp(-5 * dt); // Equivalent to 0.08 at 60fps
+
+    controls.target.lerp(goalTarget.current, step);
+    camera.position.lerp(goalPosition.current, step);
     controls.update();
     invalidate();
   });

@@ -450,6 +450,22 @@ function migrateV19toV20(envelope: SaveEnvelope): SaveEnvelope {
   return { ...envelope, version: 20, gameState: { ...gs, founder, roster, tavern: migratedTavern } as unknown as SaveEnvelope['gameState'] };
 }
 
+/** v20→v21: Add id to GuildFacility — primary instances get id === type */
+function migrateV20toV21(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+  const facilities = Array.isArray(gs.facilities)
+    ? (gs.facilities as AnyRecord[]).map((f) => ({
+        id: f.type as string, // default: primary instance id = type
+        ...f,                 // if id already exists in f, it wins
+      }))
+    : gs.facilities;
+  return {
+    ...envelope,
+    version: 21,
+    gameState: { ...gs, facilities } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -465,6 +481,7 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   17: migrateV17toV18,
   18: migrateV18toV19,
   19: migrateV19toV20,
+  20: migrateV20toV21,
 };
 
 /**

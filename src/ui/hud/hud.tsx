@@ -5,7 +5,7 @@ import { GoldDisplay } from '@/ui/components/gold-display';
 import { ResourceBar } from '@/ui/components/resource-bar';
 import { SaveStatusBadge } from './save-status-badge';
 import { PanelToggle, type PanelId } from './panel-toggle';
-import { RoomNavBar } from './room-nav-bar';
+import { FacilityCompass } from './facility-compass';
 import { InventoryPanel } from '@/ui/panels/inventory-panel';
 import { formatGameTime } from '@/game/utils/format-game-time';
 import { calcTotalUpkeep } from '@/game/systems/upkeep-system';
@@ -62,7 +62,7 @@ export function HUD({ activePanel, setActivePanel }: HUDProps) {
           {hintMessage}
         </div>
       )}
-      <RoomNavBar />
+      <FacilityCompass />
       <PanelToggle
         activePanel={activePanel}
         setActivePanel={setActivePanel}

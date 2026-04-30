@@ -81,28 +81,28 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
 
   return (
     <group>
-      {/* Room point light — only on when camera is here */}
-      {isActive && !isAlchemy && (
+      {/* Room point light — always mounted, intensity toggled to prevent shader recompilation lag */}
+      {!isAlchemy && (
         <pointLight
           position={[cx, isLoggingSite ? 8 : 2.5, cz]}
           color={light.color}
-          intensity={light.intensity}
+          intensity={isActive ? light.intensity : 0}
           distance={isLoggingSite ? 20 : 10}
           decay={isLoggingSite ? 1 : 2}
         />
       )}
-      {/* Stone quarry ambient fill — cool grey to simulate diffuse cave lighting */}
-      {isActive && isQuarry && (
-        <ambientLight color="#9999bb" intensity={0.6} />
+      {/* Stone quarry ambient fill */}
+      {isQuarry && (
+        <ambientLight color="#9999bb" intensity={isActive ? 0.6 : 0} />
       )}
-      {/* Workshop ambient fill — warm yellow to complement forge/workbench lighting */}
-      {isActive && isWorkshop && (
-        <ambientLight color="#ffffff" intensity={2} />
+      {/* Workshop ambient fill */}
+      {isWorkshop && (
+        <ambientLight color="#ffffff" intensity={isActive ? 2 : 0} />
       )}
-      {/* Alchemy-lab: two yellow point lights at reactor and silo positions */}
-      {isActive && isAlchemy && (
+      {/* Alchemy-lab point lights */}
+      {isAlchemy && (
         <>
-          <pointLight position={[cx + 0.3, 1.2, cz + 0.5]} color="#ffa060" intensity={5} distance={9} decay={1} />
+          <pointLight position={[cx + 0.3, 1.2, cz + 0.5]} color="#ffa060" intensity={isActive ? 5 : 0} distance={9} decay={1} />
         </>
       )}
 

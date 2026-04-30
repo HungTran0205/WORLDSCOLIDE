@@ -61,10 +61,17 @@ export function FacilityZoneLayer() {
 
   // Only show zones for built facilities — no locked/dimmed markers
   const builtFacilities = facilities.filter((f) => f.level > 0);
+  // One zone per type — multi-instance facilities share a zone position; clicking opens panel for that type
+  const representativeByType = Array.from(
+    builtFacilities.reduce((map, f) => {
+      if (!map.has(f.type)) map.set(f.type, f);
+      return map;
+    }, new Map<FacilityType, GuildFacility>()).values()
+  );
 
   return (
     <group>
-      {builtFacilities.map((facility) => (
+      {representativeByType.map((facility) => (
         <FacilityZone
           key={facility.type}
           facility={facility}

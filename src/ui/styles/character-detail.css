@@ -2,16 +2,15 @@
 .char-detail {
   display: flex;
   flex-direction: column;
-  width: min(560px, 95vw);
+  width: 100%;
   max-height: 85vh;
   overflow: hidden;
-  transform: scale(var(--ui-scale));
-  transform-origin: top center;
 }
 
 /* Header */
 .char-detail-header {
   display: flex;
+  align-items: flex-start;
   gap: 14px;
   padding: 14px 16px 10px;
   border-bottom: 1px solid var(--ink-gold-dim);
@@ -214,3 +213,49 @@
 .char-btn:hover        { color: var(--ink-gold); border-color: var(--ink-gold); }
 .char-btn.primary      { color: var(--ink-gold); border-color: var(--ink-gold); background: var(--ink-bg-selected); }
 .char-btn:disabled     { opacity: 0.35; cursor: not-allowed; }
+
+/* ── Stats tab 2-column layout ── */
+.stats-tab-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 14px;
+  align-items: start;
+  width: 100%;
+}
+.stats-col-talents { min-width: 0; }
+.stats-col-derived  { min-width: 0; }
+
+/* Unspent points notice */
+.stats-unspent {
+  font-family: var(--ink-font-mono);
+  font-size: 0.68rem;
+  color: var(--ink-status-ok);
+  margin-bottom: 6px;
+}
+
+/* Derived stat rows (right column) */
+.derived-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 6px;
+  border-radius: var(--ink-radius-sm);
+}
+.derived-row:nth-child(odd) { background: var(--ink-bg-hover); }
+.derived-label {
+  font-family: var(--ink-font-mono);
+  font-size: 0.62rem;
+  color: var(--ink-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.derived-val {
+  font-family: var(--ink-font-mono);
+  font-size: 0.7rem;
+  color: var(--ink-text);
+}
+.derived-xp {
+  font-size: 0.58rem;
+  color: var(--ink-text-muted);
+  margin-left: 4px;
+}

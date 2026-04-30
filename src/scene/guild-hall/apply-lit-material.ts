@@ -14,7 +14,7 @@ export function applyLitMaterial(root: THREE.Group) {
         transparent: b.transparent, opacity: b.opacity,
         roughness: 0.8, metalness: 0.1,
       });
-      b.dispose();
+      // Don't dispose b — it's shared with the cached GLB scene; other clones still reference it
     }
     mesh.castShadow = true;
     mesh.receiveShadow = true;

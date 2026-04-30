@@ -12,11 +12,9 @@ import { QuestBoard } from '@/ui/panels/quest-board';
 import { GuildRoster } from '@/ui/panels/guild-roster';
 import { FacilitiesPanel } from '@/ui/panels/facilities-panel';
 import { OfflineFacilityPopup } from '@/ui/components/offline-facility-popup';
-import { BuildMenu } from '@/ui/panels/build-menu';
 import { CombatView } from '@/ui/panels/combat-view';
 import { SettingsPanel } from '@/ui/panels/settings-panel';
 import { GameOverOverlay } from '@/ui/panels/game-over-overlay';
-import { BuildModeHint } from '@/ui/components/build-mode-hint';
 import { WorldBoardModal } from '@/ui/components/world-board-modal';
 import { KaelRescueDialogue, TutorialRewardSplash } from '@/ui/components/tutorial-dialogue-overlays';
 import { MissionNotification } from '@/ui/components/mission-notification';
@@ -124,62 +122,9 @@ function HomeButton() {
     return () => window.removeEventListener('keydown', handler);
   }, [isAtGuildHall, cameraTarget, setCameraTarget, resetCameraToGuildHall, facilities]);
 
-  if (isAtGuildHall) return null;
-
-  return (
-    <button
-      onClick={resetCameraToGuildHall}
-      title="Return to Guild Hall"
-      style={{
-        position: 'fixed',
-        bottom: 60,
-        left: 16,
-        width: 44,
-        height: 44,
-        background: 'rgba(30,20,10,0.85)',
-        color: '#ffd700',
-        border: '1px solid rgba(255,215,0,0.4)',
-        borderRadius: 8,
-        cursor: 'pointer',
-        fontSize: '1.3rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 100,
-      }}
-    >
-      🏠
-    </button>
-  );
+  return null;
 }
 
-/** Floating toggle button to enter/exit build mode */
-function BuildModeToggle() {
-  const isBuildMode = useGameStore((s) => s.isBuildMode);
-  const toggleBuildMode = useGameStore((s) => s.toggleBuildMode);
-
-  return (
-    <button
-      onClick={() => toggleBuildMode(!isBuildMode)}
-      style={{
-        position: 'fixed',
-        bottom: 16,
-        right: 16,
-        padding: '10px 20px',
-        background: isBuildMode ? '#ff4444' : '#4488ff',
-        color: '#fff',
-        border: 'none',
-        borderRadius: 8,
-        cursor: 'pointer',
-        fontSize: '0.9rem',
-        fontWeight: 'bold',
-        zIndex: 100,
-      }}
-    >
-      {isBuildMode ? 'Exit Build' : 'Build Mode'}
-    </button>
-  );
-}
 
 interface GameScreenProps {
   onReturnToTitle: () => void;
@@ -276,7 +221,6 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
               onDismiss={clearOfflineFacilityReport}
             />
           )}
-          {activePanel === 'build' && <BuildMenu onClose={() => setActivePanel(null)} />}
           {activePanel === 'combat' && <CombatView onClose={() => setActivePanel(null)} />}
           {activePanel === 'settings' && (
             <SettingsPanel
@@ -291,8 +235,6 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
               onClose={() => { setAlchemyPanelOpen(false); alchemyUserClosedRef.current = true; }}
             />
           )}
-          <BuildModeHint />
-          <BuildModeToggle />
           <HomeButton />
         </>
       )}

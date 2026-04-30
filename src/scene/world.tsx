@@ -2,6 +2,7 @@ import { Suspense, useEffect, useRef, createContext, useContext, useState, useCa
 import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
 import { useThree, useFrame } from '@react-three/fiber';
+import { Stats } from '@react-three/drei';
 import { GuildHall } from './guild-hall/guild-hall';
 import { MemberLayer } from './member-layer';
 import { CameraController } from './camera-controller';
@@ -141,6 +142,7 @@ export function World({ isActive = true }: WorldProps) {
         gl={createWebGPURenderer}
         style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}
       >
+        <Stats />
         <WebGPUInit />
         <TransparentBackground />
         <VisibilityGuard isActive={isActive} />

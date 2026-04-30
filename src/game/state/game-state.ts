@@ -80,6 +80,8 @@ export interface AlchemyCraftJob {
 }
 
 export interface GuildFacility {
+  /** Unique instance ID — equals type for the primary (first-built) instance. */
+  id: string;
   type: FacilityType;
   /** 0 = locked/not built, 1–3 = active */
   level: number;

@@ -10,7 +10,7 @@ export function FacilityRoomsLayer() {
   return (
     <group>
       {placed.map((facility) => (
-        <FacilityRoom key={facility.type} facility={facility} />
+        <FacilityRoom key={facility.id} facility={facility} />
       ))}
     </group>
   );
