@@ -246,6 +246,85 @@ export function validateAndMigrate(json: string): ValidationResult {
 
 ## CSS Conventions
 
+### Design Tokens System (v1.20 — HD-2D Ink Refresh)
+
+All UI styling uses a centralized token system in `src/ui/styles/game-ui-tokens.css`. **All new tokens must use the `--ink-*` prefix.**
+
+#### Core Token Categories
+
+**Colors:**
+- **Surfaces**: `--ink-bg`, `--ink-bg-deep`, `--ink-bg-panel`, `--ink-bg-panel-alt`, `--ink-bg-hover`, `--ink-bg-selected`
+- **Text**: `--ink-text`, `--ink-text-dim`, `--ink-text-muted`
+- **Status**: `--ink-status-ok`, `--ink-status-warn`, `--ink-status-bad`
+- **Accents**: `--ink-gold`, `--ink-gold-dim`, `--ink-gold-bright`, `--ink-amber`
+- **Bars**: `--ink-hp-from`, `--ink-hp-to`, `--ink-exp-from`, `--ink-exp-to`
+- **Rank Palette** (6 ranks): `--ink-rank-recruit`, `--ink-rank-member`, `--ink-rank-veteran`, `--ink-rank-officer`, `--ink-rank-commander`, `--ink-rank-mercenary`
+- **Quest Tier Palette** (7 tiers): `--ink-tier-f` through `--ink-tier-s`
+- **Combat Log Accents**: `--ink-log-skill`, `--ink-log-dodge`, `--ink-log-heal`, `--ink-log-zone`
+- **Wood Theme** (InventoryPanel): `--ink-wood-edge`, `--ink-wood-edge-light`, `--ink-wood-edge-dark`, `--ink-wood-fill-from`, `--ink-wood-fill-to`, `--ink-stud-bright`, `--ink-stud-mid`
+
+**Typography:**
+- **Fonts**: `--ink-font-title` (Cinzel), `--ink-font-body` (IM Fell English), `--ink-font-mono` (Share Tech Mono), `--ink-font-ui` (Segoe UI, sans-serif)
+- **Type Scale** (8 levels, rem-based): `--ink-fs-display`, `--ink-fs-h1`, `--ink-fs-h2`, `--ink-fs-body`, `--ink-fs-small`, `--ink-fs-meta`, `--ink-fs-label`, `--ink-fs-tiny`
+
+**Spacing & Layout:**
+- **Spacing Scale** (6 steps, 4px base): `--ink-space-1` (4px) through `--ink-space-6` (24px)
+- **Radii**: `--ink-radius-sm` (2px), `--ink-radius-md` (4px), `--ink-radius-lg` (8px), `--ink-radius-chest` (12px)
+
+**Effects:**
+- **Shadows**: `--ink-shadow-deep`, `--ink-shadow-panel`
+- **Glows**: `--ink-glow-gold`, `--ink-glow-bright`
+- **Durations**: `--ink-dur-fast` (120ms), `--ink-dur-tab` (150ms), `--ink-dur-panel` (200ms), `--ink-dur-bar` (300ms)
+
+#### Typography Utility Classes
+
+New file: `src/ui/styles/typography.css` — 9 semantic type classes:
+- `.ink-display` — Main title (3rem, bright gold)
+- `.ink-h1`, `.ink-h2` — Section headings
+- `.ink-section-title` — Subsection label
+- `.ink-body` — Body text (0.9rem, normal color)
+- `.ink-small`, `.ink-stat` — Smaller text (stats, metadata)
+- `.ink-label` — UI labels (monospace, uppercase)
+- `.ink-tiny` — Smallest text (0.5rem)
+
+#### Component Token Usage
+
+Components must reference tokens, not hardcoded colors:
+```css
+.my-component {
+  background: var(--ink-bg-panel);     /* ✓ Good */
+  color: var(--ink-text);               /* ✓ Good */
+  border-color: var(--ink-gold);        /* ✓ Good */
+  
+  background: #1a1326;                  /* ✗ Bad */
+  color: #f0e6d3;                       /* ✗ Bad */
+}
+```
+
+#### Responsive Token Scaling
+
+The `--ui-scale` token auto-scales panels at breakpoints. **CSS Transform**: Media queries adjust --ui-scale (1, 0.9, 0.75, 0.5). Use `rem` for type sizes so scale doesn't double-apply; use `px` for borders and spacing.
+
+```css
+/* ✓ Correct — uses rem for type, px for layout */
+.my-label { font-size: var(--ink-fs-label); padding: var(--ink-space-2); }
+
+/* ✗ Wrong — would double-scale type */
+.my-label { font-size: 0.62rem * var(--ui-scale); }
+```
+
+#### Accessibility & Motion
+
+All new animations must respect `prefers-reduced-motion`:
+```css
+@keyframes slide { from { opacity: 0; } to { opacity: 1; } }
+.panel { animation: slide 200ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .panel { animation: none; }
+}
+```
+
 ### Class Naming (BEM-like)
 ```css
 /* Block */
@@ -255,9 +334,9 @@ export function validateAndMigrate(json: string): ValidationResult {
 .title-screen__logo { }
 .title-screen__subtitle { }
 
-/* Modifier */
+/* Modifier (may reference tokens) */
 .title-screen--loading { }
-.title-btn--danger { }
+.member-card--recruit { --rank-color: var(--ink-rank-recruit); }
 
 /* State */
 .title-btn:disabled { }
@@ -284,8 +363,9 @@ export function validateAndMigrate(json: string): ValidationResult {
 .title-btn--danger { }
 .title-btn:disabled { }
 
-/* Animations */
+/* Animations (with prefers-reduced-motion guard) */
 @keyframes fadeIn { }
+@media (prefers-reduced-motion: reduce) { .fade { animation: none; } }
 ```
 
 ## Testing Conventions
@@ -462,12 +542,144 @@ const SAVE_DEBOUNCE_MS = 5_000;
 const MAX_ROSTER_SIZE = 50;
 ```
 
+## Inventory & Equipment Patterns (v1.20)
+
+### Unified Slot Entry (Discriminated Union)
+
+The inventory grid uses a discriminated union pattern to handle both regular items and equipment instances uniformly:
+
+```typescript
+// Type definition in inventory-slice.ts
+type UnifiedSlotEntry =
+  | { kind: 'item'; itemId: ItemID; quantity: number }
+  | { kind: 'equipment'; item: EquipmentItem; templateId: EquipmentTemplateId };
+
+// Usage in UI — type-safe narrowing
+const entries: UnifiedSlotEntry[] = [
+  { kind: 'item', itemId: 'WOOD', quantity: 50 },
+  { kind: 'equipment', item: { id: '123', templateId: 'IRON_SWORD', durability: 100 }, templateId: 'IRON_SWORD' },
+];
+
+entries.forEach(entry => {
+  if (entry.kind === 'item') {
+    // TypeScript narrows to { kind: 'item'; itemId; quantity }
+    console.log(entry.itemId, entry.quantity);
+  } else {
+    // TypeScript narrows to { kind: 'equipment'; item; templateId }
+    console.log(entry.item.templateId, entry.item.durability);
+  }
+});
+```
+
+**Benefits:**
+- Type-safe narrowing with `kind` discriminator
+- Single slot-rendering component handles both item and equipment
+- No null checks — union covers all valid cases
+- Extensible for future slot types (recipes, quest items, etc.)
+
+### Inventory State Structure
+
+```typescript
+interface InventoryState {
+  items: Partial<Record<ItemID, number>>;          // Quantity map
+  equipmentInventory?: EquipmentItem[];            // Unequipped equipment
+  categoryCapacity?: Partial<Record<InventoryCategory, number>>;  // Per-category overrides
+}
+
+interface EquipmentItem {
+  id: string;              // Unique instance ID (uuid)
+  templateId: EquipmentTemplateId;
+  durability: number;      // Current durability (0 = broken, no bonus)
+}
+
+type InventoryCategory = 'material' | 'consumable' | 'weapon' | 'armor';
+```
+
+**Save Compatibility:** Old saves without `categoryCapacity` load with defaults (30 per category).
+
+### Equipment Template Rarity
+
+All equipment must define a rarity tier (used for UI filtering and sorting):
+
+```typescript
+interface EquipmentTemplate {
+  id: EquipmentTemplateId;
+  name: string;
+  slot: EquipmentSlot;
+  rarity: ItemRarity;  // COMMON | UNCOMMON | RARE | EPIC | LEGENDARY (REQUIRED)
+  damage?: number;
+  hp?: number;
+  // ... other fields
+}
+
+// Usage: filter equipment by rarity
+const rareEquipment = equipmentItems.filter(eq => {
+  const template = EQUIPMENT_DATABASE[eq.templateId];
+  return template.rarity === 'RARE' || template.rarity === 'EPIC';
+});
+```
+
+### Per-Category Slot System
+
+Inventory capacity is now managed per category (weapon, armor, material, consumable) instead of global:
+
+```typescript
+// Constants in inventory-slice.ts
+export const CATEGORY_DEFAULT_SLOTS = 30;
+export const SLOT_EXPANSION_AMOUNT = 10;
+
+// Get current capacity for a category
+function getCategoryMaxSlots(
+  category: InventoryCategory,
+  capacity?: Partial<Record<InventoryCategory, number>>
+): number {
+  return capacity?.[category] ?? CATEGORY_DEFAULT_SLOTS;  // Defaults to 30
+}
+
+// Check used slots (items split at stack limit 99)
+function getUsedSlots(
+  items: Partial<Record<ItemID, number>>,
+  equipmentItems: EquipmentItem[] = []
+): number {
+  let used = 0;
+  for (const [id, qty] of Object.entries(items)) {
+    if (!qty || qty <= 0) continue;
+    const template = ITEM_DATABASE[id as ItemID];
+    // Stackable items: split into chunks of 99
+    used += template?.stackable ? Math.ceil(qty / 99) : qty;  // Non-stackable = 1 slot each
+  }
+  return used + equipmentItems.length;  // Equipment = 1 slot each
+}
+
+// Expand capacity (Zustand action)
+expandCategorySlots: (category, amount) => {
+  set((s) => {
+    const current = s.inventory.categoryCapacity?.[category] ?? CATEGORY_DEFAULT_SLOTS;
+    const next = Math.min(current + amount, 200);  // Cap at 200
+    return {
+      inventory: {
+        ...s.inventory,
+        categoryCapacity: { ...s.inventory.categoryCapacity, [category]: next },
+      },
+    };
+  });
+}
+```
+
+**Expansion Costs** (defined in inventory-slice.ts):
+```typescript
+export const SLOT_EXPANSION_COSTS: Record<string, Partial<Record<ItemID, number>>> = {
+  tier1: { WOOD: 20, STONE: 10 },
+  tier2: { IRON_ORE: 10, GEM: 2 },
+};
+```
+
 ## Sprite Animation Conventions
 
 ### Walking Animation Directory Structure
 ```
 public/sprites/characters/
-├── TS-warrior-male/
+├── LS-warrior-male/
 │   └── animations/
 │       └── walking-8-frames/
 │           ├── east/
@@ -486,7 +698,7 @@ public/sprites/characters/
 ### Woodcutting Animation Directory Structure (NEW - v1.18)
 ```
 public/sprites/characters/
-├── TS-woodcutter-male/
+├── LS-woodcutter-male/
 │   └── animations/
 │       └── woodcutting-8-frames/
 │           ├── east/

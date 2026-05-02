@@ -34,7 +34,7 @@
 │   │   ├── screens/         # Full-screen views (title screen with slot selection)
 │   │   ├── panels/          # Collapsible UI panels (quest board, roster, build, combat, settings)
 │   │   ├── hud/             # Heads-up display overlay + panel toggle bar + save status badge
-│   │   ├── components/      # Reusable UI components (stat bars, cards, dialogs, civ-badge, game-icon, cost-display, rank-badge, member-book)
+│   │   ├── components/      # Reusable UI components (stat bars, HP/EXP bars, tier-badge, rank-badge, member-card with rank treatment, inventory-slot with rarity modifier, civ-badge, game-icon, cost-display)
 │   │   ├── utils/           # Utility functions (icon-paths for convention-based icon resolution)
 │   │   └── styles/          # CSS for panels, HUD, and screens
 │   ├── audio/               # Howler.js audio manager + sound key enums (6 new keys)
@@ -612,13 +612,21 @@
 - 22 missions, 15 enemy types, 7 skills, 6 audio keys
 - Civilization archetype system, icon asset integration (60+ pixel-art icons)
 
-## Recent Changes (Inventory & Multi-Resource Economy — v1.5)
+## Recent Changes (Inventory & Multi-Resource Economy — v1.5, Enhanced v1.20+)
 
-### Item Database & Inventory System (Major Feature)
-- **8 Core Item Types**: WOOD, STONE, IRON_ORE, SLIME_GEL, BOAR_PELT, WOLF_FANG, GOBLIN_EAR, ORC_TUSK
-- **Inventory Zustand Slice**: Atomic `consumeItems()` and `addItems()` actions
-- **Item Registry**: `items.ts` defines all item types with names and stack limits
-- **Inventory State**: Stores quantity per item type in guild state
+### Item Database & Inventory System (Major Feature, v1.5 — Enhanced v1.20+)
+- **Item Types**: 8 core materials (WOOD, STONE, IRON_ORE, etc.), consumables, equipment with rarity tiers
+- **Rarity System**: COMMON, UNCOMMON, RARE, EPIC, LEGENDARY — applies to items and equipment
+- **Inventory State Structure**: `{ items: Partial<Record<ItemID, number>>; equipmentInventory?: EquipmentItem[]; categoryCapacity?: Partial<Record<InventoryCategory, number>>; }`
+  - `items`: Quantity map by ItemID
+  - `equipmentInventory`: Unequipped equipment instances (EquipmentItem with id, templateId, durability)
+  - `categoryCapacity`: Optional per-category slot overrides (defaults to 30/category, max 200 when expanded)
+- **Inventory Categories**: `'material' | 'consumable' | 'weapon' | 'armor'`
+- **Inventory Zustand Slice**: Atomic `consumeItems()`, `addItem()`, `removeItem()`, `expandCategorySlots()`, `removeEquipmentFromInventory()`
+- **Item Registry**: `items.ts` defines all item types with name, type, rarity, and stack limits
+- **Unified Slot Entry** (NEW v1.20): Discriminated union pattern for inventory grid rendering
+  - `{ kind: 'item'; itemId: ItemID; quantity: number }`
+  - `{ kind: 'equipment'; item: EquipmentItem; templateId: EquipmentTemplateId }`
 
 ### Multi-Resource Loot System (Major Feature)
 - **Loot Rules**: Each enemy has `LootRule[]` with `chance`, `minQuantity`, `maxQuantity`
@@ -773,6 +781,117 @@
 
 **Key Files (Modified)**:
 - `src/scene/combat-arena-environment.tsx` — Added `<ArenaAtmosphericVFX placements={biomeConfig.atmosphericVFX ?? []} />` render
+
+## Recent Changes (Inventory Panel Redesign — v1.20)
+
+### Inventory Panel UI Overhaul (NEW - Major UI Component)
+- **Tab Navigation**: All | Weapons | Armor | Materials | Consumables with tab counts
+- **Search Bar**: Real-time filtering by item name (case-insensitive substring match)
+- **Rarity Filter**: All | COMMON | UNCOMMON | RARE | EPIC | LEGENDARY (visual color-coded buttons)
+- **Sort Options**: By rarity (default), by name (A–Z), by quantity (descending)
+- **8-Column Grid Layout**: Responsive slot grid with empty placeholders
+- **Detail Panel** (Right sidebar): Shows selected item/equipment details, rarity, stats, equipped-by info
+- **Slot Expansion UI**: Per-category upgrade panel showing current capacity, cost, max (200)
+- **Equip Mode Toggle**: Dedicated button to switch to equipment assignment for members
+- **Keyboard Shortcut**: ESC closes panel
+
+### Inventory UI Components (NEW - v1.20)
+- **InventoryPanel**: Main container with tabs, search, filter, sort, grid + detail panel
+- **InventorySlot**: Single grid cell showing item icon, rarity border, quantity badge
+  - Rarity modifiers: `.inventory-slot--rarity-{uncommon,rare,epic,legendary}` (COMMON has no border)
+  - Selected state: `.inventory-slot--selected` highlighting
+  - Empty state: Grey placeholder
+- **InventoryDetailPanel**: Right-side panel showing selected item/equipment full details
+  - Item view: Icon, name, rarity, stack limit, description
+  - Equipment view: Icon, name, rarity, stats (damage/HP/defense), durability, equipped-by member
+- **InventorySlotExpansion**: Tier-based capacity upgrade UI showing costs and current/max slots
+
+### Per-Category Slot System (NEW - v1.20)
+- **Default Capacity**: 30 slots per category (weapon, armor, material, consumable)
+- **Expansion Tiers**:
+  - Tier 1: +10 slots → 40 total, costs 20 WOOD + 10 STONE
+  - Tier 2: +10 slots → 50 total, costs 10 IRON_ORE + 2 GEM
+  - Further expansions up to 200 per category
+- **Slot Calculation**: Items that stack split into multiple visual slots (stack limit 99)
+  - Non-stackable equipment: Each item = 1 visual slot
+  - Stackable items: `ceil(quantity / 99)` slots per item type
+- **Zustand Action**: `expandCategorySlots(category, amount)` — increments category capacity, capped at 200
+- **Save Compatibility**: `categoryCapacity` field optional (old saves default to 30/category on load)
+
+## Recent Changes (UI Handoff Ink Refresh — v1.20)
+
+### Expanded Design Token System (NEW - HD-2D Token Library)
+- **Token Prefix**: All new tokens use `--ink-*` convention per existing patterns
+- **Token Growth**: 35 → 81 total `--ink-*` tokens in `game-ui-tokens.css`
+- **New Token Groups**:
+  - **Gold Bright**: `--ink-gold-bright` (#ffd700) for prominent highlights and display text
+  - **Combat Log Accents**: `--ink-log-skill`, `--ink-log-dodge`, `--ink-log-heal`, `--ink-log-zone` for combat log line color-coding
+  - **Wood/Chest Theme**: `--ink-wood-edge`, `--ink-wood-edge-light`, `--ink-wood-edge-dark`, `--ink-wood-fill-from`, `--ink-wood-fill-to`, `--ink-stud-bright`, `--ink-stud-mid` for InventoryPanel wooden chest aesthetic
+  - **Rank Palette** (6 colors): `--ink-rank-recruit`, `--ink-rank-member`, `--ink-rank-veteran`, `--ink-rank-officer`, `--ink-rank-commander`, `--ink-rank-mercenary` for member card borders and insignia frames
+  - **Tier Palette** (7 colors): `--ink-tier-f` through `--ink-tier-s` for quest difficulty badges
+  - **Font UI**: `--ink-font-ui` (Segoe UI, sans-serif) for HUD top bar and title screen
+  - **Type Scale** (8 sizes): `--ink-fs-display`, `--ink-fs-h1`, `--ink-fs-h2`, `--ink-fs-body`, `--ink-fs-small`, `--ink-fs-meta`, `--ink-fs-label`, `--ink-fs-tiny` (rem-based)
+  - **Spacing Scale** (6 steps): `--ink-space-1` through `--ink-space-6` (4px base)
+  - **Additional Radii**: `--ink-radius-lg` (8px), `--ink-radius-chest` (12px) for container shapes
+  - **Additional Effects**: `--ink-glow-bright`, `--ink-shadow-panel`, `--ink-dur-fast`, `--ink-dur-bar` for motion and visual depth
+
+### New Typography Utility Classes (NEW - `typography.css`)
+- **9 semantic type classes**: `.ink-display`, `.ink-h1`, `.ink-h2`, `.ink-section-title`, `.ink-body`, `.ink-small`, `.ink-stat`, `.ink-label`, `.ink-tiny`
+- **rem-based sizing**: Ensures `--ui-scale` responsive scaling doesn't double-apply (contrasts with px-based borders)
+- **Font stacks**: Semantic pairing (title = Cinzel, body = IM Fell English, mono = Share Tech Mono, UI = Segoe UI sans)
+- **Integration**: Single-source type styling eliminates inline font-size/color inconsistencies
+
+### New Components: TierBadge & Refactored HpExpBar (NEW)
+- **TierBadge**: Quest difficulty badge (F–S tiers) with per-tier scale compensation
+  - `TIER_SCALE` record: Tier-specific size multipliers (F=1.00, S=1.05, A=1.20, D=1.20)
+  - `TIER_COLOR` + `TIER_SOFT`: Per-tier color tokens + semi-transparent background
+  - `TIER_DESCRIPTOR`: Readable labels (F="Errand", S="Legendary")
+  - Props: `tier` (required), `size` (28|36|64px), `showLabel` (optional)
+- **HpExpBar**: Consolidated HP/EXP value bar (was split across components)
+  - Props: `kind` ('hp'|'exp'), `current`, `max`, `variant` ('compact'|'default'|'combat'), optional `label`
+  - Gradient fill: `--ink-hp-*` for HP, `--ink-exp-*` for EXP
+  - Animation: 300ms fill animation via `--ink-dur-bar` token, respects `prefers-reduced-motion`
+
+### Refactored Components: RankBadge, MemberCard, InventorySlot (ENHANCED)
+- **RankBadge**: Converted to CSS variable system
+  - Before: inline `style={{ color, background }}` properties
+  - After: `--rank-color` and `--rank-soft` CSS variables referencing `--ink-rank-*` tokens
+  - Size variants: 'sm'|'md'|'lg' (14–48px icon sizes)
+  - Mercenary rank: Special styling (lowercase "MERC" label)
+- **MemberCard**: Full rank treatment with visual hierarchy
+  - **6 rank modifiers**: `.member-card--{recruit,member,veteran,officer,commander,mercenary}` each sets `--rank-color` + `--rank-soft`
+  - **Corner diamonds**: 4-corner rotated square ornaments (TL/TR via ::before/::after, BL/BR via child spans), scaled per rank
+  - **Insignia frame**: Rank badge sprite in top-left corner (26×26px) with radial shadow + border
+  - **Mercenary slash**: Diagonal gradient overlay on avatar band
+  - **Commander glow**: Extra bright on hover, thicker 3px border
+  - **Recruit dashed border**: Distinctive appearance for new members
+- **InventorySlot**: Rarity modifier classes instead of inline styles
+  - Before: `style={{ borderColor: rarityColor }}`
+  - After: `.inventory-slot--rarity-{common,uncommon,rare,epic,legendary}` modifier classes
+  - Selected state: `.inventory-slot--selected` for consistency
+
+### CSS Extraction & File Organization (REFACTOR)
+- **New**: `src/ui/styles/typography.css` — Semantic type utility classes (loaded after game-ui-tokens.css)
+- **New**: `src/ui/styles/member-card.css` — Extracted from `guild-roster.css` for modularity
+- **Moved**: All `.member-card*` rules from `guild-roster.css` → `member-card.css` (imported by `member-card.tsx`)
+- **Existing**: `tier-badge.css`, `rank-badge.css`, `stat-bar.css` follow component-based naming
+
+### Accessibility: `prefers-reduced-motion` Guards (NEW)
+- **Added to**: All new/modified animation rules in `game-ui-tokens.css`, `member-card.css`, `tier-badge.css`
+- **Pattern**:
+  ```css
+  @keyframes slide { ... }
+  .my-class { animation: slide var(--ink-dur-panel); }
+  @media (prefers-reduced-motion: reduce) { .my-class { animation: none; } }
+  ```
+- **Scope**: Covers panel slide-in, bar fills, member card hovers, badge animations
+
+### Code Standards Update (DOCUMENTATION)
+- **New Section**: "Design Tokens System (v1.20)" in `docs/code-standards.md`
+- **Guidelines**: All future tokens must use `--ink-*` prefix, organized by category
+- **Token Usage Pattern**: Components reference tokens, never hardcoded colors
+- **Type Scale Usage**: Prefer `var(--ink-fs-*)` with rem units; avoid px-based type scaling
+- **Responsive Scale**: `--ui-scale` media queries handle panel rescaling; developers should use rem for type, px for layout
 
 ## Recent Changes (Logging Site Finite Harvest System — v1.18)
 

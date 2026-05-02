@@ -1,18 +1,31 @@
 /** Inventory slice — manages item quantities in the guild inventory. */
 
 import type { StateCreator } from 'zustand';
-import type { ItemID } from '@/game/data/items';
+import type { ItemID, InventoryCategory } from '@/game/data/items';
 import { ITEM_DATABASE, STACK_LIMIT } from '@/game/data/items';
-import type { EquipmentItem, InventoryState, PlacedFurniture } from './game-state';
+import type { EquipmentItem, InventoryState } from './game-state';
+import type { EquipmentTemplateId } from '@/game/data/equipment-templates';
 
-export const BASE_INVENTORY_SLOTS = 10;
-export const SLOTS_PER_CHEST = 20;
+export const CATEGORY_DEFAULT_SLOTS = 30;
+export const SLOT_EXPANSION_AMOUNT = 10;
 
-/** Max inventory slots given placed storage chests */
-export function getMaxSlots(furniture: PlacedFurniture[]): number {
-  const chestCount = furniture.filter((f) => f.type === 'storage-chest').length;
-  return BASE_INVENTORY_SLOTS + SLOTS_PER_CHEST * chestCount;
+export const SLOT_EXPANSION_COSTS: Record<string, Partial<Record<ItemID, number>>> = {
+  tier1: { WOOD: 20, STONE: 10 },
+  tier2: { IRON_ORE: 10, GEM: 2 },
+};
+
+/** Returns max slots for a category — falls back to default if no override set */
+export function getCategoryMaxSlots(
+  category: InventoryCategory,
+  capacity?: Partial<Record<InventoryCategory, number>>
+): number {
+  return capacity?.[category] ?? CATEGORY_DEFAULT_SLOTS;
 }
+
+/** Unified slot entry for the inventory grid — items or equipment */
+export type UnifiedSlotEntry =
+  | { kind: 'item'; itemId: ItemID; quantity: number }
+  | { kind: 'equipment'; item: EquipmentItem; templateId: EquipmentTemplateId };
 
 /** Count how many visual slots the current items occupy (equipment items each take 1 slot) */
 export function getUsedSlots(items: Partial<Record<ItemID, number>>, equipmentItems: EquipmentItem[] = []): number {
@@ -33,8 +46,8 @@ export interface InventorySlotEntry {
   quantity: number;
 }
 
-/** Rarity sort order (higher = later in grid) */
-const RARITY_ORDER: Record<string, number> = { COMMON: 0, UNCOMMON: 1, RARE: 2, EPIC: 3, LEGENDARY: 4 };
+/** Rarity sort order — export so UI can import instead of duplicating */
+export const RARITY_ORDER: Record<string, number> = { COMMON: 0, UNCOMMON: 1, RARE: 2, EPIC: 3, LEGENDARY: 4 };
 
 /** Build visual slot array — splits stacks >99, sorted by type then rarity */
 export function getInventorySlots(items: Partial<Record<ItemID, number>>): InventorySlotEntry[] {
@@ -76,6 +89,10 @@ export interface InventorySlice {
   /** Atomically deduct items — returns false with no mutation if any item insufficient */
   consumeItems: (cost: Partial<Record<ItemID, number>>) => boolean;
   getItemCount: (id: ItemID) => number;
+  /** Add slots to a specific category, capped at 200 */
+  expandCategorySlots: (category: InventoryCategory, amount: number) => void;
+  /** Remove an equipment instance from the unequipped inventory pool */
+  removeEquipmentFromInventory: (instanceId: string) => void;
 }
 
 export const createInventorySlice: StateCreator<InventorySlice> = (set, get) => ({
@@ -144,4 +161,26 @@ export const createInventorySlice: StateCreator<InventorySlice> = (set, get) => 
   },
 
   getItemCount: (id) => get().inventory.items[id] ?? 0,
+
+  removeEquipmentFromInventory: (instanceId) => {
+    set((s) => ({
+      inventory: {
+        ...s.inventory,
+        equipmentInventory: (s.inventory.equipmentInventory ?? []).filter(e => e.id !== instanceId),
+      },
+    }));
+  },
+
+  expandCategorySlots: (category, amount) => {
+    set((s) => {
+      const current = s.inventory.categoryCapacity?.[category] ?? CATEGORY_DEFAULT_SLOTS;
+      const next = Math.min(current + amount, 200);
+      return {
+        inventory: {
+          ...s.inventory,
+          categoryCapacity: { ...s.inventory.categoryCapacity, [category]: next },
+        },
+      };
+    });
+  },
 });

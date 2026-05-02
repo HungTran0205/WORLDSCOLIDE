@@ -9,6 +9,7 @@ export type ItemID =
 
 export type ItemType = 'MATERIAL' | 'CONSUMABLE' | 'EQUIPMENT' | 'CURRENCY';
 export type ItemRarity = 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
+export type InventoryCategory = 'material' | 'consumable' | 'weapon' | 'armor';
 
 export interface ItemTemplate {
   id: ItemID;

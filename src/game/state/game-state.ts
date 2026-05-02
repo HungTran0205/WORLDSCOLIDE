@@ -1,6 +1,6 @@
 /** Core type definitions for game state — all interfaces must be JSON-serializable */
 
-import type { ItemID } from '@/game/data/items';
+import type { ItemID, InventoryCategory } from '@/game/data/items';
 import type { EquipmentTemplateId } from '@/game/data/equipment-templates';
 
 export interface EquipmentItem {
@@ -242,6 +242,8 @@ export interface InventoryState {
   items: Partial<Record<ItemID, number>>;
   /** Equipment item instances not currently equipped by any member */
   equipmentInventory?: EquipmentItem[];
+  /** Per-category slot capacity overrides; absent in old saves → default 30 */
+  categoryCapacity?: Partial<Record<InventoryCategory, number>>;
 }
 
 export interface GameSettings {
