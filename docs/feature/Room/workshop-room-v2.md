@@ -4,8 +4,8 @@
 
 | Goal | Mô tả | Mechanic phục vụ |
 |------|-------|-----------------|
-| **Agency** (Primary) | Người chơi cảm thấy kiểm soát được output | Essence affinity, Blueprint system |
-| **Mastery** | Hiểu affinity → craft tốt hơn theo thời gian | Essence → stat category mapping |
+| **Agency** (Primary) | Người chơi cảm thấy kiểm soát được output | Material affinity, Blueprint system |
+| **Mastery** | Hiểu material nào → stat gì → craft/enhance có chủ đích | Material → stat category mapping |
 | **Anticipation** | Set up queue → offline → quay lại xem kết quả | Offline queue, no-fail output |
 
 **Anti-goals:** Mất nguyên liệu khi offline. RNG hoàn toàn không có agency. Confusion về stats nào sẽ ra.
@@ -17,8 +17,8 @@
 Workshop là phòng chế tạo vũ khí/giáp thống nhất. Queue dựa trên **nhân lực** (workers) trong phòng, không phải upgrade level. Hỗ trợ offline progression đầy đủ — queue chạy bình thường khi không online.
 
 **4 tác vụ:**
-- **Blank Crafting** — tạo phôi trắng từ stone hoặc wood
-- **Weapon/Armor Crafting** — phôi + essence (optional) + gem (optional)
+- **Weapon/Armor Crafting** — wood/stone + monster material (optional) + gem (optional)
+- **Enhance** — vũ khí đã craft + monster material → thêm slot hoặc reroll stat value
 - **Repair** — phục hồi durability
 - **Dismantle** — tháo rời lấy lại nguyên liệu
 
@@ -47,7 +47,7 @@ Workshop là phòng chế tạo vũ khí/giáp thống nhất. Queue dựa trên
 | Số task chạy song song | Số workers trong phòng |
 | Tốc độ crafting | Workshop level |
 | Tier vật liệu unlock | Workshop level |
-| Slot 3-4 availability | Workshop level |
+| 2nd material slot khi craft | Workshop level |
 | Số Blueprint slots | Workshop level |
 
 ---
@@ -56,78 +56,74 @@ Workshop là phòng chế tạo vũ khí/giáp thống nhất. Queue dựa trên
 
 | Level | Tốc độ | Unlocks | Blueprint Slots | Notes |
 |-------|--------|---------|----------------|-------|
-| 1 | 1.0x | Blank T1, Slot 1-2 | 3 | MVP baseline |
-| 2 | 1.3x | Blank T2, Slot 3 (cần Essence T2) | 5 | |
-| 3 | 1.6x | Blank T3, Gem Elemental Slot | 8 | |
-| 4 | 2.0x | Blank T4, Slot 4 (20% roll) | 12 | |
-| 5 | 2.5x | Blank T5, Slot 4 (35% roll), Legendary Blueprint | 15 | |
+| 1 | 1.0x | T1 weapon, Path A/B, Enhance | 3 | MVP baseline |
+| 2 | 1.3x | T2 weapon, Path B+ (2 materials → 2 slots) | 5 | |
+| 3 | 1.6x | T3 weapon, Gem Elemental Slot | 8 | |
+| 4 | 2.0x | T4 weapon | 12 | |
+| 5 | 2.5x | T5 weapon, Legendary Blueprint | 15 | |
 
 ---
 
-## 4. Blank Crafting (Phôi Trắng)
+## 4. Weapon/Armor Crafting
 
-- **Input:** Stone (x5) → Stone Blank | Wood (x5) → Wood Blank
-- **Output:** Blank tier tương ứng với material tier, base stat range lock theo blank tier
-- **Time:** 30-60 giây per blank (nhân hệ số workshop level)
-- **Stack:** Blank có thể stack trong inventory
-
-**Blank Tier vs Stat Range** *(placeholder values — sẽ tune ở combat phase)*:
-
-| Blank Tier | Base Material | Stat Range (ví dụ HP nếu slot 1) |
-|-----------|---------------|----------------------------------|
-| T1 | Stone / Wood | 50-200 |
-| T2 | Iron / Hardwood | [placeholder] |
-| T3 | Crystal / Ironwood | [placeholder] |
-| T4 | Rare Ore / Ancient Wood | [placeholder] |
-| T5 | Boss Material | [placeholder] |
-
----
-
-## 5. Weapon/Armor Crafting
-
-### 5.1 No-Fail System
+### 4.1 No-Fail System
 
 **Luôn có output.** Không bao giờ mất nguyên liệu hoàn toàn. Chất lượng phụ thuộc:
-- Blank tier → stat value range
-- Essence type → stat category (affinity)
-- Gem → elemental slot đặc biệt (Section 5.4)
+- Wood/Stone tier → stat value range + crafting time
+- Monster Material → stat category (affinity)
+- Gem → elemental slot đặc biệt (Section 4.4)
 
-### 5.2 Input
+### 4.2 Input
 
 ```
-Blank (bắt buộc)
-  + Essence (optional) → xác định stat category cho Slot 1-2
-  + Gem (optional)     → mở Elemental Slot riêng biệt
+Wood / Stone (bắt buộc) — xác định weapon tier và stat range
+  + Monster Material (optional, tối đa 1-2) — xác định stat category
+  + Gem (optional)                          — mở Elemental Slot riêng biệt
 ```
 
-### 5.3 Stat Slot System
+**Weapon không stack** — mỗi instance có durability riêng.
 
-| Slot | Điều kiện | Outcome nếu không có điều kiện |
-|------|-----------|-------------------------------|
-| Slot 1 | Luôn roll | — |
-| Slot 2 | Luôn roll | — |
-| Slot 3 | Essence tier ≥ T2 | Item vẫn ra với Slot 1-2, không mất gì |
-| Slot 4 | Workshop Lvl 4+ + Rare Essence | 20-35% chance roll, miss = 3-stat item |
+### 4.3 Crafting Paths
 
-**Stat category xác định bởi Essence (Affinity System):**
+| Path | Input | Output | Khi nào dùng |
+|------|-------|--------|-------------|
+| **A — Plain** | Wood/Stone only | Weapon + **20% chance** 1 generic slot | Khi không có/không muốn tốn material quái |
+| **B — Guided** | Wood/Stone + 1 Monster Mat | Weapon + **guaranteed** 1 slot (category từ material) | Muốn stat cụ thể, có material |
+| **B+ — Dual** | Wood/Stone + 2 Monster Mats | Weapon + **guaranteed** 2 slots (mỗi slot từ 1 mat) | Workshop Lvl 2+, T2+ weapon |
 
-| Essence | Nguồn | Stat Affinity | Placeholder Stats |
-|---------|-------|--------------|-------------------|
-| Slime Essence | Slime | Tanky (HP/Defense) | Slot 1: HP 50-200 |
-| Slime King Essence | Slime King | [placeholder] | [placeholder] |
-| Bat Essence | Cave Bat | [placeholder] | [placeholder] |
-| Spider Essence | Giant Spider | [placeholder] | [placeholder] |
-| Dog Bot Essence | Guard Robot Dog | [placeholder] | [placeholder] |
-| Drone Essence | Guard Drone | [placeholder] | [placeholder] |
-| *(4-6 essences thêm)* | | [placeholder] | [placeholder] |
+> Path A tạo ra "lucky drop" feel — item ngẫu nhiên ra slot là bonus, không phải expectation. Path B là predictable investment.
 
-> **Note:** 10-12 essence types từ 6 monster types — mapping chi tiết sẽ thiết kế ở combat phase.
+**Crafting Time per Weapon** *(nhân hệ số Workshop level)*:
 
-**Nếu không dùng Essence:** Slot 1-2 roll từ default stat pool của blank type (generic, không bias về category nào).
+| Tier | Base Material | Base Time | Ghi chú |
+|------|--------------|-----------|---------|
+| T1 | Stone / Wood | 30s | Học flow, nhanh |
+| T2 | Iron / Hardwood | 75s | Bước nhảy đáng kể |
+| T3 | Crystal / Ironwood | 3 min | Cảm giác item quan trọng |
+| T4 | Rare Ore / Ancient Wood | 8 min | Offline-oriented |
+| T5 | Boss Material | 20 min | Rare item, deliberate decision |
 
-### 5.4 Gem Elemental Slot
+> Ví dụ: T5 ở Workshop Lvl 5 (2.5x) = 8 phút thực tế.
 
-- **Slot riêng biệt** — không conflict với Stat Slots 1-4
+### 4.4 Monster Material Affinity
+
+| Material | Nguồn | Stat Category | Placeholder Stats |
+|----------|-------|--------------|-------------------|
+| Slime Drop | Slime | Tanky (HP/Defense) | HP 50-200 |
+| Slime King Core | Slime King | [placeholder] | [placeholder] |
+| Bat Wing | Cave Bat | [placeholder] | [placeholder] |
+| Spider Legs | Giant Spider | [placeholder] | [placeholder] |
+| Dog Bot Chip | Guard Robot Dog | [placeholder] | [placeholder] |
+| Drone Fragment | Guard Drone | [placeholder] | [placeholder] |
+| *(4-6 materials thêm)* | | [placeholder] | [placeholder] |
+
+> **Note:** Mapping chi tiết sẽ thiết kế ở combat phase.
+
+**Nếu không dùng material (Path A):** Slot roll từ generic stat pool — không bias về category nào.
+
+### 4.5 Gem Elemental Slot
+
+- **Slot riêng biệt** — không conflict với Stat Slots
 - Mở khi Workshop Level ≥ 3
 - **Input:** 1 Gem (crafted/mined)
 - **Output:** Item có Elemental tag + visual UI effect trên item
@@ -142,36 +138,126 @@ Blank (bắt buộc)
 
 > **Note:** Gem effect chi tiết sẽ thiết kế cùng combat arena system.
 
-### 5.5 Signature Moments
+### 4.6 Enhance System
 
-**Affinity Resonance** *(Workshop Lvl 3+)*
-Khi dùng **3+ Essence cùng loại** trong một item → trigger bonus: một Guaranteed Stat tự động roll max value trong range.
-> *"Slime Resonance! HP locked at max tier value!"*
+Post-craft operation — nâng cấp weapon/armor đã có bằng monster material. **Hai operations khác nhau:**
 
-**Masterwork Blueprint** *(Workshop Lvl 4+)*
-Sau khi craft **50 items cùng Blueprint**, Blueprint đó unlock "Masterwork" mode — Slot 3 guaranteed roll (bỏ điều kiện Essence tier requirement).
+#### Add Slot
+Dùng khi weapon còn slot trống.
+
+```
+Input:  Weapon (slot trống) + 1 Monster Material
+Output: Slot được điền — category từ material, value roll trong FULL range của tier
+```
+
+- Guaranteed — không có fail, không mất weapon
+- Material tier phải ≥ weapon tier
+
+#### Reroll Value
+Dùng khi weapon có slot nhưng muốn giá trị tốt hơn.
+
+```
+Input:  Weapon (slot đã có stat) + 1 Monster Material (cùng category với slot đó)
+Output: Stat reroll trong FULL range — có thể cao hơn HOẶC thấp hơn current value
+```
+
+- **Không có floor** — HP+150 reroll có thể ra HP+60
+- Player thấy current value + stat range trước khi quyết định → **informed risk**
+- Chỉ dùng khi current value quá thấp, không worth reroll khi đã gần max
+
+> **Tại sao không floor?** Floor = spam đến max → progression collapse. Full range random giữ reroll là *deliberate gamble*, không phải guaranteed upgrade path.
+
+**Constraints chung:**
+- Mỗi enhance là 1 queue task — tốn worker slot
+- Material tier phải ≥ weapon tier
+- Reroll dùng **cùng category material** với slot đang target
+
+### 4.7 Crafting Skill
+
+Skill cá nhân của nhân vật, tăng khi thao tác tại Workshop. Max level 10.
+
+#### Cách tăng skill
+
+**XP per action = tier của item** (T1=1, T2=2, T3=3, T4=4, T5=5). Mọi craft và enhance đều count.
+
+| Level | XP per level | T1 craft cần | Thời gian T1 spam |
+|-------|-------------|--------------|-------------------|
+| 1→2 | 3 | 3 crafts | ~1.5 phút |
+| 2→3 | 70 | 70 crafts | ~35 phút |
+| 3→4 | 200 | 200 crafts | ~1.7 giờ |
+| 4→5 | 500 | 500 crafts | ~4 giờ |
+| 5→6 | 1,000 | 1,000 crafts | ~8 giờ |
+| 6→7 | 2,000 | 2,000 crafts | ~16 giờ |
+| 7→8 | 3,500 | 3,500 crafts | ~29 giờ |
+| 8→9 | 6,000 | 6,000 crafts | ~50 giờ |
+| 9→10 | 10,000 | 10,000 crafts | ~83 giờ |
+
+> Lvl 2 đạt sau 3 crafts — onboarding nhanh. Lvl 3 trở đi là commitment thực sự. Mix T1-T3 realistic: Lvl 10 trong ~30-40 giờ gameplay.
+
+#### Axis 1 — Path A Slot Chance
+
+| Skill Lvl | Slot Chance (Plain craft) |
+|-----------|--------------------------|
+| 1 | 20% |
+| 3 | 25% |
+| 5 | 30% |
+| 7 | 37% |
+| 10 | 45% |
+
+> 45% vẫn là gamble — Path B không mất giá trị.
+
+#### Axis 2 — Crafting Speed
+
+-3% crafting time per level → **-27% ở Lvl 10**. Passive background reward.
+
+#### Knowledge Unlock System
+
+Càng lên level, thông tin về nguyên liệu càng được mở khóa. **Information là reward** — không thay đổi stat, chỉ giúp player ra quyết định tốt hơn.
+
+| Skill Lvl | Unlock |
+|-----------|--------|
+| **1** | T1 material → **category only** *("Slime Drop: HP/Defense")* |
+| **2** | T1 material → **probability breakdown** *("HP 50-100: 40% / 101-150: 40% / 151-200: 20%")* |
+| **3** | T1 full codex + T2 material → category only |
+| **4** | T2 material → probability breakdown |
+| **5** | T2 full codex + T3 category + **Reroll Preview** *(milestone)* |
+| **6** | T3 material → probability breakdown |
+| **7** | T3 full codex + T4 category |
+| **8** | T4 material → probability breakdown |
+| **9** | T4 full codex + T5 category |
+| **10** | T5 full codex + **Masterwork Trigger** *(milestone)* |
+
+**Reroll Preview (Lvl 5):** Khi enhance reroll, player thấy giá trị mới trước khi confirm.
+```
+"New roll: HP+83. Accept or Reject?"
+  Accept → apply, material tốn 100%
+  Reject → không apply, material tốn 50%
+```
+
+**Masterwork Trigger (Lvl 10):** 5% chance khi craft bất kỳ → tất cả slots roll max value.
+> Hiển thị: *"✦ Masterwork!"*
 
 ---
 
-## 6. Blueprint System
+## 5. Blueprint System
 
-### 6.1 Mục đích
+### 5.1 Mục đích
 Lưu lại combination để batch craft, không cần chọn nguyên liệu thủ công mỗi lần.
 
-### 6.2 Tạo Blueprint
+### 5.2 Tạo Blueprint
 
 1. Người chơi mở "Save as Blueprint" sau khi chọn nguyên liệu
 2. Đặt tên (ví dụ: "HP Sword", "Fire Armor")
 3. Chọn quantity muốn craft (ví dụ: 5x)
-4. Blueprint lưu: tên + blank type + essence type + gem type + quantity
+4. Blueprint lưu: tên + wood/stone type + material type + gem type + quantity
 
-### 6.3 Sử dụng Blueprint
+### 5.3 Sử dụng Blueprint
 
 - Chọn Blueprint từ list → "Add to Queue"
 - Worker xử lý blueprint queue tự động: craft liên tục đến khi hết quantity hoặc hết nguyên liệu
 - Nếu giữa chừng hết nguyên liệu → pause blueprint task, skip sang task tiếp theo trong queue
 
-### 6.4 Giới hạn
+### 5.4 Giới hạn
 
 | Workshop Level | Blueprint Slots |
 |---------------|----------------|
@@ -183,58 +269,60 @@ Lưu lại combination để batch craft, không cần chọn nguyên liệu th�
 
 ---
 
-## 7. Repair
+## 6. Repair
 
 - **Queue:** Sequential, mỗi item xử lý tuần tự
 - **Input:** Stone hoặc Wood tùy material gốc của item, lượng tùy % damage
 - **Time:** 1-3 phút tùy damage level
 - **Output:** Item phục hồi full durability (no-fail, luôn thành công)
-- **No "rush" option** — thống nhất với no-fail philosophy, repair là tác vụ guaranteed
+- **No "rush" option** — thống nhất với no-fail philosophy
 
 ---
 
-## 8. Dismantle
+## 7. Dismantle
 
 - **Instant action** — không cần queue
 - **Recovery rate:**
-  - Basic item (không essence): 70-80% materials
-  - Crafted item (có essence): 50-60% materials (value đã extracted vào stats)
-- **Essence recovery:** 30% chance nhận lại 1 essence khi dismantle crafted item
+  - Plain item (không material): 70-80% wood/stone
+  - Crafted item (có monster material): 50-60% wood/stone
+- **Material recovery:** 30% chance recover 1 monster material khi dismantle crafted item
 - **Gem recovery:** Không — gem bound vào item khi craft
 
 ---
 
-## 9. MVP Scope (Phase 1)
+## 8. MVP Scope (Phase 1)
 
 Chỉ implement đủ để test crafting flow:
 
 **Included:**
-- [ ] Blank weapon từ Stone (Stone Blank)
-- [ ] Blank weapon từ Wood (Wood Blank)
-- [ ] Slime Essence → Slot 1: HP 50-200
+- [ ] Craft T1 weapon từ Stone/Wood (Path A — 20% chance slot)
+- [ ] Craft T1 weapon + Slime Drop (Path B — HP 50-200 guaranteed)
+- [ ] Enhance: Add Slot (T1, Slime Drop category)
+- [ ] Enhance: Reroll Value (T1, Slime Drop category)
 - [ ] Worker queue: 1 worker = 1 task
-- [ ] Blueprint: save + batch craft (giới hạn 3 slots)
-- [ ] Repair (basic, no-fail, timed)
+- [ ] Blueprint: save + batch craft (3 slots)
+- [ ] Repair (no-fail, timed)
 - [ ] Dismantle (instant, basic recovery)
 
 **Excluded (future phases):**
-- Slot 3-4 system
+- Path B+ (2 materials, 2 slots)
 - Gem Elemental Slot + UI effects
-- All essences ngoài Slime Essence
-- Affinity Resonance + Masterwork Blueprint
+- All materials ngoài Slime Drop
+- Crafting Skill progression (Section 4.7)
 - Workshop Lvl 2-5 unlocks
 - Trading/Market integration
 
 ---
 
-## 10. Future Phases
+## 9. Future Phases
 
 | Phase | Feature |
 |-------|---------|
 | Combat Phase | Tune tất cả stat values, define gem combat effects |
-| Essence Phase | Map 10-12 essences → affinities cho 6 monster types |
+| Material Phase | Map 10-12 materials → affinities cho 6 monster types |
+| Skill Phase | Crafting Skill XP tracking, Reroll Preview (Lvl 5), Masterwork (Lvl 10) |
 | Gem Phase | Elemental slot UI effects, gem mining integration |
-| Late Game | Slot 3-4, Affinity Resonance, Masterwork Blueprint |
+| Late Game | Path B+ (dual mat), T4-T5 weapons, Legendary Blueprint |
 | Social Phase | Trading/Market system |
 
 ---
@@ -244,3 +332,5 @@ Chỉ implement đủ để test crafting flow:
 1. **Worker assignment UI** — người chơi assign worker vào Workshop như thế nào? Drag-and-drop hay button?
 2. **Queue persistence khi đóng app** — queue state save vào save file không?
 3. **Max items trong inventory từ Workshop** — cần giới hạn không hay auto-transfer?
+4. **Reroll confirmation UI** — show current value + range + "Confirm reroll?" trước khi execute?
+5. **Stat range display** — player biết range của từng tier/material ở đâu? Tooltip hay codex riêng?
