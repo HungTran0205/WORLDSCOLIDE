@@ -9,6 +9,7 @@ import { canPromote } from '@/game/data/ranks';
 import type { MemberStatus, StatKey, SyringeLoadout } from '@/game/state/game-state';
 import type { EquipmentSlot } from '@/game/data/equipment-templates';
 import '@/ui/styles/guild-roster.css';
+import '@/ui/styles/member-card.css';
 
 interface GuildRosterProps {
   onClose: () => void;

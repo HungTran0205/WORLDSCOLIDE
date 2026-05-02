@@ -1,0 +1,191 @@
+/* ─── Member Card ─────────────────────────────────────────────────────────── */
+/* Rank color plumbing: each .member-card--{rank} sets --rank-color + --rank-soft;
+   all child selectors reference those two variables. */
+
+.member-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--ink-bg-panel-alt);
+  border: 2px solid var(--rank-color, var(--ink-gold-dim));
+  border-radius: var(--ink-radius-md);
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  color: var(--ink-text);
+  overflow: hidden;
+  position: relative;
+  /* fallback rank vars */
+  --rank-color: var(--ink-gold-dim);
+  --rank-soft: rgba(212, 168, 67, 0.18);
+}
+
+/* ── Rank modifiers ── */
+.member-card--recruit   { --rank-color: var(--ink-rank-recruit);   --rank-soft: rgba(125,138,155,.18); border-style: dashed; }
+.member-card--member    { --rank-color: var(--ink-rank-member);    --rank-soft: rgba(74,144,217,.20); }
+.member-card--veteran   { --rank-color: var(--ink-rank-veteran);   --rank-soft: rgba(109,191,109,.20); }
+.member-card--officer   { --rank-color: var(--ink-rank-officer);   --rank-soft: rgba(159,122,204,.20); box-shadow: inset 0 0 0 1px rgba(0,0,0,.4), inset 0 0 0 3px rgba(159,122,204,.25); }
+.member-card--commander { --rank-color: var(--ink-rank-commander); --rank-soft: rgba(255,215,0,.30); border-width: 3px; }
+.member-card--commander:hover { box-shadow: var(--ink-glow-bright); }
+.member-card--mercenary { --rank-color: var(--ink-rank-mercenary); --rank-soft: rgba(196,74,74,.20); }
+
+/* Mercenary slashed avatar band */
+.member-card--mercenary .card-avatar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 35%,
+    rgba(196, 74, 74, 0.18) 35%,
+    rgba(196, 74, 74, 0.18) 50%,
+    transparent 50%
+  );
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Injured: dim card body */
+.member-card[data-status="injured"] { opacity: 0.7; }
+
+/* ── Corner diamond ornaments ── */
+/* TL + TR via ::before / ::after */
+.member-card::before,
+.member-card::after {
+  content: '';
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  background: var(--rank-color, var(--ink-gold-dim));
+  transform: rotate(45deg);
+  z-index: 4;
+}
+.member-card--recruit::before,
+.member-card--recruit::after { background: var(--ink-gold-dim); }
+.member-card--commander::before,
+.member-card--commander::after { width: 9px; height: 9px; }
+.member-card::before { top: -4px; left: -4px; }
+.member-card::after  { top: -4px; right: -4px; }
+
+/* BL + BR via child spans */
+.corner-bl,
+.corner-br {
+  position: absolute;
+  bottom: -4px;
+  width: 7px;
+  height: 7px;
+  background: var(--rank-color, var(--ink-gold-dim));
+  transform: rotate(45deg);
+  z-index: 4;
+}
+.member-card--recruit .corner-bl,
+.member-card--recruit .corner-br { background: var(--ink-gold-dim); }
+.member-card--commander .corner-bl,
+.member-card--commander .corner-br { width: 9px; height: 9px; }
+.corner-bl { left: -4px; }
+.corner-br { right: -4px; }
+
+/* ── Avatar block ── */
+.card-avatar {
+  width: 100%;
+  aspect-ratio: 1;
+  background: radial-gradient(ellipse at 30% 25%, var(--rank-soft), var(--ink-bg-deep));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+.card-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+.card-avatar-initials {
+  font-family: var(--ink-font-title);
+  font-size: 1.8rem;
+  color: var(--rank-color, var(--ink-gold-dim));
+}
+
+/* ── Insignia frame (rank-badge sprite, top-left of avatar) ── */
+.card-insignia {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 26px;
+  height: 26px;
+  z-index: 2;
+  background: radial-gradient(ellipse at 30% 25%, rgba(0,0,0,.4), rgba(0,0,0,.7));
+  border: 1px solid var(--rank-color, var(--ink-gold-dim));
+  border-radius: 3px;
+  box-shadow:
+    inset 0 0 0 1px rgba(0,0,0,.4),
+    inset 0 1px 2px rgba(0,0,0,.5),
+    0 1px 2px rgba(0,0,0,.5),
+    0 0 6px var(--rank-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.card-insignia img {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,.7));
+}
+
+/* ── Info block ── */
+.card-info {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.card-name {
+  font-family: var(--ink-font-body);
+  font-size: 0.9rem;
+  color: var(--ink-text);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.card-rank {
+  font-family: var(--ink-font-mono);
+  font-size: var(--ink-fs-label);
+  padding: 1px 4px;
+  border: 1px solid var(--rank-color, var(--ink-gold-dim));
+  border-radius: 2px;
+  color: var(--rank-color, var(--ink-gold-dim));
+}
+.card-civ {
+  font-family: var(--ink-font-mono);
+  font-size: 0.6rem;
+  color: var(--ink-text-muted);
+}
+.card-stats {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── Status dot ── */
+.status-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  z-index: 4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .member-card { transition: none; }
+}

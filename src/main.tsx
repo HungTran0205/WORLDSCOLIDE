@@ -1,5 +1,6 @@
 import '@/i18n';
 import '@/ui/styles/game-ui-tokens.css';
+import '@/ui/styles/typography.css';
 import { createRoot } from 'react-dom/client';
 import { App } from '@/ui/app';
 

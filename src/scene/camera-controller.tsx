@@ -13,7 +13,6 @@ import { useGameStore } from '@/game/state/store';
 const CAM_OFFSET_X = 10;
 const CAM_OFFSET_Y = 10;
 const CAM_OFFSET_Z = 10.5;
-const LERP_SPEED = 0.08;
 const ARRIVE_THRESHOLD = 0.01;
 
 /** Isometric camera — zoom/pan only, animates smoothly to cameraTarget from store */

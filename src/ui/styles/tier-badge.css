@@ -1,0 +1,64 @@
+/* ─── Tier Badge ──────────────────────────────────────────────────────────── */
+.tier-badge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.tier-badge__frame {
+  /* default 64×64; overridden via inline style for smaller sizes */
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--tier-color, var(--ink-gold-dim));
+  border-radius: 4px;
+  background: radial-gradient(ellipse at 30% 25%,
+                rgba(212, 168, 67, 0.18),
+                rgba(0, 0, 0, 0.55) 75%);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.5),
+    inset 0 2px 4px rgba(0, 0, 0, 0.6),
+    0 1px 0 rgba(0, 0, 0, 0.4),
+    0 0 8px var(--tier-soft, rgba(212, 168, 67, 0.15));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.tier-badge__frame img {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  transform: scale(var(--tier-scale, 1));
+  transform-origin: center;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.7));
+}
+
+/* S-tier: stronger outer glow */
+.tier-badge--s .tier-badge__frame {
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.5),
+    inset 0 2px 4px rgba(0, 0, 0, 0.6),
+    0 0 14px rgba(255, 215, 0, 0.45);
+}
+
+.tier-badge__letter {
+  font-family: var(--ink-font-mono);
+  font-size: var(--ink-fs-meta);
+  color: var(--tier-color, var(--ink-gold));
+  font-weight: bold;
+  line-height: 1;
+}
+
+.tier-badge__descriptor {
+  font-family: var(--ink-font-mono);
+  font-size: var(--ink-fs-tiny);
+  color: var(--ink-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tier-badge__frame img { transform: scale(var(--tier-scale, 1)); transition: none; }
+}

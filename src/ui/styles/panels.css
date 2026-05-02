@@ -45,7 +45,7 @@
 
 .panel-btn {
   background: linear-gradient(135deg, #4a3f2f, #2a2520);
-  color: #ffd700;
+  color: var(--ink-gold-bright);
   border: 1px solid rgba(255, 215, 0, 0.4);
   padding: 8px 16px;
   border-radius: 6px;
@@ -53,6 +53,7 @@
   font-size: 0.9rem;
   width: 100%;
   margin-top: 8px;
+  transition: background var(--ink-dur-fast);
 }
 
 .panel-btn:hover {
@@ -61,8 +62,8 @@
 
 .panel-btn--active {
   background: linear-gradient(135deg, #5a4a20, #3a3010);
-  border-color: #ffd700;
-  color: #ffd700;
+  border-color: var(--ink-gold-bright);
+  color: var(--ink-gold-bright);
 }
 
 .panel-btn:disabled {

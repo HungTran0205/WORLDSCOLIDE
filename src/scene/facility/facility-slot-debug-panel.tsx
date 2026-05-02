@@ -55,7 +55,7 @@ export function FacilitySlotDebugPanel() {
   const ctrl = useControls('Facility Slots', schema);
 
   useEffect(() => {
-    const cv = ctrl as Record<string, number>;
+    const cv = ctrl as unknown as Record<string, number>;
     for (let i = 0; i < 12; i++) {
       const x = cv[`s${i}x`] ?? 0;
       const z = cv[`s${i}z`] ?? 0;
@@ -75,7 +75,7 @@ export function FacilitySlotDebugPanel() {
 
   useControls('Facility Slots', {
     'Export to console': button(() => {
-      const cv = ctrl as Record<string, number>;
+      const cv = ctrl as unknown as Record<string, number>;
       const result = Array.from({ length: 12 }, (_, i) => {
         const x = cv[`s${i}x`] ?? 0;
         const z = cv[`s${i}z`] ?? 0;

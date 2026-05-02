@@ -92,27 +92,29 @@ interface WebGLPostPassProps extends PassProps {
 
 /** WebGL branch — EffectComposer with optional N8AO + Bloom. */
 function WebGLPostPass({ bloomEnabled, shadowsEnabled, strength, radius, threshold }: WebGLPostPassProps) {
-  return (
-    <EffectComposer multisampling={0}>
-      {shadowsEnabled && (
-        <N8AO
-          halfRes
-          aoRadius={0.5}
-          intensity={1.5}
-          aoSamples={6}
-          denoiseSamples={4}
-        />
-      )}
-      {bloomEnabled && (
-        <Bloom
-          intensity={strength}
-          luminanceThreshold={threshold}
-          luminanceSmoothing={0.1}
-          radius={radius}
-        />
-      )}
-    </EffectComposer>
-  );
+  if (shadowsEnabled && bloomEnabled) {
+    return (
+      <EffectComposer multisampling={0}>
+        <N8AO halfRes aoRadius={0.5} intensity={1.5} aoSamples={6} denoiseSamples={4} />
+        <Bloom intensity={strength} luminanceThreshold={threshold} luminanceSmoothing={0.1} radius={radius} />
+      </EffectComposer>
+    );
+  }
+  if (shadowsEnabled) {
+    return (
+      <EffectComposer multisampling={0}>
+        <N8AO halfRes aoRadius={0.5} intensity={1.5} aoSamples={6} denoiseSamples={4} />
+      </EffectComposer>
+    );
+  }
+  if (bloomEnabled) {
+    return (
+      <EffectComposer multisampling={0}>
+        <Bloom intensity={strength} luminanceThreshold={threshold} luminanceSmoothing={0.1} radius={radius} />
+      </EffectComposer>
+    );
+  }
+  return null;
 }
 
 /** Root — reads settings store, branches on renderer type. */

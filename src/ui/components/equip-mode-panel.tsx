@@ -50,7 +50,7 @@ export function EquipModePanel({ memberId, onClose }: EquipModePanelProps) {
   const consumables = (Object.keys(items) as ItemID[])
     .filter(id => (items[id] ?? 0) > 0 && ITEM_DATABASE[id]?.type === 'CONSUMABLE');
 
-  function dropOnGearSlot(slot: EquipmentSlot) {
+  function dropOnGearSlot(_slot: EquipmentSlot) {
     const src = dragging ?? selected;
     if (src?.kind === 'eq') equipGear(memberId, src.id);
     setDragging(null); setSelected(null); setDropOver(null);

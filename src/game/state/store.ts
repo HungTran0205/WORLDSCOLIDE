@@ -36,7 +36,7 @@ export function resetGameState(): void {
     guildLevel: 1,
     gold: 100,
     guildHall: createDefaultFloor(),
-    settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high' },
+    settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high', shadowsEnabled: false, bloomEnabled: false, bloomThreshold: 0.85 },
     tavern: { lastRefreshTime: 0, availableMercenaries: [] },
     facilities: [
       { id: 'tavern' as const,        type: 'tavern' as const,        level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
