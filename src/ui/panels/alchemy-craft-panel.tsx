@@ -84,7 +84,7 @@ export function AlchemyCraftPanel({ facility, onClose }: AlchemyCraftPanelProps)
     }
 
     // Enqueue timed craft job
-    addAlchemyCraftJob(facility.type, {
+    addAlchemyCraftJob(facility.id, {
       id: `craft-${Date.now()}`,
       recipeId: recipe.id,
       outputItemId: recipe.output.itemId,

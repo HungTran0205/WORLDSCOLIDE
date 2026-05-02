@@ -3,7 +3,7 @@
 import type { StateCreator } from 'zustand';
 import type { ItemID } from '@/game/data/items';
 import { ITEM_DATABASE, STACK_LIMIT } from '@/game/data/items';
-import type { InventoryState, PlacedFurniture } from './game-state';
+import type { EquipmentItem, InventoryState, PlacedFurniture } from './game-state';
 
 export const BASE_INVENTORY_SLOTS = 10;
 export const SLOTS_PER_CHEST = 20;
@@ -14,8 +14,8 @@ export function getMaxSlots(furniture: PlacedFurniture[]): number {
   return BASE_INVENTORY_SLOTS + SLOTS_PER_CHEST * chestCount;
 }
 
-/** Count how many visual slots the current items occupy */
-export function getUsedSlots(items: Partial<Record<ItemID, number>>): number {
+/** Count how many visual slots the current items occupy (equipment items each take 1 slot) */
+export function getUsedSlots(items: Partial<Record<ItemID, number>>, equipmentItems: EquipmentItem[] = []): number {
   let used = 0;
   for (const [id, qty] of Object.entries(items)) {
     if (!qty || qty <= 0) continue;
@@ -24,7 +24,7 @@ export function getUsedSlots(items: Partial<Record<ItemID, number>>): number {
     const template = ITEM_DATABASE[id as ItemID];
     used += template?.stackable ? Math.ceil(intQty / STACK_LIMIT) : intQty;
   }
-  return used;
+  return used + equipmentItems.length;
 }
 
 /** Inventory slot entry for UI grid rendering */
@@ -79,7 +79,7 @@ export interface InventorySlice {
 }
 
 export const createInventorySlice: StateCreator<InventorySlice> = (set, get) => ({
-  inventory: { items: {} },
+  inventory: { items: {}, equipmentInventory: [] },
 
   addItem: (id, amount) => {
     if (amount <= 0) return;

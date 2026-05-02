@@ -1,12 +1,14 @@
 import { Suspense, useEffect, useRef, createContext, useContext, useState, useCallback } from 'react';
+import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
 import { useThree, useFrame } from '@react-three/fiber';
-import { GuildHall } from './guild-hall';
+import { Stats } from '@react-three/drei';
+import { GuildHall } from './guild-hall/guild-hall';
 import { MemberLayer } from './member-layer';
 import { CameraController } from './camera-controller';
-import { FacilityRoomsLayer } from './facility-rooms-layer';
+import { FacilityRoomsLayer } from './facility/facility-rooms-layer';
 import { createWebGPURenderer, WebGPUInit } from './webgpu-init';
-import { WorldBloomPost } from './world-bloom-post';
+import { WorldPostProcessing } from './world-bloom-post';
 import { getStoredGraphicsQuality } from '@/game/state/guild-slice';
 import { useGameStore } from '@/game/state/store';
 import { FACILITY_SLOTS } from '@/game/data/facility-slot-positions';
@@ -98,7 +100,8 @@ function SceneReadySignal({ onReady }: { onReady: () => void }) {
   return null;
 }
 
-/** Dims global ambient + directional light when camera is inside the alchemy lab */
+/** Global ambient light — dims when inside alchemy lab.
+ *  Each room (GuildHall, FacilityRooms) owns its own directional + shadow light. */
 function SceneLighting() {
   const cameraTarget = useGameStore((s) => s.cameraTarget);
   const facilities = useGameStore((s) => s.facilities);
@@ -107,12 +110,8 @@ function SceneLighting() {
     const [fx, , fz] = FACILITY_SLOTS[f.placedSlot];
     return Math.abs(cameraTarget[0] - fx) <= 3.5 && Math.abs(cameraTarget[2] - fz) <= 3.5;
   });
-  return (
-    <>
-      <ambientLight intensity={isInAlchemy ? 0.08 : 0.6} />
-      <directionalLight position={[5, 10, 5]} intensity={isInAlchemy ? 0.1 : 0.8} />
-    </>
-  );
+
+  return <ambientLight intensity={isInAlchemy ? 0.08 : 0.6} />;
 }
 
 export interface WorldProps {
@@ -137,11 +136,13 @@ export function World({ isActive = true }: WorldProps) {
       <Canvas
         frameloop={isActive ? 'always' : 'demand'}
         orthographic
+        shadows={{ type: THREE.PCFShadowMap, enabled: true }}
         camera={{ zoom: 65, position: [15, 10, 14], near: 0.1, far: 1000 }}
         dpr={quality === 'low' ? [0.75, 1] : [1, 1.5]}
         gl={createWebGPURenderer}
         style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}
       >
+        <Stats />
         <WebGPUInit />
         <TransparentBackground />
         <VisibilityGuard isActive={isActive} />
@@ -152,7 +153,7 @@ export function World({ isActive = true }: WorldProps) {
           <GuildHall />
           <FacilityRoomsLayer />
           <MemberLayer />
-          {quality === 'high' && <WorldBloomPost />}
+          <WorldPostProcessing />
           <SceneReadySignal onReady={onAssetsReady} />
         </Suspense>
       </Canvas>

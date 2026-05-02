@@ -1,0 +1,48 @@
+import { useMemo } from 'react';
+import { useGLTF } from '@react-three/drei';
+import * as THREE from 'three';
+
+useGLTF.preload('/arena/cave/3dprops/p_stonepilla.glb');
+useGLTF.preload('/arena/cave/3dprops/p_stone_pillar_falling.glb');
+useGLTF.preload('/arena/cave/3dprops/p_standing_torch.glb');
+
+function CaveProp({ path, position, targetHeight, rotY = 0 }: {
+  path: string;
+  position: [number, number, number];
+  targetHeight: number;
+  rotY?: number;
+}) {
+  const { scene } = useGLTF(path);
+  const model = useMemo(() => {
+    const clone = scene.clone(true);
+    const box = new THREE.Box3().setFromObject(clone);
+    const h = box.getSize(new THREE.Vector3()).y;
+    const s = h > 0 ? targetHeight / h : 1;
+    clone.scale.setScalar(s);
+    clone.position.y = -box.min.y * s;
+    return clone;
+  }, [scene, targetHeight]);
+
+  return (
+    <group position={position} rotation={[0, rotY, 0]}>
+      <primitive object={model} />
+    </group>
+  );
+}
+
+/** Stone pillar clusters and torches for the stone-quarry room */
+export function QuarryRoomDecor({ cx, cz }: { cx: number; cz: number }) {
+  return (
+    <group>
+       <CaveProp path="/models/furnitures/Railroad_Tracks.glb"        position={[cx + 0.5, 0, cz - 2.3]} targetHeight={0.15} rotY={1.6} />
+      <CaveProp path="/models/furnitures/Minecart_of_Rocks.glb"        position={[cx + 0.5, 0.1, cz - 2.3]} targetHeight={0.85} rotY={1.6} />
+      <CaveProp path="/models/furnitures/Railroad_Tracks.glb"        position={[cx + 1, 0, cz + 2.4]} targetHeight={0.15} rotY={1.6} />
+      <CaveProp path="/arena/cave/3dprops/p_stonepilla.glb"           position={[cx - 2, 0, cz - 3]} targetHeight={3.5} rotY={0.2} />
+      <CaveProp path="/arena/cave/3dprops/p_stonepilla.glb"           position={[cx + 2.5, 0, cz - 3]} targetHeight={2.8} rotY={-0.4} />
+      <CaveProp path="/arena/cave/3dprops/p_stonepilla.glb"           position={[cx - 2.4, 0, cz + 0.5]} targetHeight={1.8} rotY={0.8} />
+      <CaveProp path="/arena/cave/3dprops/p_stone_pillar_falling.glb" position={[cx - 0.5, 0, cz - 0]} targetHeight={1.0} rotY={0.3} />
+      <CaveProp path="/arena/cave/3dprops/p_standing_torch.glb"       position={[cx - 2.8, 0, cz + 3]} targetHeight={1.6} rotY={0} />
+      <CaveProp path="/arena/cave/3dprops/p_standing_torch.glb"       position={[cx + 3, 0, cz + 1]} targetHeight={1.6} rotY={0} />
+    </group>
+  );
+}

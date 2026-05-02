@@ -1,0 +1,621 @@
+/* Facilities Panel — HD-2D Ink UI */
+
+/* ── Overlay + Panel ─────────────────────────────────── */
+.fp-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 16px;
+  z-index: 200;
+  pointer-events: none;
+}
+
+.fp-panel {
+  width: 460px;
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  pointer-events: all;
+}
+
+/* ── Header ──────────────────────────────────────────── */
+.fp-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid var(--ink-gold-dim);
+  flex-shrink: 0;
+}
+
+.fp-title {
+  font-family: var(--ink-font-title);
+  font-size: 0.78rem;
+  color: var(--ink-gold);
+  letter-spacing: 0.1em;
+  flex: 1;
+}
+
+.fp-badge {
+  font-family: var(--ink-font-mono);
+  font-size: 0.5rem;
+  color: var(--ink-text-dim);
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  padding: 1px 5px;
+}
+
+.fp-header-gold {
+  font-family: var(--ink-font-mono);
+  font-size: 0.58rem;
+  color: var(--ink-amber);
+}
+
+.fp-close {
+  background: none;
+  border: 1px solid var(--ink-gold-dim);
+  color: var(--ink-text-muted);
+  font-family: var(--ink-font-mono);
+  font-size: 0.55rem;
+  padding: 2px 8px;
+  border-radius: var(--ink-radius-sm);
+  cursor: pointer;
+  transition: color 120ms, border-color 120ms;
+}
+.fp-close:hover { color: var(--ink-gold); border-color: var(--ink-gold); }
+
+/* ── Slot Grid ───────────────────────────────────────── */
+.fp-grid-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px 8px;
+}
+
+.fp-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+/* Invisible spacer for cross-pattern empty cells */
+.fp-slot-spacer {
+  aspect-ratio: 1 / 1.1;
+  pointer-events: none;
+}
+
+/* Hall center — navigates to guild hall on click */
+.fp-slot-hall {
+  border-color: var(--ink-gold);
+  background: rgba(212, 168, 67, 0.1);
+  box-shadow: var(--ink-glow-gold);
+}
+.fp-slot-hall:hover {
+  border-color: var(--ink-gold);
+  background: rgba(212, 168, 67, 0.2);
+}
+
+/* Slot card base */
+.fp-slot {
+  position: relative;
+  aspect-ratio: 1 / 1.1;
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-bg-panel-alt);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  transition: border-color 120ms, background 120ms, box-shadow 120ms;
+  padding: 6px 4px 4px;
+}
+.fp-slot:hover {
+  border-color: var(--ink-amber);
+  background: var(--ink-bg-hover);
+}
+.fp-slot.selected {
+  border-color: var(--ink-gold);
+  box-shadow: var(--ink-glow-gold);
+  background: var(--ink-bg-selected);
+}
+
+/* Slot number badge */
+.fp-slot-num {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  font-family: var(--ink-font-mono);
+  font-size: 0.42rem;
+  color: var(--ink-text-muted);
+  line-height: 1;
+}
+
+/* Built slot */
+.fp-slot-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.fp-slot-name {
+  font-family: var(--ink-font-mono);
+  font-size: 0.5rem;
+  color: var(--ink-text-dim);
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 2px;
+}
+.fp-slot-level {
+  font-family: var(--ink-font-mono);
+  font-size: 0.44rem;
+  color: var(--ink-text-muted);
+}
+
+/* Green dot — has assigned members */
+.fp-slot-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-status-ok);
+  box-shadow: 0 0 4px var(--ink-status-ok);
+}
+
+/* Empty slot */
+.fp-slot-empty {
+  border-style: dashed;
+  border-color: rgba(138, 109, 44, 0.4);
+  opacity: 0.65;
+}
+.fp-slot-empty:hover {
+  opacity: 1;
+  border-style: solid;
+  border-color: var(--ink-amber);
+}
+.fp-slot-empty.selected {
+  opacity: 1;
+  border-style: solid;
+}
+.fp-slot-empty-icon {
+  font-size: 1.4rem;
+  color: var(--ink-text-muted);
+  line-height: 1;
+}
+.fp-slot-empty-label {
+  font-family: var(--ink-font-mono);
+  font-size: 0.44rem;
+  color: var(--ink-text-muted);
+}
+
+/* Locked slot */
+.fp-slot-locked {
+  opacity: 0.28;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+.fp-slot-locked:hover {
+  border-color: var(--ink-gold-dim);
+  background: var(--ink-bg-panel-alt);
+  opacity: 0.28;
+}
+
+.fp-slot-lock-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.fp-slot-lock-label {
+  font-family: var(--ink-font-mono);
+  font-size: 0.4rem;
+  color: var(--ink-text-muted);
+  text-align: center;
+}
+
+/* Instance badge — shown on slot card when multiple instances of same type */
+.fp-instance-badge {
+  position: absolute;
+  bottom: 3px;
+  right: 4px;
+  font-family: var(--ink-font-mono);
+  font-size: 0.42rem;
+  color: var(--ink-accent, var(--ink-amber));
+  line-height: 1;
+  opacity: 0.85;
+}
+
+/* Instance counter in blueprint list (e.g. "1/3") */
+.fp-bp-instance-count {
+  font-family: var(--ink-font-mono);
+  font-size: 0.48rem;
+  color: var(--ink-text-muted);
+  flex-shrink: 0;
+}
+
+/* ── Detail Tray ─────────────────────────────────────── */
+.fp-tray {
+  border-top: 1px solid var(--ink-gold-dim);
+  background: var(--ink-bg-deep);
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 220ms var(--ink-ease-out);
+  flex-shrink: 0;
+}
+.fp-tray--open { max-height: 220px; }
+
+.fp-tray-content { padding: 10px 14px 8px; }
+
+.fp-tray-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+.fp-tray-name {
+  font-family: var(--ink-font-title);
+  font-size: 0.75rem;
+  color: var(--ink-gold);
+}
+.fp-tray-stat {
+  font-family: var(--ink-font-mono);
+  font-size: 0.56rem;
+  color: var(--ink-amber);
+  margin-top: 1px;
+}
+.fp-tray-level {
+  font-family: var(--ink-font-mono);
+  font-size: 0.52rem;
+  color: var(--ink-text-muted);
+  margin-right: 6px;
+}
+.fp-upgrade-badge {
+  font-family: var(--ink-font-mono);
+  font-size: 0.52rem;
+  color: var(--ink-status-ok);
+  background: rgba(109, 191, 109, 0.12);
+  border: 1px solid rgba(109, 191, 109, 0.4);
+  border-radius: var(--ink-radius-sm);
+  padding: 1px 6px;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms;
+}
+.fp-upgrade-badge:hover {
+  background: rgba(109, 191, 109, 0.22);
+  border-color: var(--ink-status-ok);
+}
+
+.fp-tray-divider {
+  height: 1px;
+  background: rgba(138, 109, 44, 0.3);
+  margin: 5px 0;
+}
+
+.fp-members-row {
+  display: flex;
+  gap: 7px;
+  align-items: flex-end;
+  margin-bottom: 7px;
+  flex-wrap: wrap;
+}
+
+.fp-tray-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.fp-tray-bonus {
+  font-family: var(--ink-font-mono);
+  font-size: 0.56rem;
+  color: var(--ink-status-ok);
+}
+.fp-tray-bonus::before { content: '▲ '; }
+.fp-tray-bonus--inactive {
+  color: var(--ink-text-muted);
+}
+.fp-tray-bonus--inactive::before { content: ''; }
+
+.fp-btn-enter {
+  font-family: var(--ink-font-mono);
+  font-size: 0.58rem;
+  color: var(--ink-gold);
+  background: var(--ink-bg-selected);
+  border: 1px solid var(--ink-gold);
+  border-radius: var(--ink-radius-sm);
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 120ms;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.fp-btn-enter:hover { background: rgba(212, 168, 67, 0.25); }
+
+/* ── Member Avatar Card ──────────────────────────────── */
+.fp-avatar-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.fp-avatar-frame {
+  width: 48px;
+  height: 60px;
+  background: var(--ink-bg-panel-alt);
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  position: relative;
+}
+.fp-avatar-img {
+  image-rendering: pixelated;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+}
+.fp-avatar-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 13px;
+  height: 13px;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid var(--ink-gold-dim);
+  color: var(--ink-text-muted);
+  font-size: 0.55rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1px;
+  padding: 0;
+  line-height: 1;
+}
+.fp-avatar-remove:hover {
+  color: var(--ink-status-bad);
+  border-color: var(--ink-status-bad);
+}
+.fp-avatar-name {
+  font-family: var(--ink-font-mono);
+  font-size: 0.46rem;
+  color: var(--ink-text-muted);
+  text-align: center;
+  max-width: 52px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Assign placeholder card */
+.fp-assign-card {
+  width: 48px;
+  height: 60px;
+  background: var(--ink-bg-deep);
+  border: 1px dashed rgba(138, 109, 44, 0.5);
+  border-radius: var(--ink-radius-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  transition: border-color 120ms, background 120ms;
+  position: relative;
+}
+.fp-assign-card:hover {
+  border-color: var(--ink-gold);
+  background: var(--ink-bg-hover);
+  border-style: solid;
+}
+.fp-assign-card select {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+.fp-assign-plus {
+  font-size: 1rem;
+  color: var(--ink-text-muted);
+  line-height: 1;
+}
+.fp-assign-label {
+  font-family: var(--ink-font-mono);
+  font-size: 0.42rem;
+  color: var(--ink-text-muted);
+}
+
+/* ── Empty Slot Tray ─────────────────────────────────── */
+.fp-slot-label {
+  font-family: var(--ink-font-mono);
+  font-size: 0.55rem;
+  color: var(--ink-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+
+.fp-blueprint-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 100px;
+  overflow-y: auto;
+  margin-bottom: 7px;
+}
+
+.fp-blueprint-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--ink-bg-panel-alt);
+  border: 1px solid rgba(138, 109, 44, 0.4);
+  border-radius: var(--ink-radius-sm);
+  cursor: pointer;
+  transition: border-color 120ms, background 120ms;
+}
+.fp-blueprint-row:hover { border-color: var(--ink-amber); background: var(--ink-bg-hover); }
+.fp-blueprint-row.selected { border-color: var(--ink-gold); background: var(--ink-bg-selected); }
+.fp-blueprint-row.unaffordable { opacity: 0.35; cursor: not-allowed; }
+
+.fp-bp-name {
+  font-family: var(--ink-font-mono);
+  font-size: 0.58rem;
+  color: var(--ink-text-dim);
+  flex: 1;
+}
+.fp-bp-stat {
+  font-family: var(--ink-font-mono);
+  font-size: 0.5rem;
+  color: var(--ink-text-muted);
+}
+.fp-bp-cost {
+  font-family: var(--ink-font-mono);
+  font-size: 0.55rem;
+  color: var(--ink-status-warn);
+  flex-shrink: 0;
+}
+
+.fp-blueprint-empty {
+  font-family: var(--ink-font-mono);
+  font-size: 0.55rem;
+  color: var(--ink-text-muted);
+  text-align: center;
+  padding: 8px 0;
+}
+
+.fp-btn-build {
+  width: 100%;
+  padding: 5px;
+  font-family: var(--ink-font-mono);
+  font-size: 0.6rem;
+  color: var(--ink-gold);
+  background: var(--ink-bg-selected);
+  border: 1px solid var(--ink-gold);
+  border-radius: var(--ink-radius-sm);
+  cursor: pointer;
+  transition: background 120ms;
+}
+.fp-btn-build:hover:not(:disabled) { background: rgba(212, 168, 67, 0.25); }
+.fp-btn-build:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  border-color: var(--ink-gold-dim);
+  color: var(--ink-text-muted);
+}
+
+/* ── Confirm Dialog ──────────────────────────────────── */
+.fp-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  backdrop-filter: blur(3px);
+}
+.fp-dialog {
+  background: var(--ink-bg-panel);
+  border: 2px solid var(--ink-gold);
+  border-radius: var(--ink-radius-md);
+  box-shadow: var(--ink-shadow-deep), var(--ink-glow-gold);
+  padding: 20px 22px;
+  width: 300px;
+  position: relative;
+  animation: ink-slide-in var(--ink-dur-panel) var(--ink-ease-out) both;
+}
+.fp-dialog::before,
+.fp-dialog::after {
+  content: '';
+  position: absolute;
+  width: var(--ink-corner-size);
+  height: var(--ink-corner-size);
+  background: var(--ink-gold);
+  transform: rotate(45deg);
+  z-index: 1;
+}
+.fp-dialog::before { top: -5px; left: -5px; }
+.fp-dialog::after  { top: -5px; right: -5px; }
+
+.fp-dialog-title {
+  font-family: var(--ink-font-title);
+  font-size: 0.78rem;
+  color: var(--ink-gold);
+  letter-spacing: 0.07em;
+  margin-bottom: 8px;
+}
+.fp-dialog-body {
+  font-family: var(--ink-font-body);
+  font-size: 0.75rem;
+  color: var(--ink-text-muted);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+.fp-dialog-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.fp-btn-confirm {
+  background: var(--ink-bg-selected);
+  border: 1px solid var(--ink-gold);
+  color: var(--ink-gold);
+  font-family: var(--ink-font-mono);
+  font-size: 0.6rem;
+  padding: 5px 14px;
+  border-radius: var(--ink-radius-sm);
+  cursor: pointer;
+  transition: background 120ms;
+}
+.fp-btn-confirm:hover { background: rgba(212, 168, 67, 0.25); }
+.fp-btn-cancel {
+  background: none;
+  border: 1px solid var(--ink-gold-dim);
+  color: var(--ink-text-muted);
+  font-family: var(--ink-font-mono);
+  font-size: 0.6rem;
+  padding: 5px 14px;
+  border-radius: var(--ink-radius-sm);
+  cursor: pointer;
+  transition: border-color 120ms, color 120ms;
+}
+.fp-btn-cancel:hover { border-color: var(--ink-amber); color: var(--ink-amber); }
+
+/* ── Guild Upgrade Footer ────────────────────────────── */
+.fp-guild-upgrade {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-top: 1px solid rgba(138, 109, 44, 0.3);
+  flex-shrink: 0;
+}
+.fp-guild-label {
+  font-family: var(--ink-font-mono);
+  font-size: 0.58rem;
+  color: var(--ink-text-muted);
+}
+.fp-btn-guild-upgrade {
+  font-family: var(--ink-font-title);
+  font-size: 0.62rem;
+  color: var(--ink-gold);
+  background: var(--ink-bg-selected);
+  border: 1px solid var(--ink-gold);
+  padding: 4px 11px;
+  border-radius: var(--ink-radius-sm);
+  cursor: pointer;
+  transition: background 120ms;
+}
+.fp-btn-guild-upgrade:hover:not(:disabled) { background: rgba(212, 168, 67, 0.25); }
+.fp-btn-guild-upgrade:disabled { opacity: 0.35; cursor: not-allowed; }

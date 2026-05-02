@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameStore } from '@/game/state/store';
+import { useUiStore } from '@/game/state/ui-store';
 import { GoldDisplay } from '@/ui/components/gold-display';
 import { ResourceBar } from '@/ui/components/resource-bar';
 import { SaveStatusBadge } from './save-status-badge';
 import { PanelToggle, type PanelId } from './panel-toggle';
-import { RoomNavBar } from './room-nav-bar';
+import { FacilityCompass } from './facility-compass';
 import { InventoryPanel } from '@/ui/panels/inventory-panel';
 import { formatGameTime } from '@/game/utils/format-game-time';
 import { calcTotalUpkeep } from '@/game/systems/upkeep-system';
@@ -32,6 +33,12 @@ export function HUD({ activePanel, setActivePanel }: HUDProps) {
   const tutorialStep = useGameStore((s) => s.tutorialStep);
   const memberCount = rosterCount + (hasFounder ? 1 : 0);
   const [inventoryOpen, setInventoryOpen] = useState(false);
+  const inventoryMode  = useUiStore(s => s.inventoryMode);
+  const closeEquipMode = useUiStore(s => s.closeEquipMode);
+
+  useEffect(() => {
+    if (inventoryMode === 'equip') setInventoryOpen(true);
+  }, [inventoryMode]);
 
   const stepConfig = getCurrentStep(tutorialStep);
   const hintMessage = stepConfig?.message ?? '';
@@ -55,13 +62,13 @@ export function HUD({ activePanel, setActivePanel }: HUDProps) {
           {hintMessage}
         </div>
       )}
-      <RoomNavBar />
+      <FacilityCompass />
       <PanelToggle
         activePanel={activePanel}
         setActivePanel={setActivePanel}
         highlightPanel={highlightPanel}
       />
-      {inventoryOpen && <InventoryPanel onClose={() => setInventoryOpen(false)} />}
+      {inventoryOpen && <InventoryPanel onClose={() => { setInventoryOpen(false); closeEquipMode(); }} />}
     </div>
   );
 }

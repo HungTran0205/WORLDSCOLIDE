@@ -190,5 +190,7 @@ function formatEvent(event: CombatEvent, getName: (id: string) => string): strin
       return 'Victory!';
     case 'wipe':
       return 'Party wiped...';
+    default:
+      return '';
   }
 }

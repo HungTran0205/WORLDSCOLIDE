@@ -28,9 +28,8 @@ const ANIM_ATTACK_DURATION = 600;
 // Back animation: 4 frames @ 12fps = 333ms, effective 300ms + engine granularity
 const WARRIOR_BACK_DURATION = 300;
 // Warrior jumps this far from home toward enemy (world units).
-// At step speed 6 u/s → 400ms forward; return at 5 u/s → 400ms back.
-// Both durations fit neatly inside the attack (600ms) and back (300ms) animations.
-const WARRIOR_JUMP_DISTANCE = 2.0;
+// At step speed 6 u/s: 3.5 u → ~583ms forward; fits inside attack anim (600ms).
+const WARRIOR_JUMP_DISTANCE = 3.5;
 
 export class CombatEngine {
   entities: ArenaEntity[] = [];
@@ -51,8 +50,10 @@ export class CombatEngine {
   private nextEnemyIndex = 0;
   /** Sequential turn lock — id of entity currently executing its full action cycle, or null if queue is idle */
   private activeActorId: string | null = null;
-  /** Total syringes loaded across all ally entities at init — for inventory deduction by caller */
+  /** Total syringes loaded across all ally entities at init */
   totalSyringesLoaded = 0;
+  /** Syringes actually consumed during combat — deduct this from inventory at combat end */
+  syringesConsumed = 0;
 
   /** Initialize combat from formation + enemies */
   init(
@@ -76,6 +77,7 @@ export class CombatEngine {
     this.eventQueue = [];
     this.nextEnemyIndex = 0;
     this.totalSyringesLoaded = 0;
+    this.syringesConsumed = 0;
 
     // Distribute available syringes evenly among formation members who have loadout configured
     const formationMembers = formation
@@ -335,6 +337,7 @@ export class CombatEngine {
       const healAmt = Math.floor(entity.maxHp * 0.30);
       entity.currentHp = Math.min(entity.maxHp, entity.currentHp + healAmt);
       entity.syringesLoaded -= 1;
+      this.syringesConsumed += 1;
       this.eventQueue.push({ type: 'syringe-used', entityId: entity.id, healAmount: healAmt });
     }
 
@@ -477,7 +480,7 @@ export class CombatEngine {
     if (entity.passiveState && isCloneActive(entity.passiveState, this.time)) {
       const cloneTarget = findTarget(entity, this.entities);
       if (cloneTarget && cloneTarget.currentHp > 0) {
-        let cloneDmg = calcAutoAttackDamage(entity.stats.STR, cloneTarget.stats.END);
+        let cloneDmg = calcAutoAttackDamage(entity.stats.STR, cloneTarget.stats.END + (cloneTarget.gearFlatDefense ?? 0));
         const cloneCrit = rollCrit(entity.stats.LCK);
         if (cloneCrit) cloneDmg = Math.floor(cloneDmg * entity.critDmg);
         cloneTarget.currentHp -= cloneDmg;
@@ -536,7 +539,8 @@ export class CombatEngine {
 
   /** Apply damage, passive effects, and target reactions — no nextAttackAt/animState changes */
   private dealDamage(entity: ArenaEntity, target: ArenaEntity): void {
-    let damage = calcAutoAttackDamage(entity.stats.STR, target.stats.END);
+    const targetEffDef = target.stats.END + (target.gearFlatDefense ?? 0);
+    let damage = calcAutoAttackDamage(entity.stats.STR, targetEffDef, 1.0, entity.gearFlatDamage ?? 0);
     // Boosted status gives +20% damage
     if (entity.statusEffects.some(e => e.type === 'boosted')) {
       damage = Math.floor(damage * 1.2);
@@ -628,7 +632,8 @@ export class CombatEngine {
     if (entity.level < 5) return;
     if (this.time < entity.skillCooldownUntil) return;
 
-    const baseDmg = calcAutoAttackDamage(entity.stats.STR, target.stats.END);
+    const skillTargetDef = target.stats.END + (target.gearFlatDefense ?? 0);
+    const baseDmg = calcAutoAttackDamage(entity.stats.STR, skillTargetDef, 1.0, entity.gearFlatDamage ?? 0);
     const isCrit2 = rollCrit(entity.stats.LCK);
     let skillDmg = calcSkillDamage(baseDmg, entity.skill.damageMultiplier, entity.stats.DEX);
     if (isCrit2) skillDmg = Math.floor(skillDmg * entity.critDmg);

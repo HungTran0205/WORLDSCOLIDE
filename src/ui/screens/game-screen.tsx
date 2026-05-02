@@ -3,20 +3,18 @@
  * Extracted from App to allow hook usage (useGameTickLoop) only when game is active.
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { FACILITY_SLOTS } from '@/game/data/facility-slot-positions';
 import { World } from '@/scene/world';
-import { CombatArenaCanvas } from '@/scene/combat-arena';
+import { CombatArenaCanvas } from '@/scene/combat/combat-arena';
 import { HUD } from '@/ui/hud/hud';
 import { QuestBoard } from '@/ui/panels/quest-board';
 import { GuildRoster } from '@/ui/panels/guild-roster';
 import { FacilitiesPanel } from '@/ui/panels/facilities-panel';
 import { OfflineFacilityPopup } from '@/ui/components/offline-facility-popup';
-import { BuildMenu } from '@/ui/panels/build-menu';
 import { CombatView } from '@/ui/panels/combat-view';
 import { SettingsPanel } from '@/ui/panels/settings-panel';
 import { GameOverOverlay } from '@/ui/panels/game-over-overlay';
-import { BuildModeHint } from '@/ui/components/build-mode-hint';
 import { WorldBoardModal } from '@/ui/components/world-board-modal';
 import { KaelRescueDialogue, TutorialRewardSplash } from '@/ui/components/tutorial-dialogue-overlays';
 import { MissionNotification } from '@/ui/components/mission-notification';
@@ -32,6 +30,8 @@ import { GUILD_HALL_CAMERA_TARGET } from '@/game/state/camera-slice';
 import { playBGM } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
 import type { PanelId } from '@/ui/hud/panel-toggle';
+import { DEBUG_MODE } from '@/debug';
+import { FacilitySlotDebugPanel } from '@/scene/facility/facility-slot-debug-panel';
 
 /** Manual-mode toggle button — flips combatMode for the active arena mission */
 function CombatManualToggle() {
@@ -122,62 +122,9 @@ function HomeButton() {
     return () => window.removeEventListener('keydown', handler);
   }, [isAtGuildHall, cameraTarget, setCameraTarget, resetCameraToGuildHall, facilities]);
 
-  if (isAtGuildHall) return null;
-
-  return (
-    <button
-      onClick={resetCameraToGuildHall}
-      title="Return to Guild Hall"
-      style={{
-        position: 'fixed',
-        bottom: 60,
-        left: 16,
-        width: 44,
-        height: 44,
-        background: 'rgba(30,20,10,0.85)',
-        color: '#ffd700',
-        border: '1px solid rgba(255,215,0,0.4)',
-        borderRadius: 8,
-        cursor: 'pointer',
-        fontSize: '1.3rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 100,
-      }}
-    >
-      🏠
-    </button>
-  );
+  return null;
 }
 
-/** Floating toggle button to enter/exit build mode */
-function BuildModeToggle() {
-  const isBuildMode = useGameStore((s) => s.isBuildMode);
-  const toggleBuildMode = useGameStore((s) => s.toggleBuildMode);
-
-  return (
-    <button
-      onClick={() => toggleBuildMode(!isBuildMode)}
-      style={{
-        position: 'fixed',
-        bottom: 16,
-        right: 16,
-        padding: '10px 20px',
-        background: isBuildMode ? '#ff4444' : '#4488ff',
-        color: '#fff',
-        border: 'none',
-        borderRadius: 8,
-        cursor: 'pointer',
-        fontSize: '0.9rem',
-        fontWeight: 'bold',
-        zIndex: 100,
-      }}
-    >
-      {isBuildMode ? 'Exit Build' : 'Build Mode'}
-    </button>
-  );
-}
 
 interface GameScreenProps {
   onReturnToTitle: () => void;
@@ -186,6 +133,8 @@ interface GameScreenProps {
 export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   const [activePanel, setActivePanel] = useState<PanelId>(null);
   const [alchemyPanelOpen, setAlchemyPanelOpen] = useState(false);
+  // Tracks whether user explicitly closed the panel while still in the room
+  const alchemyUserClosedRef = useRef(false);
 
   // Detect when camera is settled inside an alchemy lab room
   const cameraTarget = useGameStore((s) => s.cameraTarget);
@@ -199,8 +148,13 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   }), [allFacilities, cameraTarget]);
 
   useEffect(() => {
-    if (alchemyFacility && cameraSettled) setAlchemyPanelOpen(true);
-    else setAlchemyPanelOpen(false);
+    if (alchemyFacility && cameraSettled) {
+      // Only auto-open if user hasn't manually closed it this visit
+      if (!alchemyUserClosedRef.current) setAlchemyPanelOpen(true);
+    } else {
+      setAlchemyPanelOpen(false);
+      alchemyUserClosedRef.current = false; // reset when camera leaves room
+    }
   }, [alchemyFacility, cameraSettled]);
 
   const currentCombatReplay = useGameStore((s) => s.currentCombatReplay);
@@ -267,7 +221,6 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
               onDismiss={clearOfflineFacilityReport}
             />
           )}
-          {activePanel === 'build' && <BuildMenu onClose={() => setActivePanel(null)} />}
           {activePanel === 'combat' && <CombatView onClose={() => setActivePanel(null)} />}
           {activePanel === 'settings' && (
             <SettingsPanel
@@ -279,11 +232,9 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
           {alchemyPanelOpen && alchemyFacility && (
             <AlchemyCraftPanel
               facility={alchemyFacility}
-              onClose={() => setAlchemyPanelOpen(false)}
+              onClose={() => { setAlchemyPanelOpen(false); alchemyUserClosedRef.current = true; }}
             />
           )}
-          <BuildModeHint />
-          <BuildModeToggle />
           <HomeButton />
         </>
       )}
@@ -304,6 +255,8 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
       {gameScene === 'combat-arena' && arenaPhase === 'result' && <CombatResultOverlay />}
 
       {isGameOver && gameScene === 'guild-hall' && <GameOverOverlay onReturnToTitle={onReturnToTitle} />}
+
+      {DEBUG_MODE && <FacilitySlotDebugPanel />}
     </>
   );
 }

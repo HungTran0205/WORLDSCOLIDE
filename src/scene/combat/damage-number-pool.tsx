@@ -15,8 +15,8 @@ import type { Sprite as SpriteType } from 'three';
 const POOL_SIZE = 32;
 const LIFETIME = 0.8; // seconds
 const FLOAT_SPEED = 1.5; // units/sec
-const LABEL_SCALE_Y = 0.16;
-const CRIT_SCALE_Y = 0.22;
+const LABEL_SCALE_Y = 0.30;
+const CRIT_SCALE_Y = 0.45;
 
 export interface DamageNumberSpawnParams {
   position: { x: number; z: number };
@@ -50,7 +50,7 @@ function renderDamageCanvas(
   isCrit: boolean,
 ): void {
   const ctx = canvas.getContext('2d')!;
-  const fontSize = isCrit ? 36 : 28;
+  const fontSize = isCrit ? 44 : 34;
   ctx.font = `bold ${fontSize}px sans-serif`;
   ctx.clearRect(0, 0, DMG_CANVAS_W, DMG_CANVAS_H);
   // Outline

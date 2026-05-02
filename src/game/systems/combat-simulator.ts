@@ -3,6 +3,7 @@ import type { EnemyTemplate } from '@/game/data/enemies';
 import type { CombatEntity, CombatTick, CombatEvent, CombatResult, CombatOutcome } from './combat-types';
 import { calcAutoAttackDamage, calcSkillDamage, rollCrit } from './combat-formulas';
 import { calcDerivedCombatStats } from './derived-combat-stats';
+import { calcGearBonuses } from './equipment-bonuses';
 import { applyEffectTick } from './combat-effects';
 import {
   createPassiveState, applyPassiveOnInit, applyPassiveTick, onDamageDealt, snapshotBaseStats,
@@ -14,12 +15,13 @@ const MAX_TICKS = 10000;
 
 function memberToEntity(member: Member): CombatEntity {
   const derived = calcDerivedCombatStats(member.stats, member.level);
+  const gear = calcGearBonuses(member.equipment);
   const entity: CombatEntity = {
     id: member.id,
     name: member.name,
     isAlly: true,
-    maxHp: derived.maxHp,
-    currentHp: derived.maxHp,
+    maxHp: derived.maxHp + gear.flatHp,
+    currentHp: derived.maxHp + gear.flatHp,
     stats: { ...member.stats },
     skill: member.skill ? { ...member.skill } : null,
     level: member.level,
@@ -35,6 +37,8 @@ function memberToEntity(member: Member): CombatEntity {
     blockRate: derived.blockRate,
     critDmg: derived.critDmg,
     hpRegenPerSec: derived.hpRegen,
+    gearFlatDamage: gear.flatDamage,
+    gearFlatDefense: gear.flatDefense,
   };
   applyPassiveOnInit(entity);
   return entity;
@@ -131,7 +135,8 @@ export function simulateCombat(partyMembers: Member[], enemyTemplates: EnemyTemp
         );
         entity._hasDeQuocBuff = hasDeQuocBuff;
 
-        let damage = calcAutoAttackDamage(entity.stats.STR, target.stats.END);
+        const targetEffDef = target.stats.END + (target.gearFlatDefense ?? 0);
+        let damage = calcAutoAttackDamage(entity.stats.STR, targetEffDef, 1.0, entity.gearFlatDamage ?? 0);
         // Boosted status gives +20% damage
         if (entity.statusEffects.some((e) => e.type === 'boosted')) {
           damage = Math.floor(damage * 1.2);
@@ -180,7 +185,7 @@ export function simulateCombat(partyMembers: Member[], enemyTemplates: EnemyTemp
 
         // ThienLu clone hit (extra auto-attack each tick while clone active)
         if (entity.passiveState && isCloneActive(entity.passiveState, time)) {
-          let cloneDmg = calcAutoAttackDamage(entity.stats.STR, target.stats.END);
+          let cloneDmg = calcAutoAttackDamage(entity.stats.STR, targetEffDef);
           const cloneCrit = rollCrit(entity.stats.LCK);
           if (cloneCrit) cloneDmg = Math.floor(cloneDmg * entity.critDmg);
           target.currentHp -= cloneDmg;
@@ -199,7 +204,8 @@ export function simulateCombat(partyMembers: Member[], enemyTemplates: EnemyTemp
       if (entity.skill && entity.level >= 5 && entity.skill.autoEnabled && time >= entity.skillCooldownUntil) {
         const target = pickTarget(entities, !entity.isAlly);
         if (target) {
-          const baseDmg = calcAutoAttackDamage(entity.stats.STR, target.stats.END);
+          const skillTargetDef = target.stats.END + (target.gearFlatDefense ?? 0);
+          const baseDmg = calcAutoAttackDamage(entity.stats.STR, skillTargetDef, 1.0, entity.gearFlatDamage ?? 0);
           let skillDmg = calcSkillDamage(baseDmg, entity.skill.damageMultiplier, entity.stats.DEX);
           if (rollCrit(entity.stats.LCK)) skillDmg = Math.floor(skillDmg * entity.critDmg);
           target.currentHp -= skillDmg;

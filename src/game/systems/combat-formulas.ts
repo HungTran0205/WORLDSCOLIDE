@@ -9,10 +9,15 @@ export function calcAttackInterval(agi: number, weaponBaseSpeedMs: number = 1800
   return Math.max(300, Math.floor(interval));
 }
 
-/** Base auto-attack damage with defense reduction */
-export function calcAutoAttackDamage(str: number, targetEnd: number, weaponMult: number = 1.0): number {
+/** Base auto-attack damage with defense reduction. flatBonus (weapon gear) applied before defense reduction. */
+export function calcAutoAttackDamage(
+  str: number,
+  targetEnd: number,
+  weaponMult: number = 1.0,
+  flatBonus: number = 0,
+): number {
   const defRatio = Math.min(0.75, targetEnd / (targetEnd + 100));
-  const raw = str * weaponMult * (1 - defRatio);
+  const raw = (str * weaponMult + flatBonus) * (1 - defRatio);
   return Math.max(1, Math.floor(raw));
 }
 

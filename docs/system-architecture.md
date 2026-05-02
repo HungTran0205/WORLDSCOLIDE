@@ -1442,6 +1442,369 @@ consumeItems(items: ItemQuantityMap): { success: boolean; reason? }
 
 ---
 
+## Equipment System (Phase 1 - v1.25)
+
+### Overview
+
+Equipment system introduces instance-based gear with flat stat bonuses. Members can equip up to 3 items (weapon, armor, headgear) that grant additive bonuses: weapons add flatDamage, armor/headgear add flatHp + flatDefense. Broken gear (durability=0) provides no bonus. Equipment inventory tracks unequipped items separately from standard inventory.
+
+### Core Design
+
+**Equipment Architecture:**
+```
+11 Static Templates (equipment-templates.ts)
+    ├─ Weapons (5): WOODEN_AXE (dmg=10), WOODEN_CROSSBOW, STONE_SWORD (dmg=18), IRON_SWORD (dmg=30), IRON_SPEAR (dmg=28)
+    ├─ Armor (3): CLOTH_VEST (hp=20, def=3), LEATHER_ARMOR (hp=40, def=7), IRON_ARMOR (hp=70, def=15)
+    └─ Headgear (3): CLOTH_HOOD, LEATHER_HELMET, IRON_HELMET
+
+Instance-Based Items (equipment-bonuses.ts)
+    └─ EquipmentItem: { id: UUID, templateId, durability: number }
+
+Member Equipment State (game-state.ts)
+    └─ MemberEquipment: { weapon?, armor?, headgear? }
+```
+
+**Bonus Calculation:**
+```typescript
+calcGearBonuses(equipment): GearBonuses
+  • Weapon (if durability > 0): +templateId.damage to flatDamage
+  • Armor (if durability > 0): +hp, +defense to flatHp/flatDefense
+  • Headgear (if durability > 0): +hp, +defense to flatHp/flatDefense
+  • Returns: { flatDamage, flatHp, flatDefense }
+```
+
+### Starting Equipment
+
+LinhSon civilization archetype members receive starting weapons at character creation:
+- **Warrior** → WOODEN_AXE (10 damage)
+- **Scout** → WOODEN_CROSSBOW (10 damage)
+- **Other archetypes/civilizations** → No starting gear
+
+Starting weapons assigned via `getStartingWeapon(archetype)` which creates fresh EquipmentItem instances.
+
+### UI Integration
+
+**Equipment Slots** (3-slot display):
+- Member Book Detail Page: Functional equip/unequip UI (member-book-detail-page.tsx)
+- Character Detail Panel: Same 3-slot equipment UI (character-detail-panel.tsx)
+- Guild Roster: Wired equipment props to detail page
+- Inventory Panel: Separate equipment inventory section showing unequipped gear
+
+**No Visual Sprite Change**: Equipment slot UI displays but does not alter member 3D model appearance (Phase 2 feature).
+
+### Combat Integration
+
+**Combat Systems Updated:**
+- `combat-types.ts` — Added `gearFlatDamage?`, `gearFlatHp?`, `gearFlatDefense?` to CombatEntity
+- `combat-formulas.ts` — Added `flatBonus` param to `calcAutoAttackDamage()` (backward compatible, default=0)
+- `combat-entity-factory.ts` — Applies gear HP and flatDamage/flatDefense to ArenaEntity during setup
+- `combat-simulator.ts` — Gear bonuses applied in auto-resolve combat (HP, damage, defense)
+- `combat-engine.ts` — Gear bonuses applied in real-time arena (HP, damage, defense)
+
+### State Management
+
+**New Interfaces** (`game-state.ts`):
+```typescript
+interface EquipmentItem {
+  id: string;          // UUID
+  templateId: EquipmentTemplateId;
+  durability: number;  // Current durability (0 = broken, no bonus)
+}
+
+interface MemberEquipment {
+  weapon?: EquipmentItem;
+  armor?: EquipmentItem;
+  headgear?: EquipmentItem;
+}
+
+interface Member {
+  equipment?: MemberEquipment | null;  // Added field
+}
+
+interface InventoryState {
+  equipmentInventory?: EquipmentItem[];  // Unequipped gear items
+}
+```
+
+**State Actions** (`guild-slice.ts`):
+- `equipGear(memberId, slot, itemId)` — Equip item to member's equipment slot
+- `unequipGear(memberId, slot)` — Remove equipped item, move to equipmentInventory
+
+**Inventory Integration** (`inventory-slice.ts`):
+- `getUsedSlots()` — Now includes equipment items in slot calculation
+- Equipment items count toward inventory capacity (Phase 2: dedicated equipment UI)
+
+### Save System
+
+**Version 19 Migration** (`save-types.ts` / `save-migrations.ts`):
+- `SAVE_VERSION: 18 → 19`
+- Migration `migrateV18toV19()`:
+  - Adds `equipment: null` to all members
+  - Adds `equipmentInventory: []` to inventory state
+  - No data loss; backward compatible
+
+**Backward Compatibility**:
+- Old saves load with equipment: null (no equipped gear)
+- Existing members without equipment field treated as unequipped
+- equipmentInventory initializes empty on old saves
+
+### File Changes Summary
+
+**New Files:**
+- `src/game/data/equipment-templates.ts` — 11 static gear templates
+- `src/game/systems/equipment-bonuses.ts` — Bonus calc + item creation helpers
+
+**Modified Files:**
+- `src/game/state/game-state.ts` — EquipmentItem, MemberEquipment interfaces; equipment? field on Member; equipmentInventory? on InventoryState
+- `src/game/systems/combat-types.ts` — Gear flat bonus fields on CombatEntity
+- `src/game/systems/combat-formulas.ts` — flatBonus param to calcAutoAttackDamage
+- `src/game/systems/combat-entity-factory.ts` — Apply gear bonuses to ArenaEntity
+- `src/game/systems/combat-simulator.ts` — Gear bonuses in auto-resolve
+- `src/game/systems/combat-engine.ts` — Gear bonuses in real-time arena
+- `src/game/systems/character-creation.ts` — Starting weapon assignment
+- `src/game/state/guild-slice.ts` — equipGear() / unequipGear() actions
+- `src/game/state/inventory-slice.ts` — Equipment item counting in getUsedSlots()
+- `src/game/save/save-types.ts` — SAVE_VERSION 19
+- `src/game/save/save-migrations.ts` — v18→v19 migration
+- `src/ui/components/member-book-detail-page.tsx` — Equipment UI with dropdown + unequip
+- `src/ui/panels/guild-roster.tsx` — Equipment props wired to detail page
+- `src/ui/panels/inventory-panel.tsx` — Equipment inventory section
+- `src/ui/panels/character-detail-panel.tsx` — Equipment UI (same as member book)
+
+### Phase 2 Roadmap
+
+- **Visual Equipment Sprites**: Update member 3D model on equip (pose/material changes)
+- **Equipment Durability Decay**: Apply wear-and-tear during combat
+- **Workshop Crafting**: Forge new gear from materials using craftMaterial + craftCost
+- **Enchantment System**: Add magical bonuses to gear
+- **Equipment Loot**: Drop gear from defeated enemies
+- **Transmog/Skins**: Cosmetic appearance separation from stats
+
+---
+
+## HD-2D Ink UI System (v1.26 — Design Tokens + Responsive Scale)
+
+### Design Token Layer (`src/ui/styles/game-ui-tokens.css`)
+
+**CSS Custom Property Namespace** (`--ink-*`):
+- Color palette: `--ink-bg`, `--ink-border`, `--ink-text`, `--ink-gold`, `--ink-hp-bar`, `--ink-exp-bar`
+- Maintains isolation from existing `--color-*` tokens; no breaking changes
+- All new UI components use token values; allows theme recoloring via single CSS edit
+
+**Responsive Scale System** (`--ui-scale`):
+- `--ui-scale: 1.0` — Viewports ≥1200px (desktop)
+- `--ui-scale: 0.9` — Viewports 1024–1199px (laptop)
+- `--ui-scale: 0.75` — Viewports 768–1023px (tablet)
+- `--ui-scale: 0.5` — Viewports <768px (mobile)
+- Applied via `transform: scale(var(--ui-scale))` at root panel level; eliminates media query hardcoding
+- All font-size, padding, gap values use `calc()` with scale variable for proportional zoom
+
+**Utility Classes**:
+- `.ink-panel` — Base card styling (border, padding, background)
+- `.ink-tab-bar`, `.ink-tab` — Tab navigation styling
+- `.ink-bar-hp`, `.ink-bar-exp` — Status bar styling with custom fill animations
+- `.ink-pixelated` — Pixel-perfect font rendering (image-rendering: pixelated)
+- `.ink-enter` — Entry animation (fade + slide from top)
+
+### Guild Roster Redesign (v1.26)
+
+**Component Hierarchy**:
+```
+GuildRosterPanel
+├─ FilterBar (name text input, civ dropdown, status filter)
+├─ MemberGrid (auto-fill CSS Grid, responsive columns)
+│  └─ MemberCard (per member)
+│     ├─ Avatar (with 404 fallback initials)
+│     ├─ Name + Civilization badge
+│     ├─ Top-2 stats display (STR + INT or DEF + LUK)
+│     └─ Status indicator (idle/busy/injured)
+└─ CharacterDetailPanel (on card click)
+```
+
+**Member Card**:
+- Grid tile with fixed aspect ratio
+- Avatar: fetch `public/sprites/avatars/{memberId}.png`, fallback to initials in colored tile
+- Click navigation: `GuildRosterPanel → CharacterDetailPanel → back to Roster`
+- Filters apply instantly (no pagination; all members visible in scrollable grid)
+
+**UI Files**:
+- `src/ui/panels/guild-roster.tsx` — Container, filter logic, grid layout
+- `src/ui/components/member-card.tsx` — Single card component (new)
+- `src/ui/styles/guild-roster.css` — Grid, card, filter pill styling
+
+### Character Detail Tabs (v1.26)
+
+**Tab Structure**:
+```
+CharacterDetailPanel
+├─ Header: Portrait + Stats Summary
+├─ TabBar: Stats | Equipment | Skills | Bio
+├─ TabContent (single active)
+│  ├─ StatsTab: HP bar (via calcMaxHp), EXP bar, stat rows, rank badge
+│  ├─ EquipmentTab: Read-only slot display (icons), Equip button
+│  ├─ SkillsTab: [Placeholder]
+│  └─ BioTab: [Placeholder]
+└─ Close Button
+```
+
+**Tab State**:
+- Ephemeral (not persisted; no URL hash or route)
+- Stored in component local state (not Zustand)
+- Tab switching instant (no re-mount; content div display toggle)
+
+**Equipment Preview Tab**:
+- Shows 3 gear slots (weapon, armor, headgear) with item icons
+- Shows 2 medicine slots (read-only) with condition label + item icon
+- No edit interaction here; edit via "Equip" button → EquipModePanel
+- Unequip action removed from detail tab (moved to equip mode only)
+
+**UI Files**:
+- `src/ui/panels/character-detail-panel.tsx` — Container, tab management
+- `src/ui/components/character-tabs/stats-tab.tsx` — Stats display, HP/EXP bars (new)
+- `src/ui/styles/character-detail.css` — Tab bar, content area, portrait frame
+
+**Removed**:
+- `src/ui/components/member-book-detail-page.tsx` — Superseded by character-detail-panel
+
+### Equip Mode Drag-Drop Panel (v1.26)
+
+**Component Structure**:
+```
+EquipModePanel (modal within roster flow)
+├─ Header: "Equip {memberName}" + Close
+├─ SplitLayout
+│  ├─ Left: Equipment Slots (weapon, armor, headgear)
+│  │  └─ Slot (click to unequip)
+│  ├─ Right: Inventory Items (filterable, scrollable)
+│  │  └─ DragItem (drag to slot or medicine slot)
+│  └─ Bottom: Medicine Slots (2 slots)
+│     ├─ Condition Selector (start/80/50/30/never)
+│     ├─ Medicine Item (draggable)
+│     └─ Clear Button
+└─ Footer: Confirm (or auto-persist on change)
+```
+
+**Drag-Drop Mechanics**:
+- DragStart: item UUID + source (inventory or medicine slot)
+- DragOver: highlight valid drop targets (slots of compatible type)
+- Drop: `setMedicineSlot(memberId, slotIndex, itemId, condition)` or `equipGear(memberId, slot, itemId)`
+- Visual feedback: slot highlight, item opacity on drag
+
+**Medicine Slot Selector**:
+- Dropdown: select condition before assigning item
+- Default: condition 'start', itemId null
+- Clear: removes item, keeps condition
+- UI shows condition label + item icon side-by-side
+
+**HUD Integration**:
+- `ui-store.isEquipModeOpen` flag triggers inventory panel auto-open
+- On close: reset ui-store flag, return to character detail view
+
+**UI Files**:
+- `src/ui/components/equip-mode-panel.tsx` — Full split layout component (new)
+- `src/ui/styles/equip-mode.css` — Split grid, drag-drop feedback, medicine selector
+
+### Ephemeral UI State Store (`src/game/state/ui-store.ts`)
+
+**Rationale**: Separate Zustand store for transient UI state prevents cluttering game state with UI flags.
+
+**State Shape**:
+```typescript
+interface UIState {
+  isEquipModeOpen: boolean;
+  equipModeCharacterId: string | null;
+}
+
+interface UIStore extends UIState {
+  openEquipMode: (memberId: string) => void;
+  closeEquipMode: () => void;
+}
+```
+
+**Subscribers**:
+- `InventoryPanel`: Auto-opens when `isEquipModeOpen` becomes true
+- `EquipModePanel`: Renders when `isEquipModeOpen && equipModeCharacterId` set
+- `CharacterDetailPanel`: Triggers `openEquipMode(memberId)` on Equip button click
+
+**Not Persisted**: No IndexedDB storage; resets on page reload (expected behavior for UI).
+
+### Medicine Slots Data Model (v1.26)
+
+**Interfaces** (`src/game/state/game-state.ts`):
+```typescript
+type MedicineCondition = 'start' | '80' | '50' | '30' | 'never';
+
+interface MedicineSlot {
+  itemId: string | null;
+  condition: MedicineCondition;
+}
+
+interface Member {
+  medicineSlots: [MedicineSlot, MedicineSlot];  // Always 2 slots
+}
+```
+
+**State Actions** (`src/game/state/guild-slice.ts`):
+- `setMedicineSlot(memberId, slotIndex, itemId, condition)` — Assign item + condition
+- `clearMedicineSlot(memberId, slotIndex)` — Remove item, reset to null
+
+**Default Initialization** (`src/game/systems/character-creation.ts`):
+- Founder, roster recruits, tavern members: `medicineSlots: [{itemId:null,condition:'start'},{itemId:null,condition:'start'}]`
+- Applied during member creation, not at runtime
+
+**Combat Integration**: Out of scope for v1.26. UI captures intent only; consumption logic deferred.
+
+### Save Migration v19 → v20 (`src/game/save/save-migrations.ts`)
+
+**`migrateV19toV20()`**:
+- Adds `medicineSlots: [{itemId:null,condition:'start'},{itemId:null,condition:'start'}]` to every member (founder, roster, tavern)
+- No data loss; backward compatible
+- Old saves load with slots initialized but empty
+
+### Inventory Panel Updates (v1.26)
+
+**Changes**:
+- Auto-opens when `ui-store.isEquipModeOpen` set
+- Subscribe to ui-store for open/close state
+- On close: trigger `ui-store.closeEquipMode()` to clear equip mode flag
+- Preserves existing equipment inventory section + alchemy UI
+
+### HUD Updates (v1.26)
+
+**Changes**:
+- `src/ui/hud/hud.tsx` — Subscribe to ui-store, conditionally render inventory panel
+- Auto-open triggered from character detail → equip button → `openEquipMode(memberId)`
+
+### File Ownership & Changes Summary
+
+**New Files**:
+- `src/ui/styles/game-ui-tokens.css` — Design token CSS layer
+- `src/ui/styles/guild-roster.css` — Roster + member card styling
+- `src/ui/styles/character-detail.css` — Tab bar + detail panel styling
+- `src/ui/styles/equip-mode.css` — Split drag-drop panel styling
+- `src/ui/components/member-card.tsx` — Single member card component
+- `src/ui/components/equip-mode-panel.tsx` — Drag-drop equip panel
+- `src/ui/components/character-tabs/stats-tab.tsx` — Stats tab content
+- `src/game/state/ui-store.ts` — Ephemeral UI state (new store)
+
+**Modified Files**:
+- `src/ui/panels/guild-roster.tsx` — Refactor to grid layout + filters
+- `src/ui/panels/character-detail-panel.tsx` — Refactor to tabs, add equip button
+- `src/ui/panels/inventory-panel.tsx` — Add auto-open trigger on equip mode
+- `src/ui/hud/hud.tsx` — Subscribe to ui-store
+- `src/game/state/guild-slice.ts` — Add `setMedicineSlot`, `clearMedicineSlot`
+- `src/game/state/game-state.ts` — Add `MedicineCondition` type + `MedicineSlot` interface
+- `src/game/state/store.ts` — Integrate ui-store
+- `src/game/systems/character-creation.ts` — Initialize medicine slots
+- `src/game/save/save-types.ts` — Update SAVE_VERSION to 20
+- `src/game/save/save-migrations.ts` — Add `migrateV19toV20`
+- `src/main.tsx` — Import `game-ui-tokens.css`
+
+**Removed Files**:
+- `src/ui/components/member-book-detail-page.tsx` — Replaced by character-detail-panel
+
+---
+
 ## Data Flow: Civilization System (NEW - v1.9 Milestone 2)
 
 ### Civilization Selection & Stat Bonus Application
@@ -1623,9 +1986,10 @@ getRoomBounds(room: Room):
 - Treasury (gold)
 - Inventory (8 item types with quantities)
 
-### Roster Slice (ENHANCED - v1.6, v1.8, v1.11)
+### Roster Slice (ENHANCED - v1.6, v1.8, v1.11, v1.26)
 - Array of members with stats, EXP, levels, class
-- Equipment (armor, weapons)
+- Equipment (armor, weapons) — v1.25
+- Medicine slots (2 per member, with conditions) — NEW v1.26
 - Status tracking (idle/injured/active)
 - `archetype: CivArchetype | undefined` — Character archetype per civ (warrior, scout, engineer, etc.) — NEW v1.11
 - `gender: 'M' | 'F' | undefined` — Character gender for sprite selection — NEW v1.11
@@ -1634,6 +1998,9 @@ getRoomBounds(room: Room):
 - `rank: MemberRank` — Member rank (RECRUIT | MEMBER | VETERAN | OFFICER | COMMANDER | MERCENARY)
 - `missionsCompleted: number` — Lifetime mission count (for promotion eligibility)
 - `promoteMember(memberId, goldCost)` — Advance rank + deduct gold
+- `medicineSlots: [MedicineSlot, MedicineSlot]` — Medicine auto-use assignments (NEW v1.26)
+- `setMedicineSlot(memberId, slotIndex, itemId, condition)` — Assign medicine + trigger condition (NEW v1.26)
+- `clearMedicineSlot(memberId, slotIndex)` — Remove medicine from slot (NEW v1.26)
 
 ### Mission Slice
 - Active missions
@@ -1649,6 +2016,15 @@ getRoomBounds(room: Room):
 - `saveStatus`: 'idle' | 'saving' | 'saved' | 'error'
 - `saveError`: Error message or null
 - `setSaveStatus()`: Called by SaveManager to update HUD
+
+### UI Store (NEW - v1.26)
+- **Purpose**: Ephemeral UI state, not persisted to IndexedDB
+- `isEquipModeOpen: boolean` — Equip mode panel visibility
+- `equipModeCharacterId: string | null` — Which member is being equipped
+- `openEquipMode(memberId)` — Open equip panel + auto-open inventory
+- `closeEquipMode()` — Close equip panel + close inventory
+- **Subscribers**: InventoryPanel, EquipModePanel, CharacterDetailPanel
+- **Not persisted**: Resets on page reload (expected UI behavior)
 
 ### Build Mode Slice (ENHANCED - Advanced Features v1.3)
 - `isBuildMode`: Boolean flag controlling grid/member visibility and interaction mode
@@ -2234,6 +2610,106 @@ public/sprites/characters/
 - CanvasTexture atlas created on first render (same approach as SpriteAnimator)
 - Atlas cached in component state (no repeated canvas creation)
 - Fallback to idle sprite if any frame fails to load
+
+## Graphics Settings & Post-Processing (v1.23)
+
+### Overview
+
+User-facing graphics settings in Settings Panel allow players to control shadows and bloom effects. All settings persist via localStorage and are reactive through Zustand store.
+
+### GameSettings Interface
+
+**Location**: `src/game/state/game-state.ts`
+
+```typescript
+export interface GameSettings {
+  musicVolume: number;
+  sfxVolume: number;
+  autoSkillDefault: boolean;
+  graphicsQuality: 'high' | 'low';
+  shadowsEnabled: boolean;        // NEW (v1.23)
+  bloomEnabled: boolean;          // NEW (v1.23)
+  bloomThreshold: number;         // NEW (v1.23) — range 0–1
+}
+```
+
+**Defaults**:
+- `shadowsEnabled: true` — Native PCFShadowMap on guild hall floor (WebGL & WebGPU compatible) + N8AO SSAO in WebGL post-processing
+- `bloomEnabled: true` — World bloom effect enabled
+- `bloomThreshold: 0.5` — Mid-range luminance threshold
+
+**Persistence**:
+- localStorage keys: `shadows-enabled`, `bloom-enabled`, `bloom-threshold`
+- Auto-load on session restore
+- No save migration needed (settings stored separately, not in game state)
+
+### Settings Panel UI
+
+**Location**: `src/ui/panels/settings-panel.tsx`
+
+**Toggles**:
+| Setting | Type | Effect |
+|---------|------|--------|
+| Shadows | On/Off button | Enables native PCFShadowMap + N8AO SSAO |
+| Bloom | On/Off button | Enables post-processing bloom |
+| Threshold | Slider (0–1) | Conditional display (only if Bloom = On) |
+
+**Styling**:
+- Inactive state: 60% opacity, gray border
+- Active state: 100% opacity, green border (#4caf50)
+- Threshold slider visible only when bloomEnabled = true
+
+**Event Handlers**:
+- `handleShadows(enabled)` → `updateSettings({ shadowsEnabled })`
+- `handleBloom(enabled)` → `updateSettings({ bloomEnabled })`
+- `handleBloomThreshold(value)` → `updateSettings({ bloomThreshold })`
+- Changes apply immediately without page reload
+
+### Post-Processing Pipeline
+
+**Guild Hall Rendering** (`src/scene/guild-hall.tsx`):
+- Native Three.js PCFShadowMap with orthographic frustum sized for 10×7 guild hall
+- `directionalLight` casts shadows; floor + furniture models receive shadows
+- Shadow map controlled reactively by `ShadowController` component (no scene reload required)
+- Improves spatial clarity in isometric view, works on both WebGPU and WebGL
+
+**World Post-Processing** (`src/scene/world-bloom-post.tsx`):
+- Dual-path rendering:
+  - **WebGL**: EffectComposer + Bloom + N8AO (N8AO enabled when shadowsEnabled = true)
+  - **WebGPU**: TSL PostProcessing + BloomNode (async-loaded)
+- Both paths subscribe to Zustand for reactive updates
+- Bloom and shadow settings apply per-frame
+- **Shadow ownership**: PCFShadowMap (scene), N8AO/post-processing (separate concern)
+
+**Store Integration**:
+```typescript
+const settings = useGameStore(s => s.settings);
+const shadowsEnabled = settings.shadowsEnabled;
+const bloomEnabled = settings.bloomEnabled;
+const bloomThreshold = settings.bloomThreshold;
+```
+
+### Backward Compatibility
+
+- Existing saves (v1.22 and earlier) load with default graphics settings
+- Settings stored in Zustand + localStorage (not in IndexedDB save)
+- No data loss on downgrade (settings are ephemeral)
+- Leva dev panel unaffected (still available for advanced tuning)
+
+### Performance Impact
+
+- Toggle switching: O(1) state update via `ShadowController` (no scene reload)
+- Bloom threshold slider: Uniform update per-frame (negligible cost)
+- PCFShadowMap: GPU-side rendering (standard WebGL/WebGPU, mobile-compatible)
+- N8AO SSAO: Optional (expensive on low-end hardware, gated by shadowsEnabled)
+- No new draw calls or complex raycasting
+
+### Future Enhancements
+
+- [ ] Motion blur toggle
+- [ ] Film grain intensity
+- [ ] Contrast/brightness sliders
+- [ ] Anti-aliasing mode selection
 
 ## Browser Compatibility
 

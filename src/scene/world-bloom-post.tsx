@@ -1,18 +1,17 @@
 /**
- * World bloom postprocessing — WebGPU TSL or WebGL EffectComposer.
- *
- * Copied 1:1 from combat-bloom-post.tsx (proven prod pattern) with two
- * changes: (1) params come from a Leva `World Bloom` folder inline instead
- * of a debug context, (2) default params are slightly different to suit the
- * guild hall's lighting and sprite luminance profile.
+ * World post-processing — N8AO SSAO + Bloom (WebGL) or TSL Bloom (WebGPU).
+ * Native shadow maps are configured in world.tsx (not post-processing).
+ * The `shadowsEnabled` setting also gates N8AO here on WebGL (single toggle
+ * for shadow + AO since N8AO is incompatible with WebGPU).
  *
  * Mounted inside world.tsx Canvas after scene content.
  */
 
 import { useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { EffectComposer, Bloom } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, N8AO } from '@react-three/postprocessing';
 import { useControls } from 'leva';
+import { useGameStore } from '@/game/state/store';
 
 interface BloomUniform { value: number }
 interface BloomNodeInstance {
@@ -86,49 +85,65 @@ function WebGPUBloomPass({ strength, radius, threshold }: PassProps) {
   return null;
 }
 
-/** WebGL fallback — @react-three/postprocessing Bloom effect. */
-function WebGLBloomPass({ strength, radius, threshold }: PassProps) {
+interface WebGLPostPassProps extends PassProps {
+  bloomEnabled: boolean;
+  shadowsEnabled: boolean;
+}
+
+/** WebGL branch — EffectComposer with optional N8AO + Bloom. */
+function WebGLPostPass({ bloomEnabled, shadowsEnabled, strength, radius, threshold }: WebGLPostPassProps) {
   return (
     <EffectComposer multisampling={0}>
-      <Bloom
-        intensity={strength}
-        luminanceThreshold={threshold}
-        luminanceSmoothing={0.1}
-        radius={radius}
-      />
+      {shadowsEnabled && (
+        <N8AO
+          halfRes
+          aoRadius={0.5}
+          intensity={1.5}
+          aoSamples={6}
+          denoiseSamples={4}
+        />
+      )}
+      {bloomEnabled && (
+        <Bloom
+          intensity={strength}
+          luminanceThreshold={threshold}
+          luminanceSmoothing={0.1}
+          radius={radius}
+        />
+      )}
     </EffectComposer>
   );
 }
 
-/** Root — branches on renderer type and Leva enabled toggle. */
-export function WorldBloomPost() {
+/** Root — reads settings store, branches on renderer type. */
+export function WorldPostProcessing() {
   const gl = useThree(s => s.gl);
-  const bloom = useControls('World Bloom', {
-    enabled:   { value: false }, // default OFF until diagnosis confirms compat with world canvas
-    strength:  { value: 0.80, min: 0, max: 3, step: 0.05 },
-    radius:    { value: 0.70, min: 0, max: 2, step: 0.05 },
-    threshold: { value: 0.85, min: 0, max: 2, step: 0.01 },
+  const bloomEnabled = useGameStore(s => s.settings.bloomEnabled);
+  const shadowsEnabled = useGameStore(s => s.settings.shadowsEnabled);
+  const bloomThreshold = useGameStore(s => s.settings.bloomThreshold);
+
+  const { strength, radius } = useControls('World Post', {
+    strength: { value: 0.80, min: 0, max: 3, step: 0.05 },
+    radius:   { value: 0.70, min: 0, max: 2, step: 0.05 },
   }, { collapsed: true });
 
-  if (!bloom.enabled) return null;
+  if (!bloomEnabled && !shadowsEnabled) return null;
 
   const isWebGPU = 'isWebGPURenderer' in gl;
 
   if (isWebGPU) {
-    return (
-      <WebGPUBloomPass
-        strength={bloom.strength}
-        radius={bloom.radius}
-        threshold={bloom.threshold}
-      />
-    );
+    // N8AO not compatible with WebGPU EffectComposer — skip SSAO silently
+    if (!bloomEnabled) return null;
+    return <WebGPUBloomPass strength={strength} radius={radius} threshold={bloomThreshold} />;
   }
 
   return (
-    <WebGLBloomPass
-      strength={bloom.strength}
-      radius={bloom.radius}
-      threshold={bloom.threshold}
+    <WebGLPostPass
+      bloomEnabled={bloomEnabled}
+      shadowsEnabled={shadowsEnabled}
+      strength={strength}
+      radius={radius}
+      threshold={bloomThreshold}
     />
   );
 }

@@ -12,9 +12,9 @@ import type { Group } from 'three';
 import type { Member } from '@/game/state/game-state';
 import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
-import { SpriteAnimator } from './sprite-animator';
-import { getSpritePath, getDirectionFromMovement } from './sprite-path-resolver';
-import type { SpriteDirection } from './sprite-path-resolver';
+import { SpriteAnimator } from './sprites/sprite-animator';
+import { getSpritePath, getDirectionFromMovement } from './sprites/sprite-path-resolver';
+import type { SpriteDirection } from './sprites/sprite-path-resolver';
 import { useGraphicsQuality } from './world';
 
 /** Collect all cell centers from floor tiles as walkable positions */

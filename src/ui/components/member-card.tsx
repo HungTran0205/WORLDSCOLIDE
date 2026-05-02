@@ -1,108 +1,66 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { Member } from '@/game/state/game-state';
-import { StatBar } from './stat-bar';
-import { STAT_KEYS } from '@/game/systems/stat-allocation';
-import { expToNextLevel } from '@/game/systems/leveling-system';
-import { RankBadge } from './rank-badge';
+import { getSpritePath } from '@/scene/sprites/sprite-path-resolver';
+import { CIV_CONFIG } from '@/game/data/civilization-config';
+import type { Civilization } from '@/game/data/civilization-config';
+
+const STATUS_COLOR: Record<string, string> = {
+  idle:         'var(--ink-status-ok)',
+  training:     'var(--ink-status-ok)',
+  'on-mission': 'var(--ink-status-warn)',
+  assigned:     'var(--ink-status-warn)',
+  injured:      'var(--ink-status-bad)',
+};
+
+function getAvatarUrl(member: Member): string {
+  if (!member.archetype || !member.gender) return '';
+  return `${getSpritePath(member.civilization, member.archetype, member.gender)}/animations/avatar/frame_000.png`;
+}
+
+function topTwoStats(member: Member): [string, number][] {
+  return (Object.entries(member.stats) as [string, number][])
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 2);
+}
 
 interface MemberCardProps {
   member: Member;
-  onAllocateStat?: (stat: string) => void;
-  activeMissionName?: string;
+  onClick: () => void;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  idle: '#2ecc71',
-  'on-mission': '#4a90d9',
-  injured: '#e74c3c',
-  training: '#9b59b6',
-  assigned: '#f0a500',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  idle: 'Ready',
-  'on-mission': 'On Mission',
-  injured: 'Injured',
-  training: 'Training',
-  assigned: 'In Facility',
-};
-
-export function MemberCard({ member, onAllocateStat, activeMissionName }: MemberCardProps) {
-  const expNeeded = expToNextLevel(member.level);
-  const expPct = Math.floor((member.exp / expNeeded) * 100);
-
-  // Refresh injury countdown every 10s
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (member.status !== 'injured') return;
-    const timer = setInterval(() => setNow(Date.now()), 10_000);
-    return () => clearInterval(timer);
-  }, [member.status]);
-
-  const statusColor = STATUS_COLORS[member.status] ?? '#aaa';
-  let statusLabel = STATUS_LABELS[member.status] ?? member.status;
-  if (member.status === 'on-mission' && activeMissionName) {
-    statusLabel = activeMissionName;
-  } else if (member.status === 'injured' && member.injuredUntil) {
-    const remaining = Math.max(0, member.injuredUntil - now);
-    const mins = Math.ceil(remaining / 60000);
-    statusLabel = `Injured (${mins}m)`;
-  }
-
-  const isMercenary = member.rank === 'MERCENARY';
+/** Grid card for the member browser — avatar, name, rank, civ, top stats, status dot */
+export function MemberCard({ member, onClick }: MemberCardProps) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const avatarUrl = getAvatarUrl(member);
+  const civConfig = CIV_CONFIG[member.civilization as Civilization];
+  const top2 = topTwoStats(member);
+  const statusColor = STATUS_COLOR[member.status] ?? 'var(--ink-text-muted)';
+  const initials = (member.name || '??').slice(0, 2).toUpperCase();
 
   return (
-    <div className="panel-section">
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-        <strong style={{ color: member.isFounder ? '#ffd700' : '#87ceeb' }}>
-          {member.name}
-          <RankBadge rank={member.rank} />
-        </strong>
-        <span style={{ fontSize: '0.8rem', color: '#aaa' }}>
-          Lv.{member.level} | {member.civilization}
-        </span>
-      </div>
-
-      <div style={{ fontSize: '0.75rem', marginBottom: 8, color: '#aaa', display: 'flex', gap: 8, alignItems: 'center' }}>
-        <span>EXP: {member.exp}/{expNeeded} ({expPct}%)</span>
-        <span
-          className="member-status-badge"
-          style={{ background: `${statusColor}22`, color: statusColor, border: `1px solid ${statusColor}55` }}
-        >
-          {statusLabel}
-        </span>
-        {member.unallocatedPoints > 0 && (
-          <span style={{ color: '#ffd700' }}>{member.unallocatedPoints} pts</span>
+    <button className="member-card ink-pixelated" onClick={onClick} type="button">
+      <div className="card-avatar">
+        {!imgFailed && avatarUrl ? (
+          <img src={avatarUrl} alt={member.name} onError={() => setImgFailed(true)} />
+        ) : (
+          <div className="card-avatar-initials">{initials}</div>
         )}
       </div>
 
-      {STAT_KEYS.map((stat) => (
-        <div key={stat} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <div style={{ flex: 1 }}>
-            <StatBar stat={stat} value={member.stats[stat]} />
-          </div>
-          {member.unallocatedPoints > 0 && onAllocateStat && (
-            <button
-              onClick={() => onAllocateStat(stat)}
-              disabled={isMercenary}
-              title={isMercenary ? 'Mercenaries auto-distribute stats' : undefined}
-              style={{
-                background: 'rgba(255,215,0,0.2)',
-                border: '1px solid rgba(255,215,0,0.4)',
-                color: '#ffd700',
-                width: 20,
-                height: 20,
-                borderRadius: 4,
-                cursor: isMercenary ? 'not-allowed' : 'pointer',
-                fontSize: '0.7rem',
-                opacity: isMercenary ? 0.4 : 1,
-              }}
-            >
-              +
-            </button>
-          )}
+      <div className="card-info">
+        <div className="card-name">{member.name || '???'}</div>
+        <div className="card-meta">
+          <span className="card-rank ink-label">{member.rank}</span>
+          {civConfig && <span className="card-civ">{civConfig.displayName}</span>}
         </div>
-      ))}
-    </div>
+        <div className="card-stats">
+          {top2.map(([key, val]) => (
+            <span key={key} className="ink-stat">{key} {val}</span>
+          ))}
+        </div>
+      </div>
+
+      <span className="status-dot" style={{ background: statusColor }} />
+    </button>
   );
 }

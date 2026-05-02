@@ -22,6 +22,14 @@ export interface CombatEntity {
   // Temporary combat flags (set each tick by engine/simulator)
   _hasDeQuocBuff?: boolean;  // DeQuoc ally team buff: +5% crit/dmg
 
+  // Gear bonuses (baked in at entity creation from member.equipment)
+  /** Flat damage bonus from equipped weapon (0 if no weapon or durability=0) */
+  gearFlatDamage?: number;
+  /** Flat HP bonus from armor+headgear (already added to maxHp at init) */
+  gearFlatHp?: number;
+  /** Flat defense bonus from armor+headgear (used in damage receive calc) */
+  gearFlatDefense?: number;
+
   // Syringe auto-use (allies only)
   /** HP fraction threshold below which syringe fires. undefined = no syringe equipped. */
   syringeThresholdPct?: number;
@@ -39,7 +47,7 @@ export interface CombatEntity {
   targetId?: string | null;
   attackRange?: number;
   moveSpeed?: number;
-  animState?: 'idle' | 'walking' | 'attacking' | 'skill' | 'hit' | 'dead' | 'battle-idle' | 'blocking';
+  animState?: 'idle' | 'walking' | 'attacking' | 'skill' | 'hit' | 'dead' | 'battle-idle' | 'blocking' | 'back';
   facingRight?: boolean;
   archetype?: string;
   gender?: 'M' | 'F';

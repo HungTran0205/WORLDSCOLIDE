@@ -4,6 +4,8 @@ import { CIVILIZATIONS, CIV_CONFIG, applyCivBonuses } from '@/game/data/civiliza
 import type { Civilization, Gender, CivArchetype } from '@/game/data/civilization-config';
 import { getDefaultSkill } from '@/game/data/skills';
 import { distributeStatsByWeights, INITIAL_STAT_POINTS } from './stat-allocation';
+import { getStartingWeapon } from './equipment-bonuses';
+import { DEFAULT_MEDICINE_SLOTS } from '@/game/state/guild-slice';
 
 /** Pick random gender */
 function randomGender(): Gender {
@@ -13,6 +15,8 @@ function randomGender(): Gender {
 export function createFounder(name: string, stats: Stats, civilization: Civilization): Member {
   const boostedStats = applyCivBonuses(stats, civilization);
   const civConfig = CIV_CONFIG[civilization];
+  const archetype = civConfig.archetypes[0];
+  const startingWeapon = getStartingWeapon(archetype);
   return {
     id: crypto.randomUUID(),
     name,
@@ -24,11 +28,13 @@ export function createFounder(name: string, stats: Stats, civilization: Civiliza
     status: 'idle',
     injuredUntil: null,
     civilization,
-    archetype: civConfig.archetypes[0], // founder gets first archetype of their civ
+    archetype,
     gender: randomGender(),
     isFounder: true,
     rank: 'COMMANDER',
     missionsCompleted: 0,
+    equipment: startingWeapon ? { weapon: startingWeapon } : null,
+    medicineSlots: structuredClone(DEFAULT_MEDICINE_SLOTS),
   };
 }
 
@@ -45,6 +51,7 @@ export function generateRecruit(guildLevel: number): Member {
   const baseStats = distributeStatsByWeights(basePoints, profile.weights);
   const stats = applyCivBonuses(baseStats, civ);
 
+  const startingWeapon = getStartingWeapon(civArchetype);
   return {
     id: crypto.randomUUID(),
     name,
@@ -61,5 +68,7 @@ export function generateRecruit(guildLevel: number): Member {
     isFounder: false,
     rank: 'RECRUIT',
     missionsCompleted: 0,
+    equipment: startingWeapon ? { weapon: startingWeapon } : null,
+    medicineSlots: structuredClone(DEFAULT_MEDICINE_SLOTS),
   };
 }

@@ -15,7 +15,7 @@ import {
   getBattleIdleFramePath,
   getBlockingFramePath,
   getEnemyAnimFramePath,
-} from '../sprite-path-resolver';
+} from '../sprites/sprite-path-resolver';
 import type { Member } from '@/game/state/game-state';
 import type { EnemyTemplate } from '@/game/data/enemies';
 

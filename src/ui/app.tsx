@@ -15,6 +15,8 @@ import { extractGameSaveData, createSaveEnvelope } from '@/game/save/save-types'
 import { isValidSaveEnvelope } from '@/game/save/save-validation';
 import { initAudio, playBGM } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
+import { Leva } from 'leva';
+import { DEBUG_MODE } from '@/debug';
 
 type AppScreen = 'title' | 'char-creation' | 'game';
 
@@ -122,5 +124,10 @@ export function App() {
     return <CharCreation slotId={activeSlotId!} onComplete={handleCharComplete} />;
   }
 
-  return <GameScreen onReturnToTitle={handleReturnToTitle} />;
+  return (
+    <>
+      <Leva hidden={!DEBUG_MODE} />
+      <GameScreen onReturnToTitle={handleReturnToTitle} />
+    </>
+  );
 }
