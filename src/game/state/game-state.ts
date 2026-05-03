@@ -2,6 +2,8 @@
 
 import type { ItemID, InventoryCategory } from '@/game/data/items';
 import type { EquipmentTemplateId } from '@/game/data/equipment-templates';
+import type { TargetPriority } from '@/game/systems/combat-arena-types';
+import type { CombatEntity } from '@/game/systems/combat-types';
 
 export interface EquipmentItem {
   /** Unique instance ID — uuid */
@@ -164,7 +166,15 @@ export interface ActiveMission {
   estimatedEndTime: number;
   phase: MissionPhase;
   arrivalTime: number | null;
-  combatMode: 'auto' | 'manual' | null;
+  /** Team-level targeting strategy chosen in the combat panel formation phase */
+  targetPriority: TargetPriority;
+  /** Live combat snapshot autosaved every ~2s while phase === 'in-combat'.
+   *  Cleared on completion. Used by mid-fight reload (D12) so close-tab
+   *  doesn't re-roll combat from scratch. */
+  combatSnapshot?: CombatEntity[];
+  /** Engine clock (ms) when the snapshot was captured — needed to rebase
+   *  per-entity timers when the snapshot is fed back into the simulator. */
+  combatSnapshotTime?: number;
 }
 
 export type Rotation = 0 | 90 | 180 | 270;

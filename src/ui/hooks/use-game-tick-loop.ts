@@ -59,10 +59,6 @@ export function useGameTickLoop() {
             dismissed: false,
             notificationType: 'completion',
           });
-          // Open combat replay for manual combat mode
-          if (event.combatMode === 'manual') {
-            store.setCurrentCombatReplay(event.result.combatResult);
-          }
           playSFX(event.result.outcome === 'full-wipe' ? AUDIO.SFX_HIT : AUDIO.SFX_REWARD);
           break;
         }

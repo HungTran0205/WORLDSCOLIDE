@@ -2,15 +2,18 @@ import { Suspense, useEffect, useRef, createContext, useContext, useState, useCa
 import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
 import { useThree, useFrame } from '@react-three/fiber';
-import { Stats } from '@react-three/drei';
+import { Stats, OrthographicCamera } from '@react-three/drei';
 import { GuildHall } from './guild-hall/guild-hall';
 import { MemberLayer } from './member-layer';
 import { CameraController } from './camera-controller';
 import { FacilityRoomsLayer } from './facility/facility-rooms-layer';
 import { createWebGPURenderer, WebGPUInit } from './webgpu-init';
 import { WorldPostProcessing } from './world-bloom-post';
+import { CombatScene } from './combat/combat-scene';
+import { CombatVfxRoot } from './combat/combat-vfx-root';
 import { getStoredGraphicsQuality } from '@/game/state/guild-slice';
 import { useGameStore } from '@/game/state/store';
+import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { FACILITY_SLOTS } from '@/game/data/facility-slot-positions';
 
 export type GraphicsQuality = 'high' | 'low';
@@ -120,6 +123,67 @@ export interface WorldProps {
   isActive?: boolean;
 }
 
+/**
+ * Inner Canvas children — split out so it can read combat-panel-store.
+ * When the combat panel opens (D8 single-canvas strategy), the guild group
+ * hides, the combat group shows, and a dedicated ortho camera takes over via
+ * makeDefault. CameraController unmounts to avoid lerping the now-default
+ * combat camera toward the guild target.
+ */
+function WorldSceneContent({ onAssetsReady }: { onAssetsReady: () => void }) {
+  const isCombatOpen = useCombatPanelStore((s) => s.isOpen);
+
+  return (
+    <>
+      {/* Combat ortho camera — drei swaps default when isCombatOpen flips true,
+          restores Canvas's initial guild ortho camera when it flips back.
+          Position y=1.6 / zoom=46 frames the wider 2-column formation (x:[-8,8])
+          plus 3-lane vertical projection. Camera looks straight -Z; lane
+          separation is achieved via per-sprite Y offset, see LANE_Y_FACTOR. */}
+      <OrthographicCamera
+        makeDefault={isCombatOpen}
+        position={[0, 1.6, 12]}
+        zoom={46}
+        near={0.1}
+        far={1000}
+      />
+
+      {!isCombatOpen && <CameraController />}
+
+      {/* Persistent VFX root — mount ONCE per Canvas, never unmount.
+          See docs/vfx-particles-integration-guide.md: VFXParticles dispose
+          races against pending GPU submissions and crashes the WebGPU device
+          when unmounted mid-frame. Lifting this out of <CombatScene> (which
+          is conditionally rendered) keeps the compute pipelines alive across
+          combat open/close cycles. */}
+      <CombatVfxRoot />
+
+      <Suspense fallback={null}>
+        {/* Visibility toggle (NOT conditional render) — guild hall props
+            include continuous-emit VFXParticles (torch/drum fire). Unmounting
+            them disposes their compute pipelines mid-frame and crashes the
+            WebGPU device (see docs/vfx-particles-integration-guide.md).
+            Keeping the subtree mounted with `visible={false}` skips drawing
+            without disposing GPU resources.
+
+            <Html> portals from drei don't auto-hide on parent invisibility,
+            so each Html host (member-layer, facility-room, *-member-sprites)
+            checks isCombatOpen internally and returns null when combat opens. */}
+        <group visible={!isCombatOpen}>
+          <GuildHall />
+          <FacilityRoomsLayer />
+          <MemberLayer />
+          <WorldPostProcessing />
+        </group>
+
+        {isCombatOpen && <CombatScene />}
+
+        <SceneReadySignal onReady={onAssetsReady} />
+      </Suspense>
+    </>
+  );
+}
+
 /** Main 3D world — isometric guild hall view */
 export function World({ isActive = true }: WorldProps) {
   // Read once at mount — dpr can't change on a live Canvas, so quality change = reload pattern.
@@ -148,14 +212,7 @@ export function World({ isActive = true }: WorldProps) {
         <VisibilityGuard isActive={isActive} />
         <SceneLighting />
 
-        <CameraController />
-        <Suspense fallback={null}>
-          <GuildHall />
-          <FacilityRoomsLayer />
-          <MemberLayer />
-          <WorldPostProcessing />
-          <SceneReadySignal onReady={onAssetsReady} />
-        </Suspense>
+        <WorldSceneContent onAssetsReady={onAssetsReady} />
       </Canvas>
     </QualityContext.Provider>
   );

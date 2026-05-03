@@ -23,16 +23,21 @@ export interface ArenaEntity extends CombatEntity {
   /** Where the entity is stepping toward for this attack */
   stepTargetX?: number;
   stepTargetZ?: number;
-  /** Manual mode: ally is waiting for player input before attacking */
-  waitingForInput?: boolean;
-  /** Manual mode: if set, this ally targets this specific enemy id */
-  manualTargetId?: string | null;
 }
 
 /** Step-attack state machine states */
 export type AttackMoveState = 'home' | 'step-forward' | 'returning';
 
 export type ArenaPhase = 'idle' | 'prep' | 'fighting' | 'result';
+
+/**
+ * Team-level targeting strategy for the new idle combat panel.
+ * - 'focus'   = all allies share one primary target (highest threat first)
+ * - 'balance' = each ally targets enemy in its row, falls back to nearest
+ */
+export type TargetPriority = 'focus' | 'balance';
+
+export const DEFAULT_TARGET_PRIORITY: TargetPriority = 'focus';
 
 /** 6-slot formation: indices 0-2 = front row, 3-5 = back row */
 export type Formation = (string | null)[];
@@ -49,6 +54,12 @@ export const ARCHETYPE_RANGE: Record<string, number> = {
 
 /** Default move speed (units per second) */
 export const DEFAULT_MOVE_SPEED = 3.0;
+
+/** Visual-only lane projection factor — sprite/HP-bar Y is shifted by
+ *  `-position.z * LANE_Y_FACTOR` so the 3 lanes separate vertically on the
+ *  ortho camera (which otherwise treats Z as pure depth). Source of truth
+ *  for both `combat-idle-sprite.tsx` and `combat-projection-publisher.tsx`. */
+export const LANE_Y_FACTOR = 0.85;
 
 /** Formation step-attack timing constants */
 export const FORMATION_STEP_DISTANCE = 1.5;   // world units forward toward enemy
@@ -84,7 +95,10 @@ export function getWaveBounds(waveXOffset: number): ArenaBounds {
   };
 }
 
-/** Formation grid world positions — 3 lanes: back(-2), mid(0), front(+2) */
+/** Formation grid world positions — 3 lanes: back(-2), mid(0), front(+2).
+ *  Column X widened (front/back gap = 4u) so sprites at scale 2.4 don't
+ *  overlap horizontally. Lane Z drives AI/positioning; the combat-panel
+ *  sprite renderer projects Z to screen-Y so lanes also separate vertically. */
 export const FORMATION_POSITIONS = {
   ally: {
     front: [
@@ -93,9 +107,9 @@ export const FORMATION_POSITIONS = {
       { x: -4, z: 2 },   // front lane
     ],
     back: [
-      { x: -6, z: -2 },
-      { x: -6, z: 0 },
-      { x: -6, z: 2 },
+      { x: -8, z: -2 },
+      { x: -8, z: 0 },
+      { x: -8, z: 2 },
     ],
   },
   enemy: {
@@ -105,9 +119,9 @@ export const FORMATION_POSITIONS = {
       { x: 4, z: 2 },
     ],
     back: [
-      { x: 6, z: -2 },
-      { x: 6, z: 0 },
-      { x: 6, z: 2 },
+      { x: 8, z: -2 },
+      { x: 8, z: 0 },
+      { x: 8, z: 2 },
     ],
   },
 } as const;

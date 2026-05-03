@@ -24,7 +24,7 @@ export function CombatView({ onClose }: CombatViewProps) {
   const allMembers = founder ? [founder, ...roster] : roster;
   const getName = (id: string) => allMembers.find((m) => m.id === id)?.name ?? id;
 
-  // Show manual replay when available (set by setCombatMode('manual'))
+  // Show replay when explicitly selected via setCurrentCombatReplay (e.g. user clicks a past mission)
   if (currentCombatReplay) {
     const combat = currentCombatReplay;
     return (

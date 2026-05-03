@@ -7,6 +7,7 @@ import { Html } from '@react-three/drei';
 import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
 import { FACILITY_SLOTS } from '@/game/data/facility-slot-positions';
 import { useGameStore } from '@/game/state/store';
+import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { RoomMemberSprites } from './room-member-sprites';
 import { ForestRoomDecor } from '../logging-site/logging-site-furniture';
 import { LoggingSiteZoneCard } from '../logging-site/facility-room-forest-decor';
@@ -61,6 +62,11 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
   const def = FACILITY_DEFINITIONS[facility.type];
   const cameraTarget = useGameStore((s) => s.cameraTarget);
   const cameraSettled = useGameStore((s) => s.cameraSettled);
+  // Hide all <Html> zone/info cards when combat panel is open — drei <Html>
+  // portals DOM nodes outside R3F so the world.tsx visibility wrapper does
+  // not hide them. See vfx-particles-integration-guide.md for why we use
+  // visibility instead of conditional render on the guild-hall side.
+  const isCombatOpen = useCombatPanelStore((s) => s.isOpen);
 
   // placedSlot is guaranteed non-null (FacilityRoomsLayer filters before rendering)
   const [cx, , cz] = FACILITY_SLOTS[facility.placedSlot!];
@@ -146,34 +152,36 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
       )}
 
       {/* Info label — zone cards only render after camera has settled to avoid mid-lerp misplacement */}
-      {isActive && cameraSettled && isLoggingSite && facility.woodReserve != null ? (
-        <Html position={[cx - 6.5, 1, oz + 0.8]} center>
-          <LoggingSiteZoneCard facility={facility} />
-        </Html>
-      ) : isActive && cameraSettled && isQuarry ? (
-        <Html position={[cx - 6.5, 1, cz + 0.5]} center>
-          <QuarryZoneCard facility={facility} />
-        </Html>
-      ) : isActive && cameraSettled && isAlchemy ? (
-        <Html position={[cx - 5.0, 1, cz + 0.5]} center>
-          <AlchemyZoneCard facility={facility} />
-        </Html>
-      ) : (
-        <Html position={[cx, 1.8, cz]} center>
-          <div style={{
-            color: '#ffd700',
-            background: 'rgba(0,0,0,0.75)',
-            padding: '6px 12px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 'bold',
-            whiteSpace: 'nowrap',
-            border: '1px solid rgba(255,215,0,0.3)',
-          }}>
-            {def.name}
-            {facility.level > 0 ? ` — Lv.${facility.level}` : ' (Locked)'}
-          </div>
-        </Html>
+      {!isCombatOpen && (
+        isActive && cameraSettled && isLoggingSite && facility.woodReserve != null ? (
+          <Html position={[cx - 6.5, 1, oz + 0.8]} center>
+            <LoggingSiteZoneCard facility={facility} />
+          </Html>
+        ) : isActive && cameraSettled && isQuarry ? (
+          <Html position={[cx - 6.5, 1, cz + 0.5]} center>
+            <QuarryZoneCard facility={facility} />
+          </Html>
+        ) : isActive && cameraSettled && isAlchemy ? (
+          <Html position={[cx - 5.0, 1, cz + 0.5]} center>
+            <AlchemyZoneCard facility={facility} />
+          </Html>
+        ) : (
+          <Html position={[cx, 1.8, cz]} center>
+            <div style={{
+              color: '#ffd700',
+              background: 'rgba(0,0,0,0.75)',
+              padding: '6px 12px',
+              borderRadius: 6,
+              fontSize: 13,
+              fontWeight: 'bold',
+              whiteSpace: 'nowrap',
+              border: '1px solid rgba(255,215,0,0.3)',
+            }}>
+              {def.name}
+              {facility.level > 0 ? ` — Lv.${facility.level}` : ' (Locked)'}
+            </div>
+          </Html>
+        )
       )}
     </group>
   );

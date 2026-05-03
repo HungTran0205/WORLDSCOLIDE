@@ -1,0 +1,670 @@
+/* ─── Combat Panel — overlay shell, header, sub-phase chrome ──────────────── */
+
+.combat-panel-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  font-family: var(--ink-font-body);
+}
+
+.combat-panel {
+  width: min(900px, 95vw);
+  height: min(640px, 90vh);
+  background: var(--ink-bg-panel);
+  border: var(--ink-border-w) solid var(--ink-gold);
+  border-radius: var(--ink-radius-md);
+  color: var(--ink-text);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--ink-shadow-deep), var(--ink-glow-gold);
+  position: relative;
+  overflow: hidden;
+}
+
+.combat-panel::before,
+.combat-panel::after {
+  content: '';
+  position: absolute;
+  width: var(--ink-corner-size);
+  height: var(--ink-corner-size);
+  background: var(--ink-gold);
+  transform: rotate(45deg);
+  z-index: 1;
+}
+.combat-panel::before { top: -5px; left: -5px; }
+.combat-panel::after  { top: -5px; right: -5px; }
+
+/* ─── Header ──────────────────────────────────────────────────────────────── */
+.combat-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--ink-space-3) var(--ink-space-5);
+  border-bottom: 1px solid var(--ink-gold-dim);
+  background: var(--ink-bg-panel-alt);
+  flex-shrink: 0;
+}
+
+.combat-panel-header__title {
+  font-family: var(--ink-font-title);
+  color: var(--ink-gold);
+  font-size: var(--ink-fs-h1);
+  letter-spacing: 0.08em;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--ink-space-2);
+}
+
+.combat-panel-header__zone {
+  font-family: var(--ink-font-mono);
+  font-size: var(--ink-fs-small);
+  color: var(--ink-text-dim);
+  letter-spacing: 0.08em;
+}
+
+.combat-panel-header__close {
+  background: none;
+  border: 1px solid var(--ink-gold-dim);
+  color: var(--ink-text-dim);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--ink-radius-sm);
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: background var(--ink-dur-fast), color var(--ink-dur-fast);
+}
+.combat-panel-header__close:hover {
+  background: var(--ink-bg-hover);
+  color: var(--ink-gold);
+}
+
+/* ─── Body (sub-phase host) ───────────────────────────────────────────────── */
+.combat-panel-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ─── Formation sub-phase ─────────────────────────────────────────────────── */
+.combat-panel-formation {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: var(--ink-space-5);
+  gap: var(--ink-space-4);
+  overflow-y: auto;
+}
+
+.combat-panel-formation__columns {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: var(--ink-space-5);
+  flex: 1;
+  min-height: 0;
+}
+
+.combat-panel-formation__column-title {
+  font-family: var(--ink-font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: var(--ink-fs-label);
+  color: var(--ink-text-muted);
+  margin-bottom: var(--ink-space-2);
+}
+
+.combat-panel-formation__roster {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ink-space-1);
+  min-width: 0;
+}
+
+.combat-panel-formation__member {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  padding: var(--ink-space-2) var(--ink-space-3);
+  cursor: grab;
+  transition: background var(--ink-dur-fast);
+}
+.combat-panel-formation__member:hover { background: var(--ink-bg-hover); }
+.combat-panel-formation__member--placed { opacity: 0.4; cursor: default; }
+
+.combat-panel-formation__member-name {
+  font-weight: 600;
+  font-size: var(--ink-fs-small);
+  color: var(--ink-text);
+}
+.combat-panel-formation__member-meta {
+  font-family: var(--ink-font-mono);
+  font-size: var(--ink-fs-meta);
+  color: var(--ink-text-dim);
+}
+
+/* Formation grid: 2 columns × 3 rows (back left, front right) */
+.combat-panel-formation__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ink-space-2);
+}
+.combat-panel-formation__grid-headers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ink-space-2);
+  margin-bottom: var(--ink-space-1);
+}
+.combat-panel-formation__grid-header {
+  text-align: center;
+  font-family: var(--ink-font-mono);
+  font-size: var(--ink-fs-label);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-text-muted);
+}
+
+.combat-panel-formation__slot {
+  width: 120px;
+  height: 64px;
+  border: 1px dashed var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  padding: var(--ink-space-1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-text);
+  background: rgba(255, 255, 255, 0.02);
+  transition: background var(--ink-dur-fast), border-color var(--ink-dur-fast);
+}
+.combat-panel-formation__slot--filled {
+  background: var(--ink-bg-selected);
+  border-style: solid;
+  border-color: var(--ink-gold);
+  cursor: grab;
+}
+.combat-panel-formation__slot--placeholder { color: var(--ink-text-muted); font-size: var(--ink-fs-meta); }
+
+.combat-panel-formation__enemy {
+  background: rgba(196, 74, 74, 0.06);
+  border: 1px solid rgba(196, 74, 74, 0.4);
+  border-radius: var(--ink-radius-sm);
+  padding: var(--ink-space-2) var(--ink-space-3);
+  margin-bottom: var(--ink-space-1);
+}
+.combat-panel-formation__enemy-name { color: var(--ink-status-bad); font-weight: 600; font-size: var(--ink-fs-small); }
+.combat-panel-formation__enemy-meta { color: var(--ink-text-dim); font-family: var(--ink-font-mono); font-size: var(--ink-fs-meta); }
+
+/* Target priority + action buttons */
+.combat-panel-formation__priority {
+  display: flex;
+  gap: var(--ink-space-2);
+  justify-content: center;
+}
+.combat-panel-formation__priority-btn {
+  flex: 1;
+  max-width: 200px;
+  padding: var(--ink-space-2) var(--ink-space-4);
+  background: var(--ink-bg-panel-alt);
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  color: var(--ink-text-dim);
+  cursor: pointer;
+  font-family: var(--ink-font-mono);
+  font-size: var(--ink-fs-small);
+  letter-spacing: 0.06em;
+  transition: background var(--ink-dur-fast), color var(--ink-dur-fast), border-color var(--ink-dur-fast);
+}
+.combat-panel-formation__priority-btn:hover { background: var(--ink-bg-hover); color: var(--ink-text); }
+.combat-panel-formation__priority-btn--active {
+  background: var(--ink-bg-selected);
+  border-color: var(--ink-gold);
+  color: var(--ink-gold);
+}
+
+.combat-panel-formation__actions {
+  display: flex;
+  gap: var(--ink-space-2);
+  justify-content: center;
+  padding-top: var(--ink-space-2);
+  border-top: 1px solid var(--ink-gold-dim);
+}
+
+.combat-panel-btn {
+  padding: var(--ink-space-2) var(--ink-space-5);
+  border-radius: var(--ink-radius-sm);
+  font-family: var(--ink-font-mono);
+  font-size: var(--ink-fs-small);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--ink-dur-fast), color var(--ink-dur-fast);
+  border: 1px solid var(--ink-gold-dim);
+  background: var(--ink-bg-panel-alt);
+  color: var(--ink-text-dim);
+}
+.combat-panel-btn:hover { background: var(--ink-bg-hover); color: var(--ink-text); }
+.combat-panel-btn--primary {
+  background: linear-gradient(135deg, #4a3f2f, #2a2520);
+  color: var(--ink-gold-bright);
+  border-color: var(--ink-gold);
+}
+.combat-panel-btn--primary:hover { background: linear-gradient(135deg, #5a4f3f, #3a3530); }
+.combat-panel-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ─── Battle sub-phase ────────────────────────────────────────────────────────
+ *  Phase 4: the actual entities render in the shared world canvas behind the
+ *  panel (D8 single-canvas). The panel chrome is drawn AROUND the viewport
+ *  (header on top, footer at bottom, transparent center) so the canvas peeks
+ *  through. HUD elements (HP bars + damage popups) are absolute-positioned
+ *  in viewport pixels via the projection store.
+ */
+.combat-panel-overlay--battle {
+  /* Battle phase: panel viewport is transparent so the canvas shows through.
+     A heavy backdrop here would multiply onto the sprites and make them
+     unreadable. Keep just enough alpha to suggest "modal" without dimming
+     the 3D scene behind. */
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.combat-panel--phase-battle {
+  background: transparent;
+  border-color: var(--ink-gold-dim);
+  box-shadow: none;
+  width: min(960px, 96vw);
+  height: min(620px, 92vh);
+}
+
+.combat-panel--phase-battle .combat-panel-header {
+  background: linear-gradient(180deg, rgba(20, 18, 14, 0.88), rgba(20, 18, 14, 0.55));
+  border-bottom-color: var(--ink-gold-dim);
+}
+
+.combat-panel-battle {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.combat-panel-battle__viewport {
+  flex: 1;
+  position: relative;
+  overflow: visible;
+  /* Allow clicks to pass through to underlying scene (none today, but future-proof) */
+  pointer-events: none;
+}
+
+.combat-panel-battle__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--ink-space-2) var(--ink-space-4);
+  background: linear-gradient(0deg, rgba(20, 18, 14, 0.88), rgba(20, 18, 14, 0.55));
+  border-top: 1px solid var(--ink-gold-dim);
+}
+
+.combat-panel-battle__meta {
+  display: flex;
+  gap: var(--ink-space-3);
+  align-items: center;
+}
+
+.combat-panel-battle__mode,
+.combat-panel-battle__elapsed,
+.combat-panel-battle__wave {
+  font-family: var(--ink-font-mono);
+  font-size: var(--ink-fs-small);
+  color: var(--ink-text-dim);
+  letter-spacing: 0.08em;
+}
+
+.combat-panel-battle__mode {
+  color: var(--ink-gold, #c9a14a);
+}
+
+.combat-panel-battle__actions {
+  display: flex;
+  gap: var(--ink-space-1, 4px);
+  align-items: center;
+}
+
+.combat-panel-btn--speed {
+  min-width: 32px;
+  padding: 4px 8px;
+  font-family: var(--ink-font-mono);
+  font-size: var(--ink-fs-small);
+}
+
+.combat-panel-btn--active {
+  background: var(--ink-gold-dim, rgba(201, 161, 74, 0.35));
+  color: var(--ink-gold, #c9a14a);
+  border-color: var(--ink-gold, #c9a14a);
+}
+
+/* ─── Roster strips (enemy top, ally bottom) ──────────────────────────────── */
+.combat-roster {
+  display: flex;
+  align-items: center;
+  gap: var(--ink-space-2);
+  padding: 6px var(--ink-space-3);
+  background: rgba(15, 12, 8, 0.72);
+  border-bottom: 1px solid var(--ink-gold-dim);
+  flex-shrink: 0;
+}
+
+.combat-roster--allies {
+  border-bottom: none;
+  border-top: 1px solid var(--ink-gold-dim);
+}
+
+.combat-roster__label {
+  font-family: var(--ink-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--ink-text-dim);
+  white-space: nowrap;
+}
+
+.combat-roster__count {
+  color: var(--ink-status-bad, #c44a4a);
+  margin-left: 4px;
+}
+
+.combat-roster__list {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+  overflow-x: auto;
+}
+
+.combat-roster--allies {
+  gap: 6px;
+}
+
+.combat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 110px;
+  max-width: 160px;
+  flex: 1 1 0;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+
+.combat-card--dead {
+  opacity: 0.4;
+}
+
+.combat-card__name {
+  font-family: var(--ink-font-mono);
+  font-size: 10px;
+  color: var(--ink-text);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.combat-card__bar {
+  height: 5px;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.combat-card__fill {
+  height: 100%;
+  background: var(--ink-status-ok, #4caf50);
+  transition: width 180ms ease-out;
+}
+
+.combat-card--enemy .combat-card__fill {
+  background: var(--ink-status-bad, #c44a4a);
+}
+
+.combat-card__hp {
+  font-family: var(--ink-font-mono);
+  font-size: 9px;
+  color: var(--ink-text-dim);
+  text-align: right;
+  letter-spacing: 0.04em;
+}
+
+/* ─── Skill bar (ally skill icons, hotkeys 1-6) ───────────────────────────── */
+.combat-skill-bar {
+  display: flex;
+  gap: var(--ink-space-2);
+  align-items: center;
+  padding: 6px var(--ink-space-3);
+  background: rgba(15, 12, 8, 0.6);
+  flex-shrink: 0;
+}
+
+.combat-skill-bar__label {
+  font-family: var(--ink-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--ink-text-dim);
+}
+
+.combat-skill-bar__icons {
+  display: flex;
+  gap: 4px;
+}
+
+.combat-skill-icon {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 2px;
+  background: rgba(20, 18, 14, 0.85);
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: 3px;
+  color: var(--ink-text);
+  font-family: var(--ink-font-mono);
+  cursor: pointer;
+  transition: border-color 120ms, background 120ms;
+}
+
+.combat-skill-icon:hover:not(:disabled) {
+  border-color: var(--ink-gold, #c9a14a);
+  background: rgba(40, 32, 18, 0.9);
+}
+
+.combat-skill-icon--cd {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.combat-skill-icon__hotkey {
+  position: absolute;
+  top: 1px;
+  left: 3px;
+  font-size: 8px;
+  color: var(--ink-text-dim);
+  letter-spacing: 0;
+}
+
+.combat-skill-icon__name {
+  font-size: 11px;
+  color: var(--ink-gold, #c9a14a);
+  letter-spacing: 0.02em;
+}
+
+.combat-skill-icon__cd {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* ─── HUD overlay (HP bars + damage popups) ───────────────────────────────── */
+.combat-panel-hud {
+  /* Canvas is full-window (position: fixed) and projection returns window-
+     local pixel coords, so the HUD must also be window-local for child
+     left/top to land on the projected sprite head. */
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1001;
+}
+
+.combat-hud__hp-anchor {
+  position: absolute;
+  /* Anchor centered on the projected world point, lifted slightly above */
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.combat-hud__hp-anchor--dead { opacity: 0.35; }
+
+.combat-hud__hp-name {
+  font-family: var(--ink-font-mono);
+  font-size: 9px;
+  color: var(--ink-text);
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
+  white-space: nowrap;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.combat-hud__hp-bar {
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.combat-hud__hp-fill {
+  height: 100%;
+  background: var(--ink-status-ok, #4caf50);
+  transition: width 180ms ease-out;
+}
+
+.combat-hud__hp-anchor--enemy .combat-hud__hp-fill {
+  background: var(--ink-status-bad, #c44a4a);
+}
+
+.combat-hud__damage {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  font-family: var(--ink-font-mono);
+  font-weight: 700;
+  font-size: 14px;
+  color: #ffd24a;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.95);
+  pointer-events: none;
+  white-space: nowrap;
+  animation: combat-hud-damage-rise 800ms ease-out forwards;
+}
+
+.combat-hud__damage--crit {
+  color: #ff6a4a;
+  font-size: 18px;
+  letter-spacing: 0.04em;
+}
+
+.combat-hud__damage--heal { color: #79e288; }
+.combat-hud__damage--poison { color: #b88dff; }
+
+@keyframes combat-hud-damage-rise {
+  0%   { transform: translate(-50%, -100%);            opacity: 1; }
+  20%  { transform: translate(-50%, -130%) scale(1.1); opacity: 1; }
+  100% { transform: translate(-50%, -180%);            opacity: 0; }
+}
+
+/* ─── Crit screen shake ───────────────────────────────────────────────────────
+ * Triggered by the `combat-vfx-crit` window event dispatched from the engine
+ * controller. Short, snappy jitter so back-to-back crits feel weighty without
+ * making the HUD unreadable.
+ */
+.combat-panel-battle.combat-panel--shake {
+  animation: combat-panel-shake 220ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes combat-panel-shake {
+  10%, 90%  { transform: translate(-1px, 0); }
+  20%, 80%  { transform: translate(2px, -1px); }
+  30%, 70%  { transform: translate(-3px, 1px); }
+  40%, 60%  { transform: translate(3px, -1px); }
+  50%       { transform: translate(-2px, 2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .combat-panel-battle.combat-panel--shake { animation: none; }
+}
+
+/* ─── Result sub-phase ────────────────────────────────────────────────────── */
+.combat-panel-result {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ink-space-6);
+  gap: var(--ink-space-4);
+  text-align: center;
+}
+.combat-panel-result__banner {
+  font-family: var(--ink-font-title);
+  font-size: var(--ink-fs-display);
+  letter-spacing: 0.12em;
+}
+.combat-panel-result__banner--victory { color: var(--ink-gold-bright); text-shadow: var(--ink-glow-bright); }
+.combat-panel-result__banner--defeat  { color: var(--ink-status-bad); }
+
+.combat-panel-result__stats {
+  display: flex;
+  gap: var(--ink-space-5);
+  font-family: var(--ink-font-mono);
+  font-size: var(--ink-fs-small);
+  color: var(--ink-text-dim);
+}
+
+.combat-panel-result__list {
+  font-size: var(--ink-fs-body);
+  color: var(--ink-text);
+}
+.combat-panel-result__list--injured { color: var(--ink-status-bad); }
+.combat-panel-result__list--survivors { color: var(--ink-status-ok); }
+
+.combat-panel-result__rewards {
+  background: var(--ink-bg-selected);
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  padding: var(--ink-space-3) var(--ink-space-5);
+  color: var(--ink-text);
+}
+.combat-panel-result__rewards-title {
+  font-family: var(--ink-font-title);
+  color: var(--ink-gold);
+  letter-spacing: 0.08em;
+  margin-bottom: var(--ink-space-1);
+}

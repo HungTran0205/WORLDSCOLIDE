@@ -466,6 +466,26 @@ function migrateV20toV21(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+/**
+ * v21→v22: Combat panel idle redesign cleanup.
+ *  - Drop ActiveMission.combatMode (manual/auto choice removed; new panel always opens)
+ *  - Add ActiveMission.targetPriority defaulting to 'focus' (Focus/Balance toggle in formation)
+ */
+function migrateV21toV22(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+  const activeMissions = Array.isArray(gs.activeMissions)
+    ? (gs.activeMissions as AnyRecord[]).map((m) => {
+        const { combatMode: _drop, ...rest } = m as AnyRecord & { combatMode?: unknown };
+        return { ...rest, targetPriority: rest.targetPriority ?? 'focus' };
+      })
+    : gs.activeMissions;
+  return {
+    ...envelope,
+    version: 22,
+    gameState: { ...gs, activeMissions } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -482,6 +502,7 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   18: migrateV18toV19,
   19: migrateV19toV20,
   20: migrateV20toV21,
+  21: migrateV21toV22,
 };
 
 /**

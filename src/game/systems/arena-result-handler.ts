@@ -2,12 +2,62 @@
  * Arena result handler — applies combat rewards from manual arena combat.
  * Called when player clicks "Continue" on the result overlay.
  * Mirrors the reward logic in mission-tick.ts 'in-combat' case.
+ *
+ * Phase 4 split: the side-effect application is exported separately so the
+ * new combat-panel fight controller can run rewards without also running
+ * `exitArena()` (the panel manages its own dismissal).
  */
 
 import { useGameStore } from '@/game/state/store';
-import { resolveMissionWithResult } from './mission-resolver';
+import { resolveMissionWithResult, type MissionResult } from './mission-resolver';
 import { handleTutorialQuestComplete } from './tutorial-quest-handler';
 import { MISSIONS } from '@/game/data/missions';
+import type { Mission, Member } from '@/game/state/game-state';
+import type { CombatResult } from './combat-types';
+import type { ItemID } from '@/game/data/items';
+
+/**
+ * Resolve mission + apply rewards/injuries/completion. No store-scene mutation
+ * (caller decides whether to exitArena or hand off to the combat panel).
+ */
+export function applyMissionResultSideEffects(
+  mission: Mission,
+  active: { memberIds: string[] },
+  members: Member[],
+  combatResult: CombatResult,
+): MissionResult {
+  const store = useGameStore.getState();
+  const result = resolveMissionWithResult(mission, members, combatResult);
+
+  if (result.outcome !== 'full-wipe') {
+    store.addGold(result.goldEarned);
+    for (const [itemId, amount] of Object.entries(result.lootEarned)) {
+      if (amount && amount > 0) store.addItem(itemId as ItemID, amount);
+    }
+    for (const memberId of result.survivors) {
+      store.addMemberExp(memberId, result.expPerMember);
+      store.updateMemberStatus(memberId, 'idle');
+    }
+    store.completeMission(mission.id);
+    store.incrementMissionsCompleted(result.survivors);
+  } else {
+    for (const memberId of active.memberIds) {
+      store.updateMemberStatus(memberId, 'idle');
+    }
+    store.failMission(mission.id);
+  }
+
+  // Injuries scale with mission difficulty
+  const now = Date.now();
+  const injuryDuration = mission.durationMs * 0.5;
+  for (const memberId of result.injured) {
+    store.setMemberInjuredUntil(memberId, now + injuryDuration);
+  }
+
+  store.pushMissionResult(result);
+  handleTutorialQuestComplete(mission.id);
+  return result;
+}
 
 export function applyArenaResult(): void {
   const store = useGameStore.getState();
@@ -22,34 +72,7 @@ export function applyArenaResult(): void {
 
   const allMembers = store.founder ? [store.founder, ...store.roster] : store.roster;
   const members = allMembers.filter(m => active.memberIds.includes(m.id));
-  const result = resolveMissionWithResult(mission, members, arenaResult);
 
-  if (result.outcome !== 'full-wipe') {
-    store.addGold(result.goldEarned);
-    for (const [itemId, amount] of Object.entries(result.lootEarned)) {
-      if (amount && amount > 0) store.addItem(itemId as import('@/game/data/items').ItemID, amount);
-    }
-    for (const memberId of result.survivors) {
-      store.addMemberExp(memberId, result.expPerMember);
-      store.updateMemberStatus(memberId, 'idle');
-    }
-    store.completeMission(arenaMissionId);
-    store.incrementMissionsCompleted(result.survivors);
-  } else {
-    for (const memberId of active.memberIds) {
-      store.updateMemberStatus(memberId, 'idle');
-    }
-    store.failMission(arenaMissionId);
-  }
-
-  // Injuries scale with mission difficulty
-  const now = Date.now();
-  const injuryDuration = mission.durationMs * 0.5;
-  for (const memberId of result.injured) {
-    store.setMemberInjuredUntil(memberId, now + injuryDuration);
-  }
-
-  store.pushMissionResult(result);
-  handleTutorialQuestComplete(arenaMissionId);
+  applyMissionResultSideEffects(mission, active, members, arenaResult);
   store.exitArena();
 }
