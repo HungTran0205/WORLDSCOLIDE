@@ -2,33 +2,46 @@ import { useEffect, useMemo, useState } from 'react'
 import { loadSpriteManifest } from '../sprites/sprite-manifest'
 import type { CharacterManifest } from '../sprites/sprite-types'
 import type { CharacterConfig } from '../sprites/animated-character'
+import { PanelSection } from './controls/panel-section'
+import { Slider } from './controls/slider'
+import { Vec3Input } from './controls/vec3-input'
+import { Select } from './controls/select'
+import { SkeletonRow } from './controls/skeleton-row'
 
 interface Props {
   config: CharacterConfig | null
   onChange: (cfg: CharacterConfig | null) => void
+  source?: 'characters' | 'enemies'
+  label?: string
+  defaultPosition?: [number, number, number]
 }
 
 const DEFAULT_POS: [number, number, number] = [0, 1, 0]
 const DEFAULT_SCALE = 2.5
 const DEFAULT_FPS = 10
 
-export function CharacterPanel({ config, onChange }: Props) {
-  const [open, setOpen] = useState(true)
+export function CharacterPanel({
+  config,
+  onChange,
+  source = 'characters',
+  label = 'Character Sprite',
+  defaultPosition,
+}: Props) {
   const [characters, setCharacters] = useState<CharacterManifest[]>([])
   const [err, setErr] = useState<string | null>(null)
 
   const [selectedId, setSelectedId] = useState('')
   const [animation, setAnimation] = useState('')
   const [direction, setDirection] = useState<string>('south')
-  const [pos, setPos] = useState<[number, number, number]>(DEFAULT_POS)
+  const [pos, setPos] = useState<[number, number, number]>(defaultPosition ?? DEFAULT_POS)
   const [scale, setScale] = useState(DEFAULT_SCALE)
   const [fps, setFps] = useState(DEFAULT_FPS)
 
   useEffect(() => {
     loadSpriteManifest()
-      .then(m => setCharacters(m.characters))
+      .then(m => setCharacters(m[source] ?? []))
       .catch(e => setErr(String(e)))
-  }, [])
+  }, [source])
 
   const current = useMemo(
     () => characters.find(c => c.id === selectedId),
@@ -42,7 +55,6 @@ export function CharacterPanel({ config, onChange }: Props) {
       )
     : []
 
-  // When character changes, reset animation to first valid
   useEffect(() => {
     if (!current) return
     if (!current.animations.find(a => a.name === animation)) {
@@ -50,7 +62,6 @@ export function CharacterPanel({ config, onChange }: Props) {
     }
   }, [selectedId])
 
-  // When animation changes, ensure direction is valid
   useEffect(() => {
     if (!currentAnim) return
     if (!availableDirs.includes(direction)) {
@@ -58,7 +69,6 @@ export function CharacterPanel({ config, onChange }: Props) {
     }
   }, [animation, selectedId])
 
-  // Emit config whenever anything changes
   useEffect(() => {
     if (!current || !currentAnim) {
       onChange(null)
@@ -80,127 +90,67 @@ export function CharacterPanel({ config, onChange }: Props) {
     })
   }, [selectedId, animation, direction, pos[0], pos[1], pos[2], scale, fps])
 
-  const updatePos = (axis: 0 | 1 | 2, value: number) => {
-    setPos(prev => {
-      const next = [...prev] as [number, number, number]
-      next[axis] = value
-      return next
-    })
-  }
+  const charOptions = [
+    { value: '', label: '— none —' },
+    ...characters.map(c => ({ value: c.id, label: c.id })),
+  ]
+  const animOptions = availableAnims.map(a => ({ value: a.name, label: a.name }))
+  const dirOptions = availableDirs.map(d => ({ value: d, label: d }))
 
   return (
-    <div className="character-panel">
-      <div
-        className={`panel-header ${open ? 'open' : ''}`}
-        onClick={() => setOpen(o => !o)}
-      >
-        <span>🧍</span>
-        <span>Character Sprite</span>
-        <span className="arrow">▶</span>
-      </div>
-      {open && (
-        <div className="panel-body">
-          {err && <div className="panel-err">{err}</div>}
+    <PanelSection title={label} icon={source === 'enemies' ? '👾' : '🧍'}>
+      {err && <div className="panel-section-error">{err}</div>}
 
-          <label className="field">
-            <span>Character</span>
-            <select
-              value={selectedId}
-              onChange={e => setSelectedId(e.target.value)}
-            >
-              <option value="">— none —</option>
-              {characters.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.id}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {current && (
-            <>
-              <label className="field">
-                <span>Animation</span>
-                <select
-                  value={animation}
-                  onChange={e => setAnimation(e.target.value)}
-                >
-                  {availableAnims.map(a => (
-                    <option key={a.name} value={a.name}>
-                      {a.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="field">
-                <span>Direction</span>
-                <select
-                  value={direction}
-                  onChange={e => setDirection(e.target.value)}
-                >
-                  {availableDirs.map(d => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <div className="field vec3">
-                <span>Position (x, y, z)</span>
-                <div className="vec3-inputs">
-                  {([0, 1, 2] as const).map(i => (
-                    <input
-                      key={i}
-                      type="number"
-                      step={0.1}
-                      value={pos[i]}
-                      onChange={e =>
-                        updatePos(i, parseFloat(e.target.value) || 0)
-                      }
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <label className="field">
-                <span>Scale: {scale.toFixed(2)}</span>
-                <input
-                  type="range"
-                  min={0.5}
-                  max={10}
-                  step={0.1}
-                  value={scale}
-                  onChange={e => setScale(parseFloat(e.target.value))}
-                />
-              </label>
-
-              <label className="field">
-                <span>FPS: {fps}</span>
-                <input
-                  type="range"
-                  min={1}
-                  max={30}
-                  step={1}
-                  value={fps}
-                  onChange={e => setFps(parseInt(e.target.value))}
-                />
-              </label>
-
-              <div className="status">
-                {config ? (
-                  <span className="ok">
-                    ▶ {config.frames.length} frames · {config.direction}
-                  </span>
-                ) : (
-                  <span className="warn">no frames available</span>
-                )}
-              </div>
-            </>
-          )}
+      {!err && characters.length === 0 ? (
+        <>
+          <SkeletonRow />
+          <SkeletonRow width="80%" />
+          <SkeletonRow width="60%" />
+        </>
+      ) : (
+        <div className="field-row">
+          <span className="field-label">Character</span>
+          <Select value={selectedId} onChange={v => setSelectedId(String(v))} options={charOptions} />
         </div>
       )}
-    </div>
+
+      {current && (
+        <>
+          <div className="field-row">
+            <span className="field-label">Animation</span>
+            <Select value={animation} onChange={v => setAnimation(String(v))} options={animOptions} />
+          </div>
+          <div className="field-row">
+            <span className="field-label">Direction</span>
+            <Select value={direction} onChange={v => setDirection(String(v))} options={dirOptions} />
+          </div>
+          <Vec3Input
+            label="Position"
+            value={pos}
+            onChange={setPos}
+            step={0.1}
+          />
+          <Slider
+            label="Scale"
+            value={scale}
+            onChange={setScale}
+            min={0.5} max={10} step={0.1}
+          />
+          <Slider
+            label="FPS"
+            value={fps}
+            onChange={v => setFps(Math.round(v))}
+            min={1} max={30} step={1} precision={0}
+          />
+          <div className="character-status">
+            {config ? (
+              <span className="ok">▶ {config.frames.length} frames · {config.direction}</span>
+            ) : (
+              <span className="warn">no frames available</span>
+            )}
+          </div>
+        </>
+      )}
+    </PanelSection>
   )
 }

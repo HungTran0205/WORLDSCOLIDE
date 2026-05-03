@@ -281,6 +281,15 @@
   - Ghost preview on asset placement (green/red validation)
   - Keyboard shortcuts (Esc to cancel placement, Delete to remove, Ctrl+D to duplicate)
   - Vite dev server on port 5175 with custom plugin for game asset serving
+- [x] **VFX-PLAYGROUND Sequencer** (Skill Choreography Sequencer) — Phases 1–7 complete
+  - Mode switcher: dual-mode architecture (Effect Designer + Skill Sequencer)
+  - Timeline DAW-style interface for animation sequencing
+  - Track registry system with sprite, particle, audio tracks
+  - Real R3F preview with Three.js WebGPU rendering
+  - Clip inspector for real-time property editing
+  - Sequence code generator (`.tsx` exports)
+  - localStorage persistence for sequence library
+  - Engine adapters for Worlds Collide game integration
 
 ### Planned Features
 - [ ] New civilizations (2 additional factions)
@@ -336,6 +345,7 @@
 | Phase 5 Milestone 18 | 2026-04-19 | ✅ Done | Manual Mode ATB Pause Fix (unified timeline, engine freeze on ally turn, pause clears on action, 5 tests passing) |
 | Phase 5 Milestone 19 | 2026-04-27 | ✅ Done | Shadow & Bloom Settings Toggle (user-facing graphics toggles in Settings Panel, localStorage persistence, store-driven post-processing) |
 | Phase 6 Milestone 1 | 2026-04-17 | ✅ Done | Map Playground Tool (Phases 1–10 complete, asset browser, R3F viewport, properties panel, code generator, undo/redo) |
+| Phase 6 Milestone 2 | 2026-05-02 | ✅ Done | VFX Sequencer Integration (Phases 1–7 complete, dual-mode architecture, DAW timeline, codegen, engine adapters) |
 | Phase 5 Complete | 2026-04-12 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
 | Phase 6 Start | 2026-04-15 | 📋 In Progress | Post-launch content |
 

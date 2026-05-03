@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { PanelSection } from './controls/panel-section'
+import { Slider } from './controls/slider'
+import { Toggle } from './controls/toggle'
 
 export interface BloomState {
   enabled: boolean
@@ -20,69 +22,37 @@ interface Props {
 }
 
 export function BloomPanel({ bloom, onChange }: Props) {
-  const [open, setOpen] = useState(true)
-
   const update = <K extends keyof BloomState>(key: K, value: BloomState[K]) =>
     onChange({ ...bloom, [key]: value })
 
   return (
-    <div className="character-panel">
-      <div
-        className={`panel-header ${open ? 'open' : ''}`}
-        onClick={() => setOpen(o => !o)}
-      >
-        <span>🌟</span>
-        <span>Bloom (WebGPU)</span>
-        <span className="arrow">▶</span>
-      </div>
-      {open && (
-        <div className="panel-body">
-          <label className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <input
-              type="checkbox"
-              checked={bloom.enabled}
-              onChange={e => update('enabled', e.target.checked)}
-            />
-            <span>Enable bloom postprocessing</span>
-          </label>
-
-          <label className="field">
-            <span>Strength: {bloom.strength.toFixed(2)}</span>
-            <input
-              type="range"
-              min={0}
-              max={5}
-              step={0.05}
-              value={bloom.strength}
-              onChange={e => update('strength', parseFloat(e.target.value))}
-            />
-          </label>
-
-          <label className="field">
-            <span>Radius: {bloom.radius.toFixed(2)}</span>
-            <input
-              type="range"
-              min={0}
-              max={1.5}
-              step={0.05}
-              value={bloom.radius}
-              onChange={e => update('radius', parseFloat(e.target.value))}
-            />
-          </label>
-
-          <label className="field">
-            <span>Threshold: {bloom.threshold.toFixed(2)}</span>
-            <input
-              type="range"
-              min={0}
-              max={2}
-              step={0.05}
-              value={bloom.threshold}
-              onChange={e => update('threshold', parseFloat(e.target.value))}
-            />
-          </label>
-        </div>
-      )}
-    </div>
+    <PanelSection title="Bloom (WebGPU)" icon="🌟">
+      <Toggle
+        label="Enable bloom postprocessing"
+        checked={bloom.enabled}
+        onChange={v => update('enabled', v)}
+      />
+      <Slider
+        label="Strength"
+        value={bloom.strength}
+        onChange={v => update('strength', v)}
+        min={0} max={5} step={0.05}
+        disabled={!bloom.enabled}
+      />
+      <Slider
+        label="Radius"
+        value={bloom.radius}
+        onChange={v => update('radius', v)}
+        min={0} max={1.5} step={0.05}
+        disabled={!bloom.enabled}
+      />
+      <Slider
+        label="Threshold"
+        value={bloom.threshold}
+        onChange={v => update('threshold', v)}
+        min={0} max={2} step={0.05}
+        disabled={!bloom.enabled}
+      />
+    </PanelSection>
   )
 }

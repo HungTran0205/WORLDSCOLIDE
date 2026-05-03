@@ -2,8 +2,123 @@
 
 All notable changes to Worlds Collide are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
-**Current Version**: 1.26.0
-**Release Date**: 2026-04-28 (HD-2D Ink UI Redesign)
+**Current Version**: 1.27.2
+**Release Date**: 2026-05-02 (VFX Persistent Pattern Refactor)
+
+---
+
+## [1.27.2] — 2026-05-02 (VFX Playground — Persistent Pattern Refactor)
+
+### Refactor: Eliminate WebGPU buffer-disposal race at root cause
+
+Replaced playground's mount-on-switch anti-pattern with persistent `<AllPresetParticles />` + emit-based triggering — the lib's officially supported pattern (verified via `caps-wars` reference). Removes 3 layered workarounds that all addressed symptoms instead of root cause.
+
+**Pattern change**:
+- All 18 particle presets mount once at Canvas root (`autoStart={false}`)
+- Effect Designer: `useVFXEmitter(preset.id).emit()` interval-driven preview
+- Sequencer: edge-triggered `useVFXStore.getState().emit()` per clip start; meshline still mount-on-live
+- Live tweaks: override-able props flow via ref (no remount); structural props read-only in UI
+
+**Files added**:
+- `tools/vfx-playground/src/presets/preset-prop-classification.ts` — `BAKE_KEYS` + `splitPresetProps()`
+- `tools/vfx-playground/src/scene/all-preset-particles.tsx` — persistent root component
+- `tools/vfx-playground/src/scene/effect-preview-emitter.tsx` — interval emitter for designer mode
+- `tools/vfx-playground/src/sequencer/sequence-meshline-renderer.tsx` — meshline-only path
+- `tools/vfx-playground/src/ui/particle-tweak-panel.tsx` — runtime/structural split panel
+
+**Files removed (orphans)**:
+- `tools/vfx-playground/src/effect-renderer.tsx` — replaced by emitter
+- `tools/vfx-playground/src/sequencer/sequence-renderer.tsx` — replaced by meshline-only renderer
+- `patches/core-vfx+0.5.0.patch` — no longer needed (no dispose calls in normal flow)
+
+**Workarounds removed**:
+- `patch-package` devDep + `postinstall` hook (root `package.json`)
+- `<PostProcessingBloom>` `key={preset.id}` remount + dispose cleanup useEffect + try/catch in render
+- VFXParticles `key={preset.id}` remount in renderers
+
+**Codegen template updated** — generated `.tsx` skill files use `<AllPresetParticles />` + `useVFXStore.emit()` instead of mount-on-live VFXParticles, matching production combat scene pattern.
+
+**Plan**: `plans/260502-1838-vfx-persistent-pattern-refactor/`
+
+---
+
+## [1.27.1] — 2026-05-02 (VFX Buffer Disposal Fix + Integration Guide) [SUPERSEDED]
+
+> **NOTE 2026-05-02**: This patch + integration guide was the temporary fix. Superseded by 1.27.2 persistent-pattern refactor — patch removed; pattern enforced everywhere.
+
+### Fix: WebGPU "Buffer used in submit while destroyed" crash on preset switch
+
+Investigated and patched lifecycle bug in `core-vfx@0.5.0` (`r3f-vfx@0.6.0` dependency). When `VFXParticles` instance unmounts (e.g. preset switch via `key` change), `dispose()` was destroying GPU storage buffers without awaiting pending `gl.computeAsync()` submissions, causing WebGPU validation errors and device loss.
+
+**Patch applied** (`patches/core-vfx+0.5.0.patch`):
+- `VFXParticleSystem.dispose()` made async
+- Set `initialized = false` first to bail subsequent `update()` calls
+- Await `updateInFlight` promise (current `runUpdate` chain)
+- Await `device.queue.onSubmittedWorkDone()` to fence GPU queue
+- Then dispose material/geometry/trail safely
+
+**Auto-applied via** `postinstall: patch-package` script in root `package.json`.
+
+**App-level cleanup**:
+- `tools/vfx-playground/src/scene/post-processing-bloom.tsx` — added cleanup `useEffect` to dispose `PostProcessing` instance on unmount
+- `tools/vfx-playground/src/ui/layout.tsx` — keyed `<PostProcessingBloom>` on `activePreset.id` to force fresh `pass()`/MRT rebuild between presets
+
+### Doc: VFX Particles Integration Guide
+
+Added `docs/feature/vfx-particles-integration-guide.md` covering library gotchas, recommended persistent pattern (`<CombatParticles />` root + `useVFXEmitter` hook), anti-patterns to avoid, and combat scene integration checklist. Required reading before building combat VFX.
+
+### Investigation Reports
+- `plans/reports/researcher-260502-1815-webgpu-buffer-cleanup-investigation.md` — full root cause analysis with verbatim source quotes
+- `plans/reports/Explore-260502-1804-vfx-disposal.md` — initial r3f-vfx dispose audit
+
+### Reference Examples
+- Library author's own game `mustache-dev/caps-wars` confirms persistent-mount pattern as intended usage; preset-switch playground pattern is unsupported by lib (but works post-patch)
+
+---
+
+## [1.27.0] — 2026-05-02 (VFX Sequencer Integration into vfx-playground)
+
+### Feature: Skill Choreography Sequencer Mode
+
+Integrated Skill Choreography Sequencer into vfx-playground as a second mode alongside Effect Designer. Provides timeline-based skill animation sequencing with real R3F preview and `.tsx` code generation for plug-and-play skill integration.
+
+**Core Features**:
+- Dual-mode architecture: Effect Designer (existing) + Skill Sequencer (new)
+- Mode switcher UI with tab navigation
+- Timeline DAW-style interface for sequencing skill animations
+- Track registry system for managing skill tracks (sprites, particles, audio)
+- Clip inspector for real-time property editing
+- Sequence code generator producing `.tsx` exports for game integration
+- localStorage persistence for sequence library
+- R3F preview canvas with Three.js WebGPU rendering
+- Engine adapters for compatibility with Worlds Collide game state
+
+**New Files**:
+- `tools/vfx-playground/src/ui/mode-tabs.tsx` — Mode switcher component
+- `tools/vfx-playground/src/sequencer/` — Sequencer module directory (11 files)
+  - `sequence-types.ts` — Type definitions for sequences, tracks, clips
+  - `track-registry.ts` — Track library and asset management
+  - `sample-skills.ts` — Demo skill sequences
+  - `use-sequence-runtime.ts` — Playback engine hook
+  - `sequence-renderer.tsx` — R3F renderer component
+  - `sequencer-layout.tsx` — Main sequencer UI shell
+  - `clip-inspector.tsx` — Property editor panel
+  - `codegen.ts` — `.tsx` code generator
+  - `export-dialog.tsx` — Export/download UI
+  - `skill-library.ts` — Skill metadata and presets
+  - `engine-adapters.ts` — Game engine integration layer
+  - `views/timeline-daw.tsx` — DAW timeline canvas
+
+**Architecture**:
+- `tools/vfx-playground/src/app.tsx` — Mode state management (effect-designer | skill-sequencer)
+- Isolated sequencer module; zero impact to Effect Designer mode
+- Modular track system enables easy extension for custom track types
+
+**Breaking Changes**: None — Effect Designer mode unchanged.
+
+**Save Format**: Sequences persisted to localStorage under `vfx-playground:sequences` key.
+
+**Build Status**: 7 phases complete, zero regressions.
 
 ---
 
