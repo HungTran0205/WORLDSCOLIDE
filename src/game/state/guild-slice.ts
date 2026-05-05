@@ -786,10 +786,11 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
       const assignedIds = new Set(facility.assignedMemberIds);
       // Primary instance (id === type): reset to level 0 to preserve template slot
       // Secondary instances: remove from array entirely
+      // Workshop v2: also wipe queue + blueprints so tasks don't freeze on a level-0 workshop
       const isPrimary = id === facility.type;
       return {
         facilities: isPrimary
-          ? s.facilities.map((f) => f.id === id ? { ...f, level: 0, placedSlot: null, assignedMemberIds: [], woodReserve: null } : f)
+          ? s.facilities.map((f) => f.id === id ? { ...f, level: 0, placedSlot: null, assignedMemberIds: [], woodReserve: null, workshopQueue: [], workshopBlueprints: [], craftQueue: [] } : f)
           : s.facilities.filter((f) => f.id !== id),
         roster: fullState.roster.map((m) => assignedIds.has(m.id) ? { ...m, status: 'idle' as const } : m),
         ...(fullState.founder && assignedIds.has(fullState.founder.id)

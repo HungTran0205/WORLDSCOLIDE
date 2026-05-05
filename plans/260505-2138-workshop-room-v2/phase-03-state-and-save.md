@@ -219,6 +219,14 @@ game-loop.worker (1Hz)
 - **Phase 05**: Inventory-full notifications, dropped-task toasts (when equipment vanishes mid-task), worker-count down-shift UX.
 - **Phase 07**: Multi-tick fairness/starvation tests, extreme qty stress tests.
 
+## Resolved Decisions (post-review with user)
+
+1. **Q: removeFacility có wipe workshopQueue/workshopBlueprints không?** → **Có, đã thêm safeguard.** Primary workshop reset nay clear thêm `workshopQueue: []`, `workshopBlueprints: []`, và `craftQueue: []` (cùng pattern cho alchemy-lab) để tasks không freeze trên level-0 facility. Áp dụng trong `removeFacility` ([guild-slice.ts:792](../../src/game/state/guild-slice.ts#L792)).
+
+2. **Q: Phase 04 offline progression dùng `startedAt` (gameTime) hay decrement `remainingSeconds`?** → **Decrement `remainingSeconds` theo elapsedSeconds** — match 1:1 với live tick semantics (1Hz tick = -1s mỗi giây), tránh drift giữa live/offline. `startedAt` chỉ informational. Phase 04 sẽ:
+   - Loop `tickWorkshopQueues()` N lần (N = elapsedSeconds, capped 30 ngày qua existing offline cap), HOẶC
+   - Batch-process: với mỗi facility, simulate scheduler trong loop (consume materials, complete tasks, rotate skips). Cùng kết quả, performance tốt hơn cho queue dài.
+
 ## Success Criteria
 
 - [ ] Add task qua dispatch action → queue có task
