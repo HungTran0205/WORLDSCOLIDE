@@ -109,7 +109,7 @@ describe('migrateSave', () => {
       version: 11,
     };
     const result = migrateSave(v11Envelope as any);
-    expect(result.version).toBe(17); // chain now goes v11→v12→v13→v14→v15→v16
+    expect(result.version).toBe(SAVE_VERSION); // chain now goes v11→v12→v13→v14→v15→v16
     expect((result.gameState as any).tutorialStep).toBe('complete');
   });
 
@@ -134,7 +134,7 @@ describe('migrateSave', () => {
       },
     };
     const result = migrateSave(v13Envelope as any);
-    expect(result.version).toBe(17);
+    expect(result.version).toBe(SAVE_VERSION);
     expect((result.gameState as any).founder.craftSkills).toEqual({
       woodcutting: { level: 0, xpAccumulated: 0 },
       mining: { level: 0, xpAccumulated: 0 },
@@ -153,6 +153,57 @@ describe('migrateSave', () => {
     };
     const result = migrateSave(v11Envelope as any);
     expect((result.gameState as any).tutorialStep).toBe('complete');
+  });
+
+  it('migrates v22→v23: legacy equipment gets slots:[] and maxSlots:4; workshop gets queue/blueprints arrays', () => {
+    const v22Envelope = {
+      version: 22,
+      savedAt: Date.now(),
+      metadata: { slotId: 1, guildName: 'Test', guildLevel: 1, playTimeMs: 0, founderName: 'F', createdAt: 0, updatedAt: 0 },
+      gameState: {
+        gameTime: 0, realTimeLastTick: 0, guildName: 'Test', guildLevel: 1, gold: 100,
+        guildHall: { level: 1, floorTiles: [{ x: 0, z: 0, color: '#DAA520' }], furniture: [] },
+        settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high', shadowsEnabled: false, bloomEnabled: false, bloomThreshold: 0.85 },
+        founder: {
+          id: 'f1', name: 'Founder', level: 5, exp: 0,
+          stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 },
+          unallocatedPoints: 0, skill: null, status: 'idle', injuredUntil: null,
+          civilization: 'LinhSon', isFounder: true, rank: 'COMMANDER', missionsCompleted: 0,
+          craftSkills: { woodcutting: { level: 0, xpAccumulated: 0 }, mining: { level: 0, xpAccumulated: 0 }, alchemy: { level: 0, xpAccumulated: 0 } },
+          equipment: { weapon: { id: 'eq-equipped', templateId: 'WOODEN_AXE', durability: 50 }, armor: null, headgear: null },
+          medicineSlots: [{ itemId: null, condition: 'start' }, { itemId: null, condition: 'start' }],
+        },
+        roster: [],
+        activeMissions: [], completedMissions: [], tutorialStep: 'complete',
+        tavern: { lastRefreshTime: 0, availableMercenaries: [] },
+        inventory: {
+          items: {},
+          equipmentInventory: [{ id: 'eq-1', templateId: 'STONE_SWORD', durability: 80 }],
+        },
+        facilities: [
+          { id: 'workshop', type: 'workshop', level: 1, assignedMemberIds: [], placedSlot: 4, woodReserve: null },
+          { id: 'tavern',   type: 'tavern',   level: 1, assignedMemberIds: [], placedSlot: 8, woodReserve: null },
+        ],
+      },
+    };
+    const result = migrateSave(v22Envelope as any);
+    expect(result.version).toBe(SAVE_VERSION);
+
+    const eqInv = (result.gameState as any).inventory.equipmentInventory;
+    expect(eqInv[0].slots).toEqual([]);
+    expect(eqInv[0].maxSlots).toBe(4);
+
+    const equippedWeapon = (result.gameState as any).founder.equipment.weapon;
+    expect(equippedWeapon.slots).toEqual([]);
+    expect(equippedWeapon.maxSlots).toBe(4);
+
+    const workshop = (result.gameState as any).facilities.find((f: any) => f.type === 'workshop');
+    expect(workshop.workshopQueue).toEqual([]);
+    expect(workshop.workshopBlueprints).toEqual([]);
+
+    const tavern = (result.gameState as any).facilities.find((f: any) => f.type === 'tavern');
+    expect(tavern.workshopQueue).toBeUndefined();
+    expect(tavern.workshopBlueprints).toBeUndefined();
   });
 
   it('throws for version higher than SAVE_VERSION', () => {

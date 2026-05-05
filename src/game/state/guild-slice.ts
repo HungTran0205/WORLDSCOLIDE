@@ -1,8 +1,9 @@
-import type { StateCreator } from 'zustand';
+import type { StateCreator, StoreApi } from 'zustand';
 import type { GuildHall, GameSettings, TavernState, Member, FloorTile, PlacedFurniture, GridCell, Rotation, FurnitureType, GuildRank, FacilityType, GuildFacility, SyringeLoadout, AlchemyCraftJob, MemberEquipment, MedicineSlot, MedicineCondition } from './game-state';
 import type { InventoryState } from './game-state';
 import type { InventorySlice } from './inventory-slice';
 import type { RosterSlice } from './roster-slice';
+import type { ClockSlice } from './clock-slice';
 import type { ItemID } from '@/game/data/items';
 import type { EquipmentSlot } from '@/game/data/equipment-templates';
 import { getEquipmentTemplate } from '@/game/data/equipment-templates';
@@ -15,8 +16,9 @@ import { getFurnitureDefinition } from '@/game/data/furniture';
 import { checkTileAdjacency, isCellOccupiedByFurniture } from '@/game/systems/building-system';
 import { canPlaceFurnitureOnFloor } from '@/game/systems/furniture-system';
 import { GUILD_RANKS, getNextRank } from '@/game/data/ranks';
+import { createWorkshopActions, type WorkshopActions } from './guild-slice-workshop';
 
-export interface GuildSlice {
+export interface GuildSlice extends WorkshopActions {
   guildName: string;
   guildLevel: number;
   gold: number;
@@ -146,7 +148,11 @@ const DEFAULT_FACILITIES: GuildFacility[] = [
   { id: 'alchemy-lab',   type: 'alchemy-lab',   level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
 ];
 
-export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & RosterSlice, [], [], GuildSlice> = (set, get) => ({
+export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & RosterSlice & ClockSlice, [], [], GuildSlice> = (set, get) => ({
+  ...createWorkshopActions(
+    set as unknown as StoreApi<GuildSlice & InventorySlice & RosterSlice & ClockSlice>['setState'],
+    get as unknown as () => GuildSlice & InventorySlice & RosterSlice & ClockSlice,
+  ),
   guildName: '',
   guildLevel: 1,
   gold: 100,

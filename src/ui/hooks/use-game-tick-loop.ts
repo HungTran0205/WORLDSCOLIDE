@@ -94,6 +94,9 @@ export function useGameTickLoop() {
     // Tick alchemy craft queues — decrement timers, produce completed items
     store.tickAlchemyQueues();
 
+    // Tick workshop queues — start pending tasks (skip-on-missing-mat), advance active
+    store.tickWorkshopQueues();
+
     // Recover injured members whose timer expired
     processInjuryRecovery(store, now);
 
