@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, createContext, useContext, useState, useCallback } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useRef, createContext, useContext, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
 import { useThree, useFrame } from '@react-three/fiber';
@@ -11,6 +11,12 @@ import { createWebGPURenderer, WebGPUInit } from './webgpu-init';
 import { WorldPostProcessing } from './world-bloom-post';
 import { CombatScene } from './combat/combat-scene';
 import { CombatVfxRoot } from './combat/combat-vfx-root';
+import {
+  COMBAT_CAM_DIST,
+  COMBAT_CAM_HEIGHT,
+  COMBAT_CAM_TARGET,
+  COMBAT_CAM_ZOOM,
+} from './combat/combat-camera-config';
 import { getStoredGraphicsQuality } from '@/game/state/guild-slice';
 import { useGameStore } from '@/game/state/store';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
@@ -132,18 +138,38 @@ export interface WorldProps {
  */
 function WorldSceneContent({ onAssetsReady }: { onAssetsReady: () => void }) {
   const isCombatOpen = useCombatPanelStore((s) => s.isOpen);
+  const combatCamRef = useRef<THREE.OrthographicCamera>(null);
+
+  // Ref-based reset: drei's <OrthographicCamera> rotation prop doesn't
+  // reliably propagate to the underlying primitive (or R3F's diff skips it
+  // when value is identity). Without this, OrbitControls.update() in the
+  // guild CameraController briefly targets this cam during the open/close
+  // transition and bakes in a lookAt(0,0,0) tilt that persists across
+  // sessions. Force-reset position/lookAt/zoom on every makeDefault flip
+  // to true. Constants come from combat-camera-config.ts (also used by
+  // sprite billboard rotation).
+  useLayoutEffect(() => {
+    if (!isCombatOpen || !combatCamRef.current) return;
+    const cam = combatCamRef.current;
+    cam.position.set(0, COMBAT_CAM_HEIGHT, COMBAT_CAM_DIST);
+    cam.up.set(0, 1, 0);
+    cam.lookAt(...COMBAT_CAM_TARGET);
+    cam.zoom = COMBAT_CAM_ZOOM;
+    cam.updateProjectionMatrix();
+  }, [isCombatOpen]);
 
   return (
     <>
       {/* Combat ortho camera — drei swaps default when isCombatOpen flips true,
           restores Canvas's initial guild ortho camera when it flips back.
-          Position y=1.6 / zoom=46 frames the wider 2-column formation (x:[-8,8])
-          plus 3-lane vertical projection. Camera looks straight -Z; lane
-          separation is achieved via per-sprite Y offset, see LANE_Y_FACTOR. */}
+          Tilted via lookAt(0,3,0) from (0, ~7.5, 12) for an isometric
+          feel. Position/rotation/zoom are force-reset via combatCamRef in
+          the useLayoutEffect above; props here are init-only fallbacks. */}
       <OrthographicCamera
+        ref={combatCamRef}
         makeDefault={isCombatOpen}
-        position={[0, 1.6, 12]}
-        zoom={46}
+        position={[0, COMBAT_CAM_HEIGHT, COMBAT_CAM_DIST]}
+        zoom={COMBAT_CAM_ZOOM}
         near={0.1}
         far={1000}
       />

@@ -266,23 +266,30 @@
  *  in viewport pixels via the projection store.
  */
 .combat-panel-overlay--battle {
-  /* Battle phase: panel viewport is transparent so the canvas shows through.
-     A heavy backdrop here would multiply onto the sprites and make them
-     unreadable. Keep just enough alpha to suggest "modal" without dimming
-     the 3D scene behind. */
-  background: rgba(0, 0, 0, 0.25);
+  /* Battle phase: panel viewport is transparent so the canvas (single shared
+     world canvas) shows through inside the panel rect. The dimming AROUND the
+     panel is now done via a large box-shadow spread on the panel itself
+     (next rule) — that keeps the inside of the panel viewport at full canvas
+     brightness while everything outside is opaque dark. */
+  background: transparent;
 }
 
 .combat-panel--phase-battle {
   background: transparent;
   border-color: var(--ink-gold-dim);
-  box-shadow: none;
+  /* 9999px spread shadow paints an opaque dark sheet covering the entire
+     viewport EXCEPT the panel's own rect. This is the PRIMARY mechanism for
+     hiding canvas content (HD-2D bg/fg layers, leaked guild meshes) outside
+     the panel rect — scissor was unreliable on WebGPU. 0.98 alpha because
+     the canvas underneath has full-frustum bg planes that would otherwise
+     show through any noticeable transparency. */
+  box-shadow: 0 0 0 9999px rgba(6, 4, 3, 0.98);
   width: min(960px, 96vw);
   height: min(620px, 92vh);
 }
 
 .combat-panel--phase-battle .combat-panel-header {
-  background: linear-gradient(180deg, rgba(20, 18, 14, 0.88), rgba(20, 18, 14, 0.55));
+  background: rgb(20, 18, 14);
   border-bottom-color: var(--ink-gold-dim);
 }
 
@@ -306,7 +313,7 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--ink-space-2) var(--ink-space-4);
-  background: linear-gradient(0deg, rgba(20, 18, 14, 0.88), rgba(20, 18, 14, 0.55));
+  background: rgb(20, 18, 14);
   border-top: 1px solid var(--ink-gold-dim);
 }
 
@@ -354,7 +361,7 @@
   align-items: center;
   gap: var(--ink-space-2);
   padding: 6px var(--ink-space-3);
-  background: rgba(15, 12, 8, 0.72);
+  background: rgb(15, 12, 8);
   border-bottom: 1px solid var(--ink-gold-dim);
   flex-shrink: 0;
 }

@@ -12,9 +12,9 @@ import { useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Vector3 } from 'three';
 import { useGameStore } from '@/game/state/store';
-import { LANE_Y_FACTOR } from '@/game/systems/combat-arena-types';
 import { useCombatProjectionStore } from './combat-projection-store';
 import type { ScreenPos } from './combat-projection-store';
+import { getCombatSpriteScale } from './combat-camera-config';
 
 const PUBLISH_INTERVAL_MS = 33; // ~30Hz
 const tmpVec = new Vector3();
@@ -23,8 +23,39 @@ export function CombatProjectionPublisher() {
   const { camera, size } = useThree();
   const setPositions = useCombatProjectionStore((s) => s.setPositions);
   const lastPublishRef = useRef(0);
+  // DEBUG: log camera state on first frame of each combat session
+  const loggedRef = useRef(false);
 
   useFrame(() => {
+    if (!loggedRef.current) {
+      loggedRef.current = true;
+      const cam = camera as unknown as {
+        type: string;
+        isOrthographicCamera?: boolean;
+        zoom: number;
+        left?: number;
+        right?: number;
+        top?: number;
+        bottom?: number;
+        near: number;
+        far: number;
+        uuid: string;
+      };
+      console.log('[combat-cam] mount frame', {
+        uuid: cam.uuid,
+        type: cam.type,
+        isOrtho: !!cam.isOrthographicCamera,
+        pos: camera.position.toArray(),
+        rot: camera.rotation.toArray(),
+        up: camera.up.toArray(),
+        zoom: cam.zoom,
+        frustum: { left: cam.left, right: cam.right, top: cam.top, bottom: cam.bottom },
+        near: cam.near,
+        far: cam.far,
+        viewport: { w: size.width, h: size.height },
+      });
+    }
+
     const now = performance.now();
     if (now - lastPublishRef.current < PUBLISH_INTERVAL_MS) return;
     lastPublishRef.current = now;
@@ -40,10 +71,12 @@ export function CombatProjectionPublisher() {
     const halfW = size.width / 2;
     const halfH = size.height / 2;
     for (const e of entities) {
-      // Anchor HP bar above the sprite head (y ≈ scale × 1.1).
-      // Apply the same lane Y projection as the sprite so the bar tracks
-      // each lane's vertical offset.
-      const headY = (e.isBoss ? 3.2 : 2.4) * 1.05 - e.position.z * LANE_Y_FACTOR;
+      // Anchor HP bar above the sprite head. Sprite uses
+      // getCombatSpriteScale(z) for lane foreshortening — apply same factor
+      // here so HP bars track the visually-scaled head, not the un-scaled
+      // base height.
+      const liveScale = getCombatSpriteScale(e.position.z, !!e.isBoss);
+      const headY = liveScale * 1.05;
       tmpVec.set(e.position.x, headY, e.position.z);
       tmpVec.project(camera);
       // NDC → pixels (viewport is the canvas, which spans the full window)

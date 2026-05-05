@@ -16,7 +16,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
 import { TextureLoader, MeshBasicMaterial, Mesh, Color } from 'three';
 import type { ArenaEntitySnapshot } from '@/game/state/combat-arena-slice';
-import { LANE_Y_FACTOR } from '@/game/systems/combat-arena-types';
+import { COMBAT_CAM_TILT_RAD, getCombatSpriteScale } from './combat-camera-config';
 import {
   COMBAT_ATTACK_FRAME_COUNT,
   COMBAT_DEATH_FRAME_COUNT,
@@ -36,8 +36,6 @@ const IDLE_FPS = 6.5;        // ~150ms per frame per spec
 const ATTACK_FPS = 12;       // ~83ms per frame — full 8-frame swing fits ~667ms ANIM_ATTACK_DURATION window
 const DEATH_FPS = 8;
 const FLASH_DURATION_MS = 110;
-const SPRITE_SCALE = 2.4;
-const BOSS_SCALE = 3.2;
 
 const FLASH_COLOR = new Color(2.4, 2.4, 2.4);
 const DEAD_COLOR = new Color(0.7, 0.7, 0.7);
@@ -149,9 +147,14 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
     // enemies on the right) and enemy assets ship as west-facing (look left
     // toward allies on the left). Both sides keep positive scale.x so they
     // face each other naturally.
-    const baseScale = entity.isBoss ? BOSS_SCALE : SPRITE_SCALE;
-    mesh.scale.x = baseScale;
-    mesh.scale.y = baseScale;
+    // Scale incorporates fake foreshortening from lane z (see
+    // getCombatSpriteScale): front-row entities appear larger, back-row smaller.
+    const liveScale = getCombatSpriteScale(entity.position.z, !!entity.isBoss);
+    mesh.scale.x = liveScale;
+    mesh.scale.y = liveScale;
+    // Anchor stays on ground — lift mesh center by half scaled height so the
+    // sprite's bottom edge sits on y=0 regardless of foreshortening factor.
+    mesh.position.y = liveScale * 0.5;
 
     // Pick atlas + advance frame.
     let atlas: SpriteAtlas;
@@ -212,17 +215,20 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
     }
   });
 
-  // Sprite anchor — bottom of the plane sits on y=0 ground, so lift by half height.
-  // Plus lane Y projection: front lane drops, back lane rises so all 3 lanes
-  // separate vertically on screen.
-  const elevateY = (entity.isBoss ? BOSS_SCALE : SPRITE_SCALE) * 0.5;
-  const finalY = elevateY - entity.position.z * LANE_Y_FACTOR;
-
+  // Initial anchor — useFrame overrides position.y + scale on first tick using
+  // getCombatSpriteScale. Initial values use base scale so the mesh isn't
+  // mounted at scale 1×1 (avoids a one-frame size pop).
+  const initialScale = getCombatSpriteScale(entity.position.z, !!entity.isBoss);
+  // Billboard the plane around X by -COMBAT_CAM_TILT_RAD so its +Z normal
+  // tips UP toward the down-tilted camera ray. (Positive rotation around X
+  // tips the normal toward -Y; we need toward +Y to face the camera that
+  // sits high looking down.)
   return (
     <mesh
       ref={meshRef}
-      position={[entity.position.x, finalY, entity.position.z]}
-      scale={[SPRITE_SCALE, SPRITE_SCALE, 1]}
+      position={[entity.position.x, initialScale * 0.5, entity.position.z]}
+      rotation={[-COMBAT_CAM_TILT_RAD, 0, 0]}
+      scale={[initialScale, initialScale, 1]}
     >
       <planeGeometry args={[1, 1]} />
       {/* meshBasicMaterial — pixel-art sprites are pre-shaded, lighting-free

@@ -62,6 +62,25 @@ export function CombatPanelBattle() {
     window.dispatchEvent(new CustomEvent(COMBAT_SKIP_DOM_EVENT));
   }, []);
 
+  const togglePause = useCallback(() => {
+    const current = useGameStore.getState().speedMultiplier;
+    setSpeedMultiplier(current === 0 ? 1 : 0);
+  }, [setSpeedMultiplier]);
+
+  // Space key toggles pause while in battle phase. Skips when focus is on a
+  // text input so typing doesn't accidentally pause.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== 'Space') return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      e.preventDefault();
+      togglePause();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [togglePause]);
+
   const elapsed = formatElapsed(arenaTime);
   const modeLabel = targetPriority === 'focus' ? 'FOCUS' : 'BALANCE';
   const modeIcon = targetPriority === 'focus' ? '🎯' : '⚖️';
@@ -91,6 +110,17 @@ export function CombatPanelBattle() {
           )}
         </div>
         <div className="combat-panel-battle__actions">
+          <button
+            type="button"
+            className={
+              'combat-panel-btn combat-panel-btn--speed' +
+              (speedMultiplier === 0 ? ' combat-panel-btn--active' : '')
+            }
+            onClick={togglePause}
+            title={speedMultiplier === 0 ? 'Resume (Space)' : 'Pause (Space)'}
+          >
+            {speedMultiplier === 0 ? '▶' : '⏸'}
+          </button>
           {[1, 2, 4].map((mult) => (
             <button
               key={mult}

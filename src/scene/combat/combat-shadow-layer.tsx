@@ -8,6 +8,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { CanvasTexture, Euler, InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three';
 import type { ArenaEntitySnapshot } from '@/game/state/combat-arena-slice';
+import { COMBAT_SPRITE_FORESHORTEN_PER_Z } from './combat-camera-config';
 
 /** Max entities the shadow layer can handle — increase if combat scales up */
 const MAX_SHADOWS = 32;
@@ -36,11 +37,13 @@ function createShadowTexture(): CanvasTexture {
 const GROUND_QUAT = new Quaternion().setFromEuler(new Euler(-Math.PI / 2, 0, 0));
 
 // Oval shape: wider on X (0.55), squashed on depth axis (0.35) for HD-2D perspective feel
-const OVAL_SCALE = new Vector3(0.55, 0.35, 1);
+const OVAL_BASE_X = 0.55;
+const OVAL_BASE_Z = 0.35;
 
 // Reusable temporaries — avoid per-frame allocation
 const _pos = new Vector3();
 const _mat = new Matrix4();
+const _ovalScale = new Vector3();
 
 interface CombatShadowLayerProps {
   entities: ArenaEntitySnapshot[];
@@ -64,7 +67,11 @@ export function CombatShadowLayer({ entities }: CombatShadowLayerProps) {
         alive ? 0.01 : -10000,
         alive ? e.position.z : 0,
       );
-      _mat.compose(_pos, GROUND_QUAT, OVAL_SCALE);
+      // Match sprite foreshortening so front-row shadows are larger than
+      // back-row shadows, reinforcing the depth illusion.
+      const fz = alive ? 1 + e.position.z * COMBAT_SPRITE_FORESHORTEN_PER_Z : 1;
+      _ovalScale.set(OVAL_BASE_X * fz, OVAL_BASE_Z * fz, 1);
+      _mat.compose(_pos, GROUND_QUAT, _ovalScale);
       mesh.setMatrixAt(i, _mat);
     }
 

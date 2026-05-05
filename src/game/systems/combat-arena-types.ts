@@ -55,12 +55,6 @@ export const ARCHETYPE_RANGE: Record<string, number> = {
 /** Default move speed (units per second) */
 export const DEFAULT_MOVE_SPEED = 3.0;
 
-/** Visual-only lane projection factor — sprite/HP-bar Y is shifted by
- *  `-position.z * LANE_Y_FACTOR` so the 3 lanes separate vertically on the
- *  ortho camera (which otherwise treats Z as pure depth). Source of truth
- *  for both `combat-idle-sprite.tsx` and `combat-projection-publisher.tsx`. */
-export const LANE_Y_FACTOR = 0.85;
-
 /** Formation step-attack timing constants */
 export const FORMATION_STEP_DISTANCE = 1.5;   // world units forward toward enemy
 export const FORMATION_STEP_DURATION_MS = 250; // forward lerp duration
@@ -74,11 +68,13 @@ export const ARENA_BOUNDS = {
   maxZ: 4,
 } as const;
 
-/** Lane Z positions for beat-em-up depth */
+/** Lane Z positions for beat-em-up depth.
+ *  Gap widened 2 → 3 so tilted-camera projection separates lanes far enough
+ *  vertically on screen that 2.4u-tall sprites no longer overlap visually. */
 export const LANES = {
-  back: -2,
+  back: -3,
   mid: 0,
-  front: 2,
+  front: 3,
 } as const;
 
 export type Lane = keyof typeof LANES;
@@ -95,33 +91,34 @@ export function getWaveBounds(waveXOffset: number): ArenaBounds {
   };
 }
 
-/** Formation grid world positions — 3 lanes: back(-2), mid(0), front(+2).
- *  Column X widened (front/back gap = 4u) so sprites at scale 2.4 don't
- *  overlap horizontally. Lane Z drives AI/positioning; the combat-panel
- *  sprite renderer projects Z to screen-Y so lanes also separate vertically. */
+/** Formation grid world positions — 3 lanes: back(-3), mid(0), front(+3).
+ *  Column X widened (front/back gap = 5u, ally/enemy gap = 10u) so the wider
+ *  ortho frustum (zoom 38) still has battlefield centered with bg breathing
+ *  room. Lane Z drives AI/positioning; the combat-panel sprite renderer
+ *  projects Z to screen-Y so lanes also separate vertically. */
 export const FORMATION_POSITIONS = {
   ally: {
     front: [
-      { x: -4, z: -2 },  // back lane
-      { x: -4, z: 0 },   // mid lane
-      { x: -4, z: 2 },   // front lane
+      { x: -2.5, z: -3 },  // back lane
+      { x: -3, z: 0 },   // mid lane
+      { x: -3.5, z: 3 },   // front lane
     ],
     back: [
-      { x: -8, z: -2 },
-      { x: -8, z: 0 },
-      { x: -8, z: 2 },
+      { x: -6, z: -3 },
+      { x: -6.5, z: 0 },
+      { x: -7, z: 3 },
     ],
   },
   enemy: {
     front: [
-      { x: 4, z: -2 },
-      { x: 4, z: 0 },
-      { x: 4, z: 2 },
+      { x: 2.5, z: -3.5 },
+      { x: 3, z: -0.5 },
+      { x: 3.5, z: 2.5 },
     ],
     back: [
-      { x: 8, z: -2 },
-      { x: 8, z: 0 },
-      { x: 8, z: 2 },
+      { x: 6, z: -3.5 },
+      { x: 6.5, z: -0.5 },
+      { x: 7, z: 2.5 },
     ],
   },
 } as const;

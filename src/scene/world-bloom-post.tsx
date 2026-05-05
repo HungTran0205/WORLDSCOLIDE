@@ -12,6 +12,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { EffectComposer, Bloom, N8AO } from '@react-three/postprocessing';
 import { useControls } from 'leva';
 import { useGameStore } from '@/game/state/store';
+import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 
 interface BloomUniform { value: number }
 interface BloomNodeInstance {
@@ -123,12 +124,17 @@ export function WorldPostProcessing() {
   const bloomEnabled = useGameStore(s => s.settings.bloomEnabled);
   const shadowsEnabled = useGameStore(s => s.settings.shadowsEnabled);
   const bloomThreshold = useGameStore(s => s.settings.bloomThreshold);
+  // Combat scene mounts its own EffectComposer (CombatDofPost) — only one
+  // composer can drive the render loop at a time, so we stand down while
+  // combat is open. Combat composer takes responsibility for post FX.
+  const isCombatOpen = useCombatPanelStore(s => s.isOpen);
 
   const { strength, radius } = useControls('World Post', {
     strength: { value: 0.80, min: 0, max: 3, step: 0.05 },
     radius:   { value: 0.70, min: 0, max: 2, step: 0.05 },
   }, { collapsed: true });
 
+  if (isCombatOpen) return null;
   if (!bloomEnabled && !shadowsEnabled) return null;
 
   const isWebGPU = 'isWebGPURenderer' in gl;
