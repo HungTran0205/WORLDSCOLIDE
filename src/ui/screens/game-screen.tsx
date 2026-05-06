@@ -23,6 +23,7 @@ import { CombatPrepPanel } from '@/ui/panels/combat-prep-panel';
 import { CombatPanel } from '@/ui/panels/combat-panel';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { AlchemyCraftPanel } from '@/ui/panels/alchemy-craft-panel';
+import { WorkshopPanel } from '@/ui/panels/workshop-panel';
 import { CombatSkillHotbar } from '@/ui/panels/combat-skill-hotbar';
 import { CombatTimelineBar } from '@/ui/panels/combat-timeline-bar';
 import { CombatResultOverlay } from '@/ui/panels/combat-result-overlay';
@@ -101,8 +102,10 @@ interface GameScreenProps {
 export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   const [activePanel, setActivePanel] = useState<PanelId>(null);
   const [alchemyPanelOpen, setAlchemyPanelOpen] = useState(false);
+  const [workshopPanelOpen, setWorkshopPanelOpen] = useState(false);
   // Tracks whether user explicitly closed the panel while still in the room
   const alchemyUserClosedRef = useRef(false);
+  const workshopUserClosedRef = useRef(false);
 
   // Detect when camera is settled inside an alchemy lab room
   const cameraTarget = useGameStore((s) => s.cameraTarget);
@@ -111,6 +114,12 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
 
   const alchemyFacility = useMemo(() => allFacilities.find((f) => {
     if (f.type !== 'alchemy-lab' || f.level === 0 || f.placedSlot === null) return false;
+    const [fx, , fz] = FACILITY_SLOTS[f.placedSlot];
+    return Math.abs(cameraTarget[0] - fx) <= 3.5 && Math.abs(cameraTarget[2] - fz) <= 3.5;
+  }), [allFacilities, cameraTarget]);
+
+  const workshopFacility = useMemo(() => allFacilities.find((f) => {
+    if (f.type !== 'workshop' || f.level === 0 || f.placedSlot === null) return false;
     const [fx, , fz] = FACILITY_SLOTS[f.placedSlot];
     return Math.abs(cameraTarget[0] - fx) <= 3.5 && Math.abs(cameraTarget[2] - fz) <= 3.5;
   }), [allFacilities, cameraTarget]);
@@ -124,6 +133,15 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
       alchemyUserClosedRef.current = false; // reset when camera leaves room
     }
   }, [alchemyFacility, cameraSettled]);
+
+  useEffect(() => {
+    if (workshopFacility && cameraSettled) {
+      if (!workshopUserClosedRef.current) setWorkshopPanelOpen(true);
+    } else {
+      setWorkshopPanelOpen(false);
+      workshopUserClosedRef.current = false;
+    }
+  }, [workshopFacility, cameraSettled]);
 
   const currentCombatReplay = useGameStore((s) => s.currentCombatReplay);
   const gameScene = useGameStore((s) => s.gameScene);
@@ -202,6 +220,12 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
             <AlchemyCraftPanel
               facility={alchemyFacility}
               onClose={() => { setAlchemyPanelOpen(false); alchemyUserClosedRef.current = true; }}
+            />
+          )}
+          {workshopPanelOpen && workshopFacility && (
+            <WorkshopPanel
+              facility={workshopFacility}
+              onClose={() => { setWorkshopPanelOpen(false); workshopUserClosedRef.current = true; }}
             />
           )}
           <HomeButton />

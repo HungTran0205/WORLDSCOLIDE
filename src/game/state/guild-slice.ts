@@ -17,6 +17,7 @@ import { checkTileAdjacency, isCellOccupiedByFurniture } from '@/game/systems/bu
 import { canPlaceFurnitureOnFloor } from '@/game/systems/furniture-system';
 import { GUILD_RANKS, getNextRank } from '@/game/data/ranks';
 import { createWorkshopActions, type WorkshopActions } from './guild-slice-workshop';
+import type { WorkshopOfflineSummary } from '@/game/systems/workshop-offline-system';
 
 export interface GuildSlice extends WorkshopActions {
   guildName: string;
@@ -81,6 +82,9 @@ export interface GuildSlice extends WorkshopActions {
   offlineFacilityReport: FacilityProductionResult[] | null;
   offlineElapsedHours: number;
   clearOfflineFacilityReport: () => void;
+  /** Ephemeral workshop offline summary (cleared after popup display) */
+  offlineWorkshopSummary: WorkshopOfflineSummary | null;
+  clearOfflineWorkshopSummary: () => void;
 }
 
 export const DEFAULT_MEDICINE_SLOTS: [MedicineSlot, MedicineSlot] = [
@@ -151,7 +155,6 @@ const DEFAULT_FACILITIES: GuildFacility[] = [
 export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & RosterSlice & ClockSlice, [], [], GuildSlice> = (set, get) => ({
   ...createWorkshopActions(
     set as unknown as StoreApi<GuildSlice & InventorySlice & RosterSlice & ClockSlice>['setState'],
-    get as unknown as () => GuildSlice & InventorySlice & RosterSlice & ClockSlice,
   ),
   guildName: '',
   guildLevel: 1,
@@ -162,6 +165,7 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
   facilities: DEFAULT_FACILITIES,
   offlineFacilityReport: null,
   offlineElapsedHours: 0,
+  offlineWorkshopSummary: null,
 
   setGuildName: (name) => set({ guildName: name }),
 
@@ -801,6 +805,8 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
   },
 
   clearOfflineFacilityReport: () => set({ offlineFacilityReport: null, offlineElapsedHours: 0 }),
+
+  clearOfflineWorkshopSummary: () => set({ offlineWorkshopSummary: null }),
 
   setMedicineSlot: (memberId, slotIdx, slot) => {
     set((s) => {

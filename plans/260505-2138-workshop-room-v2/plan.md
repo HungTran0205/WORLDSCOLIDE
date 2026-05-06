@@ -1,7 +1,7 @@
 ---
 title: "Workshop Room v2 — Crafting / Enhance / Repair / Dismantle"
 description: "Replace passive Workshop facility với hệ thống worker-queue: craft weapon/armor (no-fail, material affinity → stat slots), enhance (add slot / reroll), repair (timed, no-fail), dismantle (instant). Hỗ trợ blueprint batch + offline progression đầy đủ."
-status: pending
+status: complete
 priority: P1
 effort: 16-20h
 branch: feature/workshop-room-v2 (chưa tạo, hiện đang ở feature/combat-panel-idle)
@@ -61,10 +61,10 @@ Implement đầy đủ MVP scope tại [docs/feature/Room/workshop-room-v2.md §
 | 01 | [phase-01-data-model.md](phase-01-data-model.md) | Mở rộng `EquipmentItem` với stat slots, thêm material affinity data, định nghĩa workshop types (Task, Blueprint, Stat) | 3h | ✅ complete |
 | 02 | [phase-02-workshop-systems.md](phase-02-workshop-systems.md) | Pure functions: craft (Path A/B), enhance (add/reroll), repair, dismantle. RNG helpers. Stat roll engine. | 4h | ✅ complete |
 | 03 | [phase-03-state-and-save.md](phase-03-state-and-save.md) | Slice actions (`addWorkshopTask`, `tickWorkshopQueues`, `saveBlueprint`, `dismantleEquipment`), save migration v22→v23 | 3h | ✅ complete |
-| 04 | [phase-04-offline-progression.md](phase-04-offline-progression.md) | Hook workshop queue vào `processOfflineTime()`, tick advance theo gameSecondsElapsed, cap protection | 2h |
-| 05 | [phase-05-panel-ui.md](phase-05-panel-ui.md) | `WorkshopPanel` shell + 4 tabs (Craft, Enhance, Repair, Dismantle) + queue display + worker assignment readout | 5h |
-| 06 | [phase-06-blueprint-ui.md](phase-06-blueprint-ui.md) | Blueprint save/list/edit/delete UI, batch quantity, queue dispatch | 2h |
-| 07 | [phase-07-tests-and-polish.md](phase-07-tests-and-polish.md) | Unit tests systems + save migration + E2E flow, copy review, i18n | 1-2h |
+| 04 | [phase-04-offline-progression.md](phase-04-offline-progression.md) | Hook workshop queue vào `processOfflineTime()`, tick advance theo gameSecondsElapsed, cap protection | 2h | ✅ complete |
+| 05 | [phase-05-panel-ui.md](phase-05-panel-ui.md) | `WorkshopPanel` shell + 4 tabs (Craft, Enhance, Repair, Dismantle) + queue display + worker assignment readout | 5h | ✅ complete |
+| 06 | [phase-06-blueprint-ui.md](phase-06-blueprint-ui.md) | Blueprint save/list/edit/delete UI, batch quantity, queue dispatch | 2h | ✅ complete |
+| 07 | [phase-07-tests-and-polish.md](phase-07-tests-and-polish.md) | Unit tests systems + save migration + E2E flow, copy review, i18n | 1-2h | ✅ complete |
 
 ## Critical decisions (locked-in giả định cho plan)
 

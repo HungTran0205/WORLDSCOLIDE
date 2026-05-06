@@ -41,12 +41,12 @@ import type { ClockSlice } from './clock-slice';
 
 type StoreState = GuildSlice & InventorySlice & RosterSlice & ClockSlice;
 type Setter = StoreApi<StoreState>['setState'];
-type Getter = () => StoreState;
 
 export interface WorkshopActions {
   addWorkshopTask: (facilityId: string, payload: WorkshopTaskPayload, blueprintId?: string) => boolean;
   cancelWorkshopTask: (facilityId: string, taskId: string) => boolean;
   saveBlueprint: (facilityId: string, bp: Omit<WorkshopBlueprint, 'id' | 'createdAt'>) => string | null;
+  updateBlueprint: (facilityId: string, blueprintId: string, patch: { name?: string; quantity?: number }) => boolean;
   deleteBlueprint: (facilityId: string, blueprintId: string) => boolean;
   enqueueBlueprint: (facilityId: string, blueprintId: string, qty: number) => number;
   dismantleEquipment: (equipmentInstanceId: string) => boolean;
@@ -159,7 +159,7 @@ function completeTask(task: WorkshopTask, state: StoreState, acc: CompletionAcc)
 
 // ─── Action factory ────────────────────────────────────────────────────────
 
-export function createWorkshopActions(set: Setter, get: Getter): WorkshopActions {
+export function createWorkshopActions(set: Setter): WorkshopActions {
   function isActiveWorkshop(f: GuildFacility | undefined): f is GuildFacility {
     return !!f && f.type === 'workshop' && f.level > 0;
   }
@@ -228,6 +228,39 @@ export function createWorkshopActions(set: Setter, get: Getter): WorkshopActions
         } as Partial<StoreState>;
       });
       return newId;
+    },
+
+    /**
+     * Patch a blueprint's name and/or default quantity.
+     * Ingredients (baseMaterial / monsterMaterial / templateId) are intentionally
+     * immutable — match spec §5: blueprint identity = its recipe.
+     */
+    updateBlueprint(facilityId, blueprintId, patch) {
+      let success = false;
+      set((s) => {
+        const facility = s.facilities.find((f) => f.id === facilityId);
+        if (!facility) return s;
+        const bps = facility.workshopBlueprints ?? [];
+        const idx = bps.findIndex((b) => b.id === blueprintId);
+        if (idx < 0) return s;
+        const cur = bps[idx];
+        const nextName = patch.name !== undefined ? patch.name.trim().slice(0, 24) : cur.name;
+        const nextQty = patch.quantity !== undefined
+          ? Math.max(1, Math.min(99, Math.floor(patch.quantity)))
+          : cur.quantity;
+        if (!nextName) return s;
+        if (nextName === cur.name && nextQty === cur.quantity) return s;
+        const updated: WorkshopBlueprint = { ...cur, name: nextName, quantity: nextQty };
+        const nextBps = bps.slice();
+        nextBps[idx] = updated;
+        success = true;
+        return {
+          facilities: s.facilities.map((f) =>
+            f.id === facilityId ? { ...f, workshopBlueprints: nextBps } : f,
+          ),
+        } as Partial<StoreState>;
+      });
+      return success;
     },
 
     deleteBlueprint(facilityId, blueprintId) {
