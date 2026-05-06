@@ -1,8 +1,9 @@
-import type { StateCreator } from 'zustand';
+import type { StateCreator, StoreApi } from 'zustand';
 import type { GuildHall, GameSettings, TavernState, Member, FloorTile, PlacedFurniture, GridCell, Rotation, FurnitureType, GuildRank, FacilityType, GuildFacility, SyringeLoadout, AlchemyCraftJob, MemberEquipment, MedicineSlot, MedicineCondition } from './game-state';
 import type { InventoryState } from './game-state';
 import type { InventorySlice } from './inventory-slice';
 import type { RosterSlice } from './roster-slice';
+import type { ClockSlice } from './clock-slice';
 import type { ItemID } from '@/game/data/items';
 import type { EquipmentSlot } from '@/game/data/equipment-templates';
 import { getEquipmentTemplate } from '@/game/data/equipment-templates';
@@ -15,8 +16,10 @@ import { getFurnitureDefinition } from '@/game/data/furniture';
 import { checkTileAdjacency, isCellOccupiedByFurniture } from '@/game/systems/building-system';
 import { canPlaceFurnitureOnFloor } from '@/game/systems/furniture-system';
 import { GUILD_RANKS, getNextRank } from '@/game/data/ranks';
+import { createWorkshopActions, type WorkshopActions } from './guild-slice-workshop';
+import type { WorkshopOfflineSummary } from '@/game/systems/workshop-offline-system';
 
-export interface GuildSlice {
+export interface GuildSlice extends WorkshopActions {
   guildName: string;
   guildLevel: number;
   gold: number;
@@ -79,6 +82,9 @@ export interface GuildSlice {
   offlineFacilityReport: FacilityProductionResult[] | null;
   offlineElapsedHours: number;
   clearOfflineFacilityReport: () => void;
+  /** Ephemeral workshop offline summary (cleared after popup display) */
+  offlineWorkshopSummary: WorkshopOfflineSummary | null;
+  clearOfflineWorkshopSummary: () => void;
 }
 
 export const DEFAULT_MEDICINE_SLOTS: [MedicineSlot, MedicineSlot] = [
@@ -146,7 +152,10 @@ const DEFAULT_FACILITIES: GuildFacility[] = [
   { id: 'alchemy-lab',   type: 'alchemy-lab',   level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
 ];
 
-export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & RosterSlice, [], [], GuildSlice> = (set, get) => ({
+export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & RosterSlice & ClockSlice, [], [], GuildSlice> = (set, get) => ({
+  ...createWorkshopActions(
+    set as unknown as StoreApi<GuildSlice & InventorySlice & RosterSlice & ClockSlice>['setState'],
+  ),
   guildName: '',
   guildLevel: 1,
   gold: 100,
@@ -156,6 +165,7 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
   facilities: DEFAULT_FACILITIES,
   offlineFacilityReport: null,
   offlineElapsedHours: 0,
+  offlineWorkshopSummary: null,
 
   setGuildName: (name) => set({ guildName: name }),
 
@@ -780,10 +790,11 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
       const assignedIds = new Set(facility.assignedMemberIds);
       // Primary instance (id === type): reset to level 0 to preserve template slot
       // Secondary instances: remove from array entirely
+      // Workshop v2: also wipe queue + blueprints so tasks don't freeze on a level-0 workshop
       const isPrimary = id === facility.type;
       return {
         facilities: isPrimary
-          ? s.facilities.map((f) => f.id === id ? { ...f, level: 0, placedSlot: null, assignedMemberIds: [], woodReserve: null } : f)
+          ? s.facilities.map((f) => f.id === id ? { ...f, level: 0, placedSlot: null, assignedMemberIds: [], woodReserve: null, workshopQueue: [], workshopBlueprints: [], craftQueue: [] } : f)
           : s.facilities.filter((f) => f.id !== id),
         roster: fullState.roster.map((m) => assignedIds.has(m.id) ? { ...m, status: 'idle' as const } : m),
         ...(fullState.founder && assignedIds.has(fullState.founder.id)
@@ -794,6 +805,8 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
   },
 
   clearOfflineFacilityReport: () => set({ offlineFacilityReport: null, offlineElapsedHours: 0 }),
+
+  clearOfflineWorkshopSummary: () => set({ offlineWorkshopSummary: null }),
 
   setMedicineSlot: (memberId, slotIdx, slot) => {
     set((s) => {

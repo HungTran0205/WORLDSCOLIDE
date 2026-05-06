@@ -203,7 +203,7 @@ Combat rendering overhauled from per-entity React components to 1-draw-call GPU 
 **CombatVfxSpawner** (`combat-vfx-spawner.tsx`)
 - VFX layer for combat effects (particle emitters, visual polish)
 
-### Combat Lifecycle
+### Combat Lifecycle (Phase 3+ Redesign)
 
 #### 1. Entry: Mission Arrival (processMissionTick)
 ```
@@ -211,34 +211,49 @@ Mission reaches "arrived" phase
     ↓
 Emit MissionTickEvent { type: 'arrival', ... }
     ↓
-ActiveMissionsList shows Modal:
-  [Manual] [Auto] [timeout 30s → Auto]
+ActiveMissionsList shows ArrivalModal (lightweight, no scene change):
+  - Enemy count + level preview
+  - "Enter Battle" button
+  - "Close" button
     ↓
-Player selects "Manual"
+Player clicks "Enter Battle"
     ↓
-setGameScene('combat-arena')
-enterCombatPrep(missionId)
-arenaPhase = 'prep'
+openCombatPanel(missionId)
+  → useCombatPanelStore.isOpen = true
+  → phase = 'formation'
+  → **IMPORTANT**: mission.phase NOT yet changed to 'in-combat'
+  → ArrivalModal closes
 ```
 
-#### 2. Prep: Formation Setup (CombatPrepPanel)
+**Key Difference (Phase 3)**: No scene change. Single Canvas + group toggle (D8):
+- `world.tsx <group visible={!isCombatOpen}>` hides guild hall, facilities, post-processing
+- `world.tsx <group visible={isCombatOpen}>` shows combat overlay (solid black D9 backdrop)
+- `OrthographicCamera` switches to combat camera via `makeDefault={isCombatOpen}`
+- `CameraController` unmounts during combat to avoid lerping
+
+#### 2. Prep: Formation Setup (combat-panel-formation.tsx)
 ```
+Combat panel opens in 'formation' phase
+    ↓
 Show 2×3 grid of formation slots
     ↓
 Player assigns members to slots (1-6 members selected)
+    ↓
+Target priority toggle: Focus (single target) or Balance (distribute)
     ↓
 Real-time stats preview (total HP, DPS, avg range)
     ↓
 Click "Start Battle"
     ↓
+**ONLY NOW**: setPhase('battle') + updateMissionPhase(missionId, 'in-combat')
 startBattle()
   → engine.init(selectedMembers, formation, enemyTemplates)
-  → arenaPhase = 'fighting'
+  → combatPanelStore.phase = 'battle'
   → gameTickLoop paused
   → useFrame loop starts continuous engine.tick()
 ```
 
-#### 3. Combat: Real-Time Fighting (CombatFightController)
+#### 3. Combat: Real-Time Fighting (combat-panel-battle.tsx — Phase 4 stub)
 ```
 Every frame (useFrame callback):
   1. engine.tick(dt) — Advance 100ms logic ticks
@@ -264,14 +279,15 @@ Combat ends when:
   - 2-minute timer expires (stalemate → defeat)
 ```
 
-#### 4. Result: Outcome & Rewards (CombatResultOverlay)
+#### 4. Result: Outcome & Rewards (combat-panel-result.tsx)
 ```
 Combat finishes
     ↓
 arenaResult = { outcome, goldEarned, expPerMember, survivors, injured }
-arenaPhase = 'result'
+combatPanelStore.setResult(result)
+  → phase = 'result'
     ↓
-Show overlay with:
+Show panel with:
   - Victory/Defeat banner
   - Gold earned (luck-scaled)
   - EXP per survivor (rank-modified)
@@ -280,7 +296,9 @@ Show overlay with:
     ↓
 Player clicks "Return to Guild Hall"
     ↓
-exitArena()
+closeCombatPanel()
+  → isOpen = false
+  → phase = null
   → applyArenaRewards() via arena-result-handler
   → Add gold to guild.gold
   → Add EXP to survivors
@@ -289,6 +307,60 @@ exitArena()
   → gameScene = 'guild-hall'
   → gameTickLoop resumes
 ```
+
+#### 5. Skip Button & Snapshot Simulator (Phase 6)
+
+**Skip Button (D11: Snapshot + Simulate)**
+```
+Player clicks "Skip" during battle phase
+    ↓
+DOM button dispatches COMBAT_SKIP_DOM_EVENT (window event)
+    ↓
+combat-fight-controller listens and:
+  1. cloneCombatEntity() — Deep-clone all live entities
+     (HP, dead-flag, status effects, cooldowns preserved)
+  2. Snapshot timestamp = engine.elapsedMs
+  3. Rebase timestamps relative to snapshot (ensures effect duration continuity)
+  4. Pass cloned state to simulateCombatFromSnapshot()
+    ↓
+simulateCombatFromSnapshot() runs to completion:
+  - Re-target selection: random-alive per entity (simplified, no targeting priority)
+  - Loop until victory/defeat
+  - Return arenaResult (outcome, goldEarned, expPerMember, survivors, injured)
+    ↓
+Result is identical whether outcome from skip or final tick of active battle
+  → phase = 'result', apply rewards same as normal completion
+```
+
+**Mid-Fight Snapshot Persistence (D12)**
+```
+During battle phase, combat-fight-controller autosaves every 2s:
+  1. saveCombatSnapshot() action dispatched
+  2. Snapshot = { entityList, elapsedMs, timestamp }
+  3. Stored in ActiveMission.combatSnapshot + combatSnapshotTime
+    ↓
+On browser close + relaunch:
+  1. mission-tick.ts detects mission.phase === 'in-combat'
+  2. Checks if mission.combatSnapshot exists
+  3. If yes: Resume via simulateCombatFromSnapshot() (same path as Skip)
+  4. If no: Fall back to simulate-from-scratch (backward compat)
+    ↓
+Result: Close-tab during 50% health → relaunch → resume at ~50% (not rerolled)
+```
+
+**Damage Balance Tuning (Phase 6)**
+
+`combat-formulas.ts` adds `BASE_DAMAGE_MULTIPLIER = 1.2`:
+```typescript
+const calcAutoAttackDamage = (entity, target) => {
+  const baseDamage = ...
+  const scaled = baseDamage * BASE_DAMAGE_MULTIPLIER  // 1.2x
+  return applyDefense(scaled, target.armor)
+}
+```
+- Applied equally to allies and enemies
+- No save migration (all in-progress battles replay with 1.2x)
+- Additive tuning knob for balance adjustments
 
 ### Arena Environment (Sidescroller Layout)
 

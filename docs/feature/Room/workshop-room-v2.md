@@ -107,15 +107,16 @@ Wood / Stone (bắt buộc) — xác định weapon tier và stat range
 
 ### 4.4 Monster Material Affinity
 
-| Material | Nguồn | Stat Category | Placeholder Stats |
+| Material | Nguồn | Stat Category | Placeholder Stats | Enhence item type|
 |----------|-------|--------------|-------------------|
-| Slime Drop | Slime | Tanky (HP/Defense) | HP 50-200 |
-| Slime King Core | Slime King | [placeholder] | [placeholder] |
-| Bat Wing | Cave Bat | [placeholder] | [placeholder] |
-| Spider Legs | Giant Spider | [placeholder] | [placeholder] |
-| Dog Bot Chip | Guard Robot Dog | [placeholder] | [placeholder] |
-| Drone Fragment | Guard Drone | [placeholder] | [placeholder] |
+| Slime Drop | Slime | Tanky (HP/Defense) | HP 50-200 | Armor|
+| Bat Wing | Cave Bat | Dodge | Dodge 1%-5% | Weapon|
+| Spider Legs | Giant Spider | Accuracy| hit chance 1% - 10%| Weapon|
+| Metal plate | Guard Robot Dog | Block | Block 1%-5%| Armor |
+| Drone sensor | Guard Drone | Attack Speed | AS 5%-10% | Weapon |
+| Slime King Core | Slime King | Shield | Shield 50-500 | Armor|
 | *(4-6 materials thêm)* | | [placeholder] | [placeholder] |
+
 
 > **Note:** Mapping chi tiết sẽ thiết kế ở combat phase.
 
@@ -128,12 +129,12 @@ Wood / Stone (bắt buộc) — xác định weapon tier và stat range
 - **Input:** 1 Gem (crafted/mined)
 - **Output:** Item có Elemental tag + visual UI effect trên item
 
-| Gem Type | Element | UI Effect | Combat Effect |
+| Gem Type | Element | UI Effect | Combat Effect | status effective|
 |----------|---------|-----------|---------------|
-| Ruby | Fire | Glow đỏ | [placeholder] |
-| Sapphire | Ice | Glow xanh lam | [placeholder] |
-| Topaz | Lightning | Glow vàng, tia sáng | [placeholder] |
-| Emerald | Poison | Glow xanh lá | [placeholder] |
+| Ruby | Fire | Glow đỏ | Chance to burn enemy 10-20% | burn damage 5%-15% of weapon damage over 5s |
+| Sapphire | Ice | Glow xanh lam | Chance to freeze enemy 10-20% | slow enemy 10%-30% for 2-5s |
+| Topaz | Lightning | Glow vàng, tia sáng | Chance to shock enemy 10-20%| stun enemy for 1 attack |
+| Emerald | Poison | Glow xanh lá | Chance to posion enemy 10-20% | poison damage 3%-7% of weapon damage over 10s |
 | *(thêm types)* | | | [placeholder] |
 
 > **Note:** Gem effect chi tiết sẽ thiết kế cùng combat arena system.

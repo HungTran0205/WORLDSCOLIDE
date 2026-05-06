@@ -2,6 +2,13 @@
 
 import type { ItemID, InventoryCategory } from '@/game/data/items';
 import type { EquipmentTemplateId } from '@/game/data/equipment-templates';
+import type { TargetPriority } from '@/game/systems/combat-arena-types';
+import type { CombatEntity } from '@/game/systems/combat-types';
+import type {
+  EquipmentSlotData,
+  WorkshopTask,
+  WorkshopBlueprint,
+} from '@/game/data/workshop-types';
 
 export interface EquipmentItem {
   /** Unique instance ID — uuid */
@@ -9,6 +16,10 @@ export interface EquipmentItem {
   templateId: EquipmentTemplateId;
   /** Current durability (0 = broken, gives no stat bonus) */
   durability: number;
+  /** Workshop v2: rolled stat affixes (default [] for legacy/non-crafted items) */
+  slots?: EquipmentSlotData[];
+  /** Workshop v2: max affix slots (default 4 per spec §1.1.3.4) */
+  maxSlots?: number;
 }
 
 export interface MemberEquipment {
@@ -92,6 +103,10 @@ export interface GuildFacility {
   woodReserve?: number | null;
   /** Active craft jobs queued at this alchemy lab */
   craftQueue?: AlchemyCraftJob[];
+  /** Workshop v2: queued craft/enhance/repair tasks (workshop facilities only) */
+  workshopQueue?: WorkshopTask[];
+  /** Workshop v2: saved blueprint presets (workshop facilities only) */
+  workshopBlueprints?: WorkshopBlueprint[];
 }
 
 /** Guild hierarchy ranks (promotable). MERCENARY is orthogonal — not in hierarchy. */
@@ -164,7 +179,15 @@ export interface ActiveMission {
   estimatedEndTime: number;
   phase: MissionPhase;
   arrivalTime: number | null;
-  combatMode: 'auto' | 'manual' | null;
+  /** Team-level targeting strategy chosen in the combat panel formation phase */
+  targetPriority: TargetPriority;
+  /** Live combat snapshot autosaved every ~2s while phase === 'in-combat'.
+   *  Cleared on completion. Used by mid-fight reload (D12) so close-tab
+   *  doesn't re-roll combat from scratch. */
+  combatSnapshot?: CombatEntity[];
+  /** Engine clock (ms) when the snapshot was captured — needed to rebase
+   *  per-entity timers when the snapshot is fed back into the simulator. */
+  combatSnapshotTime?: number;
 }
 
 export type Rotation = 0 | 90 | 180 | 270;

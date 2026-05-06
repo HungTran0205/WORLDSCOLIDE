@@ -8,6 +8,7 @@ import { useRef, useMemo, Suspense } from 'react';
 import { Billboard, Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useGameStore } from '@/game/state/store';
+import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
 import { SpriteAnimator } from '../sprites/sprite-animator';
@@ -98,8 +99,12 @@ function usePatrolAnimation(
   });
 }
 
-/** Member name label above sprite */
+/** Member name label above sprite — hidden when combat panel is open
+ *  because drei <Html> portals to DOM and bypasses the visibility wrapper
+ *  in world.tsx. */
 function NameLabel({ name }: { name: string }) {
+  const isCombatOpen = useCombatPanelStore((s) => s.isOpen);
+  if (isCombatOpen) return null;
   return (
     <Html position={[0, 1.3, 0]} center>
       <span style={{

@@ -2,7 +2,7 @@
 
 **Worlds Collide** — An HD-2D auto-RPG idle guild builder where civilizations collide. Build your guild hall, recruit members from different civilizations, dispatch quests, and watch your guild grow — even while you're away.
 
-**Last Updated**: 2026-04-11 (Logging Site Finite Harvest System v1.18.0)
+**Last Updated**: 2026-05-03 (Combat Panel Idle Redesign Phase 6 - v1.27.4)
 
 ## Technology Stack
 
@@ -892,6 +892,85 @@
 - **Token Usage Pattern**: Components reference tokens, never hardcoded colors
 - **Type Scale Usage**: Prefer `var(--ink-fs-*)` with rem units; avoid px-based type scaling
 - **Responsive Scale**: `--ui-scale` media queries handle panel rescaling; developers should use rem for type, px for layout
+
+## Recent Changes (Combat Panel Idle Redesign — Phase 3 - v1.27.3)
+
+### Combat Panel Overlay (NEW - Single-Canvas Architecture D8)
+- **Paradigm Shift**: Combat no longer scene-changes; remains on single Canvas with group visibility toggling
+  - `world.tsx <group visible={!isCombatOpen}>` hides guild hall, facilities, post-processing
+  - `world.tsx <group visible={isCombatOpen}>` shows combat backdrop (solid black plane D9)
+  - `OrthographicCamera` switches to dedicated combat camera (position [0, 5, 10], zoom 60) via `makeDefault={isCombatOpen}`
+  - `CameraController` unmounts when `isCombatOpen` to prevent lerping combat camera toward guild hall target
+  - **Benefit**: Avoids WebGL context limit (only 1 Canvas per page) seen in multi-scene architecture
+- **Ephemeral UI Store**: New Zustand store `useCombatPanelStore` (NOT persisted to IndexedDB)
+  - `isOpen: boolean` — Panel visibility
+  - `phase: 'formation' | 'battle' | 'result'` — Current sub-phase
+  - `missionId: string | null` — Mission being fought
+  - `resultData: MissionResult | null` — Combat outcome for result phase
+  - `openCombatPanel(missionId)`, `setPhase()`, `setResult()`, `closeCombatPanel()` actions
+
+### Combat Panel Components (NEW - HD-2D Ink Styling)
+- **combat-panel.tsx** — Shell component, manages phase routing (formation → battle → result)
+- **combat-panel-header.tsx** — Title bar, close button, phase indicators
+- **combat-panel-formation.tsx** — 2×3 formation grid, member assignment, target priority (Focus/Balance toggle), "Start Battle" button
+  - `target-priority-resolver.ts` — Pure resolver function for Focus vs Balance targeting preference
+  - Refactored from legacy `combat-prep-panel.tsx` (kept but suppressed)
+- **combat-panel-battle.tsx** — Phase 4 stub; will mount mini combat scene + VFX in Phase 4
+- **combat-panel-result.tsx** — Victory/defeat banner, rewards, injury recovery list, "Return to Guild Hall" button
+- **combat-panel.css** — New stylesheet using existing `--ink-*` tokens, no new tokens introduced
+
+### Arrival Flow Changes
+- **ArrivalModal** (lightweight): Shows when mission reaches "arrived" phase
+  - Enemy count + level preview
+  - "Enter Battle" button → `openCombatPanel(missionId)` (does NOT change mission.phase yet)
+  - "Close" button → dismisses modal, mission stays in "arrived"
+- **Key Fix (Phase 3)**: `mission.phase` stays "arrived" until player presses "Start Battle" in formation panel
+  - Prevents race condition where mission tick loop would flip phase to "in-combat" before UI was ready
+  - Only "Start Battle" click triggers `updateMissionPhase(missionId, 'in-combat')`
+- **Legacy Panels Suppressed**: CombatPrepPanel, CombatTimelineBar, CombatSkillHotbar, CombatResultOverlay still exist in codebase but render hidden when `isCombatOpen` (Phase 7 will remove)
+
+### New Sprites & Utilities
+- **combat-sprite-resolver.ts** — Maps entity templates → sprite sheet paths (used by Phase 4 mini combat scene)
+
+### Zero Breaking Changes (Phase 3 Scope)
+- Combat engine (`src/game/systems/combat-engine.ts`) untouched — will refactor in Phase 7
+- Save format stable (no v21→v22 migration yet, deferred to Phase 7)
+- Existing combat-arena overlays suppressed but functional as fallback during transition
+
+## Recent Changes (Combat Panel IDLE Redesign Phase 6 — Skip & Snapshot — v1.27.4)
+
+### Skip Button with Combat Snapshot (D11)
+- **Skip Mechanism**: DOM button dispatches `COMBAT_SKIP_DOM_EVENT` → `combat-fight-controller` listener owns engine handoff
+- **Snapshot Path**: `cloneCombatEntity()` deep-clones all live entities (HP, dead-flags, status effects, cooldowns) → `simulateCombatFromSnapshot()` runs to completion
+- **Re-Targeting**: Random-alive per entity during skip simulation (simplified per D11 spec)
+- **Result Stability**: Skip outcome identical to active battle completion — no variance vs. live fighting
+- **Key File**: `tests/combat-skip-snapshot.test.ts` — 7 tests validating cloning semantics + simulator paths
+
+### Mid-Fight Snapshot Persistence (D12)
+- **Autosave Cadence**: `saveCombatSnapshot()` action dispatched every 2s during battle phase
+- **Snapshot Fields**: `ActiveMission.combatSnapshot` (entity list) + `combatSnapshotTime` (epoch)
+- **Resume Flow**: On browser close + relaunch, `mission-tick.ts` detects `mission.phase === 'in-combat'` → checks for snapshot → calls `simulateCombatFromSnapshot()` if exists
+- **Backward Compat**: Falls back to simulate-from-scratch if no snapshot (old saves)
+- **Result**: Close-tab mid-battle no longer rerolls outcome; resume picks up at snapshot state (~losses preserved, no cheating)
+
+### Combat Balance Tuning (Phase 6)
+- **Damage Multiplier**: Added `BASE_DAMAGE_MULTIPLIER = 1.2` constant in `combat-formulas.ts`
+- **Application**: Applied equally to allies + enemies in `calcAutoAttackDamage()`
+- **Migration**: No save migration (in-progress battles replay with 1.2x)
+- **Tuning Knob**: Additive for future balance adjustments
+
+### Files Modified (Phase 6)
+- `combat-formulas.ts` — Added `BASE_DAMAGE_MULTIPLIER = 1.2`
+- `combat-engine.ts` — Added `simulateCombatFromSnapshot()` method + snapshot rebase logic
+- `combat-fight-controller.tsx` — Added `saveCombatSnapshot` action + 2s autosave via useFrame
+- `active-missions.ts` → mission save shape — Added optional `combatSnapshot` + `combatSnapshotTime` fields
+- `combat-panel-battle.tsx` — Skip button → `COMBAT_SKIP_DOM_EVENT` dispatch
+- `mission-tick.ts` — Resume path via simulator on close+relaunch
+
+### Zero Breaking Changes (Phase 6 Scope)
+- Snapshot is ephemeral (lost on browser restart, only persists within active session for auto-save)
+- All existing combat formulas reused; multiplier is additive knob
+- Tests: `tsc -b ✓`, all 7 combat-skip-snapshot tests pass
 
 ## Recent Changes (Logging Site Finite Harvest System — v1.18)
 

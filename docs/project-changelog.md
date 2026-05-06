@@ -2,12 +2,40 @@
 
 All notable changes to Worlds Collide are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
-**Current Version**: 1.27.2
-**Release Date**: 2026-05-02 (VFX Persistent Pattern Refactor)
+**Current Version**: 1.27.3
+**Release Date**: 2026-05-03 (Combat Panel Shell & Idle Redesign Phase 3)
 
 ---
 
-## [1.27.2] — 2026-05-02 (VFX Playground — Persistent Pattern Refactor)
+## [1.27.3] — 2026-05-03 (Combat Panel Shell & Idle Redesign Phase 3)
+
+### feat: build combat panel shell with formation/battle/result phase orchestrator
+
+Implemented Phase 3 of combat-panel-idle redesign: single overlay panel replacing arrival modal → combat-prep → combat-arena flow. Introduces Zustand ephemeral UI store, HD-2D Ink token styling, and single-Canvas + group toggle architecture (D8) to avoid WebGL context limit. Added formation sub-panel with target priority (Focus/Balance) toggle. Battle phase wired to Phase-4 stub. Fixed mid-formation mission-phase transition race by deferring `in-combat` state to "Start Battle" press.
+
+**New files**: combat-panel-store.ts, combat-panel.css, combat-panel.tsx, combat-panel-header.tsx, combat-panel-formation.tsx (refactor of combat-prep-panel), combat-panel-result.tsx, target-priority-resolver.ts, combat-sprite-resolver.ts.
+
+**Modified**: arrival-modal.tsx, active-missions-list.tsx, game-screen.tsx, world.tsx (single Canvas + group visibility, camera makeDefault toggle, solid black background D9).
+
+**Deferred**: combat-panel-battle.tsx (Phase 4), VFX mount (Phase 5), save migration v21→v22 (Phase 7).
+
+**Tests**: tsc -b ✓ 156/156 source tests pass. Runtime validation (R3F devtools, chrome://gpu single context, heap snapshot) deferred to Phase 4 playtest.
+
+## [1.27.4] — 2026-05-03 (Combat Panel IDLE Redesign Phase 6 — Skip & Snapshot)
+
+### feat: skip button with combat snapshot + persistent state recovery
+
+Implemented Phase 6 of combat-panel-idle redesign: Skip button now snapshots live combat state via deep-clone and runs `simulateCombatFromSnapshot()` (D11). Browser-close mid-battle recovery via `ActiveMission` ephemeral `combatSnapshot` + `combatSnapshotTime` fields; autosave every 2s during battle phase (D12). Both Skip and resume-after-close use identical simulator path, eliminating outcome variance (removed "simulate from scratch" re-rolls). Re-targeting during skip simplified to random-alive (intentional complexity reduction per D11). Damage balance tuned via `BASE_DAMAGE_MULTIPLIER = 1.2` in `combat-formulas.ts` (additive knob, no save migration). DOM/R3F decoupling: Skip button dispatches `COMBAT_SKIP_DOM_EVENT`; `combat-fight-controller` listens and owns engine handoff.
+
+**New files**: `combat-skip-snapshot.test.ts` (7 tests, 100% coverage on cloneCombatEntity + simulateCombatFromSnapshot semantics), `target-priority-resolver.ts` (inline in Phase 3, but isolated target logic for future skipping improvements).
+
+**Modified**: `combat-formulas.ts` (added `BASE_DAMAGE_MULTIPLIER`), `combat-engine.ts` (added `simulateCombatFromSnapshot()` method), `combat-fight-controller.tsx` (added `saveCombatSnapshot` action + 2s autosave), `active-missions.ts` → mission save shape (added optional `combatSnapshot` + `combatSnapshotTime`), `combat-panel-battle.tsx` (DOM Skip button → `COMBAT_SKIP_DOM_EVENT`), `mission-tick.ts` (resume via simulator on close+relaunch).
+
+**Tests**: tsc -b ✓, 7/7 combat-skip-snapshot tests pass. Sequential-turns combat-engine tests unaffected (simulator shares mutation-safe cloning path with Phase 5).
+
+---
+
+## [1.27.2] — 2026-05-02 (VFX Persistent Pattern Refactor)
 
 ### Refactor: Eliminate WebGPU buffer-disposal race at root cause
 

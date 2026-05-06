@@ -1,6 +1,7 @@
 /**
  * Arrival modal — shown when a party reaches their destination.
- * Player chooses Manual or Auto combat (no timeout).
+ * "Enter Battle" opens the new combat panel overlay (Phase 3 redesign).
+ * Parent (active-missions-list) wires onStartCombat to combat-panel-store.
  */
 
 import { ENEMIES } from '@/game/data/enemies';
@@ -11,8 +12,7 @@ interface ArrivalModalProps {
   missionName: string;
   zone: string;
   enemyIds: string[];
-  onChooseManual: () => void;
-  onChooseAuto: () => void;
+  onStartCombat: () => void;
   onClose: () => void;
 }
 
@@ -20,8 +20,7 @@ export function ArrivalModal({
   missionName,
   zone,
   enemyIds,
-  onChooseManual,
-  onChooseAuto,
+  onStartCombat,
   onClose,
 }: ArrivalModalProps) {
   // Deduplicate enemy names with counts
@@ -55,16 +54,9 @@ export function ArrivalModal({
           <button
             className="panel-btn"
             style={{ flex: 1 }}
-            onClick={() => { onChooseManual(); onClose(); }}
+            onClick={() => { onStartCombat(); onClose(); }}
           >
-            ⚔️ Manual
-          </button>
-          <button
-            className="panel-btn"
-            style={{ flex: 1 }}
-            onClick={() => { onChooseAuto(); onClose(); }}
-          >
-            🤖 Auto
+            ⚔️ Enter Battle
           </button>
         </div>
       </div>

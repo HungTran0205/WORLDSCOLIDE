@@ -1,6 +1,6 @@
 {
   "version": 21,
-  "savedAt": 1777472489384,
+  "savedAt": 1777800297057,
   "metadata": {
     "slotId": 1,
     "guildName": "Hung",
@@ -8,11 +8,11 @@
     "playTimeMs": 1046816303,
     "founderName": "Hung",
     "createdAt": 1776425673081,
-    "updatedAt": 1777472489384
+    "updatedAt": 1777800297057
   },
   "gameState": {
     "gameTime": 9815108142,
-    "realTimeLastTick": 1777472489241,
+    "realTimeLastTick": 1777800297057,
     "guildName": "Hung",
     "guildLevel": 3,
     "gold": 2830,
@@ -403,7 +403,7 @@
         "cooldownMs": 8000,
         "autoEnabled": true
       },
-      "status": "idle",
+      "status": "on-mission",
       "injuredUntil": null,
       "civilization": "LinhSon",
       "archetype": "warrior",
@@ -940,7 +940,19 @@
         ]
       }
     ],
-    "activeMissions": [],
+    "activeMissions": [
+      {
+        "missionId": "slime-extermination",
+        "memberIds": [
+          "f965b263-da28-42c6-9b2a-923edbb33a6c"
+        ],
+        "startTime": 1777800267057,
+        "estimatedEndTime": 1777800357057,
+        "phase": "arrived",
+        "arrivalTime": 1777800296957,
+        "targetPriority": "focus"
+      }
+    ],
     "completedMissions": [
       "tutorial-into-the-clearing",
       "slime-extermination",

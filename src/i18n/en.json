@@ -1,0 +1,157 @@
+{
+  "workshop": {
+    "title": "Workshop",
+    "tabs": {
+      "craft": "Craft",
+      "enhance": "Enhance",
+      "repair": "Repair",
+      "dismantle": "Dismantle"
+    },
+    "craft": {
+      "pathA": "Path A — 20% chance for slot",
+      "pathB": "Path B — Guaranteed slot from material",
+      "action": {
+        "craft": "Craft",
+        "saveBlueprint": "Save Blueprint ({{used}}/{{limit}})"
+      }
+    },
+    "queue": {
+      "empty": "Queue is empty",
+      "workers": "{{active}}/{{capacity}} workers active"
+    },
+    "confirm": {
+      "reroll": "Reroll {{stat}} {{current}} → new value in {{min}}-{{max}}? May be lower than current.",
+      "dismantle": "Dismantle {{name}}? Recovery: ~{{mat}} {{matName}}"
+    },
+    "blueprint": {
+      "list": {
+        "title": "Blueprints",
+        "slots": "{{used}}/{{limit}} slots",
+        "empty": "Save crafting recipes for batch production"
+      },
+      "card": {
+        "use": "Use",
+        "edit": "Edit",
+        "delete": "Delete"
+      },
+      "save": {
+        "title": "Save Blueprint",
+        "fullHint": "Delete a blueprint to free a slot"
+      },
+      "use": {
+        "title": "Add to Queue",
+        "qty": "Quantity",
+        "confirm": "Confirm",
+        "estimateTime": "Estimated: {{time}}",
+        "estimateNote": "(based on current worker count)",
+        "warning": "{{count}} will be skipped due to missing materials"
+      },
+      "edit": {
+        "title": "Edit Blueprint",
+        "name": "Name",
+        "qty": "Default Quantity",
+        "lockedNote": "Ingredients cannot be edited — create a new blueprint to change the recipe."
+      },
+      "delete": {
+        "title": "Delete Blueprint",
+        "confirm": "Delete blueprint \"{{name}}\"?"
+      }
+    }
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete"
+  },
+  "skills": { "danh_manh": "Heavy Strike" },
+  "stats": {
+    "STR": "Strength",
+    "END": "Endurance",
+    "INT": "Intelligence",
+    "DEX": "Dexterity",
+    "CHA": "Charisma",
+    "LCK": "Luck",
+    "AGI": "Agility"
+  },
+  "ui": {
+    "quest_board": "Quest Board",
+    "roster": "Roster",
+    "build": "Build",
+    "settings": "Settings"
+  },
+  "title": {
+    "logo": "Worlds Collide",
+    "subtitle": "RPG Idle Guild Builder",
+    "continue": "Continue",
+    "new_game": "New Game",
+    "delete_save": "Delete Save",
+    "confirm_delete": "Confirm Delete?",
+    "settings": "Settings",
+    "export": "Export",
+    "import": "Import",
+    "loading": "Loading...",
+    "overwrite_warning": "This slot already has data. Overwrite?",
+    "yes_overwrite": "Yes, Overwrite",
+    "cancel": "Cancel"
+  },
+  "save": {
+    "slot_empty": "Empty Slot",
+    "slot_number": "Slot {{number}}",
+    "guild_level": "Guild Level: {{level}}",
+    "founder": "Founder: {{name}}",
+    "play_time": "Play Time: {{time}}",
+    "last_saved": "Last Saved: {{date}}",
+    "saving": "Saving...",
+    "saved": "Saved",
+    "save_error": "Save Failed",
+    "save_game": "Save Game",
+    "export_save": "Export Save",
+    "import_save": "Import Save",
+    "import_error": "Invalid file",
+    "import_success": "Import successful",
+    "confirm_overwrite": "This slot already has data. Overwrite?",
+    "restore_backup": "Save data is corrupted. Restore from backup?",
+    "return_to_title": "Return to Title",
+    "reset_game": "Reset Game",
+    "confirm_reset": "Confirm Reset?",
+    "confirm": "Confirm",
+    "mute_all": "Mute All"
+  },
+  "notification": {
+    "mission_complete": "Mission complete!",
+    "mission_failed": "Mission failed!",
+    "gold_earned": "+{{amount}} Gold",
+    "exp_earned": "+{{amount}} EXP",
+    "members_injured": "{{count}} members injured",
+    "victory": "Victory",
+    "partial_victory": "Partial Victory",
+    "full_wipe": "Full Wipe"
+  },
+  "status": {
+    "idle": "Idle",
+    "on_mission": "On Mission",
+    "injured": "Injured",
+    "training": "Training",
+    "recovery_time": "{{mins}} min remaining"
+  },
+  "quest": {
+    "zone": "Zone",
+    "enemies": "Enemies",
+    "rewards": "Rewards",
+    "requirements": "Requirements",
+    "duration": "Duration",
+    "dispatch": "Dispatch",
+    "members_needed": "{{count}} members",
+    "level_required": "Lv. {{level}}+"
+  },
+  "combat": {
+    "no_results": "No combat results yet",
+    "log_title": "Combat Log",
+    "summary": "Summary",
+    "total_damage": "Total Damage",
+    "duration": "Duration",
+    "survivors": "Survivors",
+    "injured": "Injured",
+    "select_mission": "Select a mission"
+  }
+}

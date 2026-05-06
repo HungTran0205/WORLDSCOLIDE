@@ -5,8 +5,10 @@
  */
 
 import { MISSIONS } from '@/game/data/missions';
-import { resolveMission, type MissionResult } from './mission-resolver';
+import { resolveMission, resolveMissionWithResult, type MissionResult } from './mission-resolver';
+import { simulateCombatFromSnapshot } from './combat-simulator';
 import { handleTutorialQuestComplete } from './tutorial-quest-handler';
+import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import type { ItemID } from '@/game/data/items';
 import type { GameStore } from '@/game/state/store';
 
@@ -14,7 +16,7 @@ import type { GameStore } from '@/game/state/store';
 export type MissionTickEvent =
   | { type: 'arrival'; missionId: string; missionName: string; zone: string }
   | { type: 'combat-start'; missionId: string }
-  | { type: 'combat-complete'; missionId: string; result: MissionResult; combatMode: 'auto' | 'manual' };
+  | { type: 'combat-complete'; missionId: string; result: MissionResult };
 
 /** Process all active missions for one tick, advancing their phase state machine */
 export function processMissionTick(store: GameStore, now: number): MissionTickEvent[] {
@@ -47,28 +49,34 @@ export function processMissionTick(store: GameStore, now: number): MissionTickEv
       }
 
       case 'arrived': {
-        if (active.combatMode) {
-          // Player chose — transition to combat
-          store.updateMissionPhase(active.missionId, 'in-combat');
-          events.push({ type: 'combat-start', missionId: active.missionId });
-        }
-        // No timeout — wait indefinitely for player interaction
+        // No timeout — wait indefinitely for the player to open the combat panel.
+        // The panel transitions phase → 'in-combat' explicitly when the player starts the battle.
         break;
       }
 
       case 'in-combat': {
-        // Manual combat handled by arena — skip if arena is active
-        // If arena is NOT active (e.g. page reload), fall through to auto-resolve
-        if (active.combatMode === 'manual' && store.gameScene === 'combat-arena') break;
-        // Force auto-resolve for stale manual combats (browser closed mid-fight)
-        if (active.combatMode === 'manual') {
-          active.combatMode = 'auto';
-        }
+        // Live combat is rendered inside the arena scene — skip auto-resolve while it's active.
+        // If the arena is NOT active (browser closed mid-fight, page reload), fall through to
+        // auto-resolve.
+        if (store.gameScene === 'combat-arena') break;
+        // Same guard for the new combat panel (D8 single-canvas world): while
+        // the panel is open the fight controller drives the engine, so the
+        // tick-loop must not race with it.
+        if (useCombatPanelStore.getState().isOpen) break;
 
-        // Resolve synchronously — combat sim is a pure, fast function
+        // Resolve synchronously — combat sim is a pure, fast function.
+        // Mid-fight reload (D12): if a snapshot was autosaved before the
+        // browser closed, continue from that state via simulateCombatFromSnapshot.
+        // Otherwise fall through to the legacy resolveMission re-roll path.
         const allMembers = store.founder ? [store.founder, ...store.roster] : store.roster;
         const members = allMembers.filter((m) => active.memberIds.includes(m.id));
-        const result = resolveMission(mission, members);
+        const result = active.combatSnapshot && active.combatSnapshot.length > 0
+          ? resolveMissionWithResult(
+              mission,
+              members,
+              simulateCombatFromSnapshot(active.combatSnapshot, active.combatSnapshotTime ?? 0),
+            )
+          : resolveMission(mission, members);
 
         if (result.outcome !== 'full-wipe') {
           store.addGold(result.goldEarned);
@@ -104,7 +112,7 @@ export function processMissionTick(store: GameStore, now: number): MissionTickEv
 
         store.pushMissionResult(result);
         handleTutorialQuestComplete(active.missionId);
-        events.push({ type: 'combat-complete', missionId: active.missionId, result, combatMode: active.combatMode ?? 'auto' });
+        events.push({ type: 'combat-complete', missionId: active.missionId, result });
         break;
       }
 

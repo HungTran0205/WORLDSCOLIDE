@@ -1,4 +1,68 @@
 {
+  "workshop": {
+    "title": "Workshop",
+    "tabs": {
+      "craft": "Chế Tác",
+      "enhance": "Cường Hóa",
+      "repair": "Sửa Chữa",
+      "dismantle": "Tháo Dỡ"
+    },
+    "craft": {
+      "pathA": "Đường A — 20% cơ hội có slot",
+      "pathB": "Đường B — Đảm bảo có slot từ nguyên liệu",
+      "action": {
+        "craft": "Chế Tác",
+        "saveBlueprint": "Lưu Bản Vẽ ({{used}}/{{limit}})"
+      }
+    },
+    "queue": {
+      "empty": "Hàng đợi trống",
+      "workers": "{{active}}/{{capacity}} thợ đang hoạt động"
+    },
+    "confirm": {
+      "reroll": "Reroll {{stat}} {{current}} → giá trị mới trong {{min}}-{{max}}? Có thể thấp hơn current.",
+      "dismantle": "Tháo dỡ {{name}}? Hồi phục: ~{{mat}} {{matName}}"
+    },
+    "blueprint": {
+      "list": {
+        "title": "Bản Vẽ",
+        "slots": "{{used}}/{{limit}} ô",
+        "empty": "Lưu công thức chế tác để sản xuất hàng loạt"
+      },
+      "card": {
+        "use": "Dùng",
+        "edit": "Sửa",
+        "delete": "Xóa"
+      },
+      "save": {
+        "title": "Lưu Bản Vẽ",
+        "fullHint": "Xóa một bản vẽ để giải phóng ô"
+      },
+      "use": {
+        "title": "Thêm Vào Hàng Đợi",
+        "qty": "Số Lượng",
+        "confirm": "Xác Nhận",
+        "estimateTime": "Ước tính: {{time}}",
+        "estimateNote": "(theo số thợ hiện tại)",
+        "warning": "{{count}} sẽ bị bỏ qua do thiếu nguyên liệu"
+      },
+      "edit": {
+        "title": "Sửa Bản Vẽ",
+        "name": "Tên",
+        "qty": "Số Lượng Mặc Định",
+        "lockedNote": "Nguyên liệu không thể chỉnh sửa — tạo bản vẽ mới nếu cần đổi công thức."
+      },
+      "delete": {
+        "title": "Xóa Bản Vẽ",
+        "confirm": "Xóa bản vẽ \"{{name}}\"?"
+      }
+    }
+  },
+  "common": {
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "delete": "Xóa"
+  },
   "skills": { "danh_manh": "Đánh Mạnh" },
   "stats": {
     "STR": "Sức Mạnh",

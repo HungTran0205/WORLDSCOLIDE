@@ -9,11 +9,25 @@ import {
   FORMATION_STEP_DURATION_MS,
   FORMATION_RETURN_DURATION_MS,
   type ArenaEntity,
+  type TargetPriority,
 } from './combat-arena-types';
 import type { CombatEvent } from './combat-types';
+import { pickBalanceTarget } from './target-priority-resolver';
 
-/** Find best target: nearest alive enemy, weighted toward front-row and same lane */
-export function findTarget(entity: ArenaEntity, allEntities: ArenaEntity[]): ArenaEntity | null {
+/**
+ * Find best target. Default = nearest enemy weighted toward front-row + same lane.
+ * Pass priority='balance' for row-aligned targeting (used by allies in Balance mode).
+ * Focus mode is handled in CombatEngine.resolveTarget (shared primary), not here.
+ */
+export function findTarget(
+  entity: ArenaEntity,
+  allEntities: ArenaEntity[],
+  priority?: TargetPriority,
+): ArenaEntity | null {
+  if (priority === 'balance' && entity.isAlly) {
+    return pickBalanceTarget(entity, allEntities);
+  }
+
   const enemies = allEntities.filter(e => e.currentHp > 0 && e.isAlly !== entity.isAlly);
   if (enemies.length === 0) return null;
 

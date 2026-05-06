@@ -7,6 +7,7 @@
 import { Billboard, Html } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGameStore } from '@/game/state/store';
+import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { useRef, useMemo, useEffect } from 'react';
 import type { Group } from 'three';
 import type { Member } from '@/game/state/game-state';
@@ -29,6 +30,10 @@ function seededIndex(seed: number, max: number): number {
 
 function MemberSprite({ member, index }: { member: Member; index: number }) {
   const quality = useGraphicsQuality();
+  // Guard nameplate <Html> against leaking into combat panel — drei <Html>
+  // portals to DOM outside R3F, so the parent <group visible={false}> wrapper
+  // in world.tsx doesn't hide it. Skip rendering the label when combat is open.
+  const isCombatOpen = useCombatPanelStore((s) => s.isOpen);
   const ref = useRef<Group>(null);
   const targetRef = useRef<{ x: number; z: number } | null>(null);
   const waitRef = useRef(0);
@@ -89,11 +94,13 @@ function MemberSprite({ member, index }: { member: Member; index: number }) {
           isMovingRef={isMovingRef}
         />
         {/* Member name — Html overlay avoids troika GLSL incompatibility with WebGPU */}
-        <Html position={[0, 1.3, 0]} center>
-          <span style={{ color: 'white', fontSize: '10px', whiteSpace: 'nowrap', textShadow: '1px 1px 2px black, 0 0 2px black' }}>
-            {member.name}
-          </span>
-        </Html>
+        {!isCombatOpen && (
+          <Html position={[0, 1.3, 0]} center>
+            <span style={{ color: 'white', fontSize: '10px', whiteSpace: 'nowrap', textShadow: '1px 1px 2px black, 0 0 2px black' }}>
+              {member.name}
+            </span>
+          </Html>
+        )}
       </Billboard>
     </group>
   );

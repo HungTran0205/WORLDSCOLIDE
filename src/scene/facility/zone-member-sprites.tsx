@@ -3,6 +3,7 @@
 import { useRef, useMemo } from 'react';
 import { Billboard, Html } from '@react-three/drei';
 import { useGameStore } from '@/game/state/store';
+import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
 import { SpriteAnimator } from '../sprites/sprite-animator';
@@ -22,6 +23,8 @@ function ZoneMemberSprite({ member, slotOffset }: { member: Member; slotOffset: 
   // Static refs — zone sprites never move, always idle facing south
   const directionRef = useRef<SpriteDirection>('south');
   const isMovingRef = useRef(false);
+  // Hide the <Html> nameplate when combat panel is open (DOM portal leak — see member-layer.tsx).
+  const isCombatOpen = useCombatPanelStore((s) => s.isOpen);
 
   const civConfig = CIV_CONFIG[member.civilization as Civilization];
   const archetype = member.archetype ?? civConfig?.archetypes[0] ?? 'warrior';
@@ -41,11 +44,13 @@ function ZoneMemberSprite({ member, slotOffset }: { member: Member; slotOffset: 
           directionRef={directionRef}
           isMovingRef={isMovingRef}
         />
-        <Html position={[0, 1.3, 0]} center>
-          <span style={{ color: 'white', fontSize: '10px', whiteSpace: 'nowrap', textShadow: '1px 1px 2px black, 0 0 2px black' }}>
-            {member.name}
-          </span>
-        </Html>
+        {!isCombatOpen && (
+          <Html position={[0, 1.3, 0]} center>
+            <span style={{ color: 'white', fontSize: '10px', whiteSpace: 'nowrap', textShadow: '1px 1px 2px black, 0 0 2px black' }}>
+              {member.name}
+            </span>
+          </Html>
+        )}
       </Billboard>
     </group>
   );

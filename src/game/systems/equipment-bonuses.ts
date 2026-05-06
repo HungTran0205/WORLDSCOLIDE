@@ -35,10 +35,16 @@ export function calcGearBonuses(equipment?: MemberEquipment | null): GearBonuses
   return bonus;
 }
 
-/** Create a fresh equipment item instance with full durability. */
+/** Create a fresh equipment item instance with full durability and empty affix slots. */
 export function createEquipmentItem(templateId: EquipmentTemplateId): EquipmentItem {
   const tpl = getEquipmentTemplate(templateId);
-  return { id: crypto.randomUUID(), templateId, durability: tpl.maxDurability };
+  return {
+    id: crypto.randomUUID(),
+    templateId,
+    durability: tpl.maxDurability,
+    slots: [],
+    maxSlots: 4,
+  };
 }
 
 /** LinhSon archetypes that receive a starting weapon at character creation. */

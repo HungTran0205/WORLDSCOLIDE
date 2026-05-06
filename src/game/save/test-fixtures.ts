@@ -84,7 +84,7 @@ export const VALID_ACTIVE_MISSION: ActiveMission = {
   estimatedEndTime: 61000,
   phase: 'traveling',
   arrivalTime: null,
-  combatMode: null,
+  targetPriority: 'focus',
 };
 
 export const VALID_GAME_SAVE_DATA: GameSaveData = {
