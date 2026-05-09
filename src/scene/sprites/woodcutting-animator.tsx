@@ -2,6 +2,12 @@
  * Woodcutting sprite animator — plays woodcutting-8-frames/east in a loop.
  * Only east direction supported (the only direction currently provided).
  * Uses same atlas approach as SpriteAnimator for zero texture-binding overhead.
+ *
+ * NOTE (2026-05-09): texture.offset/repeat UV pattern has known multi-instance
+ * issue under WebGPU (only 1 sprite animates per pipeline cache batch). Guild
+ * hall scenes only render 1-2 woodcutters at a time so symptom is hidden. If
+ * a scene needs ≥3 woodcutters of same spriteId, port to uniform-UV pattern —
+ * see `src/scene/combat/idle-sprite-material.ts`.
  */
 
 import { useRef, useMemo } from 'react';

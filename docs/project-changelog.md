@@ -2,8 +2,52 @@
 
 All notable changes to Worlds Collide are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
-**Current Version**: 1.27.3
-**Release Date**: 2026-05-03 (Combat Panel Shell & Idle Redesign Phase 3)
+**Current Version**: 1.27.6
+**Release Date**: 2026-05-09 (Combat Panel Multi-Instance Sprite Animation Fix)
+
+---
+
+## [1.27.6] — 2026-05-09 (Combat Panel Multi-Instance Sprite Animation Fix)
+
+### fix: combat panel sprites animate independently per entity (WebGPU UV uniform)
+
+**Bug**: Trong combat panel idle, khi spawn ≥2 entity cùng `spriteId` (vd 6 slime + 1 LS-SCOUT-M), chỉ 1 sprite chạy idle animation liên tiếp. Các sprite khác đứng yên 1 frame, chỉ "nhảy" sang frame mới khi entity nhận damage (do React re-render invalidate bind group).
+
+**Root cause**: WebGPU NodeMaterial trong Three.js r175 không re-upload `texture.matrix` uniform đồng thời cho nhiều material instance cùng pipeline cache. `texture.offset/repeat` mutation chỉ effective cho 1 material/frame; các material còn lại giữ matrix cũ trong UBO. Workaround `mat.map = atlas.texture; mat.needsUpdate = false;` (copy từ guild hall animator) là no-op vì JS gán cùng reference không trigger setter.
+
+**Fix**: Thêm `idle-sprite-material.ts` — per-entity NodeMaterial (WebGPU TSL) / ShaderMaterial (WebGL) factory với uniform `uUvRect: vec4` driving UV remap trong shader. Mỗi entity có riêng material + uniform → no cross-instance state sharing. Atlas texture vẫn shared via map binding (cheap), chỉ UV uniform khác nhau per entity.
+
+**Modified**:
+- NEW: `src/scene/combat/idle-sprite-material.ts` — material factory (WebGPU + WebGL paths)
+- `src/scene/combat/combat-idle-sprite.tsx` — refactor: `materialRef` → async `handle` state; uniform UV update qua `handle.setUvRect()` thay cho `setAtlasFrame()`; tint qua `handle.setTint()` thay cho `mat.color.copy()`
+- `src/scene/sprites/sprite-atlas.ts` — added `getAtlasFrameUv()` pure helper (extract UV calc từ `setAtlasFrame`, no side effects)
+
+**Tests**: tsc clean (exit 0). Manual smoke test pass: 6+ slime animate độc lập, death anim freeze frame cuối, hit flash chuẩn.
+
+**Known similar bug** (DEFERRED): `sprite-animator.tsx`, `woodcutting-animator.tsx`, `working-animator.tsx` cùng pattern (texture.offset/repeat). Guild hall thường có 1-2 instance cùng lúc nên symptom không lộ; có note inline cảnh báo nếu sau này có cảnh nhiều worker cùng spriteId.
+
+**Design alignment**: Theo plan-260503-1123 D1 (panel KHÔNG dùng GPU instancing), giải pháp giữ kiến trúc 1-mesh-per-entity — không reuse `InstancedSpriteRenderer` (plan-260503-1145 sẽ xóa).
+
+---
+
+## [1.27.5] — 2026-05-07 (Unify Wood/Stone Production Per Game-Day)
+
+### fix: standardize logging-site & stone-quarry rate calc to "/gameday"
+
+Eliminated the stale `STONE_QUARRY_CONFIG.ticksPerDay = 86400` constant (game-seconds, never matched the 1Hz online scheduler) by setting it to **14400 = 4h × 3600s real ticks per game-day**. Online vein strike probability conversion (`dailyStrikeChance / ticksPerDay`) now produces the designed strike frequency instead of 1/6 of it. Online and offline production rates now match for both wood and stone (verified by parity tests). UI labels switched from "+X.XXXX wood/tick" and "+X Stone/day" to **"+N Wood/gameday"** and **"+N Stone/gameday"** so player-visible numbers reflect the actual per-game-day rate (1 game-day = 4 real-hours).
+
+**Modified**:
+- `src/game/data/facility-definitions.ts` — `STONE_QUARRY_CONFIG.ticksPerDay` 86400 → 14400; recalibrated baseRate comment.
+- `src/game/systems/facility-production-system.ts` — comment alignment (TICKS_PER_DAY now matches `STONE_QUARRY_CONFIG.ticksPerDay`).
+- `src/ui/components/facility-detail-tray.tsx` — logging-site preview switched to integer `Wood/gameday`; stone label `Stone/day` → `Stone/gameday`.
+- `src/scene/quarry/facility-room-quarry-decor.tsx` — quarry zone card label `stone/day` → `stone/gameday`.
+- `docs/codebase-summary.md` — added "Game-Day Timing Constants" section.
+
+**New tests**: `tests/facility-production-parity.test.ts` (2 tests verifying 14400 online ticks ≈ offline 1 game-day for both logging-site and stone-quarry).
+
+**Tests**: 239/239 game tests pass; tsc clean.
+
+**Balance note**: Online vein strike rate now triggers 6x more often than pre-fix (matches design "1% chance per game-day"). Base wood/stone yield unchanged from today's earlier offline-rate fix. Save migration not required.
 
 ---
 

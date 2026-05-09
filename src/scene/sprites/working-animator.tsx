@@ -2,6 +2,12 @@
  * Working/crafting sprite animator — plays the `working/` animation in a loop.
  * No direction subdirectory; east-facing frames are used for all placements.
  * Fallback: if texture load fails, parent Suspense renders nothing.
+ *
+ * NOTE (2026-05-09): texture.offset/repeat UV pattern has known multi-instance
+ * issue under WebGPU (only 1 sprite animates per pipeline cache batch). Guild
+ * hall scenes only render 1-2 crafters at a time so symptom is hidden. If a
+ * scene needs ≥3 crafters of same spriteId, port to uniform-UV pattern —
+ * see `src/scene/combat/idle-sprite-material.ts`.
  */
 
 import { useRef, useMemo } from 'react';

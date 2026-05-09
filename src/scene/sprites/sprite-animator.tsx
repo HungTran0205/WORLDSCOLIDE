@@ -3,6 +3,14 @@
  * Walk atlas: 4 dirs × 8 frames = 32 frames in 8-col grid.
  * Animation selects frames via UV offset (no material.map swap, no needsUpdate).
  * MeshStandardMaterial so guild hall torches and ambient light affect sprites.
+ *
+ * NOTE (2026-05-09): Uses texture.offset/repeat for UV animation (setAtlasFrame).
+ * WebGPU NodeMaterial may not propagate UV updates reliably for multi-instance
+ * same-pipeline materials — symptom is "only 1 sprite animates, others freeze".
+ * Hidden here because guild hall typically has 1-2 instances per spriteId. If a
+ * scene with N≥3 matching sprites is added, port the uniform UV pattern from
+ * `src/scene/combat/idle-sprite-material.ts` (combat panel had this exact bug
+ * fixed by switching to uniform-driven UV — see plan 260509-0827).
  */
 
 import { useRef, useMemo } from 'react';

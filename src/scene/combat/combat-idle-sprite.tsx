@@ -1,10 +1,14 @@
 /**
  * Combat-panel single-entity sprite — idle loop + death animation + hit flash.
  *
- * Loads two atlases per entity (idle east/west, death east/west) via the
- * combat sprite resolver. Switches between them based on entity HP (alive →
- * idle, KO → death animation that freezes on the last frame). On HP delta a
- * brief white flash is applied via material.color (no extra material swap).
+ * Uses a per-entity NodeMaterial/ShaderMaterial with uniform-driven UV remap
+ * (see idle-sprite-material.ts) to bypass WebGPU NodeMaterial's texture.matrix
+ * dedupe behavior across pipeline cache. Each entity has its own uvRect uniform
+ * → animation advances independently for every sprite.
+ *
+ * Atlas swap (idle/attack/death) updates the map node's value; UV update happens
+ * every frame via handle.setUvRect(...). Tint (flash/dim/normal) routed through
+ * handle.setTint instead of mutating material.color.
  *
  * Pre-conditions:
  * - Camera + lighting are mounted by `<CombatScene>` (parent fragment).
@@ -12,9 +16,9 @@
  *   throw on missing assets (graceful degrade to walking-frame-0 fallback).
  */
 
-import { useEffect, useMemo, useRef } from 'react';
-import { useFrame, useLoader } from '@react-three/fiber';
-import { TextureLoader, MeshBasicMaterial, Mesh, Color } from 'three';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useFrame, useLoader, useThree } from '@react-three/fiber';
+import { TextureLoader, Mesh, type Texture } from 'three';
 import type { ArenaEntitySnapshot } from '@/game/state/combat-arena-slice';
 import { COMBAT_CAM_TILT_RAD, getCombatSpriteScale } from './combat-camera-config';
 import {
@@ -29,17 +33,20 @@ import {
   resolveEnemyCombatSprite,
 } from '@/scene/sprites/combat-sprite-resolver';
 import { getSpritePath } from '@/scene/sprites/sprite-path-resolver';
-import { buildAtlasFromTextures, setAtlasFrame } from '@/scene/sprites/sprite-atlas';
+import { buildAtlasFromTextures, getAtlasFrameUv } from '@/scene/sprites/sprite-atlas';
 import type { SpriteAtlas } from '@/scene/sprites/sprite-atlas';
+import { createIdleSpriteMaterial, type IdleSpriteMaterialHandle } from './idle-sprite-material';
 
 const IDLE_FPS = 6.5;        // ~150ms per frame per spec
 const ATTACK_FPS = 12;       // ~83ms per frame — full 8-frame swing fits ~667ms ANIM_ATTACK_DURATION window
 const DEATH_FPS = 8;
 const FLASH_DURATION_MS = 110;
 
-const FLASH_COLOR = new Color(2.4, 2.4, 2.4);
-const DEAD_COLOR = new Color(0.7, 0.7, 0.7);
-const NORMAL_COLOR = new Color(1, 1, 1);
+// Tint multipliers passed to handle.setTint (r, g, b). NodeMaterial/ShaderMaterial
+// multiplies sampled texture by tint; >1 brightens (flash), <1 dims (dead), 1 = normal.
+const FLASH_R = 2.4, FLASH_G = 2.4, FLASH_B = 2.4;
+const DEAD_R = 0.7, DEAD_G = 0.7, DEAD_B = 0.7;
+const NORMAL_R = 1, NORMAL_G = 1, NORMAL_B = 1;
 
 interface CombatIdleSpriteProps {
   entity: ArenaEntitySnapshot;
@@ -47,13 +54,20 @@ interface CombatIdleSpriteProps {
 
 export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
   const meshRef = useRef<Mesh>(null);
-  const materialRef = useRef<MeshBasicMaterial>(null);
+  const { gl } = useThree();
+  // Material handle is async-loaded (WebGPU TSL imports). Render placeholder
+  // mesh-without-material until ready; parent <Suspense> covers texture load.
+  const [handle, setHandle] = useState<IdleSpriteMaterialHandle | null>(null);
   const frameIndexRef = useRef(0);
   const elapsedRef = useRef(0);
   const deathFrozenRef = useRef(false);
   const lastHpRef = useRef(entity.currentHp);
   const flashUntilRef = useRef(0);
   const wasDeadRef = useRef(entity.currentHp <= 0);
+  // Track last atlas texture set on the handle to skip redundant TextureNode
+  // swaps. mapNode.value writes are cheap but avoiding them when possible
+  // keeps the WebGPU bind cache stable.
+  const lastMapRef = useRef<Texture | null>(null);
   // Track which animation state was active last frame so we can reset frame
   // counters on transitions (e.g. idle → attack should restart at frame 0
   // instead of inheriting the idle cycle position).
@@ -107,10 +121,31 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
     lastHpRef.current = entity.currentHp;
   }, [entity.currentHp]);
 
+  // Build the per-entity material handle once when the idle atlas is ready.
+  // Async because the WebGPU path imports three/tsl + three/webgpu lazily.
+  // Atlas SWAPS (idle→attack→death) reuse the same handle via setMap; only the
+  // initial atlas seed binding requires this effect.
+  useEffect(() => {
+    let cancelled = false;
+    let createdHandle: IdleSpriteMaterialHandle | null = null;
+    createIdleSpriteMaterial(idleAtlas.texture, gl).then((h) => {
+      if (cancelled) {
+        h.dispose();
+        return;
+      }
+      createdHandle = h;
+      lastMapRef.current = idleAtlas.texture;
+      setHandle(h);
+    });
+    return () => {
+      cancelled = true;
+      if (createdHandle) createdHandle.dispose();
+    };
+  }, [idleAtlas.texture, gl]);
+
   useFrame((_, dt) => {
-    const mat = materialRef.current;
     const mesh = meshRef.current;
-    if (!mat || !mesh) return;
+    if (!handle || !mesh) return;
 
     const isDead = entity.currentHp <= 0;
     // Engine sets animState to 'attacking' for autos and 'skill' for skill
@@ -174,9 +209,11 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
       fps = IDLE_FPS;
     }
 
-    if (mat.map !== atlas.texture) {
-      mat.map = atlas.texture;
-      mat.needsUpdate = true;
+    // Atlas swap (idle ↔ attack ↔ death) — only call setMap when the texture
+    // actually changes to avoid unnecessary TextureNode value writes.
+    if (lastMapRef.current !== atlas.texture) {
+      handle.setMap(atlas.texture);
+      lastMapRef.current = atlas.texture;
     }
 
     if (isDead) {
@@ -202,16 +239,21 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
     } else {
       frameIndexRef.current = 0;
     }
-    setAtlasFrame(atlas, frameIndexRef.current);
+    // Drive UV via uniform — every entity has its own uvRect uniform on its
+    // own material instance, so this update is isolated per sprite (the bug
+    // we're fixing comes from texture.matrix being shared/cached at the
+    // WebGPU pipeline level when materials look identical).
+    const uvFrame = getAtlasFrameUv(atlas, frameIndexRef.current);
+    handle.setUvRect(uvFrame.u, uvFrame.v, uvFrame.w, uvFrame.h);
 
     // Tint: white flash on hit, dimmed grey when dead, normal otherwise.
     const now = performance.now();
     if (now < flashUntilRef.current) {
-      mat.color.copy(FLASH_COLOR);
+      handle.setTint(FLASH_R, FLASH_G, FLASH_B);
     } else if (isDead && deathFrozenRef.current) {
-      mat.color.copy(DEAD_COLOR);
+      handle.setTint(DEAD_R, DEAD_G, DEAD_B);
     } else {
-      mat.color.copy(NORMAL_COLOR);
+      handle.setTint(NORMAL_R, NORMAL_G, NORMAL_B);
     }
   });
 
@@ -231,15 +273,11 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
       scale={[initialScale, initialScale, 1]}
     >
       <planeGeometry args={[1, 1]} />
-      {/* meshBasicMaterial — pixel-art sprites are pre-shaded, lighting-free
-          rendering is correct here and avoids dim output when the global
-          SceneLighting is dim or absent. */}
-      <meshBasicMaterial
-        ref={materialRef}
-        map={idleAtlas.texture}
-        transparent
-        alphaTest={0.1}
-      />
+      {/* Material handle is async-loaded by createIdleSpriteMaterial (WebGPU
+          path lazy-imports three/tsl + three/webgpu). Until ready, the mesh
+          renders without a material — parent <Suspense> + Three.js default
+          fallback covers the brief window without a flash. */}
+      {handle && <primitive object={handle.material} attach="material" />}
     </mesh>
   );
 }
