@@ -43,7 +43,7 @@ export function QuarryZoneCard({ facility }: { facility: GuildFacility }) {
       {assigned.length > 0 ? (
         <>
           <div style={{ color: '#4ade80', fontWeight: 600, marginBottom: 2 }}>
-            ~{Math.floor(totalStonePerDay)} stone/day
+            ~{Math.floor(totalStonePerDay)} stone/gameday
           </div>
           <div style={{ color: '#888', fontSize: 11 }}>
             {assigned.length} miner{assigned.length > 1 ? 's' : ''} assigned

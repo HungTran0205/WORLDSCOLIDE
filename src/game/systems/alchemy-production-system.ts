@@ -1,10 +1,11 @@
 /**
- * Pure functions for Alchemy Lab production per game-day.
- * Mechanic: AC LvN → uses (N+1) SLIME_GEL per batch → produces (N+1) HEALING_SYRINGE.
- * Caller is responsible for applying results to the store.
+ * Pure functions for Alchemy Lab — AC skill helpers + offline queue advancement.
+ * The lab is queue-based: jobs added via addAlchemyCraftJob, ticked online via
+ * tickAlchemyQueues. This module advances the same queues over an offline window.
  */
 
-import type { GuildFacility, Member } from '@/game/state/game-state';
+import type { AlchemyCraftJob, GuildFacility, Member } from '@/game/state/game-state';
+import type { ItemID } from '@/game/data/items';
 import { ALCHEMY_CONFIG } from '@/game/data/facility-definitions';
 
 export interface AcXpGain {
@@ -15,15 +16,13 @@ export interface AcXpGain {
   leveledUp: boolean;
 }
 
-export interface AlchemyProductionResult {
-  /** HEALING_SYRINGE produced this cycle */
-  syringesProduced: number;
-  /** SLIME_GEL consumed this cycle */
-  gelConsumed: number;
-  /** Alchemy XP gains per member */
+export interface AlchemyOfflineResult {
+  /** Updated facility list — alchemy labs have advanced queues; others untouched. */
+  facilities: GuildFacility[];
+  /** Items produced this offline window (sum across all completed jobs). */
+  itemGains: Partial<Record<ItemID, number>>;
+  /** AC skill XP gains per member assigned to alchemy labs. */
   acXpGains: AcXpGain[];
-  /** Members whose batches were skipped due to insufficient SLIME_GEL in inventory */
-  blockedMemberIds: string[];
 }
 
 /** Map total XP accumulated → AC skill level 0–10 */
@@ -36,67 +35,70 @@ export function calcAcLevel(xp: number): number {
 }
 
 /**
- * Process Alchemy Lab production for gameDays elapsed.
- * availableGel: current SLIME_GEL count in guild inventory — batches stop when gel runs out.
+ * Advance alchemy lab craft queues over an offline window.
+ * Each job's `remainingSeconds` decrements by elapsedSecs; completed jobs
+ * yield their output and award AC XP (split evenly across the lab's
+ * assigned members) for HEALING_SYRINGE outputs.
  */
-export function processAlchemyProduction(
+export function advanceAlchemyQueues(
   facilities: GuildFacility[],
   allMembers: Member[],
-  availableGel: number,
-  gameDays: number,
-): AlchemyProductionResult {
-  const result: AlchemyProductionResult = {
-    syringesProduced: 0,
-    gelConsumed: 0,
-    acXpGains: [],
-    blockedMemberIds: [],
-  };
+  elapsedSecs: number,
+): AlchemyOfflineResult {
+  const itemGains: Partial<Record<ItemID, number>> = {};
+  // memberId → total syringes credited (used as XP)
+  const xpAccum = new Map<string, number>();
 
-  if (gameDays <= 0) return result;
+  const updatedFacilities = facilities.map((facility) => {
+    if (facility.type !== 'alchemy-lab' || !facility.craftQueue?.length) return facility;
+    if (elapsedSecs <= 0) return facility;
 
-  let remainingGel = availableGel;
+    const assigned = allMembers.filter((m) => facility.assignedMemberIds.includes(m.id));
 
-  for (const facility of facilities) {
-    if (facility.type !== 'alchemy-lab' || facility.level === 0) continue;
-    if (facility.assignedMemberIds.length === 0) continue;
-
-    const assignedMembers = allMembers.filter((m) => facility.assignedMemberIds.includes(m.id));
-    if (assignedMembers.length === 0) continue;
-
-    for (const member of assignedMembers) {
-      const { INT, DEX } = member.stats;
-      const acXp = member.craftSkills?.alchemy?.xpAccumulated ?? 0;
-      const acLevel = calcAcLevel(acXp);
-      const gelesPerBatch = ALCHEMY_CONFIG.ingredientCountFormula(acLevel);
-      const batchesPerDay = ALCHEMY_CONFIG.batchesPerDay(INT, DEX, facility.level);
-      const totalBatches = batchesPerDay * gameDays;
-
-      // Cap batches by available gel
-      const maxBatchesFromGel = Math.floor(remainingGel / gelesPerBatch);
-      if (maxBatchesFromGel === 0) {
-        result.blockedMemberIds.push(member.id);
+    let timeLeft = elapsedSecs;
+    const newQueue: AlchemyCraftJob[] = [];
+    for (const job of facility.craftQueue) {
+      if (timeLeft <= 0) {
+        newQueue.push(job);
         continue;
       }
+      if (job.remainingSeconds <= timeLeft) {
+        // Job completes
+        timeLeft -= job.remainingSeconds;
+        const out = job.outputItemId as ItemID;
+        itemGains[out] = (itemGains[out] ?? 0) + job.outputQuantity;
 
-      const batchesDone = Math.min(totalBatches, maxBatchesFromGel);
-      const gelUsed = batchesDone * gelesPerBatch;
-      const syringesMade = batchesDone * gelesPerBatch; // 1 syringe per gel consumed
-
-      remainingGel -= gelUsed;
-      result.gelConsumed += gelUsed;
-      result.syringesProduced += syringesMade;
-
-      const newXp = acXp + syringesMade;
-      const newLevel = calcAcLevel(newXp);
-      result.acXpGains.push({
-        memberId: member.id,
-        xpGained: syringesMade,
-        newXp,
-        newLevel,
-        leveledUp: newLevel > acLevel,
-      });
+        // AC XP for healing-syringe jobs — split equally among assigned alchemists
+        if (out === 'HEALING_SYRINGE' && assigned.length > 0) {
+          const xpPerMember = job.outputQuantity / assigned.length;
+          for (const m of assigned) {
+            xpAccum.set(m.id, (xpAccum.get(m.id) ?? 0) + xpPerMember);
+          }
+        }
+      } else {
+        newQueue.push({ ...job, remainingSeconds: job.remainingSeconds - timeLeft });
+        timeLeft = 0;
+      }
     }
+    return { ...facility, craftQueue: newQueue };
+  });
+
+  const acXpGains: AcXpGain[] = [];
+  for (const [memberId, xp] of xpAccum) {
+    const member = allMembers.find((m) => m.id === memberId);
+    if (!member) continue;
+    const currentXp = member.craftSkills?.alchemy?.xpAccumulated ?? 0;
+    const currentLevel = calcAcLevel(currentXp);
+    const newXp = currentXp + xp;
+    const newLevel = calcAcLevel(newXp);
+    acXpGains.push({
+      memberId,
+      xpGained: xp,
+      newXp,
+      newLevel,
+      leveledUp: newLevel > currentLevel,
+    });
   }
 
-  return result;
+  return { facilities: updatedFacilities, itemGains, acXpGains };
 }

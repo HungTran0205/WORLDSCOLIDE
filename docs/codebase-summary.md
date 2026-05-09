@@ -362,6 +362,14 @@
 - **Dismissable**: Click to acknowledge, popup clears without manual claiming
 - **No Offline Loss**: All production accumulated accurately from timestamp
 
+### Game-Day Timing Constants (CRITICAL)
+- **1 game-day = 14400 real ticks = 4 real-hour** (online scheduler runs at 1Hz via Web Worker)
+- `TICKS_PER_DAY = 14400` const lives in `facility-production-system.ts`; `STONE_QUARRY_CONFIG.ticksPerDay = 14400` mirrors the same value
+- Online tick path (`processLoggingSiteTick`, `processStoneQuarryTick`) runs once per real-second
+- Offline catch-up (`processFacilityProduction`) multiplies per-tick rates × `TICKS_PER_DAY` per game-day → must use the same constant or rates diverge
+- Vein strike probability: `dailyStrikeChance / 14400` per tick — keeps "X strikes per game-day" intent
+- UI labels read "+N Wood/gameday" / "+N Stone/gameday" so player-visible numbers match the per-game-day rate
+
 ### State Management (NEW - Game State Extension)
 - **`facilities: GuildFacility[]`** — Array of facility objects (type, level, assignedMemberIds)
 - **`facilityProduction: LastProductionDay`** — Timestamp tracking for offline catch-up

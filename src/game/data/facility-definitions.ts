@@ -103,7 +103,8 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
 /** Infinite-production config for the Stone Quarry facility */
 export const STONE_QUARRY_CONFIG = {
   /** stone/tick per unit of (STR×0.5)/100 — baseScore is normalized by /100 to keep the rate small.
-   *  Calibrated: STR20 → baseScore=10 → baseScore/100=0.1 → 0.002315×0.1×86400 ≈ 20 stone/day at lv1, MC0. */
+   *  Calibrated: STR20 → baseScore=10 → baseScore/100=0.1 → 0.002315×0.1×14400 ≈ 3.33 stone/game-day at lv1, MC0
+   *  (1 game-day = 14400 real ticks = 4 real-hour @ 1Hz scheduler). */
   baseRate: 0.002315,
   /** Level production multipliers [lv1, lv2, lv3] */
   levelMult: [1.0, 2.0, 3.5] as const,
@@ -119,8 +120,9 @@ export const STONE_QUARRY_CONFIG = {
   fortuneStrikeScale: 0.0002,
   /** Level bonus to daily vein strike chance [lv1, lv2, lv3] */
   levelStrikeBonus: [0, 0.015, 0.035] as const,
-  /** Ticks per game-day — used to convert daily strike probability to per-tick */
-  ticksPerDay: 86400,
+  /** Real ticks per game-day — used to convert daily strike probability to per-tick.
+   *  14400 = 4 real-hour × 3600s, matching the online 1Hz scheduler (1 game-day = 4 real hours). */
+  ticksPerDay: 14400,
   mcSkillMaxLevel: 10,
   /** Vein type cumulative thresholds: roll < weights[0] → iron, < weights[1] → richStone, else gem */
   veinWeights: [0.65, 0.90] as const,

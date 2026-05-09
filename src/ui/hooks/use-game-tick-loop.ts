@@ -11,6 +11,7 @@ import { generateMercenaries } from '@/game/systems/mercenary-generator';
 import { processFacilityProduction, processLoggingSiteTick } from '@/game/systems/facility-production-system';
 import { processStoneQuarryTick } from '@/game/systems/stone-quarry-production-system';
 import { advanceWorkshopQueues } from '@/game/systems/workshop-offline-system';
+import { advanceAlchemyQueues } from '@/game/systems/alchemy-production-system';
 import type { ItemID } from '@/game/data/items';
 import type { EquipmentItem, Member, MemberEquipment } from '@/game/state/game-state';
 import { calcTotalUpkeep } from '@/game/systems/upkeep-system';
@@ -127,33 +128,43 @@ export function useGameTickLoop() {
         const allMembers = store.founder ? [store.founder, ...store.roster] : store.roster;
         const dailyUpkeep = calcTotalUpkeep(allMembers);
         const results = processFacilityProduction(
-          store.facilities, allMembers, gameDays, dailyUpkeep, store.inventory.items,
+          store.facilities, allMembers, gameDays, dailyUpkeep,
         );
 
-        // Apply EXP gains
+        // Apply EXP gains (Training Yard)
         for (const result of results) {
           for (const [memberId, exp] of Object.entries(result.expGains)) {
             store.addMemberExp(memberId, exp);
           }
         }
 
-        // Apply item gains and consumed items
+        // Apply item gains
         for (const result of results) {
           for (const [itemId, qty] of Object.entries(result.itemGains)) {
             if (qty && qty > 0) store.addItem(itemId as Parameters<typeof store.addItem>[0], qty);
           }
-          for (const [itemId, qty] of Object.entries(result.itemConsumed)) {
-            if (qty && qty > 0) store.removeItem(itemId as Parameters<typeof store.addItem>[0], qty);
+        }
+
+        // Apply logging-site WC XP + wood reserve depletion
+        for (const result of results) {
+          if (result.facilityType !== 'logging-site') continue;
+          if (result.wcXpGains?.length || result.reserveUpdate) {
+            store.applyLoggingProduction({
+              wcXpGains: result.wcXpGains ?? [],
+              reserveUpdates: result.reserveUpdate ? [result.reserveUpdate] : [],
+              woodProduced: result.itemGains.WOOD ?? 0,
+            });
           }
-          // Apply alchemy XP gains
-          if (result.alchemyXpGains) {
-            store.applyAlchemyProduction({
-              syringesProduced: (result.itemGains.HEALING_SYRINGE ?? 0),
-              gelConsumed: (result.itemConsumed.SLIME_GEL ?? 0),
-              acXpGains: Object.entries(result.alchemyXpGains).map(([memberId, g]) => ({
-                memberId, xpGained: 0, newXp: g.newXp, newLevel: g.newLevel, leveledUp: false,
-              })),
-              blockedMemberIds: [],
+        }
+
+        // Apply stone-quarry MC XP
+        for (const result of results) {
+          if (result.facilityType !== 'stone-quarry') continue;
+          if (result.mcXpGains?.length) {
+            store.applyStoneQuarryProduction({
+              mcXpGains: result.mcXpGains,
+              stoneProduced: result.itemGains.STONE ?? 0,
+              bonusItemGains: {},
             });
           }
         }
@@ -178,8 +189,8 @@ export function useGameTickLoop() {
         }
       }
 
-      // Advance workshop queues over offline interval. Cap at 30 game days
-      // (matches facility production cap so all subsystems share one window).
+      // Advance queue-based facilities (workshop, alchemy) over offline interval.
+      // Cap at 30 game days (matches facility production cap so all subsystems share one window).
       const MAX_OFFLINE_REAL_SECONDS = (30 * GAME_DAY_REAL_MS) / 1000;
       const elapsedSecs = Math.min(MAX_OFFLINE_REAL_SECONDS, Math.floor(elapsedMs / 1000));
       const wsState = useGameStore.getState();
@@ -256,6 +267,27 @@ export function useGameTickLoop() {
               offlineWorkshopSummary: ws.summary,
             };
           });
+        }
+      }
+
+      // Advance alchemy lab craft queues over the offline window.
+      // Mirrors workshop offline pattern — items only appear if a job was queued.
+      const alState = useGameStore.getState();
+      const hasAlchemyWork = alState.facilities.some(
+        (f) => f.type === 'alchemy-lab' && f.level > 0 && (f.craftQueue?.length ?? 0) > 0,
+      );
+      if (elapsedSecs > 0 && hasAlchemyWork) {
+        const allMembers = alState.founder ? [alState.founder, ...alState.roster] : alState.roster;
+        const al = advanceAlchemyQueues(alState.facilities, allMembers, elapsedSecs);
+        const producedTotal = Object.values(al.itemGains).reduce((s, q) => s + (q ?? 0), 0);
+        if (producedTotal > 0 || al.acXpGains.length > 0) {
+          useGameStore.setState({ facilities: al.facilities });
+          for (const [itemId, qty] of Object.entries(al.itemGains)) {
+            if (qty && qty > 0) useGameStore.getState().addItem(itemId as ItemID, qty);
+          }
+          if (al.acXpGains.length > 0) {
+            useGameStore.getState().applyAlchemyProduction({ acXpGains: al.acXpGains });
+          }
         }
       }
     }
