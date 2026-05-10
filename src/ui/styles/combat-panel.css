@@ -308,6 +308,50 @@
   pointer-events: none;
 }
 
+/* ─── Atmospheric overlays (fog + vignette) ────────────────────────────────
+ * These sit atop the canvas viewport to simulate HD-2D depth atmosphere.
+ * pointer-events: none ensures they don't block HUD interaction.
+ */
+.combat-panel-battle__fog {
+  position: absolute;
+  inset: 0;
+  /* Bottom-heavy fog gradient: dark ground fog rises from bottom */
+  background: linear-gradient(
+    to top,
+    rgba(6, 4, 3, 0.45) 0%,
+    rgba(6, 4, 3, 0.18) 30%,
+    transparent 60%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+.combat-panel-battle__vignette {
+  position: absolute;
+  inset: 0;
+  /* Radial vignette: dark edges, transparent center */
+  background: radial-gradient(
+    ellipse 90% 85% at 50% 50%,
+    transparent 45%,
+    rgba(4, 3, 2, 0.55) 80%,
+    rgba(3, 2, 1, 0.8) 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Top-edge shadow to visually separate the bg top from panel header */
+.combat-panel-battle__top-shadow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(to bottom, rgba(4, 3, 2, 0.6) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 2;
+}
+
 .combat-panel-battle__footer {
   display: flex;
   justify-content: space-between;
