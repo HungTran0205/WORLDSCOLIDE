@@ -352,18 +352,6 @@
   z-index: 2;
 }
 
-/* ─── Skills overlay — floating panel bottom-left of viewport ──────────────
- * Positioned over the canvas so the player can see skills without the
- * panel layout pushing the viewport content up.
- */
-.combat-panel-battle__skills-overlay {
-  position: absolute;
-  bottom: var(--ink-space-3);
-  left: var(--ink-space-3);
-  z-index: 10;
-  /* Re-enable pointer events only for skills overlay (viewport is pointer-events:none) */
-  pointer-events: auto;
-}
 
 .combat-panel-battle__footer {
   display: flex;
@@ -531,13 +519,9 @@
   display: flex;
   gap: var(--ink-space-2);
   align-items: center;
-  padding: 5px 8px;
-  /* Dark transparent background for floating overlay style */
-  background: rgba(8, 6, 4, 0.78);
-  border: 1px solid rgba(201, 161, 74, 0.25);
-  border-radius: var(--ink-radius-sm);
+  padding: 6px var(--ink-space-3);
+  background: rgba(15, 12, 8, 0.6);
   flex-shrink: 0;
-  backdrop-filter: blur(2px);
 }
 
 .combat-skill-bar__label {
