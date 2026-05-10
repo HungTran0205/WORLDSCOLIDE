@@ -96,9 +96,12 @@ export function CombatPanelBattle() {
         <div className="combat-panel-battle__vignette" />
         <div className="combat-panel-battle__top-shadow" />
         <CombatPanelHud />
+        {/* Skills panel: floating bottom-left corner of the viewport */}
+        <div className="combat-panel-battle__skills-overlay">
+          <CombatPanelSkillBar />
+        </div>
       </div>
 
-      <CombatPanelSkillBar />
       <CombatPanelAllyRoster />
 
       <div className="combat-panel-battle__footer">
