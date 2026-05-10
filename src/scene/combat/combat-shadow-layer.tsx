@@ -36,9 +36,10 @@ function createShadowTexture(): CanvasTexture {
 // Pre-computed rotation: flat on the XZ ground plane
 const GROUND_QUAT = new Quaternion().setFromEuler(new Euler(-Math.PI / 2, 0, 0));
 
-// Oval shape: wider on X (0.55), squashed on depth axis (0.35) for HD-2D perspective feel
-const OVAL_BASE_X = 0.55;
-const OVAL_BASE_Z = 0.35;
+// Oval shape: wider on X (1.0), squashed on depth axis (0.65) for HD-2D perspective feel.
+// Phase 1 polish: scaled up from (0.55, 0.35) to match larger sprite base scale.
+const OVAL_BASE_X = 1.0;
+const OVAL_BASE_Z = 0.65;
 
 // Reusable temporaries — avoid per-frame allocation
 const _pos = new Vector3();
