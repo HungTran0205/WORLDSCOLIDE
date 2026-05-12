@@ -120,7 +120,7 @@ function SceneLighting() {
     return Math.abs(cameraTarget[0] - fx) <= 3.5 && Math.abs(cameraTarget[2] - fz) <= 3.5;
   });
 
-  return <ambientLight intensity={isInAlchemy ? 0.08 : 0.6} />;
+  return <ambientLight intensity={isInAlchemy ? 0.08 : 0.2} />;
 }
 
 export interface WorldProps {

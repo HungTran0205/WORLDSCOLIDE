@@ -35,9 +35,11 @@ export const COMBAT_CAM_ZOOM = 42;
  *  mid-panel. Baked from leva `lookAt Y 3.0`. */
 export const COMBAT_CAM_TARGET: [number, number, number] = [0, 3.0, 0];
 
-/** Base sprite world-height (un-foreshortened). Boss = 3.2, regular = 2.4. */
-export const COMBAT_SPRITE_BASE_SCALE = 2.4;
-export const COMBAT_SPRITE_BOSS_SCALE = 3.2;
+/** Base sprite world-height (un-foreshortened). Boss = 5.4, regular = 3.96.
+ *  Phase 1 polish: scale up ~1.65x from original to make sprites dominant.
+ *  History: original 2.4/3.2 → 4.4/6.0 (too big) → 3.96/5.4 (-10% trim). */
+export const COMBAT_SPRITE_BASE_SCALE = 3.96;
+export const COMBAT_SPRITE_BOSS_SCALE = 5.4;
 
 /**
  * Foreshortening factor per +1 unit of z (camera at +Z, looking down at origin).

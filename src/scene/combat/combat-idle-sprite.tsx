@@ -187,9 +187,12 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
     const liveScale = getCombatSpriteScale(entity.position.z, !!entity.isBoss);
     mesh.scale.x = liveScale;
     mesh.scale.y = liveScale;
-    // Anchor stays on ground — lift mesh center by half scaled height so the
-    // sprite's bottom edge sits on y=0 regardless of foreshortening factor.
-    mesh.position.y = liveScale * 0.5;
+    // Anchor stays on the platform top — lift mesh center by half scaled
+    // height above platform.y so the sprite's bottom edge sits on the
+    // platform surface regardless of foreshortening factor. x/z come from
+    // the prop binding (snapshot rerender every 200ms is sufficient given
+    // the engine no longer step-attacks in idle-panel mode).
+    mesh.position.y = (entity.position.y ?? 0) + liveScale * 0.5;
 
     // Pick atlas + advance frame.
     let atlas: SpriteAtlas;
@@ -259,8 +262,11 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
 
   // Initial anchor — useFrame overrides position.y + scale on first tick using
   // getCombatSpriteScale. Initial values use base scale so the mesh isn't
-  // mounted at scale 1×1 (avoids a one-frame size pop).
+  // mounted at scale 1×1 (avoids a one-frame size pop). Y baseline includes
+  // platform top (entity.position.y) so raised-platform spawns mount at the
+  // correct height instead of snapping up from y=0 on first frame.
   const initialScale = getCombatSpriteScale(entity.position.z, !!entity.isBoss);
+  const initialY = (entity.position.y ?? 0) + initialScale * 0.5;
   // Billboard the plane around X by -COMBAT_CAM_TILT_RAD so its +Z normal
   // tips UP toward the down-tilted camera ray. (Positive rotation around X
   // tips the normal toward -Y; we need toward +Y to face the camera that
@@ -268,7 +274,7 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
   return (
     <mesh
       ref={meshRef}
-      position={[entity.position.x, initialScale * 0.5, entity.position.z]}
+      position={[entity.position.x, initialY, entity.position.z]}
       rotation={[-COMBAT_CAM_TILT_RAD, 0, 0]}
       scale={[initialScale, initialScale, 1]}
     >

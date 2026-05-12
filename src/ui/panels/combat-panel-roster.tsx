@@ -1,8 +1,10 @@
 /**
- * Roster strips for the battle phase — horizontal HP-bar cards above the
- * canvas (enemies) and below it (allies). Mirrors the mockup layout so the
- * player sees aggregate party + threat status without hunting through the
- * floating HP bars over each sprite.
+ * Roster strips for the battle phase — slim HP-bar strips above (enemies) and
+ * below (allies) the canvas.
+ *
+ * Phase 1 polish: slim design — name + thin HP bar only.
+ * - Enemy strip: no portrait, no HP numbers
+ * - Ally strip: no shield icon, no HP numbers, no chrome border/background
  */
 
 import { useGameStore } from '@/game/state/store';
@@ -15,14 +17,10 @@ export function CombatPanelEnemyRoster() {
   const entities = useGameStore((s) => s.arenaEntities);
   const enemies = entities.filter((e) => !e.isAlly);
   if (enemies.length === 0) return null;
-  const aliveCount = enemies.filter((e) => e.currentHp > 0).length;
   return (
     <div className="combat-roster combat-roster--enemies">
-      <div className="combat-roster__label">
-        ENEMIES <span className="combat-roster__count">{aliveCount} ALIVE</span>
-      </div>
       <div className="combat-roster__list">
-        {enemies.map((e) => <RosterCard key={e.id} entity={e} />)}
+        {enemies.map((e) => <SlimEnemyCard key={e.id} entity={e} />)}
       </div>
     </div>
   );
@@ -34,24 +32,34 @@ export function CombatPanelAllyRoster() {
   if (allies.length === 0) return null;
   return (
     <div className="combat-roster combat-roster--allies">
-      {allies.map((e) => <RosterCard key={e.id} entity={e} />)}
+      {allies.map((e) => <SlimAllyCard key={e.id} entity={e} />)}
     </div>
   );
 }
 
-function RosterCard({ entity }: { entity: ArenaEntitySnapshot }) {
+/** Slim enemy card: name + thin HP bar, no portrait, no HP numbers */
+function SlimEnemyCard({ entity }: { entity: ArenaEntitySnapshot }) {
   const pct = Math.max(0, Math.min(1, entity.currentHp / Math.max(1, entity.maxHp)));
   const isDead = entity.currentHp <= 0;
-  const sideClass = entity.isAlly ? 'combat-card--ally' : 'combat-card--enemy';
-  const deadClass = isDead ? ' combat-card--dead' : '';
   return (
-    <div className={`combat-card ${sideClass}${deadClass}`}>
+    <div className={'combat-card combat-card--enemy combat-card--slim' + (isDead ? ' combat-card--dead' : '')}>
       <div className="combat-card__name" title={entity.name}>{entity.name}</div>
-      <div className="combat-card__bar">
+      <div className="combat-card__bar combat-card__bar--thin">
         <div className="combat-card__fill" style={{ width: `${pct * 100}%` }} />
       </div>
-      <div className="combat-card__hp">
-        {Math.max(0, Math.round(entity.currentHp))}/{entity.maxHp}
+    </div>
+  );
+}
+
+/** Slim ally card: name + thin HP bar, no shield icon, no HP numbers, no chrome */
+function SlimAllyCard({ entity }: { entity: ArenaEntitySnapshot }) {
+  const pct = Math.max(0, Math.min(1, entity.currentHp / Math.max(1, entity.maxHp)));
+  const isDead = entity.currentHp <= 0;
+  return (
+    <div className={'combat-card combat-card--ally combat-card--slim combat-card--no-chrome' + (isDead ? ' combat-card--dead' : '')}>
+      <div className="combat-card__name" title={entity.name}>{entity.name}</div>
+      <div className="combat-card__bar combat-card__bar--thin">
+        <div className="combat-card__fill" style={{ width: `${pct * 100}%` }} />
       </div>
     </div>
   );

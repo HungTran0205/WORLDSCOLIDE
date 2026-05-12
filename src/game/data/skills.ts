@@ -25,9 +25,12 @@ export const SKILL_DAM_LUOT: Skill = {
 };
 
 // --- Scholar skills ---
+// Hoả Cầu (Fireball) is naturally an AOE — wires Phase 08 telegraph through the
+// scholar archetype which all civs eventually have access to.
 export const SKILL_HOA_CAU: Skill = {
   id: 'hoa-cau', name: 'Hoả Cầu',
   damageMultiplier: 1.4, cooldownMs: 10000, autoEnabled: false,
+  aoeRadius: 2.2, aoeShape: 'circle',
 };
 export const SKILL_SUNG_SAC: Skill = {
   id: 'sung-sac', name: 'Sùng Sắc',

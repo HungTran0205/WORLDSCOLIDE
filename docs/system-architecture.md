@@ -111,6 +111,78 @@ For detailed implementation, see:
 
 ---
 
+## Combat Stage Specification (v1.28+ — Platformer Layout Foundation)
+
+**Status**: Phases 01–06 complete (phases 07+ deferred). Full authoring guide: [`combat-stage-spec.md`](./combat-stage-spec.md).
+
+Typed DSL decouples stage design from hardcoded global positions. Stages own platform geometry, spawn anchors, decals, and background references. Supports multi-tier side-scroller layouts with optional Y-axis spatial elevation.
+
+### Architecture Layers
+
+**Data layer** (`src/scene/combat/maps/`):
+- `stage-spec-types.ts` — 6 type interfaces (BgLayer, DecalPlacement, DecalDensitySpec, PlatformSpec, SpawnSlot, CombatStageSpec)
+- `stages/{stage-id}.ts` — pure data specs (examples: lolo-village-outskirt, broken-cliff-outskirt, the-forest)
+- `stage-formation-positions.ts` — helpers: `getStageSpec(mapId)`, `getStageSpawnPosition(spec, slotIndex, side)`
+- `combat-map-registry.ts` — registry: `STAGE_SPECS` map + `getStageSpec()` resolver
+
+**Render layer** (phases 04+):
+- `<StageRenderHost spec>` — single dispatch point for all stages (replaces pre-refactor per-stage hardcoded JSX)
+- `<CombatSceneShell>` — shell with render slots (background, ground, foreground)
+- `<CombatPlatform platformSpec>` — per-platform renderer (`<TiledFloor>` + `<SideWall>` + `<FloorDecal>` scatter)
+
+### Phases Progress
+
+| Phase | Status | Scope |
+|-------|--------|-------|
+| 01 | ✅ | Decal palette curation (FloorDecal component + asset split) |
+| 02 | ✅ | Tile palette reduction (50+ variants → 3–5 base + decal overlays) |
+| 03 | ✅ | Stage spec DSL (types + data, dormant) |
+| 04 | ✅ | Platform + SideWall + DecalScatter render components |
+| 05 | ✅ | Engine spatial-Y + spawn anchor reading (FORMATION_POSITIONS deprecated) |
+| 06 | ✅ | Multi-platform demo (broken-cliff-outskirt: allies y=0, enemies y=1.5) |
+| 07 | 🔄 | Cleanup + docs sync (current — this task) |
+
+**v1.28 Completion**: Tile palette flattened, stage layout spec-driven, spatial-Y enabled, broken-cliff-outskirt demo live. Engine now reads `spawnAnchors` from spec; `FORMATION_POSITIONS` deprecated but preserved for legacy non-spec code paths.
+
+### Key Concepts
+
+**Platform elevation** (y-axis):
+- `PlatformSpec.position: [x, y, z]` — center of platform top surface
+- Spawn anchors inherit Y from platform (e.g., upper-cliff at y=1.5 spawns allies/enemies there)
+- Raised platforms expose `sideTile` (vertical wall face) with `sideHeight` (defaults to position.y)
+- Sprites, shadows, AOE telegraphs all read entity.position.y for vertical offset
+
+**Decal strategy**:
+- **Manual** (`DecalPlacement[]`): exact world-coords for story moments (broken-edge accent, ritual circle center)
+- **Scatter** (`DecalDensitySpec[]`): seed-driven per-cell probability for ambient grunge (grass tufts, moss, cracks)
+- ❌ Avoid directional transition tiles (`grass-edge`) as random scatter — they appear striped
+
+**Dead code removed**:
+- `combat-arena-environment.tsx` — orphaned pre-D8 arena setup
+- `combat-tile-grid.tsx` — orphaned flat-grid asset helper
+
+### Render Flow Example
+
+```
+combat-scene.tsx resolves mapId
+    ↓
+getStageSpec(mapId) → CombatStageSpec
+    ↓
+<StageRenderHost spec={spec}>
+    ↓
+<CombatSceneShell> (4 render slots)
+    ↓
+For each platform in spec.platforms:
+    <CombatPlatform platformSpec>
+      ├─ <TiledFloor> (top surface)
+      ├─ <SideWall> (if sideTile)
+      └─ <FloorDecal>[] (manual + scatter)
+    ↓
+Engine spawns entities at getStageSpawnPosition(spec, slotIndex, side)
+```
+
+---
+
 ## GPU-Instanced Combat Rendering Architecture (v1.19 — WebGPU-Compatible)
 
 Combat rendering overhauled from per-entity React components to 1-draw-call GPU instancing. All sprite frames packed into mega-atlas. Animation & position state maintained in typed arrays (imperative, non-React).
