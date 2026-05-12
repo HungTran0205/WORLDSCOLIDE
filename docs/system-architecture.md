@@ -19,7 +19,7 @@
 │  │              UI Layer                                  │  │
 │  │  ┌──────────────────────────────────────────────────┐ │  │
 │  │  │ Panels: Quest | Roster | Build | Combat         │ │  │
-│  │  │ (Quest board has progress bars + detail modals) │ │  │
+│  │  │ (Quest board: unified split-pane + mobile swap)  │ │  │
 │  │  └──────────────────────────────────────────────────┘ │  │
 │  │  ┌──────────────────────────────────────────────────┐ │  │
 │  │  │ HUD: Toggle Bar | Save Status Badge             │ │  │
@@ -2238,8 +2238,10 @@ getRoomBounds(room: Room):
 ### `/ui/panels/` — Collapsible Panels
 | File | Purpose |
 |------|---------|
-| `quest-board.tsx` | Dispatch missions, track progress with member count "(selected/min+)" display, quest chain badges, civ filter |
-| `quest-detail-modal.tsx` | Modal showing quest info + party composition + multi-member rewards breakdown |
+| `quest-board.tsx` | Unified split-pane dispatch UI (desktop 55/45 list/detail; mobile single-pane swap). Parchment skin, "Return to Guild" close, wax-seal dispatch button. — REWRITTEN v1.28 |
+| `quest-card.tsx` | List-item card component for mission entries — NEW v1.28 |
+| `quest-detail-pane.tsx` | Right-side detail panel with empty state + party selection — NEW v1.28 |
+| `party-select-list.tsx` | Checkbox member selector for quest dispatch — NEW v1.28 |
 | `guild-roster.tsx` | Compact member list with character detail panel (NEW v1.6), civ badges, civilization filtering |
 | `character-detail-panel.tsx` | Left-side detail panel (avatar, equipment, auto-cast toggle, stats, civ info, passives) — NEW v1.6, ENHANCED v1.9 |
 | `build-menu.tsx` | Room selection UI (enter placement mode instead of direct placement) |
@@ -2264,7 +2266,9 @@ getRoomBounds(room: Room):
 |------|---------|
 | `title-screen.css` | Title screen layout + theme |
 | `hud.css` | HUD bar + badge styling + notification stack + mission progress bars |
-| `panels.css` | Panel container styling + quest detail modal |
+| `panels.css` | Panel container styling |
+| `quest-board.css` | Quest board unified split-pane + parchment skin + responsive mobile layout — NEW v1.28 |
+| `parchment.css` | Parchment theme for diegetic UI (Phase 1) |
 
 ### `/scene/` — 3D Rendering (React Three Fiber)
 | File | Purpose |
@@ -2345,6 +2349,111 @@ getRoomBounds(room: Room):
 |------|---------|
 | `audio-manager.ts` | Audio key registry + Howler.js management, includes 6 new keys (v1.9): BGM_COMBAT, SFX_CRIT, SFX_DODGE, SFX_DEATH, SFX_SKILL, SFX_RECRUIT |
 | `audio-keys.ts` | Enum of all audio keys |
+
+## Diegetic UI Pattern (Quest Board v1.28+)
+
+### Overview
+Quest Board implements a "diegetic-with-DOM-overlay" hybrid pattern: a 3D mesh object (drum in guild hall) serves as the physical trigger, while DOM layers provide tooltips, panels, and keyboard access. This bridges R3F and React UI ownership with clean state boundaries.
+
+### Component Hierarchy
+
+```
+game-screen.tsx (root, mounts global handlers)
+  ├─ scene/
+  │   └─ guild-hall.tsx
+  │       ├─ <InteractiveDrum /> (R3F mesh, raycasting, click handler)
+  │       │   └─ <DrumSparkleHint /> (conditional: !questBoardTutorialSeen)
+  │       └─ ...other guild hall objects
+  │
+  ├─ hud/
+  │   ├─ <KeyboardShortcuts /> (global Q/ESC capture-phase handler)
+  │   └─ ...other HUD elements
+  │
+  └─ overlays/
+      └─ <DrumTooltipArrow /> (conditional: !questBoardTutorialSeen)
+
+ui-store (Zustand):
+  - questBoardTutorialSeen (persisted localStorage)
+  - activePanel ('quests' | ... | null)
+  - resetTutorials action
+
+camera-slice (Redux):
+  - cameraFocus state ('guild-hall' | 'home' | ...)
+  - pendingQuestPanel bridge to activePanel
+
+game-screen.tsx (local):
+  - activePanel state-tracking (sync with ui-store)
+  - panel mount/unmount effects
+```
+
+### State Ownership
+
+| Concern | Owner | Storage |
+|---------|-------|---------|
+| Tutorial seen flag | `useUIStore` | localStorage `questBoardTutorialSeen` |
+| Active panel | `game-screen.tsx` local + `useUIStore` | React state (session-only) |
+| Camera focus (R3F bridge) | `camera-slice` | Redux store |
+| Drum interaction (R3F) | `interactive-drum.tsx` | useFrame + click handler |
+
+### Event Handling & Capture Ordering
+
+**Challenge:** Both `<HomeButton />` (HUD) and `<KeyboardShortcuts />` (global) want to handle ESC, but order matters.
+
+**Solution:** `KeyboardShortcuts` uses **capture-phase** with `stopImmediatePropagation()` to win ESC ordering:
+```typescript
+// hud/keyboard-shortcuts.tsx
+const handler = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && activePanel !== null) {
+    e.preventDefault();
+    e.stopImmediatePropagation(); // WIN vs HomeButton bubble
+    setActivePanel(null);
+  }
+};
+window.addEventListener('keydown', handler, true); // capture=true
+```
+
+**Result:** ESC closes active panel (capture) → HomeButton's bubble listener never fires.
+
+### Accessibility Baseline (WCAG 2.1 AA)
+
+**Dialog Semantics:**
+```tsx
+<div
+  role="dialog"
+  aria-modal="true"
+  aria-label="Quest Board"
+>
+  ...quest cards...
+</div>
+```
+
+**Keyboard Navigation:**
+- `Q` → toggle quest panel (or focus if sidebar)
+- `ESC` → close quest panel
+- `Tab` → cycle through quest cards → detail pane → dispatch button
+- `Enter` → select/dispatch
+
+**Screen Reader:**
+- Drum (R3F mesh): No DOM node; tooltip has `role="status" aria-live="polite"` (non-intrusive update announcement)
+- Quest cards: Plain `<button>` (native semantics, no custom `role="listbox"` override)
+- Dispatch button: Native `<button role="button">`
+
+**Reduced Motion:**
+```css
+@media (prefers-reduced-motion: reduce) {
+  .drum-tooltip-arrow { animation: none; }
+  .quest-detail-pane .animation { animation: none; }
+}
+```
+
+### Implementation Notes
+
+- **First-visit hint:** Sparkle particle (20 instances, R3F) + DOM tooltip. Both gated on `questBoardTutorialSeen`.
+- **Debouncing:** Quest card hover SFX uses 120ms debounce to avoid spammy audio feedback.
+- **Tooltip positioning:** Fixed % approximation (left: 50%, top: 45%). Upgrade to `Vector3.project()` if precision needed.
+- **Reduced-motion:** Sparkle particle can be disabled in settings; tooltip animation removed entirely.
+
+---
 
 ## Key Architectural Decisions
 

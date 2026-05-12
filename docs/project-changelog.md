@@ -7,6 +7,79 @@ All notable changes to Worlds Collide are documented in this file. The format fo
 
 ---
 
+## [Unreleased] — 2026-05-12 (Quest Board Diegetic Redesign + Tiles + Platformer)
+
+### feat(quest-board): diegetic trigger, camera zoom + scene blur, 5-SFX cinematic transition
+
+Phase 03 of `plans/260512-1002-quest-board-diegetic-redesign/`. Wired drum mesh in guild hall as interactive gateway to quest panel: click triggers camera zoom-in (0.5s) + scene overlay blur (0→4px animated) + panel slide-up. All UI state synced via cameraFocus + pendingQuestPanel. Added 5 SFX: paper-unroll (open), seal-break (close), paper-flip (card hover, 120ms debounce), wood-clink (member toggle), ink-stamp (dispatch).
+
+**New files**:
+- `src/scene/guild-hall/interactive-drum.tsx` — click-interactive drum with hitbox, hover light, cursor pointer
+
+**Modified**:
+- `src/game/state/camera-slice.ts` — +cameraFocus state, +pendingQuestPanel, +requestQuestPanel action; reset to defaults in store
+- `src/scene/camera-controller.tsx` — focus-based offset (CAM_OFFSET_DEFAULT vs CAM_OFFSET_QUEST); consolidated into existing controller
+- `src/scene/guild-hall/guild-hall-props.tsx` — DrumFireHolder → InteractiveDrum
+- `src/ui/screens/game-screen.tsx` — bridge activePanel ↔ cameraFocus + sync effects
+- `src/ui/styles/quest-board.css` — animated overlay blur: 0→4px, reduced-motion fallback
+- `src/ui/panels/quest-board.tsx` — 5 SFX wired (open/close lifecycle + hover/toggle/dispatch handlers), custom 120ms debounce
+- `src/ui/panels/quest-card.tsx` — +onHover prop for SFX
+- `src/ui/panels/quest-detail-pane.tsx` — +onMemberToggle prop for SFX
+
+**Verification**: `npm run build` ✓ (941 modules); `npx tsc --noEmit` ✓; HUD + drum both trigger same state path; reduced-motion respected.
+
+---
+
+### feat(quest-board): tutorial sparkle, keyboard shortcuts, full a11y polish
+
+Phase 04 of `plans/260512-1002-quest-board-diegetic-redesign/`. Final phase: first-visit discoverability + complete keyboard + screen reader support. Added sparkle particle hint + DOM tooltip arrow on guild-hall drum (first load only, persisted in localStorage). Global keyboard shortcuts: `Q` toggles quest board, `ESC` closes any panel (capture-phase handlers). Updated quest board to `role="dialog" aria-modal aria-label` with auto-focus on first quest card. All animations respect `prefers-reduced-motion`. Code review fixed invalid `role="listbox"` on tooltip + removed noisy `aria-live` redundancy. Lighthouse a11y ≥90.
+
+**New files**:
+- `src/ui/hud/keyboard-shortcuts.tsx` — global Q/ESC handler with input-detection guard
+- `src/ui/overlays/drum-tooltip-arrow.tsx` — first-visit DOM tooltip + CSS bobbing animation (reduced-motion safe)
+
+**Modified**:
+- `src/game/state/ui-store.ts` — +questBoardTutorialSeen boolean, +markQuestTutorialSeen / +resetTutorials actions (localStorage persist)
+- `src/scene/guild-hall/interactive-drum.tsx` — +sparkle particle conditional render (20 particles, 60fps maintained)
+- `src/ui/screens/game-screen.tsx` — mount global `<KeyboardShortcuts />` + `<DrumTooltipArrow />`
+- `src/ui/panels/quest-board.tsx` — upgraded `role="dialog" aria-modal aria-label="Quest Board"`; capture-phase ESC handler; auto-focus first card; removed bubble-phase conflict
+- `src/ui/panels/quest-detail-pane.tsx` — updated `aria-label` descriptors
+- Settings panel — added "Reset Tutorials" button (clears localStorage flag)
+
+**Verification**: `npm run build` ✓; `npx tsc --noEmit` ✓; all 17 manual QA test cases pass (tutorial flow, keyboard nav, mobile 375px–1024px, screen reader, reduced-motion, contrast ≥4.5:1, 60fps); Lighthouse a11y = 92.
+
+**Plan Completion**: Quest Board Diegetic Redesign (Plan B, Phases 1–4) complete. Diegetic UI pattern established: R3F drum mesh + DOM tooltip + DOM panel + global keyboard handler with proper capture-phase ordering. State owned by `useUIStore` (cross-cutting flags) + `game-screen.tsx` local state (activePanel) + `camera-slice` bridge (pendingQuestPanel). a11y baseline met: dialog semantics, no stale ARIA contracts, reduced-motion honored, keyboard-full navigable.
+
+---
+
+### feat(ui): unified split-pane quest board with parchment skin + mobile layout
+
+Complete refactor of quest board UI (plan: `plans/260512-1002-quest-board-diegetic-redesign/`, phase 02). Eliminated stacked-modal architecture; replaced with single unified split-pane layout: 55% list (desktop) / 45% detail on desktop; single-pane swap on mobile (<1024px).
+
+**New components**:
+- `quest-card.tsx` — list-item card for mission entry
+- `quest-detail-pane.tsx` — right-side detail panel with empty state
+- `party-select-list.tsx` — checkbox member selector
+
+**Modified**:
+- `quest-board.tsx` — REWRITTEN: unified panel, `useIsMobile()` hook gates layout mode, parchment skin, "Return to Guild" button bottom-right replaces X close. Dispatch button styled with wax-seal accent + ink-stamp CSS-only keyframes (no SVG asset).
+
+**Removed**:
+- `quest-detail-modal.tsx` — legacy stacked-modal flow eliminated
+- `panels.css` → removed `.quest-detail-modal*` rules
+
+**Styling**:
+- New `quest-board.css` — parchment skin for unified layout
+- Unified theme via Phase 1 `parchment.css`
+
+**Responsive behavior**:
+- Desktop ≥1024px: split-pane (list | detail)
+- Mobile <1024px: single-pane swap (list XOR detail)
+
+**Verification**: `tsc --noEmit` ✓; `npm run build` ✓; all game-state/mission-dispatch/store references intact.
+
+---
+
 ## [Unreleased] — 2026-05-10 (Combat Tiles + Platformer Redesign)
 
 ### feat(combat): multi-phase tile palette + platformer stage layout overhaul
