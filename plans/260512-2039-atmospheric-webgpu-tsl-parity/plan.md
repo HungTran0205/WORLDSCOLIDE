@@ -37,9 +37,9 @@ Close WebGPU parity gap in `atmospheric-webgpu-pass.tsx` (Bloom-only today) by a
 |----|-------|--------|--------|---------|
 | 01 | TSL pipeline scaffold + depth-spike | 0.5d | done | — |
 | 02 | Vignette + ColorGrade nodes | 1d | done | 01 |
-| 03 | ACES Tonemap node (chain tail) + TSL fog node | 0.75d | pending | 02 |
-| 04 | Chromatic Aberration node | 0.5d | pending | 03 |
-| 05 | Tilt-Shift node (Gaussian masked blur) | 1.5d | pending | 03 |
+| 03 | ACES Tonemap node (chain tail) + TSL fog node | 0.75d | done | 02 |
+| 04 | Chromatic Aberration node | 0.5d | in-progress | 03 |
+| 05 | Tilt-Shift node (Gaussian masked blur) | 1.5d | done | 03 |
 | 06 | Cross-renderer parity validation + perf | 0.5d | pending | 05 |
 
 Total: 4.5 dev-days (within researcher's 3–4d estimate plus buffer).

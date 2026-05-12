@@ -814,20 +814,22 @@
 - `src/game/state/guild-slice.ts` — Added `atmosphericEnabled: boolean` setting
 - `src/scene/world.tsx` — Wrapped scene with `<AtmosphereProvider>`
 
-### World Atmospheric Composer & Effect Stack (Phase 02 — 2026-05-12)
+### World Atmospheric Composer & Effect Stack (Phase 02–05 — 2026-05-12)
 - **Replaces** static `src/scene/world-bloom-post.tsx` with preset-driven composer `src/scene/atmospheric/world-atmospheric-post.tsx`.
 - **WebGL Stack**: N8AO → DOF (dynamic room-tracking target) → TiltShift → Bloom → GodRays → HueSat → BrightnessContrast → Vignette → Noise → ChromaticAberration → ToneMapping (ACES Filmic, last).
-- **WebGPU Path**: Bloom + ToneMapping only (TSL parity gap documented); logs warning once if full-stack requested.
+- **WebGPU Path** (Phase 05): TSL chain (Bloom → TiltShift → ColorGrade → Vignette → ChromaticAberration → ACES ToneMapping); functional parity for five core effects achieved (DOF/GodRays remain WebGL-only). TiltShift: Gaussian masked blur, SIGMA=4, half-res, mask formula `smoothstep(0, 0.3, abs(uv.y - 0.5) - halfWidth)` matches WebGL exactly.
 - **Quality Tier**: `graphicsQuality='low'` strips DOF, GodRays, ChromaticAberration, LUT; Bloom + Noise + ToneMapping always on.
 - **Per-Room Tuning**: DOF `focalLength` & `bokehScale` per preset; target syncs auto from camera controller lerp (no preset transition needed on room change).
+- **RT Leak Fix** (Phase 05): `chainDisposables` array in pass closure collects TempNode dispose closures for cleanup on unmount.
 
 **Key Files (New)**:
 - `src/scene/atmospheric/world-atmospheric-post.tsx` — Composer entry wrapping effect stack or WebGPU pass
 - `src/scene/atmospheric/atmospheric-effect-stack.tsx` — WebGL effect children chain
-- `src/scene/atmospheric/atmospheric-webgpu-pass.tsx` — TSL chain: bloom → colorGrade → vignette → ACES; refs-based preset sync
+- `src/scene/atmospheric/atmospheric-webgpu-pass.tsx` — TSL chain: bloom → tilt-shift → colorGrade → vignette → chromAb → ACES; refs-based preset sync; chainDisposables for RT cleanup
 - `src/scene/atmospheric/tsl/vignette-node.ts` — TSL vignette node (pmndrs DEFAULT radial darkening)
 - `src/scene/atmospheric/tsl/color-grade-node.ts` — TSL color-grade node (hue/saturation/brightness/contrast chained)
-- `src/scene/atmospheric/tsl/types.ts` — `TslChainHolder` + uniform interfaces (bloom, vignette, colorGrade required in Phase 02; fog/chromAb/tiltShift optional future)
+- `src/scene/atmospheric/tsl/tilt-shift-node.ts` — TSL tilt-shift node (Gaussian masked blur, SIGMA=4, half-res, strength-driven mask)
+- `src/scene/atmospheric/tsl/types.ts` — `TslChainHolder` + uniform interfaces (bloom, vignette, colorGrade, tiltShift required; chromAb optional)
 - `src/scene/atmospheric/atmospheric-leva-controls.ts` — Dev tuning multipliers schema
 
 **Key Files (Modified)**:

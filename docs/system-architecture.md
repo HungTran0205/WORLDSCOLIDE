@@ -2929,7 +2929,7 @@ export interface GameSettings {
 **World Post-Processing** (`src/scene/atmospheric/world-atmospheric-post.tsx`):
 - Preset-driven composer replaces static bloom. Reads active room via `useAtmosphere()` context.
 - **WebGL**: Full effect stack (N8AO → DOF → TiltShift → Bloom → GodRays → HueSat → BrightnessContrast → Vignette → Noise → ChromaticAberration → ToneMapping).
-- **WebGPU** (Phase 02+): TSL chain (Bloom → ColorGrade → Vignette → ACES ToneMapping); warns if full-stack requested. ColorGrade includes hue/saturation/brightness/contrast; vignette uses pmndrs DEFAULT radial darkening.
+- **WebGPU** (Phase 05): TSL chain (Bloom → TiltShift → ColorGrade → Vignette → ChromaticAberration → ACES ToneMapping); functional parity for five core effects achieved. TiltShift uses Gaussian masked blur (SIGMA=4, half-res), mask formula: `smoothstep(0, 0.3, abs(uv.y - 0.5) - halfWidth)`. ColorGrade includes hue/saturation/brightness/contrast; vignette uses pmndrs DEFAULT radial darkening. DOF/GodRays remain WebGL-only. RT leak fixed via `chainDisposables` array collecting TempNode dispose closures.
 - Per-room DOF target auto-syncs via camera controller lerp; no focus-point popping on room transitions.
 - Quality tier: `graphicsQuality='low'` disables DOF, GodRays, ChromaticAberration, LUT; WebGPU chain always runs per preset.
 - **Preset Sync Pattern**: Refs-based (`presetRef`/`overridesRef`) prevent seed-race during async TSL node import; `applyPreset()` helper syncs uniform `.value` in async tail + per-preset useEffect.
@@ -3053,10 +3053,10 @@ Each component: useGraphicsQuality() → tier-aware spawn counts
 - **Phase 02**: ✅ Post-FX stack (bloom, tilt-shift, DOF, color-grading, vignette, noise) mounted from `useAtmosphere()`. Full WebGL effect chain; WebGPU TSL chain (Bloom → ColorGrade → Vignette → ACES ToneMapping). Per-room DOF target auto-sync via camera lerp. Refs-based preset sync prevents mutation race during async TSL import.
 - **Phase 03**: ✅ Ambient particle system (dust-motes, embers, magic-motes, pollen) per preset. Deterministic mulberry32 PRNG. Tier-aware counts (high: 100/80/60/40; low: 30/20/15/10). Additive blending, wrap-on-bounds lifecycle. Mounted in `world.tsx` via `<AmbientParticlesRouter>`.
 - **Phase 04**: ✅ Per-room atmospheric presets tuned across 9 guild hall rooms. Hemisphere light conditionally mounted in `AtmosphereProvider` (reads `hemisphereLight` from preset; null = zero cost). Optional `mood?: string` field added to `AtmospherePreset` (documentation-only).
+- **Phase 05 (WebGPU TSL Parity)**: ✅ Tilt-shift TSL node (Gaussian masked blur, SIGMA=4, half-res). Mask formula matches WebGL exactly. Chain order: Bloom → TiltShift → ColorGrade → Vignette → ChromaticAberration → ACES. RT leak fix via `chainDisposables` array for TempNode cleanup.
 
 ### Future Phases
 
-- **Phase 05**: Volumetric lighting and god rays (advanced atmospheric lighting)
 - **Phase 06**: Diegetic UI lighting integration; auto-enable on high-tier graphics; profiling & perf validation
 
 ## Browser Compatibility

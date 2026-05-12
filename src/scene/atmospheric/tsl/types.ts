@@ -57,12 +57,12 @@ export interface ChromaticAberrationUniforms {
   offset: TslUniformHandle<{ x: number; y: number }>;
 }
 
-/** Tilt-Shift node uniforms — populated in Phase 05. */
+/** Tilt-Shift node uniforms — populated in Phase 05.
+ *  `enabled: false` writes `strength.value = 0` (mask collapses to all-sharp).
+ *  Focus-band half-width is derived from strength on-GPU; no separate uniform. */
 export interface TiltShiftUniforms {
-  /** Overall blur strength (0..1). */
+  /** Overall blur strength (0..1). 0 = all sharp / disabled. */
   strength: TslUniformHandle<number>;
-  /** Y-axis focus band center + width packed as vec2. */
-  focusBand: TslUniformHandle<{ x: number; y: number }>;
 }
 
 /**

@@ -46,6 +46,25 @@ function applyPreset(
   holder.colorGrade.contrast.value = preset.colorGrade.contrast;
   holder.vignette.offset.value = preset.vignette.offset;
   holder.vignette.darkness.value = preset.vignette.darkness;
+  if (holder.chromaticAberration) {
+    // `chromaticAberration: null` OR `enabled: false` → zero the offset so the
+    // three samples collapse to one UV. No chain rebuild required.
+    const ca = preset.chromaticAberration;
+    if (ca?.enabled) {
+      holder.chromaticAberration.offset.value.x = ca.offset[0];
+      holder.chromaticAberration.offset.value.y = ca.offset[1];
+    } else {
+      holder.chromaticAberration.offset.value.x = 0;
+      holder.chromaticAberration.offset.value.y = 0;
+    }
+  }
+  if (holder.tiltShift) {
+    // `enabled: false` → strength = 0 → focusBandHalfWidth = 0.5 → mask = 0 →
+    // output equals sharp input everywhere. No chain rebuild required.
+    holder.tiltShift.strength.value = preset.tiltShift.enabled
+      ? preset.tiltShift.strength
+      : 0;
+  }
 }
 
 let depthSpikeLogged = false;
@@ -68,6 +87,11 @@ export function AtmosphericWebGPUPass({ preset, overrides }: AtmosphericWebGPUPa
   const setup = useMemo(() => {
     let cancelled = false;
     const holder: { current: TslChainHolder | null } = { current: null };
+    // TSL TempNodes (e.g. `GaussianBlurNode`) own intermediate `RenderTarget`s
+    // that `PostProcessing.dispose()` does NOT walk. Each node returns its
+    // own dispose closure; we collect them here and invoke alongside
+    // `post.dispose()` on unmount/HMR to avoid GPU texture leaks.
+    const chainDisposables: Array<() => void> = [];
 
     (async () => {
       const { PostProcessing } = await import('three/webgpu');
@@ -76,6 +100,10 @@ export function AtmosphericWebGPUPass({ preset, overrides }: AtmosphericWebGPUPa
       const BloomNode = (BloomNodeMod as any).default ?? BloomNodeMod;
       const { vignetteNode } = await import('./tsl/vignette-node');
       const { colorGradeNode } = await import('./tsl/color-grade-node');
+      const { acesTonemapNode } = await import('./tsl/aces-tonemap-node');
+      const { chromaticAberrationNode } = await import('./tsl/chromatic-aberration-node');
+      const { tiltShiftNode } = await import('./tsl/tilt-shift-node');
+      const { Vector2 } = await import('three');
       if (cancelled) return;
 
       const post = new (PostProcessing as any)(gl);
@@ -112,17 +140,27 @@ export function AtmosphericWebGPUPass({ preset, overrides }: AtmosphericWebGPUPa
       const contU = (uniform as any)(0);
       const vignetteOffsetU = (uniform as any)(0);
       const vignetteDarknessU = (uniform as any)(0);
+      // vec2 uniform — seeded to (0,0) so all 9 presets (which set
+      // `chromaticAberration: null`) produce a no-op pass-through until a
+      // designer flips one on. `applyPreset` writes the real x/y below.
+      const chromAbOffsetU = (uniform as any)(new Vector2(0, 0));
+      // Tilt-shift strength uniform — seeded to 0 (disabled). `applyPreset`
+      // writes the real value (or 0 if `tiltShift.enabled === false`).
+      const tiltShiftStrengthU = (uniform as any)(0);
 
       // Build chain via single mutable local. Each phase reassigns once.
-      // Order must be: bloom → colorGrade → vignette → fog → chromAb → tiltShift → aces.
-      // (Matches pmndrs WebGL stack ordering — see atmospheric-effect-stack.tsx.)
+      // WebGL stack order: DOF → TiltShift → Bloom → grade → Vignette → ChromAb → tonemap.
+      // On WebGPU we don't have DOF, so insert TiltShift right after Bloom-add
+      // (still before grade — matches "tilt-shift before color grade" intent).
       let chain: any = sceneColor.add(bloomNode);
+      const tilt = tiltShiftNode(chain, tiltShiftStrengthU);
+      chain = tilt.output;
+      chainDisposables.push(tilt.dispose);
       chain = colorGradeNode(chain, hueU, satU, brightU, contU);
       chain = vignetteNode(chain, vignetteOffsetU, vignetteDarknessU);
-      // Phase 03: chain = fog(chain, sceneDepth, holder.fog = { near, far, color, density })
-      // Phase 04: chain = chromAb(chain, holder.chromaticAberration = { offset })
-      // Phase 05: chain = tiltShift(chain, holder.tiltShift = { strength, focusBand })
-      // Phase 03 (chain tail, ALWAYS LAST): chain = aces(chain)
+      chain = chromaticAberrationNode(chain, chromAbOffsetU);
+      // === ACES MUST BE LAST. Insert new effects ABOVE this line. ===
+      chain = acesTonemapNode(chain);
 
       post.outputNode = chain;
       holder.current = {
@@ -134,6 +172,8 @@ export function AtmosphericWebGPUPass({ preset, overrides }: AtmosphericWebGPUPa
         },
         colorGrade: { hue: hueU, saturation: satU, brightness: brightU, contrast: contU },
         vignette: { offset: vignetteOffsetU, darkness: vignetteDarknessU },
+        chromaticAberration: { offset: chromAbOffsetU },
+        tiltShift: { strength: tiltShiftStrengthU },
       };
       // Seed uniforms with the LATEST preset (refs always point at current
       // prop values, even if React rendered new ones during the async window).
@@ -144,6 +184,8 @@ export function AtmosphericWebGPUPass({ preset, overrides }: AtmosphericWebGPUPa
       getCurrent: () => holder.current,
       dispose: () => {
         cancelled = true;
+        for (const d of chainDisposables) d();
+        chainDisposables.length = 0;
         const c = holder.current;
         if (c) {
           c.post.dispose?.();

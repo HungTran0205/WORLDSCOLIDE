@@ -87,6 +87,36 @@ Implements Phase 03 of HD-2D atmospheric depth plan: 4 production particle compo
 
 **Plan reference**: `plans/260512-1520-guild-hall-hd2d-atmospheric-depth/phase-03-ambient-particles.md`
 
+### feat(atmospheric/webgpu): ACES tonemap TSL node closes parity for four core effects (Phase 03)
+
+WebGPU post-processing achieves functional parity with WebGL for Bloom, ColorGrade, Vignette, and ACES Filmic tonemap. Phase 03 of `atmospheric-webgpu-tsl-parity` plan (separate effort, 2026-05-12): adds `acesTonemapNode(input)` TSL node (Narkowicz approximation, param-free, must be chain tail) and removes parity-gap console warning from `world-atmospheric-post.tsx`. WebGPU chain now reads: Bloom → ColorGrade → Vignette → ACES Tonemap. Future phases (04/05) will add Chromatic Aberration and Tilt-Shift before the ACES guard line; DOF and GodRays remain WebGL-only.
+
+**New files**:
+- `src/scene/atmospheric/tsl/aces-tonemap-node.ts` — ACES Filmic tone mapping (Narkowicz formula, ~10 LOC, no uniforms)
+
+**Modified**:
+- `src/scene/atmospheric/atmospheric-webgpu-pass.tsx` — Append ACES at chain tail with guard comment "ACES MUST BE LAST"
+- `src/scene/atmospheric/world-atmospheric-post.tsx` — Removed `webgpuParityWarned` flag and `WebGPUWithParityWarning` wrapper; WebGPU branch returns pass directly
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; visual diff WebGL vs WebGPU on 3 representative rooms (guild-hall, workshop, infirmary) shows functional parity within ±2 LSB per channel.
+
+**Plan reference**: `plans/260512-2039-atmospheric-webgpu-tsl-parity/phase-03-aces-tonemap-node.md`
+
+### feat(atmospheric/webgpu): chromatic aberration TSL node — opt-in per preset (Phase 04)
+
+Phase 04 of atmospheric-webgpu-tsl-parity: adds `chromaticAberrationNode(input, offsetU)` TSL node (UV-offset RGB split, matches pmndrs convention). Inserted before ACES guard; all 9 current presets pass `chromaticAberration: null` → zero visible behavior change. Known parity deviation: pmndrs WebGL multiplies Y offset by screen aspect; WebGPU node uses offset unscaled (revisit Phase 06 if designer enables chromAb).
+
+**New files**:
+- `src/scene/atmospheric/tsl/chromatic-aberration-node.ts` — RGB split via `convertToTexture(input)` + offset UV sampling
+
+**Modified**:
+- `src/scene/atmospheric/atmospheric-webgpu-pass.tsx` — +`chromAbOffsetU = uniform(vec2(0, 0))`, insert `chromaticAberrationNode(chain, chromAbOffsetU)` before ACES, add to holder + applyPreset sync logic
+- `src/scene/atmospheric/tsl/types.ts` — +`chromaticAberration: { offset: Uniform<Vector2> }` on `TslChainHolder`
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; visual test (temp workshop preset flip to `enabled: true`) shows RGB fringing; all presets remain at `chromaticAberration: null` → zero diff.
+
+**Plan reference**: `plans/260512-2039-atmospheric-webgpu-tsl-parity/phase-04-chromatic-aberration-node.md`
+
 ### feat(atmospheric): per-room preset tuning; hemisphereLight conditional mount (Phase 04)
 
 Phase 04 of atmospheric depth system: replaces baseline preset stubs with 9 per-room tuned presets across guild hall rooms. Adds optional `mood?: string` field to `AtmospherePreset` for designer documentation (runtime no-op). Conditional `<hemisphereLight>` mount in `AtmosphereProvider` reads `hemisphereLight` config from lerped preset; rooms with null skip entirely (zero cost). Skylight & groundColor properties lerp smoothly over 500ms per preset transitions.
@@ -98,6 +128,21 @@ Phase 04 of atmospheric depth system: replaces baseline preset stubs with 9 per-
 - `src/scene/atmospheric/atmosphere-context.tsx` — Conditional `<hemisphereLight color={hemi.skyColor} groundColor={hemi.groundColor} intensity={hemi.intensity} />` mount gated by lerped preset presence
 
 **Verification**: `npm run typecheck` ✓; `npm run lint` ✓; all 264 tests pass; zero visual regressions.
+
+### feat(atmospheric/webgpu): tilt-shift TSL node + chainDisposables RT leak fix (Phase 05)
+
+Phase 05 of atmospheric-webgpu-tsl-parity: adds `tiltShiftNode(input, strength)` TSL node (Gaussian masked blur, separable 2-pass, SIGMA=4, resolutionScale=0.5). Mask uses `focusBandHalfWidth = (1 - strength) * 0.5`, formula: `smoothstep(0, 0.3, abs(uv.y - 0.5) - halfWidth)` matches pmndrs WebGL `focusArea = 1 - strength, feather = 0.3` exactly. Disabled state: `tiltShift.enabled === false` → strength=0 → output equals sharp input (no chain rebuild). Inserted in WebGPU chain before colorGrade. **RT Leak Fix**: Introduced `chainDisposables` array in pass closure to collect dispose closures from TSL TempNode children (PostProcessing.dispose() doesn't walk child tree). Tilt-shift returns `{ output, dispose }` tuple; closure fed to array for cleanup on unmount.
+
+**New files**:
+- `src/scene/atmospheric/tsl/tilt-shift-node.ts` — TSL tilt-shift node (Gaussian masked blur, mask-strength formula, returns output + dispose)
+
+**Modified**:
+- `src/scene/atmospheric/atmospheric-webgpu-pass.tsx` — Insert tilt-shift after bloom, before colorGrade; update chain order to bloom → tilt-shift → colorGrade → vignette → chromAb → ACES; add `chainDisposables` array + collect dispose closures from TempNodes
+- `src/scene/atmospheric/tsl/types.ts` — +`tiltShift: { strength: Uniform<number>, enabled: Uniform<boolean> }` on `TslChainHolder`
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; visual test shows tilt-shift blur on y-axis with masked hard/soft transitions; disabled state returns sharp input; no RT leaks on preset switch. All 264 tests pass.
+
+**Plan reference**: `plans/260512-2039-atmospheric-webgpu-tsl-parity/phase-05-tilt-shift-node.md`
 
 ---
 
