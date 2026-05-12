@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { useGameStore } from '@/game/state/store';
+import { useUiStore } from '@/game/state/ui-store';
 import { setMusicVolume, setSFXVolume, setMute } from '@/audio/audio-manager';
 import { saveManager } from '@/game/save/save-manager';
 import { saveSlot } from '@/game/save/save-storage';
@@ -19,9 +20,11 @@ interface SettingsPanelProps {
 export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) {
   const settings = useGameStore((s) => s.settings);
   const updateSettings = useGameStore((s) => s.updateSettings);
+  const resetTutorials = useUiStore((s) => s.resetTutorials);
   const [confirmReset, setConfirmReset] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState(false);
+  const [tutorialsReset, setTutorialsReset] = useState(false);
 
   const handleShadows = (enabled: boolean) => {
     if (enabled === settings.shadowsEnabled) return;
@@ -202,6 +205,20 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
         )}
         {importSuccess && (
           <div style={{ color: '#4caf50', fontSize: '0.8rem', marginTop: 6 }}>Import successful</div>
+        )}
+      </div>
+
+      <div className="panel-section">
+        <button
+          className="panel-btn"
+          onClick={() => { resetTutorials(); setTutorialsReset(true); }}
+        >
+          Reset Tutorials
+        </button>
+        {tutorialsReset && (
+          <div style={{ color: '#4caf50', fontSize: '0.8rem', marginTop: 6 }}>
+            Tutorial hints will reappear on next visit.
+          </div>
         )}
       </div>
 

@@ -33,6 +33,8 @@ import { GUILD_HALL_CAMERA_TARGET } from '@/game/state/camera-slice';
 import { playBGM } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
 import type { PanelId } from '@/ui/hud/panel-toggle';
+import { KeyboardShortcuts } from '@/ui/hud/keyboard-shortcuts';
+import { DrumTooltipArrow } from '@/ui/overlays/drum-tooltip-arrow';
 import { DEBUG_MODE } from '@/debug';
 import { FacilitySlotDebugPanel } from '@/scene/facility/facility-slot-debug-panel';
 
@@ -168,6 +170,24 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
     }
   }, [pendingFacilityPanel, clearPendingFacilityPanel]);
 
+  // Bridge: drum mesh click → quest panel (sets cameraFocus='quest-board' via slice action)
+  const pendingQuestPanel = useGameStore((s) => s.pendingQuestPanel);
+  const clearPendingQuestPanel = useGameStore((s) => s.clearPendingQuestPanel);
+  const setCameraFocus = useGameStore((s) => s.setCameraFocus);
+  useEffect(() => {
+    if (pendingQuestPanel) {
+      setActivePanel('quests');
+      clearPendingQuestPanel();
+    }
+  }, [pendingQuestPanel, clearPendingQuestPanel]);
+
+  // Keep cameraFocus aligned with active panel — HUD button or drum click both
+  // funnel through here so the cinematic framing applies either way. Reset to
+  // 'default' whenever the quest panel is closed.
+  useEffect(() => {
+    setCameraFocus(activePanel === 'quests' ? 'quest-board' : 'default');
+  }, [activePanel, setCameraFocus]);
+
   // Switch BGM when scene changes
   useEffect(() => {
     playBGM(gameScene === 'combat-arena' ? AUDIO.BGM_COMBAT : AUDIO.BGM_GUILD);
@@ -229,6 +249,8 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
             />
           )}
           <HomeButton />
+          <KeyboardShortcuts activePanel={activePanel} setActivePanel={setActivePanel} />
+          <DrumTooltipArrow activePanel={activePanel} />
         </>
       )}
 
