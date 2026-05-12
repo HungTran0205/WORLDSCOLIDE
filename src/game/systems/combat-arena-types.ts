@@ -7,7 +7,9 @@ import type { CombatEntity } from './combat-types';
 
 /** CombatEntity with all spatial fields guaranteed present (arena code type safety) */
 export interface ArenaEntity extends CombatEntity {
-  position: { x: number; z: number };
+  /** Always present in arena. y = platform-top world y (0 for flat stages,
+   *  >0 for raised platform spawns from stage spec). */
+  position: { x: number; y: number; z: number };
   targetId: string | null;
   attackRange: number;
   moveSpeed: number;
@@ -17,6 +19,10 @@ export interface ArenaEntity extends CombatEntity {
   animStateUntil: number;
   /** Formation home position — entity returns here after each attack */
   homeX: number;
+  /** Home Y — platform top y this entity spawned on. Status-effect skipTurn
+   *  resets position.y to this so a stunned entity that was mid-step can't
+   *  land mid-air after the reset. */
+  homeY: number;
   homeZ: number;
   /** Summoner Wars step-attack state machine */
   attackMoveState: AttackMoveState;
@@ -95,7 +101,14 @@ export function getWaveBounds(waveXOffset: number): ArenaBounds {
  *  Column X widened (front/back gap = 5u, ally/enemy gap = 10u) so the wider
  *  ortho frustum (zoom 38) still has battlefield centered with bg breathing
  *  room. Lane Z drives AI/positioning; the combat-panel sprite renderer
- *  projects Z to screen-Y so lanes also separate vertically. */
+ *  projects Z to screen-Y so lanes also separate vertically.
+ *
+ *  @deprecated Spec-driven stages own spawn positions via
+ *  `getStageSpec(mapId)` + `getStageSpawnPosition(spec, slotIndex, side)`.
+ *  Kept as engine fallback when no stageSpec is supplied (legacy code paths,
+ *  defensive default in `combat-engine.resolveSpawn`). New code must NOT
+ *  reference this — author a stage spec under `src/scene/combat/maps/stages/`
+ *  instead. Plan: 260510-1611-combat-tiles-platformer-redesign. */
 export const FORMATION_POSITIONS = {
   ally: {
     front: [
@@ -123,7 +136,12 @@ export const FORMATION_POSITIONS = {
   },
 } as const;
 
-/** Convert formation slot index to world position */
+/** Convert formation slot index to world position.
+ *
+ *  @deprecated Use `getStageSpawnPosition(spec, slotIndex, side)` from
+ *  `src/scene/combat/maps/stage-formation-positions.ts`. Engine still calls
+ *  this as a fallback when stageSpec is missing (defensive); new code must
+ *  go through the stage spec. Plan: 260510-1611-combat-tiles-platformer-redesign. */
 export function getFormationPosition(slotIndex: number, side: 'ally' | 'enemy'): { x: number; z: number } {
   const positions = FORMATION_POSITIONS[side];
   if (slotIndex < 3) return { ...positions.front[slotIndex] };

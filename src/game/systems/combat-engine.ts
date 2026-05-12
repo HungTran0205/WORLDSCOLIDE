@@ -9,6 +9,9 @@ import type { EnemyTemplate } from '@/game/data/enemies';
 import type { CombatEvent, CombatTick, CombatResult, CombatOutcome } from './combat-types';
 import type { ArenaEntity, Formation, TargetPriority } from './combat-arena-types';
 import { getFormationPosition, DEFAULT_TARGET_PRIORITY } from './combat-arena-types';
+import type { CombatStageSpec } from '@/scene/combat/maps/stage-spec-types';
+import { getStageSpawnPosition } from '@/scene/combat/maps/stage-formation-positions';
+import type { ArenaSpawnPos } from './combat-entity-factory';
 import { calcAutoAttackDamage, calcSkillDamage, rollCrit } from './combat-formulas';
 import { applyEffectTick } from './combat-effects';
 import {
@@ -48,6 +51,9 @@ export class CombatEngine {
   totalSyringesLoaded = 0;
   /** Syringes actually consumed during combat — deduct this from inventory at combat end */
   syringesConsumed = 0;
+  /** Active stage spec — drives spawn anchors (and y per platform). null →
+   *  fallback to legacy FORMATION_POSITIONS (y=0). Set during init(). */
+  private stageSpec: CombatStageSpec | null = null;
 
   /** Initialize combat from formation + enemies */
   init(
@@ -56,6 +62,7 @@ export class CombatEngine {
     enemyTemplates: EnemyTemplate[],
     hpMultiplier = 1,
     inventory?: InventoryState,
+    stageSpec?: CombatStageSpec,
   ): void {
     this.entities = [];
     this.time = 0;
@@ -70,6 +77,7 @@ export class CombatEngine {
     this.nextEnemyIndex = 0;
     this.totalSyringesLoaded = 0;
     this.syringesConsumed = 0;
+    this.stageSpec = stageSpec ?? null;
 
     // Distribute available syringes evenly among formation members who have loadout configured
     const formationMembers = formation
@@ -90,14 +98,14 @@ export class CombatEngine {
       if (!memberId) return;
       const member = members.find(m => m.id === memberId);
       if (!member) return;
-      const pos = getFormationPosition(slotIndex, 'ally');
+      const pos = this.resolveSpawn(slotIndex, 'ally');
       this.entities.push(memberToArenaEntity(member, pos, syringeMap.get(member.id) ?? 0));
     });
 
     // Place enemies with optional hp scaling
     enemyTemplates.forEach((tmpl, i) => {
       const slotIndex = i % 6;
-      const pos = getFormationPosition(slotIndex, 'enemy');
+      const pos = this.resolveSpawn(slotIndex, 'enemy');
       this.entities.push(enemyToArenaEntity(tmpl, this.nextEnemyIndex++, pos, hpMultiplier));
     });
 
@@ -111,10 +119,25 @@ export class CombatEngine {
   addEnemies(templates: EnemyTemplate[], xOffset: number, hpMultiplier: number): void {
     templates.forEach((tmpl, i) => {
       const slotIndex = i % 6;
-      const pos = getFormationPosition(slotIndex, 'enemy');
+      const pos = this.resolveSpawn(slotIndex, 'enemy');
       pos.x += xOffset;
       this.entities.push(enemyToArenaEntity(tmpl, this.nextEnemyIndex++, pos, hpMultiplier));
     });
+  }
+
+  /** Resolve a spawn slot to {x,y,z}. Prefers stage spec when present (y from
+   *  the platform top); falls back to legacy FORMATION_POSITIONS (y=0) for
+   *  legacy callers and tests without a stage. */
+  private resolveSpawn(slotIndex: number, side: 'ally' | 'enemy'): ArenaSpawnPos {
+    if (this.stageSpec) {
+      try {
+        return getStageSpawnPosition(this.stageSpec, slotIndex, side);
+      } catch {
+        // Spec missing the slot → fall through to legacy.
+      }
+    }
+    const legacy = getFormationPosition(slotIndex, side);
+    return { x: legacy.x, y: 0, z: legacy.z };
   }
 
   /** Advance combat by dt milliseconds. Call from useFrame. */
@@ -314,6 +337,7 @@ export class CombatEngine {
     }
     if (effectResult.skipTurn) {
       entity.position.x = entity.homeX;
+      entity.position.y = entity.homeY;
       entity.position.z = entity.homeZ;
       entity.attackMoveState = 'home';
     }
@@ -487,6 +511,25 @@ export class CombatEngine {
     const isCrit2 = rollCrit(entity.stats.LCK);
     let skillDmg = calcSkillDamage(baseDmg, entity.skill.damageMultiplier, entity.stats.DEX);
     if (isCrit2) skillDmg = Math.floor(skillDmg * entity.critDmg);
+
+    // AOE telegraph — emit BEFORE damage so the React subscriber can spawn the
+    // ground decal in the same tick the skill animation begins. Damage is still
+    // applied instantly (Phase 08 v1: cosmetic only, no wind-up gating).
+    // Color defaults to red ('danger') regardless of caster faction — an ally
+    // offensive AOE on enemies is still a danger zone visually. Use aoeColor
+    // override (e.g. blue) only for explicit beneficial-zone skills (heal AOE).
+    if (entity.skill.aoeRadius && entity.skill.aoeRadius > 0 && target.position) {
+      this.eventQueue.push({
+        type: 'aoe-telegraph',
+        attackerId: entity.id,
+        skillId: entity.skill.id,
+        position: [target.position.x, target.position.y ?? 0, target.position.z],
+        radius: entity.skill.aoeRadius,
+        shape: entity.skill.aoeShape ?? 'circle',
+        durationMs: entity.skill.aoeCastTimeMs ?? ANIM_ATTACK_DURATION,
+        color: entity.skill.aoeColor ?? '#ff5a5a',
+      });
+    }
 
     target.currentHp -= skillDmg;
     this.totalDamageDealt += entity.isAlly ? skillDmg : 0;

@@ -36,8 +36,8 @@ export function CombatBgMid({ texture = DEFAULT_MID_BG_TEXTURE }: CombatBgMidPro
     y:         { value: 0.9,  min: -10, max: 25, step: 0.1 },
     z:         { value: -15.5, min: -30, max: -2, step: 0.5 },
     // Darker + cooler tint so mid-ground silhouette recedes behind sprites.
-    // was '#9faab0' (medium grey); now very dark cool grey for atmospheric depth.
-    tint:      { value: '#3a3f45' },
+    // history: '#9faab0' (too bright) → '#3a3f45' (too dark) → '#4a5058' (gentle lift).
+    tint:      { value: '#9ba08e' },
     alphaTest: { value: 0.05, min: 0, max: 1, step: 0.01 },
   }, { collapsed: true });
 

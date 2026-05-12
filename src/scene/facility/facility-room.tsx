@@ -16,20 +16,63 @@ import { QuarryRoomDecor } from '../quarry/quarry-furniture';
 import { QuarryZoneCard } from '../quarry/facility-room-quarry-decor';
 import { AlchemyZoneCard } from '../alchemy/facility-room-alchemy-decor';
 import { AlchemyWalls } from '../alchemy/facility-room-alchemy-walls';
+import { TiledFloor, type TileTextureSpec } from '@/scene/sprites/tiled-floor';
 import type { GuildFacility, FacilityType } from '@/game/state/game-state';
 
 const ROOM_SIZE = 7;
 const WALL_HEIGHT = 3;
 const WALL_THICKNESS = 0.2;
 
-const ROOM_FLOOR_COLORS: Record<FacilityType, string> = {
-  tavern: '#2a1f10',
-  'training-yard': '#1a1010',
-  infirmary: '#0f1520',
-  workshop: '#1a1508',
-  'logging-site': '#3d6b2a',
-  'stone-quarry': '#2a2a2a',
-  'alchemy-lab': '#1a0f2a',
+/**
+ * 2D tile texture per facility (Phase 03/04/05 — Standard Tile Floor System).
+ * Each biome ships 4-5 curated variants (see docs/code-standards.md → Biome
+ * palette). Logging-site uses weighted main+variants for natural grass with
+ * detail accents. Workshop uses stone-64 (vs quarry's cave) for visual
+ * differentiation.
+ */
+const FACILITY_TILE_PATH: Record<FacilityType, TileTextureSpec> = {
+  tavern: '/tiles/2d/32px/paving-stone-32_0001.png',
+  'training-yard': '/tiles/2d/32px/paving-stone-32_0002.png',
+  infirmary: '/tiles/2d/32px/paving-stone-32_0003.png',
+  'logging-site': {
+    main: '/tiles/2d/32px/forest-grass-32_0003.png',
+    variants: [
+      '/tiles/2d/32px/forest-grass-32_0001.png',
+      '/tiles/2d/32px/forest-grass-32_0002.png',
+      '/tiles/2d/32px/forest-grass-32_0004.png',
+      '/tiles/2d/32px/forest-grass-32_0005.png',
+    ],
+  },
+  'stone-quarry': '/tiles/2d/32px/cave_0001.png',
+  'alchemy-lab': {
+    main: '/tiles/2d/64px/wood-guild-floor_0005.png',
+    variants: [
+      '/tiles/2d/64px/wood-guild-floor_0004.png'
+    ],
+    variantChance: 0.05,
+  },
+  workshop: '/tiles/2d/64px/stone-64_0001.png',
+};
+
+/**
+ * Per-facility tileWorldSize override (default 1). Larger value = bigger
+ * tile cell in world units = fewer repetitions = larger pixel-art elements.
+ * Alchemy uses 2 to match the wooden plank scale of the guild hall floor.
+ */
+const FACILITY_TILE_WORLD_SIZE: Partial<Record<FacilityType, number>> = {
+  'alchemy-lab': 2,
+};
+
+/**
+ * Per-facility emissiveIntensity override (Phase 07 — Floor Atmospheric
+ * Lighting). Lower value = floor reacts more to scene lights. Tuning:
+ * - Alchemy: many torches/spotlights → 0.55 (warm pool reads strongly)
+ * - Standard rooms (tavern, training, infirmary, workshop): default 0.7
+ * - Outdoor/cave (logging-site, stone-quarry): default 0.7
+ *   (single bright pointLight + ambient — lower would tint too aggressively)
+ */
+const FACILITY_EMISSIVE_INTENSITY: Partial<Record<FacilityType, number>> = {
+  'alchemy-lab': 0.55,
 };
 
 const ROOM_WALL_COLORS: Record<FacilityType, string> = {
@@ -77,7 +120,6 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
   // (target may be offset from exact center for per-facility viewport adjustments)
   const isActive = Math.abs(cameraTarget[0] - cx) <= 3.5 && Math.abs(cameraTarget[2] - cz) <= 3.5;
 
-  const floorColor = ROOM_FLOOR_COLORS[facility.type];
   const wallColor = ROOM_WALL_COLORS[facility.type];
   const light = ROOM_LIGHT[facility.type];
   const isLoggingSite = facility.type === 'logging-site';
@@ -112,13 +154,17 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
         </>
       )}
 
-      {/* Floor — alchemy-lab and workshop use custom GLB floors */}
-      {!isAlchemy && !isWorkshop && (
-        <mesh position={[cx, 0.01, cz]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[ROOM_SIZE, ROOM_SIZE]} />
-          <meshStandardMaterial color={floorColor} roughness={0.9} />
-        </mesh>
-      )}
+      {/* Floor — every facility uses a 2D tile floor via FACILITY_TILE_PATH
+          (Phase 03/04/05 of the Standard Tile Floor System). Walls and decor
+          remain per-facility. */}
+      <TiledFloor
+        width={ROOM_SIZE}
+        depth={ROOM_SIZE}
+        tileTexture={FACILITY_TILE_PATH[facility.type]}
+        tileWorldSize={FACILITY_TILE_WORLD_SIZE[facility.type] ?? 1}
+        position={[cx, 0.01, cz]}
+        emissiveIntensity={FACILITY_EMISSIVE_INTENSITY[facility.type] ?? 0.7}
+      />
 
       {/* Walls — alchemy-lab uses GLB models; all others use procedural geometry */}
       {isAlchemy ? (

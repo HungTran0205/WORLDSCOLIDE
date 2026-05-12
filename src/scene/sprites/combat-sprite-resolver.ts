@@ -102,7 +102,10 @@ export function resolveAllyCombatSprite(
   if (COMBAT_SPRITE_MANIFEST.charsWithBattleIdleEast.has(charId)) {
     return `${basePath}/animations/battle-idle/east/frame_${padded}.png`;
   }
-  return `${basePath}/animations/walking-8-frames/east/frame_000.png`;
+  // Fallback: use the full 8-frame walking loop as battle-idle animation.
+  // All characters on disk ship with 8 walking-east frames, so this gives a
+  // moving silhouette instead of a frozen frame_000 when battle-idle is absent.
+  return `${basePath}/animations/walking-8-frames/east/frame_${padded}.png`;
 }
 
 /**
@@ -142,7 +145,8 @@ export function resolveEnemyCombatSprite(
     return `/sprites/enemies/${spriteId}/animations/idle/west/frame_${padded}.png`;
   }
   if (COMBAT_SPRITE_MANIFEST.enemiesWithWalkWest.has(spriteId)) {
-    return `/sprites/enemies/${spriteId}/animations/walk/west/frame_000.png`;
+    // Use the full 8-frame walk loop as idle when no dedicated idle exists.
+    return `/sprites/enemies/${spriteId}/animations/walk/west/frame_${padded}.png`;
   }
   return `/sprites/enemies/${spriteId}/rotations/west.png`;
 }
@@ -151,7 +155,9 @@ export function resolveEnemyCombatSprite(
 export function getAllyCombatFrameCount(basePath: string, state: CombatAnimState): number {
   const charId = getCharIdFromBasePath(basePath);
   if (state === 'idle') {
-    return COMBAT_SPRITE_MANIFEST.charsWithBattleIdleEast.has(charId) ? COMBAT_IDLE_FRAME_COUNT : 1;
+    // Every ally on disk has 8 frames either via battle-idle (preferred) or
+    // walking-8-frames (fallback) — load 8 either way to keep the sprite moving.
+    return COMBAT_IDLE_FRAME_COUNT;
   }
   if (state === 'attack') {
     if (COMBAT_SPRITE_MANIFEST.charsWithAttackEast.has(charId)) return COMBAT_ATTACK_FRAME_COUNT;
@@ -164,7 +170,10 @@ export function getAllyCombatFrameCount(basePath: string, state: CombatAnimState
 /** Frame count to load for an enemy combat animation (1 = static fallback). */
 export function getEnemyCombatFrameCount(spriteId: string, state: CombatAnimState): number {
   if (state === 'idle') {
-    return COMBAT_SPRITE_MANIFEST.enemiesWithIdleWest.has(spriteId) ? COMBAT_IDLE_FRAME_COUNT : 1;
+    if (COMBAT_SPRITE_MANIFEST.enemiesWithIdleWest.has(spriteId)) return COMBAT_IDLE_FRAME_COUNT;
+    // Walk-as-idle fallback: 8-frame walk loop plays as battle stance.
+    if (COMBAT_SPRITE_MANIFEST.enemiesWithWalkWest.has(spriteId)) return COMBAT_IDLE_FRAME_COUNT;
+    return 1;
   }
   if (state === 'attack') {
     if (COMBAT_SPRITE_MANIFEST.enemiesWithAttackWest.has(spriteId)) {
