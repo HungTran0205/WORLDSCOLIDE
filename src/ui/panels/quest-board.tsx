@@ -1,19 +1,27 @@
-import { useState, useMemo } from 'react';
-import type { QuestTier } from '@/game/state/game-state';
+/**
+ * Quest Board — unified split-pane panel (list + detail in one surface).
+ * Replaces the legacy slide-in panel + stacked detail modal flow.
+ * Parchment skin (Phase 1 tokens); mobile <1024px swaps list/detail.
+ */
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { QuestTier, Mission } from '@/game/state/game-state';
 import { useGameStore } from '@/game/state/store';
-import type { Mission } from '@/game/state/game-state';
 import { MISSIONS } from '@/game/data/missions';
-import { getItemInfo } from '@/game/data/items';
-import { ENEMIES } from '@/game/data/enemies';
 import { validateDispatch, createActiveMission } from '@/game/systems/mission-dispatch';
 import { QUEST_BOARD_TIER_BY_LEVEL } from '@/game/data/buildings';
-import { QuestDetailModal } from '@/ui/panels/quest-detail-modal';
 import { GameIcon } from '@/ui/components/game-icon';
 import { playSFX } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
+import { QuestCard } from './quest-card';
+import { QuestDetailPane } from './quest-detail-pane';
 import '@/ui/styles/panels.css';
+import '@/ui/styles/quest-board.css';
+
+const PAPER_FLIP_DEBOUNCE_MS = 120;
 
 const TIER_ORDER: QuestTier[] = ['F', 'E', 'D', 'C', 'B', 'A', 'S'];
+const MOBILE_BREAKPOINT = 1024;
 
 interface QuestBoardProps {
   onClose: () => void;
@@ -27,13 +35,14 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
   const dispatchMission = useGameStore((s) => s.dispatchMission);
   const spendGold = useGameStore((s) => s.spendGold);
   const updateMemberStatus = useGameStore((s) => s.updateMemberStatus);
+  const completedMissions = useGameStore((s) => s.completedMissions);
+  const tutorialStep = useGameStore((s) => s.tutorialStep);
 
   const availableMembers = useMemo(() => {
     const all = founder ? [founder, ...roster] : roster;
     return all.filter((m) => m.status === 'idle');
   }, [founder, roster]);
 
-  // Determine max quest tier from quest-board furniture level
   const unlockedTiers = useMemo(() => {
     const questBoardFurniture = guildHall.furniture.find((f) => f.type === 'quest-board');
     const maxLevel = questBoardFurniture?.level ?? 1;
@@ -43,19 +52,52 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
   }, [guildHall]);
 
   const [filterTier, setFilterTier] = useState<QuestTier | 'all'>('all');
-  const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
 
-  const completedMissions = useGameStore((s) => s.completedMissions);
-  const tutorialStep = useGameStore((s) => s.tutorialStep);
+  // Paper-unroll on open / seal-break on close. The cleanup fires after the
+  // store flips activePanel back to null (panel unmount) which matches the
+  // expected close-beat audio.
+  useEffect(() => {
+    playSFX(AUDIO.SFX_PAPER_UNROLL);
+    return () => {
+      playSFX(AUDIO.SFX_SEAL_BREAK);
+    };
+  }, []);
 
-  const filteredMissions = useMemo(() => {
+  // Auto-focus the first quest card so keyboard / screen-reader users land
+  // inside the dialog. Microtask delay lets the unroll animation start first.
+  const listPaneRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      const first = listPaneRef.current?.querySelector<HTMLButtonElement>('.quest-card');
+      first?.focus();
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, []);
+
+  // Debounced paper-flip when the user grazes quest scrolls. Multiple hovers
+  // within PAPER_FLIP_DEBOUNCE_MS coalesce to one play to avoid the SFX
+  // stacking on top of itself when sweeping the cursor over the list.
+  const lastFlipRef = useRef(0);
+  const handleCardHover = useCallback(() => {
+    const now = performance.now();
+    if (now - lastFlipRef.current < PAPER_FLIP_DEBOUNCE_MS) return;
+    lastFlipRef.current = now;
+    playSFX(AUDIO.SFX_PAPER_FLIP);
+  }, []);
+
+  const handleMemberToggleSfx = useCallback(() => {
+    playSFX(AUDIO.SFX_WOOD_CLINK);
+  }, []);
+
+  const filteredMissions = useMemo<Mission[]>(() => {
     let missions = MISSIONS.filter(
       (m) =>
         (filterTier === 'all' || m.tier === filterTier) &&
         unlockedTiers.includes(m.tier) &&
         (!m.prerequisiteId || completedMissions.includes(m.prerequisiteId)),
     );
-    // During tutorial: only show incomplete tutorial quests
     if (tutorialStep !== 'complete') {
       missions = missions.filter(
         (m) => m.id.startsWith('tutorial-') && !completedMissions.includes(m.id),
@@ -64,8 +106,24 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
     return missions;
   }, [filterTier, unlockedTiers, completedMissions, tutorialStep]);
 
-  /** Dispatch from modal — receives selected member IDs */
-  const handleDispatchFromModal = (memberIds: string[]) => {
+  const selectedMission = useMemo(
+    () => filteredMissions.find((m) => m.id === selectedId) ?? null,
+    [filteredMissions, selectedId],
+  );
+
+  // Clear selection if filtered missions no longer include it
+  useEffect(() => {
+    if (selectedId && !filteredMissions.some((m) => m.id === selectedId)) {
+      setSelectedId(null);
+    }
+  }, [filteredMissions, selectedId]);
+
+  const handleSelect = (id: string) => {
+    setSelectedId(id);
+    setMobileView('detail');
+  };
+
+  const handleDispatch = (memberIds: string[]) => {
     if (!selectedMission) return;
     const allMembers = [...(founder ? [founder] : []), ...roster];
     const party = allMembers.filter((m) => memberIds.includes(m.id));
@@ -75,110 +133,111 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
     const now = Date.now();
     dispatchMission(createActiveMission(selectedMission, memberIds, now));
     memberIds.forEach((id) => updateMemberStatus(id, 'on-mission'));
-    setSelectedMission(null);
+    setSelectedId(null);
+    setMobileView('list');
+    playSFX(AUDIO.SFX_INK_STAMP);
     playSFX(AUDIO.SFX_DISPATCH);
   };
 
+  const isMobile = useIsMobile();
+  const showTierFilter = tutorialStep === 'complete';
+
   return (
-    <div className="panel-overlay">
-      <h2>
-        Quest Board
-        <button className="panel-close-btn" onClick={onClose}>Close</button>
-      </h2>
+    <div
+      className="quest-board-overlay"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        className="quest-board parchment-surface parchment-frame parchment-rivets parchment-anim-unroll"
+        role="dialog"
+        aria-label="Quest Board"
+        aria-modal="true"
+        data-mobile-view={isMobile ? mobileView : undefined}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="quest-board__header">
+          <h2 className="quest-board__title parchment-title">Quest Board</h2>
+          {showTierFilter && (
+            <div className="quest-board__filter" role="toolbar" aria-label="Filter by tier">
+              <button
+                type="button"
+                className={`tier-pill${filterTier === 'all' ? ' tier-pill--active' : ''}`}
+                onClick={() => setFilterTier('all')}
+                aria-pressed={filterTier === 'all'}
+              >
+                All
+              </button>
+              {unlockedTiers.map((tier) => (
+                <button
+                  key={tier}
+                  type="button"
+                  className={`tier-pill${filterTier === tier ? ' tier-pill--active' : ''}`}
+                  onClick={() => setFilterTier(tier)}
+                  aria-pressed={filterTier === tier}
+                  aria-label={`Tier ${tier}`}
+                >
+                  <GameIcon category="badge" id={tier} size={24} fallbackText={tier} />
+                </button>
+              ))}
+            </div>
+          )}
+        </header>
 
-      {/* Tier filter — hidden during tutorial to reduce UI noise */}
-      <div style={{ display: tutorialStep !== 'complete' ? 'none' : 'flex', gap: 4, marginBottom: 12, flexWrap: 'wrap' }}>
-        <button
-          className="panel-btn"
-          style={{ width: 'auto', padding: '4px 8px', fontSize: '0.8rem' }}
-          onClick={() => setFilterTier('all')}
-        >
-          All
-        </button>
-        {unlockedTiers.map((tier) => (
-          <button
-            key={tier}
-            className="panel-btn"
-            style={{ width: 'auto', padding: '4px 6px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center' }}
-            onClick={() => setFilterTier(tier)}
+        <div className="quest-board__body">
+          <div
+            ref={listPaneRef}
+            className="quest-list-pane"
+            aria-label="Available quests"
           >
-            <GameIcon category="badge" id={tier} size={28} fallbackText={tier} />
-          </button>
-        ))}
-      </div>
-
-      {/* Available missions */}
-      {filteredMissions.map((mission) => (
-        <div
-          key={mission.id}
-          className="panel-section"
-          style={{ cursor: 'pointer' }}
-          onClick={() => setSelectedMission(mission)}
-        >
-          <strong>{mission.name}</strong>
-          {mission.isBossGate && (
-            <span className="quest-badge quest-badge--gate">GATE</span>
-          )}
-          {mission.chainId && (
-            <span className="quest-badge quest-badge--chain">Chain</span>
-          )}
-          <span style={{ float: 'right' }}>
-            <GameIcon category="badge" id={mission.tier} size={36} fallbackText={mission.tier} alt={`Tier ${mission.tier}`} />
-          </span>
-          <div style={{ fontSize: '0.8rem', color: '#aaa', marginTop: 4 }}>
-            Duration: {Math.round(mission.durationMs / 60000)}min |
-            Gold: {mission.goldRewardMin}-{mission.goldRewardMax} |
-            EXP: {mission.expReward} |
-            Min Members: {mission.requiredMembers} | Lv.{mission.requiredLevel}+
+            {filteredMissions.length === 0 ? (
+              <div className="quest-list-pane__empty">No quests available.</div>
+            ) : (
+              filteredMissions.map((m) => (
+                <QuestCard
+                  key={m.id}
+                  mission={m}
+                  selected={m.id === selectedId}
+                  onClick={() => handleSelect(m.id)}
+                  onHover={handleCardHover}
+                />
+              ))
+            )}
           </div>
-          <PotentialDrops enemyIds={mission.enemyIds} />
+
+          <QuestDetailPane
+            mission={selectedMission}
+            availableMembers={availableMembers}
+            gold={gold}
+            onDispatch={handleDispatch}
+            onMemberToggle={handleMemberToggleSfx}
+            onBack={isMobile ? () => setMobileView('list') : undefined}
+          />
         </div>
-      ))}
 
-      {/* Quest detail modal — self-contained with member selection */}
-      {selectedMission && (
-        <QuestDetailModal
-          key={selectedMission.id}
-          mission={selectedMission}
-          availableMembers={availableMembers}
-          gold={gold}
-          onDispatch={handleDispatchFromModal}
-          onClose={() => setSelectedMission(null)}
-        />
-      )}
-
+        <button
+          type="button"
+          className="quest-board__return"
+          onClick={onClose}
+          aria-label="Return to Guild"
+        >
+          <span className="quest-board__return-icon" aria-hidden="true">⮌</span>
+          Return to Guild
+        </button>
+      </div>
     </div>
   );
 }
 
-/** Show unique potential item drops for a mission's enemies */
-function PotentialDrops({ enemyIds }: { enemyIds: string[] }) {
-  const drops = useMemo(() => {
-    const seen = new Set<string>();
-    const result: { id: string; name: string }[] = [];
-    for (const eid of enemyIds) {
-      const enemy = ENEMIES[eid];
-      if (!enemy) continue;
-      for (const rule of enemy.loot) {
-        if (!seen.has(rule.itemId)) {
-          seen.add(rule.itemId);
-          result.push({ id: rule.itemId, name: getItemInfo(rule.itemId).name });
-        }
-      }
-    }
-    return result;
-  }, [enemyIds]);
-
-  if (drops.length === 0) return null;
-  return (
-    <div style={{ fontSize: '0.75rem', color: '#a8d8ea', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-      Drops:
-      {drops.map((d) => (
-        <span key={d.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-          <GameIcon category="item" id={d.id} size={14} fallbackText={d.name.slice(0, 2)} />
-          {d.name}
-        </span>
-      ))}
-    </div>
+/** Tracks viewport width to swap to mobile single-pane layout */
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT,
   );
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return isMobile;
 }

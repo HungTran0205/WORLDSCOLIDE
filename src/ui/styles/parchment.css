@@ -1,0 +1,137 @@
+/* ─── Parchment Design System (Quest Board Diegetic Skin) ──────────────────
+   Phase 1 of Quest Board Diegetic Redesign.
+   Tokens + utility classes. Texture PNGs sourced separately; until then,
+   CSS gradients provide the parchment look without 404 noise. */
+
+:root {
+  /* Parchment palette */
+  --parchment-base:    #e8d9b0;
+  --parchment-aged:    #c9b687;
+  --parchment-burn:    #8b6a3f;
+  --parchment-shadow:  rgba(40, 20, 5, 0.6);
+
+  /* Ink palette */
+  --ink-dark:          #2a1f12;
+  --ink-faded:         #5a4630;
+  --ink-red:           #8b2c1c;
+
+  /* Gold / metal accents (parchment context) */
+  --gold-burnished:    #c9a14a;
+  --gold-deep:         #8a6a1f;
+  --iron-rivet:        #3a3025;
+  --torch-glow:        #ff8a3c;
+
+  /* Typography (Cinzel + IM Fell English already loaded via game-ui-tokens.css) */
+  --font-display:      'Cinzel', 'IM Fell English SC', serif;
+  --font-body:         'IM Fell English', 'EB Garamond', Georgia, serif;
+  --font-numeric:      'Cinzel', serif;
+
+  /* Effects */
+  --parchment-radius:        4px;
+  --parchment-drop-shadow:   0 8px 24px var(--parchment-shadow);
+}
+
+/* ─── Surface: parchment background ─────────────────────────────────────────
+   Layered radial + linear gradients approximate aged paper grain.
+   When real texture lands at /textures/parchment/parchment-base.png,
+   add it as the first background layer above the gradients. */
+.parchment-surface {
+  background-color: var(--parchment-base);
+  background-image:
+    radial-gradient(ellipse at 20% 15%, rgba(201, 182, 135, 0.45), transparent 55%),
+    radial-gradient(ellipse at 80% 85%, rgba(139, 106, 63, 0.30), transparent 60%),
+    radial-gradient(circle at 50% 50%, rgba(232, 217, 176, 0) 60%, rgba(40, 20, 5, 0.18) 100%),
+    linear-gradient(135deg, rgba(232, 217, 176, 0.95), rgba(201, 182, 135, 0.85));
+  color: var(--ink-dark);
+  font-family: var(--font-body);
+  box-shadow: var(--parchment-drop-shadow);
+  position: relative;
+  border-radius: var(--parchment-radius);
+}
+
+/* ─── Frame: torn-edge border (CSS fallback for 9-slice border-image) ─────── */
+.parchment-frame {
+  border: 2px solid var(--parchment-burn);
+  outline: 1px solid var(--gold-deep);
+  outline-offset: -6px;
+  padding: 18px;
+}
+
+/* ─── Iron rivet corners ────────────────────────────────────────────────────
+   Use a single ::before pseudo to draw 4 dots via radial gradients, OR drop
+   <span class="rivet"/> elements at corners. Below uses pseudo + gradients
+   so no extra DOM is needed. */
+.parchment-rivets {
+  position: relative;
+}
+.parchment-rivets::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 8px 8px,                 var(--iron-rivet) 0 4px, transparent 5px),
+    radial-gradient(circle at calc(100% - 8px) 8px,    var(--iron-rivet) 0 4px, transparent 5px),
+    radial-gradient(circle at 8px calc(100% - 8px),    var(--iron-rivet) 0 4px, transparent 5px),
+    radial-gradient(circle at calc(100% - 8px) calc(100% - 8px), var(--iron-rivet) 0 4px, transparent 5px);
+}
+
+/* ─── Typography helpers ────────────────────────────────────────────────────*/
+.parchment-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--ink-dark);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.parchment-text {
+  font-family: var(--font-body);
+  color: var(--ink-faded);
+  line-height: 1.55;
+}
+
+.parchment-stamp {
+  font-family: var(--font-display);
+  color: var(--ink-red);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  transform: rotate(-6deg);
+  display: inline-block;
+}
+
+/* ─── Wax seal badge (uses inline SVG via class — sized container) ──────── */
+.wax-seal {
+  width: 48px;
+  height: 48px;
+  background: url('/textures/parchment/wax-seal.svg') no-repeat center / contain;
+  filter: drop-shadow(0 2px 3px rgba(40, 10, 5, 0.5));
+}
+
+/* ─── Animations ────────────────────────────────────────────────────────────*/
+@keyframes parchment-unroll {
+  from { transform: scaleY(0.02) translateY(-30%); opacity: 0; }
+  to   { transform: scaleY(1)    translateY(0);    opacity: 1; }
+}
+@keyframes ink-stamp-press {
+  0%   { transform: scale(2.4) rotate(-12deg); opacity: 0; }
+  60%  { transform: scale(0.9) rotate(-6deg);  opacity: 1; }
+  100% { transform: scale(1)   rotate(-6deg);  opacity: 1; }
+}
+
+.parchment-anim-unroll {
+  transform-origin: top center;
+  animation: parchment-unroll 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.parchment-anim-stamp {
+  animation: ink-stamp-press 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ─── Reduced motion ────────────────────────────────────────────────────────*/
+@media (prefers-reduced-motion: reduce) {
+  .parchment-anim-unroll,
+  .parchment-anim-stamp {
+    animation: none !important;
+  }
+  .parchment-surface { transition: none !important; }
+}

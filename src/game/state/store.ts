@@ -71,5 +71,7 @@ export function resetGameState(): void {
     pendingFacilityPanel: null,
     focusFacilityType: null,
     cameraTarget: [5, 0, 3.5] as [number, number, number],
+    cameraFocus: 'default' as const,
+    pendingQuestPanel: false,
   });
 }
