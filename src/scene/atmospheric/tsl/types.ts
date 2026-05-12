@@ -74,8 +74,8 @@ export interface TslChainHolder {
   /** `three/webgpu` PostProcessing instance — `.render()` each frame. */
   post: any;
   bloom: BloomUniforms;
-  vignette?: VignetteUniforms;
-  colorGrade?: ColorGradeUniforms;
+  vignette: VignetteUniforms;
+  colorGrade: ColorGradeUniforms;
   fog?: FogUniforms;
   chromaticAberration?: ChromaticAberrationUniforms;
   tiltShift?: TiltShiftUniforms;

@@ -14,8 +14,8 @@ host's preset-sync effect can update them.
 | File | Phase | Status |
 |------|-------|--------|
 | `types.ts` | 01 | landed |
-| `vignette-node.ts` | 02 | pending |
-| `color-grade-node.ts` | 02 | pending |
+| `vignette-node.ts` | 02 | landed |
+| `color-grade-node.ts` | 02 | landed |
 | `aces-tonemap-node.ts` | 03 | pending |
 | `fog-node.ts` | 03 | pending |
 | `chromatic-aberration-node.ts` | 04 | pending |

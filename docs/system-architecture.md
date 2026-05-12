@@ -2926,12 +2926,13 @@ export interface GameSettings {
 - Shadow map controlled reactively by `ShadowController` component (no scene reload required)
 - Improves spatial clarity in isometric view, works on both WebGPU and WebGL
 
-**World Post-Processing** (`src/scene/world-bloom-post.tsx`):
-- Dual-path rendering:
-  - **WebGL**: EffectComposer + Bloom + N8AO (N8AO enabled when shadowsEnabled = true)
-  - **WebGPU**: TSL PostProcessing + BloomNode (async-loaded)
-- Both paths subscribe to Zustand for reactive updates
-- Bloom and shadow settings apply per-frame
+**World Post-Processing** (`src/scene/atmospheric/world-atmospheric-post.tsx`):
+- Preset-driven composer replaces static bloom. Reads active room via `useAtmosphere()` context.
+- **WebGL**: Full effect stack (N8AO → DOF → TiltShift → Bloom → GodRays → HueSat → BrightnessContrast → Vignette → Noise → ChromaticAberration → ToneMapping).
+- **WebGPU** (Phase 02+): TSL chain (Bloom → ColorGrade → Vignette → ACES ToneMapping); warns if full-stack requested. ColorGrade includes hue/saturation/brightness/contrast; vignette uses pmndrs DEFAULT radial darkening.
+- Per-room DOF target auto-syncs via camera controller lerp; no focus-point popping on room transitions.
+- Quality tier: `graphicsQuality='low'` disables DOF, GodRays, ChromaticAberration, LUT; WebGPU chain always runs per preset.
+- **Preset Sync Pattern**: Refs-based (`presetRef`/`overridesRef`) prevent seed-race during async TSL node import; `applyPreset()` helper syncs uniform `.value` in async tail + per-preset useEffect.
 - **Shadow ownership**: PCFShadowMap (scene), N8AO/post-processing (separate concern)
 
 **Store Integration**:
@@ -2963,6 +2964,100 @@ const bloomThreshold = settings.bloomThreshold;
 - [ ] Film grain intensity
 - [ ] Contrast/brightness sliders
 - [ ] Anti-aliasing mode selection
+
+## Atmospheric Depth System (v1.28+ — Per-Room Post-FX & Lighting Foundation)
+
+### Overview
+
+Foundation infrastructure for per-room atmospheric theming: context provider, preset registry, active-room detection, and smooth lerp transitions. Phases 02–05 (post-FX stack, particles, volumetric lighting, diegetic UI) consume this plumbing.
+
+### Architecture
+
+**Module**: `src/scene/atmospheric/`
+
+- **`atmosphere-types.ts`**: `RoomId` union (9 rooms), `AtmospherePreset` interface (bloom, tilt-shift, DOF, color-grading, vignette, fog, god rays, particles, hemisphere light), `BASELINE_PRESET` constant
+- **`atmosphere-presets.ts`**: Registry mapping room IDs to presets; Phase 04 tuning complete (9 per-room presets)
+- **`atmosphere-context.tsx` + `atmosphere-context-store.ts` + `use-atmosphere.ts`**: React Context provider and consumer hook
+- **`use-active-room-id.ts`**: Derives current room ID from camera position relative to facility room centers (returns `'guild-hall' | 'tavern' | ... | null`)
+- **`use-lerped-atmosphere.ts`**: Smooth transitions between presets over 500ms via frame-independent exponential lerp
+
+### Settings Integration
+
+- **GameSettings field**: `atmosphericEnabled: boolean` (default true; can be toggled in Settings Panel)
+- When `atmosphericEnabled === false`, provider returns null; consumers no-op (zero overhead)
+
+### Data Flow
+
+```
+Camera Position
+    ↓
+useActiveRoomId() → Room ID (e.g., 'tavern')
+    ↓
+getAtmospherePreset(roomId) → Preset
+    ↓
+useLerpedAtmosphere(preset) → Animated Preset (lerped over 500ms)
+    ↓
+AtmosphereProvider (React Context)
+    ↓
+useAtmosphere() hook (Phase 02+ consumers: post-FX composer, particles, lighting)
+```
+
+### Performance
+
+- **Derivation Cost**: Active-room detection is O(n) nearest-room lookup on each frame (n = 9 rooms, negligible)
+- **Lerp Cost**: Frame-independent exponential math only; no draws, textures, or re-renders of scene
+- **Disabled Cost**: When `atmosphericEnabled = false`, provider skips computation entirely
+
+### Ambient Particle System (Phase 03 — COMPLETE)
+
+**Architecture**:
+- 4 particle archetypes (dust-motes, embers, magic-motes, pollen) select via `preset.particles` string key
+- Deterministic mulberry32 PRNG (seeded) replaces Math.random for React purity compliance
+- Shared procedural texture: 32×32 soft-circle DataTexture (SSR-safe singleton, reused across all instances)
+- Bounds helper: RoomId → Box3 lookup table + `randomInBounds(prng)` spawn utility (floor-Y assumption documented)
+- Router component: Key-driven switch `${roomId}:${particleType}` remounts on preset change; zero stale particles
+- Mounted in `world.tsx` inside `<AtmosphereProvider>` alongside post-FX stack
+
+**Particle Types** (all use additive blending, wrap-on-bounds lifecycle):
+- **dust-motes**: Warm slow drift, infinite lifecycle, spawn density high:100 / low:30
+- **embers**: Hot orange upward-rising, 3–4s lifespan + fade-out, spawn high:80 / low:20
+- **magic-motes**: Cool purple circular swirl, opacity pulse via sine wave, spawn high:60 / low:15
+- **pollen**: Yellow outdoor vibe, slow settlement toward ground, respawn at top on wrap, spawn high:40 / low:10
+
+**Data Flow**:
+```
+AtmosphereProvider (context)
+    ↓
+useAtmosphere() → { ..., particles: 'dust-motes' | 'embers' | ... | null }
+    ↓
+<AmbientParticlesRouter roomId={roomId} particleType={particles} />
+    ↓
+Component switch: dust-motes | embers | magic-motes | pollen | null
+    ↓
+Each component: useGraphicsQuality() → tier-aware spawn counts
+```
+
+**Performance**:
+- **Tier Scaling**: `graphicsQuality='low'` reduces counts by ~65% (dust: 30, embers: 20, magic: 15, pollen: 10)
+- **Buffer Strategy**: useState + useRef for mutable frame buffers (idiomatic r3f for useFrame mutations)
+- **Determinism**: Mulberry32 seed produces identical particle layout across remounts (bonus: React pure)
+- **Mount Cost**: Router key change forces component remount; previous particle instance cleaned up immediately
+
+**Integration Points**:
+- `atmosphere-presets.ts`: Each preset includes optional `particles: ParticleType | null` field
+- `world.tsx`: Mounts `<AmbientParticlesRouter>` as child of `<AtmosphereProvider>`
+- `guild-slice.ts`: Settings already include `atmosphericEnabled` toggle (gates entire provider)
+
+### Completed Phases
+
+- **Phase 02**: ✅ Post-FX stack (bloom, tilt-shift, DOF, color-grading, vignette, noise) mounted from `useAtmosphere()`. Full WebGL effect chain; WebGPU TSL chain (Bloom → ColorGrade → Vignette → ACES ToneMapping). Per-room DOF target auto-sync via camera lerp. Refs-based preset sync prevents mutation race during async TSL import.
+- **Phase 03**: ✅ Ambient particle system (dust-motes, embers, magic-motes, pollen) per preset. Deterministic mulberry32 PRNG. Tier-aware counts (high: 100/80/60/40; low: 30/20/15/10). Additive blending, wrap-on-bounds lifecycle. Mounted in `world.tsx` via `<AmbientParticlesRouter>`.
+- **Phase 04**: ✅ Per-room atmospheric presets tuned across 9 guild hall rooms. Hemisphere light conditionally mounted in `AtmosphereProvider` (reads `hemisphereLight` from preset; null = zero cost). Optional `mood?: string` field added to `AtmospherePreset` (documentation-only).
+
+### Future Phases
+
+- **Phase 05**: Volumetric lighting and god rays (advanced atmospheric lighting)
+- **Phase 06**: Diegetic UI lighting integration; auto-enable on high-tier graphics; profiling & perf validation
 
 ## Browser Compatibility
 
