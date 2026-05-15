@@ -23,6 +23,8 @@ export const VALID_MEMBER: Member = {
   rank: 'COMMANDER',
   missionsCompleted: 0,
   craftSkills: { woodcutting: { level: 0, xpAccumulated: 0 }, mining: { level: 0, xpAccumulated: 0 }, alchemy: { level: 0, xpAccumulated: 0 } },
+  rarity: 1,
+  traits: [],
 };
 
 export const VALID_ROSTER_MEMBER: Member = {
@@ -42,6 +44,8 @@ export const VALID_ROSTER_MEMBER: Member = {
   rank: 'RECRUIT',
   missionsCompleted: 0,
   craftSkills: { woodcutting: { level: 0, xpAccumulated: 0 }, mining: { level: 0, xpAccumulated: 0 }, alchemy: { level: 0, xpAccumulated: 0 } },
+  rarity: 1,
+  traits: [],
 };
 
 /** Generate a 6x6 grid of floor tiles starting at (0,0) */
@@ -80,6 +84,7 @@ export const VALID_SETTINGS: GameSettings = {
 export const VALID_ACTIVE_MISSION: ActiveMission = {
   missionId: 'mission-f-01',
   memberIds: ['founder-001'],
+  mercContractIds: [],
   startTime: 1000,
   estimatedEndTime: 61000,
   phase: 'traveling',
@@ -100,7 +105,20 @@ export const VALID_GAME_SAVE_DATA: GameSaveData = {
   activeMissions: [],
   completedMissions: [],
   tutorialStep: 'complete',
-  tavern: { lastRefreshTime: 0, availableMercenaries: [] },
+  tavern: {
+    level: 1,
+    keeperId: null,
+    reputation: 0,
+    currentRoster: [],
+    rerolledToday: false,
+    factionBias: null,
+    rumor: null,
+    mercContracts: [],
+    pendingPrompts: [],
+    lastDayProcessed: 0,
+    reputationLastTickWeek: 0,
+    globalNegotiationDebuffUntilDay: null,
+  },
   inventory: { items: {} },
   facilities: [
     { id: 'tavern',        type: 'tavern',        level: 1, assignedMemberIds: [], placedSlot: 8,    woodReserve: null },

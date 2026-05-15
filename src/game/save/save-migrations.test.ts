@@ -72,13 +72,6 @@ describe('migrateSave', () => {
     expect(newbie.missionsCompleted).toBe(4); // level 2 * 2
   });
 
-  it('migrates v7 → v8: tavern mercenaries also migrated', () => {
-    const result = migrateSave(makeV7Envelope() as any);
-    const tavMerc = (result.gameState as any).tavern.availableMercenaries[0];
-    expect(tavMerc.rank).toBe('MERCENARY');
-    expect(tavMerc.missionsCompleted).toBe(4); // level 2 * 2
-  });
-
   // v8→v9 civilization remap tests
   it('migrates v8→v9: remaps Viet to LinhSon', () => {
     const result = migrateSave(makeV7Envelope() as any);
@@ -97,10 +90,30 @@ describe('migrateSave', () => {
     expect(vet.civilization).toBe('ThienLu');
   });
 
-  it('migrates v8→v9: tavern mercenaries also remapped', () => {
+  // v23→v24: tavern rewrite — old availableMercenaries are wiped and replaced with the new
+  // recruitment-hub shape. Phase 02 will respawn currentRoster on next day-tick.
+  it('migrates v23→v24: tavern reshape — currentRoster empty, new fields initialized', () => {
     const result = migrateSave(makeV7Envelope() as any);
-    const tavMerc = (result.gameState as any).tavern.availableMercenaries[0];
-    expect(tavMerc.civilization).toBe('DeQuoc');
+    const tavern = (result.gameState as any).tavern;
+    expect(tavern.availableMercenaries).toBeUndefined();
+    expect(tavern.currentRoster).toEqual([]);
+    expect(tavern.mercContracts).toEqual([]);
+    expect(tavern.pendingPrompts).toEqual([]);
+    expect(tavern.level).toBe(1);
+    expect(tavern.keeperId).toBeNull();
+    expect(tavern.reputation).toBe(0);
+    expect(tavern.factionBias).toBeNull();
+    expect(tavern.globalNegotiationDebuffUntilDay).toBeNull();
+  });
+
+  it('migrates v23→v24: legacy members get rarity=1 and traits=[]', () => {
+    const result = migrateSave(makeV7Envelope() as any);
+    const founder = (result.gameState as any).founder;
+    expect(founder.rarity).toBe(1);
+    expect(founder.traits).toEqual([]);
+    const newbie = (result.gameState as any).roster.find((m: any) => m.id === 'r1');
+    expect(newbie.rarity).toBe(1);
+    expect(newbie.traits).toEqual([]);
   });
 
   it('migrates v11→v12+: old tutorial steps remapped to complete', () => {

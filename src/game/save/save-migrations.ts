@@ -554,6 +554,67 @@ function migrateV22toV23(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+/**
+ * v23→v24: Tavern Facility overhaul.
+ *  - Member: normalize `rarity` to required 1 (legacy default); ensure `traits: []`.
+ *  - TavernState: replace `{ lastRefreshTime, availableMercenaries }` with the new
+ *    recruitment-hub shape. `currentRoster` starts empty; next day-tick respawns it.
+ *  - ActiveMission: add parallel `mercContractIds: []` (AD1).
+ */
+// Game-day scale — kept local to avoid cross-imports from systems into save layer.
+const MIGRATION_TICKS_PER_DAY = 14400;
+
+function migrateV23toV24(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+
+  const normalizeMember = (m: AnyRecord): AnyRecord => ({
+    ...m,
+    rarity: typeof m.rarity === 'number' ? m.rarity : 1,
+    traits: Array.isArray(m.traits) ? m.traits : [],
+  });
+
+  const founder = gs.founder ? normalizeMember(gs.founder as AnyRecord) : null;
+  const roster = Array.isArray(gs.roster)
+    ? (gs.roster as AnyRecord[]).map(normalizeMember)
+    : [];
+
+  const currentDay = Math.floor(((gs.gameTime as number) ?? 0) / MIGRATION_TICKS_PER_DAY);
+
+  const tavern = {
+    level: 1 as const,
+    keeperId: null,
+    reputation: 0,
+    currentRoster: [],
+    rerolledToday: false,
+    factionBias: null,
+    rumor: null,
+    mercContracts: [],
+    pendingPrompts: [],
+    lastDayProcessed: currentDay,
+    reputationLastTickWeek: currentDay,
+    globalNegotiationDebuffUntilDay: null,
+  };
+
+  const activeMissions = Array.isArray(gs.activeMissions)
+    ? (gs.activeMissions as AnyRecord[]).map((am) => ({
+        ...am,
+        mercContractIds: Array.isArray(am.mercContractIds) ? am.mercContractIds : [],
+      }))
+    : gs.activeMissions;
+
+  return {
+    ...envelope,
+    version: 24,
+    gameState: {
+      ...gs,
+      founder,
+      roster,
+      tavern,
+      activeMissions,
+    } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -572,6 +633,7 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   20: migrateV20toV21,
   21: migrateV21toV22,
   22: migrateV22toV23,
+  23: migrateV23toV24,
 };
 
 /**
