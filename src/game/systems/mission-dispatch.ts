@@ -42,6 +42,7 @@ export function createActiveMission(
   return {
     missionId: mission.id,
     memberIds,
+    mercContractIds: [],
     startTime: now,
     estimatedEndTime: now + mission.durationMs,
     phase: 'traveling',

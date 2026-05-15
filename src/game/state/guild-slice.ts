@@ -1,5 +1,12 @@
 import type { StateCreator, StoreApi } from 'zustand';
-import type { GuildHall, GameSettings, TavernState, Member, FloorTile, PlacedFurniture, GridCell, Rotation, FurnitureType, GuildRank, FacilityType, GuildFacility, SyringeLoadout, AlchemyCraftJob, MemberEquipment, MedicineSlot, MedicineCondition } from './game-state';
+import type { GuildHall, GameSettings, TavernState, Member, FloorTile, PlacedFurniture, GridCell, Rotation, FurnitureType, GuildRank, FacilityType, GuildFacility, SyringeLoadout, AlchemyCraftJob, MemberEquipment, MedicineSlot, MedicineCondition, TavernVisitor } from './game-state';
+import {
+  generateTavernRoster,
+  getEffectiveKeeperStats,
+  rerollSeedForDay,
+  type TavernLevel,
+} from '@/game/systems/tavern-spawn';
+import { dailyTavernSeed } from '@/game/systems/seeded-rng';
 import type { InventoryState } from './game-state';
 import type { InventorySlice } from './inventory-slice';
 import type { RosterSlice } from './roster-slice';
@@ -32,8 +39,6 @@ export interface GuildSlice extends WorkshopActions {
   spendGold: (amount: number) => boolean;
   upgradeGuild: () => void;
   updateSettings: (partial: Partial<GameSettings>) => void;
-  refreshTavern: (mercenaries: Member[]) => void;
-  hireMercenary: (memberId: string) => void;
   /** Place a single floor tile at position with color. Costs 5g. */
   placeFloorTile: (x: number, z: number, color: string) => boolean;
   /** Erase a floor tile. Blocked if furniture occupies that cell. */
@@ -86,6 +91,12 @@ export interface GuildSlice extends WorkshopActions {
   /** Ephemeral workshop offline summary (cleared after popup display) */
   offlineWorkshopSummary: WorkshopOfflineSummary | null;
   clearOfflineWorkshopSummary: () => void;
+  // --- Tavern daily lifecycle (phase 02) ---
+  /** Day-tick driver. Idempotent — guards on tavern.lastDayProcessed. */
+  tickTavernDay: (currentDay: number) => void;
+  /** Spend `100 × level` gold to regenerate today's roster with the deterministic reroll seed.
+   *  Max 1 per game-day. Returns false on insufficient gold or already rerolled. */
+  rerollTavernRoster: () => boolean;
 }
 
 export const DEFAULT_MEDICINE_SLOTS: [MedicineSlot, MedicineSlot] = [
@@ -139,8 +150,18 @@ const DEFAULT_SETTINGS: GameSettings = {
 };
 
 const DEFAULT_TAVERN: TavernState = {
-  lastRefreshTime: 0,
-  availableMercenaries: [],
+  level: 1,
+  keeperId: null,
+  reputation: 0,
+  currentRoster: [],
+  rerolledToday: false,
+  factionBias: null,
+  rumor: null,
+  mercContracts: [],
+  pendingPrompts: [],
+  lastDayProcessed: 0,
+  reputationLastTickWeek: 0,
+  globalNegotiationDebuffUntilDay: null,
 };
 
 const DEFAULT_FACILITIES: GuildFacility[] = [
@@ -205,23 +226,6 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
     }
     set((s) => ({ settings: { ...s.settings, ...partial } }));
   },
-
-  refreshTavern: (mercenaries) =>
-    set({ tavern: { lastRefreshTime: Date.now(), availableMercenaries: mercenaries } }),
-
-  hireMercenary: (memberId) =>
-    set((s) => {
-      const merc = s.tavern.availableMercenaries.find((m) => m.id === memberId);
-      if (!merc) return {};
-      const fullState = s as GuildSlice & { roster: Member[] };
-      return {
-        tavern: {
-          ...s.tavern,
-          availableMercenaries: s.tavern.availableMercenaries.filter((m) => m.id !== memberId),
-        },
-        roster: [...fullState.roster, merc],
-      } as unknown as Partial<GuildSlice>;
-    }),
 
   placeFloorTile: (x, z, color) => {
     let success = false;
@@ -901,6 +905,104 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
           m.id === memberId ? { ...m, status: 'idle' as const } : m,
         ),
       } as unknown as Partial<GuildSlice>;
+    });
+    return success;
+  },
+
+  tickTavernDay: (currentDay) => {
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null };
+      // AD5: stable seed per-save; pre-tutorial returns empty roster, no crash.
+      if (!fullState.founder) return s;
+      if (s.tavern.lastDayProcessed === currentDay && s.tavern.currentRoster.length > 0) return s;
+
+      const tavernFacility = s.facilities.find((f) => f.type === 'tavern');
+      // If tavern not built (level 0), skip — no spawn until at least Lv1.
+      if (!tavernFacility || tavernFacility.level === 0) {
+        return {
+          tavern: { ...s.tavern, lastDayProcessed: currentDay, currentRoster: [], rerolledToday: false },
+        };
+      }
+
+      const level = Math.min(3, Math.max(1, tavernFacility.level)) as TavernLevel;
+      const keeperIds = tavernFacility.assignedMemberIds;
+      const memberLookup = (id: string): Member | undefined => {
+        if (fullState.founder?.id === id) return fullState.founder;
+        return fullState.roster.find((m) => m.id === id);
+      };
+      const keeperStats = getEffectiveKeeperStats(keeperIds, memberLookup);
+
+      const saveSlotId = fullState.founder.id ?? 'pre-tutorial';
+      const seed = dailyTavernSeed(saveSlotId, currentDay);
+      const roster: TavernVisitor[] = generateTavernRoster({
+        level,
+        keeperStats,
+        daySeed: seed,
+        spawnedDay: currentDay,
+      });
+
+      // Passive Tavern Reputation recovery: every 7 game-days, +1 (capped at +5).
+      let reputation = s.tavern.reputation;
+      let reputationLastTickWeek = s.tavern.reputationLastTickWeek;
+      const weeksElapsed = Math.floor((currentDay - reputationLastTickWeek) / 7);
+      if (weeksElapsed > 0) {
+        reputation = Math.min(5, reputation + weeksElapsed);
+        reputationLastTickWeek = reputationLastTickWeek + weeksElapsed * 7;
+      }
+
+      return {
+        tavern: {
+          ...s.tavern,
+          currentRoster: roster,
+          rerolledToday: false,
+          lastDayProcessed: currentDay,
+          reputation,
+          reputationLastTickWeek,
+        },
+      };
+    });
+  },
+
+  rerollTavernRoster: () => {
+    let success = false;
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null };
+      if (!fullState.founder) return s;
+      if (s.tavern.rerolledToday) return s;
+
+      const tavernFacility = s.facilities.find((f) => f.type === 'tavern');
+      if (!tavernFacility || tavernFacility.level === 0) return s;
+
+      const level = Math.min(3, Math.max(1, tavernFacility.level)) as TavernLevel;
+      const cost = 100 * level;
+      if (s.gold < cost) return s;
+
+      const keeperIds = tavernFacility.assignedMemberIds;
+      const memberLookup = (id: string): Member | undefined => {
+        if (fullState.founder?.id === id) return fullState.founder;
+        return fullState.roster.find((m) => m.id === id);
+      };
+      const keeperStats = getEffectiveKeeperStats(keeperIds, memberLookup);
+
+      const saveSlotId = fullState.founder.id ?? 'pre-tutorial';
+      const baseSeed = dailyTavernSeed(saveSlotId, s.tavern.lastDayProcessed);
+      const altSeed = rerollSeedForDay(baseSeed);
+      const roster: TavernVisitor[] = generateTavernRoster({
+        level,
+        keeperStats,
+        daySeed: altSeed,
+        spawnedDay: s.tavern.lastDayProcessed,
+      });
+
+      success = true;
+      return {
+        gold: s.gold - cost,
+        tavern: {
+          ...s.tavern,
+          currentRoster: roster,
+          rerolledToday: true,
+        },
+      };
     });
     return success;
   },
