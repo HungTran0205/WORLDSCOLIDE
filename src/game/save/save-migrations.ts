@@ -466,6 +466,94 @@ function migrateV20toV21(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+/**
+ * v21→v22: Combat panel idle redesign cleanup.
+ *  - Drop ActiveMission.combatMode (manual/auto choice removed; new panel always opens)
+ *  - Add ActiveMission.targetPriority defaulting to 'focus' (Focus/Balance toggle in formation)
+ */
+function migrateV21toV22(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+  const activeMissions = Array.isArray(gs.activeMissions)
+    ? (gs.activeMissions as AnyRecord[]).map((m) => {
+        const { combatMode: _drop, ...rest } = m as AnyRecord & { combatMode?: unknown };
+        return { ...rest, targetPriority: rest.targetPriority ?? 'focus' };
+      })
+    : gs.activeMissions;
+  return {
+    ...envelope,
+    version: 22,
+    gameState: { ...gs, activeMissions } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
+/**
+ * v22→v23: Workshop Room v2 schema additions.
+ *  - EquipmentItem gets `slots: []` (default empty) and `maxSlots: 4` for legacy gear.
+ *  - GuildFacility gets `workshopQueue: []` and `workshopBlueprints: []` (workshop only).
+ */
+function migrateV22toV23(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+
+  const migrateEquipment = (eq: AnyRecord): AnyRecord => ({
+    ...eq,
+    slots: Array.isArray(eq.slots) ? eq.slots : [],
+    maxSlots: typeof eq.maxSlots === 'number' ? eq.maxSlots : 4,
+  });
+
+  const migrateMemberEquipment = (m: AnyRecord): AnyRecord => {
+    const eq = m.equipment as AnyRecord | null | undefined;
+    if (!eq) return m;
+    const slots = ['weapon', 'armor', 'headgear'] as const;
+    const newEq: AnyRecord = { ...eq };
+    for (const slot of slots) {
+      const item = eq[slot] as AnyRecord | null | undefined;
+      if (item) newEq[slot] = migrateEquipment(item);
+    }
+    return { ...m, equipment: newEq };
+  };
+
+  const founder = gs.founder ? migrateMemberEquipment(gs.founder as AnyRecord) : null;
+  const roster = Array.isArray(gs.roster)
+    ? (gs.roster as AnyRecord[]).map(migrateMemberEquipment)
+    : [];
+
+  const tavern = gs.tavern as AnyRecord | undefined;
+  const migratedTavern = tavern?.availableMercenaries && Array.isArray(tavern.availableMercenaries)
+    ? { ...tavern, availableMercenaries: (tavern.availableMercenaries as AnyRecord[]).map(migrateMemberEquipment) }
+    : tavern;
+
+  const inventory = (gs.inventory ?? {}) as AnyRecord;
+  const eqInv = Array.isArray(inventory.equipmentInventory)
+    ? (inventory.equipmentInventory as AnyRecord[]).map(migrateEquipment)
+    : [];
+  const migratedInventory = { ...inventory, equipmentInventory: eqInv };
+
+  const facilities = Array.isArray(gs.facilities)
+    ? (gs.facilities as AnyRecord[]).map((f) =>
+        f.type === 'workshop'
+          ? {
+              ...f,
+              workshopQueue: Array.isArray(f.workshopQueue) ? f.workshopQueue : [],
+              workshopBlueprints: Array.isArray(f.workshopBlueprints) ? f.workshopBlueprints : [],
+            }
+          : f,
+      )
+    : gs.facilities;
+
+  return {
+    ...envelope,
+    version: 23,
+    gameState: {
+      ...gs,
+      founder,
+      roster,
+      tavern: migratedTavern,
+      inventory: migratedInventory,
+      facilities,
+    } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -482,6 +570,8 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   18: migrateV18toV19,
   19: migrateV19toV20,
   20: migrateV20toV21,
+  21: migrateV21toV22,
+  22: migrateV22toV23,
 };
 
 /**

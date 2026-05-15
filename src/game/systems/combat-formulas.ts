@@ -9,6 +9,12 @@ export function calcAttackInterval(agi: number, weaponBaseSpeedMs: number = 1800
   return Math.max(300, Math.floor(interval));
 }
 
+/** Phase 6 balance pass — global damage scalar applied inside calcAutoAttackDamage.
+ *  Keeps the formula additive (no save migration needed) while tightening
+ *  average battle duration toward the 15–30s target range (D7).
+ *  If playtests show battles too short, lower toward 1.0; too long, raise. */
+export const BASE_DAMAGE_MULTIPLIER = 1.2;
+
 /** Base auto-attack damage with defense reduction. flatBonus (weapon gear) applied before defense reduction. */
 export function calcAutoAttackDamage(
   str: number,
@@ -17,7 +23,7 @@ export function calcAutoAttackDamage(
   flatBonus: number = 0,
 ): number {
   const defRatio = Math.min(0.75, targetEnd / (targetEnd + 100));
-  const raw = (str * weaponMult + flatBonus) * (1 - defRatio);
+  const raw = (str * weaponMult + flatBonus) * (1 - defRatio) * BASE_DAMAGE_MULTIPLIER;
   return Math.max(1, Math.floor(raw));
 }
 

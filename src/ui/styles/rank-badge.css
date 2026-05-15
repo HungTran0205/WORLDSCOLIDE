@@ -1,0 +1,67 @@
+/* ─── Rank Badge ──────────────────────────────────────────────────────────── */
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--rank-color, var(--ink-gold-dim));
+  border: 1px solid var(--rank-color, var(--ink-gold-dim));
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-family: var(--ink-font-mono);
+  font-size: var(--ink-fs-label);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* sm: compact inline (default — fits inside MemberCard meta row) */
+.rank-badge--sm { font-size: var(--ink-fs-label); }
+
+/* md: 48×48 frame — character detail, promotion screen */
+.rank-badge--md {
+  flex-direction: column;
+  padding: 4px;
+  gap: 4px;
+  font-size: var(--ink-fs-meta);
+}
+
+/* lg: 64×64 frame — character detail hero slot */
+.rank-badge--lg {
+  flex-direction: column;
+  padding: 6px;
+  gap: 6px;
+  font-size: var(--ink-fs-small);
+}
+
+/* ── Frame (recessed dark plate) ── */
+.rank-badge__frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rank-badge--md .rank-badge__frame,
+.rank-badge--lg .rank-badge__frame {
+  width: 48px;
+  height: 48px;
+  background: radial-gradient(ellipse at 30% 25%, rgba(0,0,0,.4), rgba(0,0,0,.7));
+  border: 1px solid var(--rank-color, var(--ink-gold-dim));
+  border-radius: 4px;
+  box-shadow:
+    inset 0 0 0 1px rgba(0,0,0,.4),
+    inset 0 1px 2px rgba(0,0,0,.5),
+    0 1px 2px rgba(0,0,0,.5),
+    0 0 8px var(--rank-soft, rgba(212,168,67,.15));
+}
+
+.rank-badge--lg .rank-badge__frame {
+  width: 64px;
+  height: 64px;
+}
+
+.rank-badge__frame img {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,.7));
+}
+
+.rank-badge__label { line-height: 1; }

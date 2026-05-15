@@ -72,6 +72,10 @@ export const VALID_SETTINGS: GameSettings = {
   sfxVolume: 0.7,
   autoSkillDefault: true,
   graphicsQuality: 'high',
+  shadowsEnabled: false,
+  bloomEnabled: false,
+  bloomThreshold: 0.85,
+  atmosphericEnabled: true,
 };
 
 export const VALID_ACTIVE_MISSION: ActiveMission = {
@@ -81,7 +85,7 @@ export const VALID_ACTIVE_MISSION: ActiveMission = {
   estimatedEndTime: 61000,
   phase: 'traveling',
   arrivalTime: null,
-  combatMode: null,
+  targetPriority: 'focus',
 };
 
 export const VALID_GAME_SAVE_DATA: GameSaveData = {
@@ -100,12 +104,12 @@ export const VALID_GAME_SAVE_DATA: GameSaveData = {
   tavern: { lastRefreshTime: 0, availableMercenaries: [] },
   inventory: { items: {} },
   facilities: [
-    { type: 'tavern',        level: 1, assignedMemberIds: [], placedSlot: 8,    woodReserve: null },
-    { type: 'training-yard', level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
-    { type: 'infirmary',     level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
-    { type: 'workshop',      level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
-    { type: 'logging-site',  level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
-    { type: 'stone-quarry',  level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
+    { id: 'tavern',        type: 'tavern',        level: 1, assignedMemberIds: [], placedSlot: 8,    woodReserve: null },
+    { id: 'training-yard', type: 'training-yard', level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
+    { id: 'infirmary',     type: 'infirmary',     level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
+    { id: 'workshop',      type: 'workshop',      level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
+    { id: 'logging-site',  type: 'logging-site',  level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
+    { id: 'stone-quarry',  type: 'stone-quarry',  level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
   ],
 };
 

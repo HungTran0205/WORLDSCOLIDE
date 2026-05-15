@@ -22,7 +22,7 @@ CSV files open with formulas as text. To make them work:
 1. **Save as Excel Workbook:**
    - Go to File → Save As
    - Choose "Excel Workbook (*.xlsx)" format
-   - Save as `economy-calculator-working.xlsx`
+   - Save as `economy-calculator-working.xlsx`   
 
 2. **Convert Text to Formulas:**
    - Select all cells with formulas (they appear as text starting with `=`)

@@ -22,8 +22,9 @@ interface BloomNodeInstance {
 
 /**
  * WebGPU bloom postprocessing pass.
- * When mounted, takes over the R3F render loop via useFrame priority=1.
- * When unmounted, R3F's default render resumes automatically.
+ * Mounted once per Canvas. Persistent <AllPresetParticles> guarantees no
+ * VFXParticles unmount mid-frame, so the previous "Buffer used in submit
+ * while destroyed" race is gone — no dispose useEffect / try-catch needed.
  */
 export function PostProcessingBloom({ strength, radius, threshold }: Props) {
   const gl = useThree(s => s.gl) as unknown as WebGPURenderer
@@ -36,13 +37,10 @@ export function PostProcessingBloom({ strength, radius, threshold }: Props) {
     const scenePass = pass(scene as any, camera as any)
     const sceneColor = scenePass.getTextureNode('output')
     const bloomNode = new (BloomNode as any)(sceneColor, strength, radius, threshold) as BloomNodeInstance & {
-      // BloomNode also extends TempNode — treat the instance as a Node
       isNode: boolean
     }
-    // outputNode = sceneColor + bloom
     post.outputNode = (sceneColor as any).add(bloomNode)
     return { post, bloomNode }
-    // intentionally only depend on gl/scene/camera — uniform updates handled separately
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gl, scene, camera])
 
@@ -55,7 +53,7 @@ export function PostProcessingBloom({ strength, radius, threshold }: Props) {
 
   useFrame(() => {
     if (!setup) return
-    setup.post.renderAsync()
+    setup.post.render()
   }, 1)
 
   return null

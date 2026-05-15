@@ -1,7 +1,8 @@
 import type { StateCreator } from 'zustand';
 import type { ActiveMission, MissionPhase, TutorialStep } from './game-state';
 import type { MissionResult } from '@/game/systems/mission-resolver';
-import type { CombatResult } from '@/game/systems/combat-types';
+import type { CombatResult, CombatEntity } from '@/game/systems/combat-types';
+import type { TargetPriority } from '@/game/systems/combat-arena-types';
 
 export interface MissionSlice {
   activeMissions: ActiveMission[];
@@ -17,7 +18,10 @@ export interface MissionSlice {
   failMission: (missionId: string) => void;
   setTutorialStep: (step: TutorialStep) => void;
   updateMissionPhase: (missionId: string, phase: MissionPhase, arrivalTime?: number) => void;
-  setCombatMode: (missionId: string, mode: 'auto' | 'manual') => void;
+  setTargetPriority: (missionId: string, priority: TargetPriority) => void;
+  /** Autosave the live engine entity list onto an active mission (D12).
+   *  Pass `null` to clear (combat finished or mission removed). */
+  saveCombatSnapshot: (missionId: string, snapshot: CombatEntity[] | null, snapshotTime: number) => void;
   pushMissionResult: (result: MissionResult) => void;
   setCurrentCombatReplay: (replay: CombatResult | null) => void;
   dismissResult: () => void;
@@ -55,11 +59,24 @@ export const createMissionSlice: StateCreator<MissionSlice> = (set) => ({
       ),
     })),
 
-  setCombatMode: (missionId, mode) =>
+  setTargetPriority: (missionId, priority) =>
     set((s) => ({
       activeMissions: s.activeMissions.map((m) =>
-        m.missionId === missionId ? { ...m, combatMode: mode } : m,
+        m.missionId === missionId ? { ...m, targetPriority: priority } : m,
       ),
+    })),
+
+  saveCombatSnapshot: (missionId, snapshot, snapshotTime) =>
+    set((s) => ({
+      activeMissions: s.activeMissions.map((m) => {
+        if (m.missionId !== missionId) return m;
+        if (snapshot === null) {
+          // Clear snapshot — mid-fight resume should fall through to normal resolver.
+          const { combatSnapshot: _drop, combatSnapshotTime: _dropT, ...rest } = m;
+          return rest;
+        }
+        return { ...m, combatSnapshot: snapshot, combatSnapshotTime: snapshotTime };
+      }),
     })),
 
   pushMissionResult: (result) =>

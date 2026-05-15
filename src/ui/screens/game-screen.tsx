@@ -20,7 +20,10 @@ import { KaelRescueDialogue, TutorialRewardSplash } from '@/ui/components/tutori
 import { MissionNotification } from '@/ui/components/mission-notification';
 import { ActiveMissionsList } from '@/ui/panels/active-missions-list';
 import { CombatPrepPanel } from '@/ui/panels/combat-prep-panel';
+import { CombatPanel } from '@/ui/panels/combat-panel';
+import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { AlchemyCraftPanel } from '@/ui/panels/alchemy-craft-panel';
+import { WorkshopPanel } from '@/ui/panels/workshop-panel';
 import { CombatSkillHotbar } from '@/ui/panels/combat-skill-hotbar';
 import { CombatTimelineBar } from '@/ui/panels/combat-timeline-bar';
 import { CombatResultOverlay } from '@/ui/panels/combat-result-overlay';
@@ -30,42 +33,10 @@ import { GUILD_HALL_CAMERA_TARGET } from '@/game/state/camera-slice';
 import { playBGM } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
 import type { PanelId } from '@/ui/hud/panel-toggle';
+import { KeyboardShortcuts } from '@/ui/hud/keyboard-shortcuts';
+import { DrumTooltipArrow } from '@/ui/overlays/drum-tooltip-arrow';
 import { DEBUG_MODE } from '@/debug';
 import { FacilitySlotDebugPanel } from '@/scene/facility/facility-slot-debug-panel';
-
-/** Manual-mode toggle button — flips combatMode for the active arena mission */
-function CombatManualToggle() {
-  const missionId = useGameStore(s => s.arenaMissionId);
-  const mode = useGameStore(s =>
-    s.activeMissions.find(m => m.missionId === missionId)?.combatMode ?? 'auto',
-  );
-  const setCombatMode = useGameStore(s => s.setCombatMode);
-
-  const toggle = () => {
-    if (missionId) setCombatMode(missionId, mode === 'auto' ? 'manual' : 'auto');
-  };
-
-  return (
-    <button
-      onClick={toggle}
-      data-mode={mode}
-      style={{
-        position: 'fixed', top: 8, right: 12, zIndex: 50,
-        padding: '5px 13px',
-        background: 'rgba(0,0,0,0.7)',
-        border: `1px solid ${mode === 'manual' ? '#ffb300' : '#888'}`,
-        borderRadius: 4,
-        color: mode === 'manual' ? '#ffb300' : '#ccc',
-        cursor: 'pointer',
-        fontSize: '0.75rem',
-        fontWeight: 'bold',
-        letterSpacing: '0.05em',
-      }}
-    >
-      {mode === 'auto' ? 'AUTO' : 'MANUAL'}
-    </button>
-  );
-}
 
 /** Home button — returns camera to guild hall; visible only when camera is in a facility room */
 function HomeButton() {
@@ -133,8 +104,10 @@ interface GameScreenProps {
 export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   const [activePanel, setActivePanel] = useState<PanelId>(null);
   const [alchemyPanelOpen, setAlchemyPanelOpen] = useState(false);
+  const [workshopPanelOpen, setWorkshopPanelOpen] = useState(false);
   // Tracks whether user explicitly closed the panel while still in the room
   const alchemyUserClosedRef = useRef(false);
+  const workshopUserClosedRef = useRef(false);
 
   // Detect when camera is settled inside an alchemy lab room
   const cameraTarget = useGameStore((s) => s.cameraTarget);
@@ -143,6 +116,12 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
 
   const alchemyFacility = useMemo(() => allFacilities.find((f) => {
     if (f.type !== 'alchemy-lab' || f.level === 0 || f.placedSlot === null) return false;
+    const [fx, , fz] = FACILITY_SLOTS[f.placedSlot];
+    return Math.abs(cameraTarget[0] - fx) <= 3.5 && Math.abs(cameraTarget[2] - fz) <= 3.5;
+  }), [allFacilities, cameraTarget]);
+
+  const workshopFacility = useMemo(() => allFacilities.find((f) => {
+    if (f.type !== 'workshop' || f.level === 0 || f.placedSlot === null) return false;
     const [fx, , fz] = FACILITY_SLOTS[f.placedSlot];
     return Math.abs(cameraTarget[0] - fx) <= 3.5 && Math.abs(cameraTarget[2] - fz) <= 3.5;
   }), [allFacilities, cameraTarget]);
@@ -157,9 +136,19 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
     }
   }, [alchemyFacility, cameraSettled]);
 
+  useEffect(() => {
+    if (workshopFacility && cameraSettled) {
+      if (!workshopUserClosedRef.current) setWorkshopPanelOpen(true);
+    } else {
+      setWorkshopPanelOpen(false);
+      workshopUserClosedRef.current = false;
+    }
+  }, [workshopFacility, cameraSettled]);
+
   const currentCombatReplay = useGameStore((s) => s.currentCombatReplay);
   const gameScene = useGameStore((s) => s.gameScene);
   const arenaPhase = useGameStore((s) => s.arenaPhase);
+  const isCombatPanelOpen = useCombatPanelStore((s) => s.isOpen);
   const offlineFacilityReport = useGameStore((s) => s.offlineFacilityReport);
   const offlineElapsedHours = useGameStore((s) => s.offlineElapsedHours);
   const clearOfflineFacilityReport = useGameStore((s) => s.clearOfflineFacilityReport);
@@ -180,6 +169,24 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
       clearPendingFacilityPanel();
     }
   }, [pendingFacilityPanel, clearPendingFacilityPanel]);
+
+  // Bridge: drum mesh click → quest panel (sets cameraFocus='quest-board' via slice action)
+  const pendingQuestPanel = useGameStore((s) => s.pendingQuestPanel);
+  const clearPendingQuestPanel = useGameStore((s) => s.clearPendingQuestPanel);
+  const setCameraFocus = useGameStore((s) => s.setCameraFocus);
+  useEffect(() => {
+    if (pendingQuestPanel) {
+      setActivePanel('quests');
+      clearPendingQuestPanel();
+    }
+  }, [pendingQuestPanel, clearPendingQuestPanel]);
+
+  // Keep cameraFocus aligned with active panel — HUD button or drum click both
+  // funnel through here so the cinematic framing applies either way. Reset to
+  // 'default' whenever the quest panel is closed.
+  useEffect(() => {
+    setCameraFocus(activePanel === 'quests' ? 'quest-board' : 'default');
+  }, [activePanel, setCameraFocus]);
 
   // Switch BGM when scene changes
   useEffect(() => {
@@ -202,10 +209,10 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
           World is always mounted — avoids 5-10s WebGPU re-init freeze on
           scene switch. CSS hides the canvas; isActive pauses the render
           loop to save GPU and signals clock drain on re-activation. */}
-      <div style={{ display: gameScene === 'guild-hall' ? 'block' : 'none' }}>
-        <World isActive={gameScene === 'guild-hall'} />
+      <div style={{ display: gameScene === 'guild-hall' || isCombatPanelOpen ? 'block' : 'none' }}>
+        <World isActive={gameScene === 'guild-hall' || isCombatPanelOpen} />
       </div>
-      {gameScene === 'combat-arena' && <CombatArenaCanvas />}
+      {gameScene === 'combat-arena' && !isCombatPanelOpen && <CombatArenaCanvas />}
 
       {/* HUD + panels (only in guild-hall) */}
       {gameScene === 'guild-hall' && (
@@ -235,7 +242,15 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
               onClose={() => { setAlchemyPanelOpen(false); alchemyUserClosedRef.current = true; }}
             />
           )}
+          {workshopPanelOpen && workshopFacility && (
+            <WorkshopPanel
+              facility={workshopFacility}
+              onClose={() => { setWorkshopPanelOpen(false); workshopUserClosedRef.current = true; }}
+            />
+          )}
           <HomeButton />
+          <KeyboardShortcuts activePanel={activePanel} setActivePanel={setActivePanel} />
+          <DrumTooltipArrow activePanel={activePanel} />
         </>
       )}
 
@@ -247,12 +262,14 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
       <ActiveMissionsList />
       <MissionNotification />
 
-      {/* Combat arena UI overlays */}
-      {gameScene === 'combat-arena' && arenaPhase === 'prep' && <CombatPrepPanel />}
-      {gameScene === 'combat-arena' && arenaPhase === 'fighting' && <CombatTimelineBar />}
-      {gameScene === 'combat-arena' && arenaPhase === 'fighting' && <CombatSkillHotbar />}
-      {gameScene === 'combat-arena' && arenaPhase === 'fighting' && <CombatManualToggle />}
-      {gameScene === 'combat-arena' && arenaPhase === 'result' && <CombatResultOverlay />}
+      {/* Combat arena UI overlays — legacy path, hidden when the new combat panel is driving combat */}
+      {!isCombatPanelOpen && gameScene === 'combat-arena' && arenaPhase === 'prep' && <CombatPrepPanel />}
+      {!isCombatPanelOpen && gameScene === 'combat-arena' && arenaPhase === 'fighting' && <CombatTimelineBar />}
+      {!isCombatPanelOpen && gameScene === 'combat-arena' && arenaPhase === 'fighting' && <CombatSkillHotbar />}
+      {!isCombatPanelOpen && gameScene === 'combat-arena' && arenaPhase === 'result' && <CombatResultOverlay />}
+
+      {/* New idle combat panel (Phase 3+) — single overlay hosts formation/battle/result */}
+      <CombatPanel />
 
       {isGameOver && gameScene === 'guild-hall' && <GameOverOverlay onReturnToTitle={onReturnToTitle} />}
 

@@ -1,4 +1,5 @@
 import type { Member, Mission, ActiveMission } from '@/game/state/game-state';
+import { DEFAULT_TARGET_PRIORITY } from './combat-arena-types';
 
 export interface DispatchValidation {
   valid: boolean;
@@ -45,6 +46,6 @@ export function createActiveMission(
     estimatedEndTime: now + mission.durationMs,
     phase: 'traveling',
     arrivalTime: null,
-    combatMode: null,
+    targetPriority: DEFAULT_TARGET_PRIORITY,
   };
 }

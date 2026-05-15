@@ -41,9 +41,9 @@ function getBonusPreview(facility: GuildFacility, members: Member[], dailyUpkeep
       const total = members.reduce((s, m) => {
         const wcLv = m.craftSkills?.woodcutting.level ?? 0;
         return s + LOGGING_SITE_CONFIG.baseRate * ((m.stats.STR * 0.5 + m.stats.END * 0.3 + m.stats.DEX * 0.2) / 100)
-          * (1 + LOGGING_SITE_CONFIG.wcSkillBonusPct[wcLv] / 100);
+          * (1 + LOGGING_SITE_CONFIG.wcSkillBonusPct[wcLv] / 100) * STONE_QUARRY_CONFIG.ticksPerDay;
       }, 0);
-      return `+${total.toFixed(4)} wood/tick`;
+      return `+${Math.floor(total)} Wood/gameday`;
     }
     case 'stone-quarry': {
       const lMult = STONE_QUARRY_CONFIG.levelMult[lv - 1];
@@ -51,7 +51,7 @@ function getBonusPreview(facility: GuildFacility, members: Member[], dailyUpkeep
         const yMult = 1 + STONE_QUARRY_CONFIG.mcSkillYieldPct[calcMcLevel(m.craftSkills?.mining?.xpAccumulated ?? 0)] / 100;
         return s + STONE_QUARRY_CONFIG.baseRate * (m.stats.STR * 0.5 / 100) * lMult * yMult * STONE_QUARRY_CONFIG.ticksPerDay;
       }, 0);
-      return `+${Math.floor(total)} Stone/day`;
+      return `+${Math.floor(total)} Stone/gameday`;
     }
     default: return '';
   }

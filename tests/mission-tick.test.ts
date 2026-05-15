@@ -24,7 +24,7 @@ function makeMission(phase: ActiveMission['phase'], overrides: Partial<ActiveMis
     estimatedEndTime: 60_000,
     phase,
     arrivalTime: null,
-    combatMode: null,
+    targetPriority: 'focus',
     ...overrides,
   };
 }
@@ -52,10 +52,10 @@ function makeStore(
         if (arrivalTime !== undefined) (m as ActiveMission).arrivalTime = arrivalTime;
       }
     }),
-    setCombatMode: vi.fn((id: string, mode: string) => {
-      calls.push(`setCombatMode:${id}:${mode}`);
+    setTargetPriority: vi.fn((id: string, priority: string) => {
+      calls.push(`setTargetPriority:${id}:${priority}`);
       const m = state.activeMissions.find((x) => x.missionId === id);
-      if (m) (m as ActiveMission).combatMode = mode as 'auto' | 'manual';
+      if (m) (m as ActiveMission).targetPriority = priority as ActiveMission['targetPriority'];
     }),
     setArrivedMissionId: vi.fn((id: string | null) => {
       calls.push(`setArrivedMissionId:${id}`);
@@ -116,29 +116,13 @@ describe('processMissionTick — traveling phase', () => {
 });
 
 describe('processMissionTick — arrived phase', () => {
-  it('stays arrived within timeout if no combatMode set', () => {
-    const am = makeMission('arrived', { arrivalTime: 0, combatMode: null });
+  it('stays arrived indefinitely (waits for player to open combat panel)', () => {
+    const am = makeMission('arrived', { arrivalTime: 0 });
     const store = makeStore([am]);
-    // 15s elapsed — within 30s timeout
-    const events = processMissionTick(store, 15_000);
-    expect(events).toHaveLength(0);
-    expect(store.calls).not.toContain(expect.stringContaining('updatePhase'));
-  });
-
-  it('transitions to in-combat when player sets combatMode', () => {
-    const am = makeMission('arrived', { arrivalTime: 0, combatMode: 'manual' });
-    const store = makeStore([am]);
-    const events = processMissionTick(store, 5_000);
-    expect(events[0]).toMatchObject({ type: 'combat-start', missionId: 'slime-extermination' });
-    expect(store.calls).toContain('updatePhase:slime-extermination:in-combat');
-  });
-
-  it('stays in arrived phase with no combatMode — waits for player', () => {
-    const am = makeMission('arrived', { arrivalTime: 0, combatMode: null });
-    const store = makeStore([am]);
+    // Mission-tick no longer auto-advances arrived → in-combat; the panel does that explicitly.
     const events = processMissionTick(store, 999_999);
     expect(events).toHaveLength(0);
-    expect(store.calls).not.toContain('setCombatMode:slime-extermination:auto');
+    expect(store.calls).not.toContain(expect.stringContaining('updatePhase'));
   });
 });
 
@@ -179,20 +163,13 @@ describe('processMissionTick — in-combat phase', () => {
     expect(resolved).toBe(true);
   });
 
-  it('force-resolves stale manual combat as auto when arena is not active', () => {
-    const am = makeMission('in-combat', { combatMode: 'manual' });
+  it('falls through to auto-resolve when arena is not active (browser closed mid-fight)', () => {
+    const am = makeMission('in-combat');
     const store = makeStore([am]);
-    // gameScene is not 'combat-arena' → stale manual combat, force auto-resolve
+    // gameScene !== 'combat-arena' → tick auto-resolves via combat-simulator
     const events = processMissionTick(store, 10_000);
     expect(events).toHaveLength(1);
-    expect(events[0]).toMatchObject({ type: 'combat-complete', combatMode: 'auto' });
-  });
-
-  it('defaults combatMode to auto in combat-complete event', () => {
-    const am = makeMission('in-combat', { combatMode: null });
-    const store = makeStore([am]);
-    const events = processMissionTick(store, 10_000);
-    expect(events[0]).toMatchObject({ type: 'combat-complete', combatMode: 'auto' });
+    expect(events[0]).toMatchObject({ type: 'combat-complete', missionId: 'slime-extermination' });
   });
 
   it('applies gold and exp on success, or fails on wipe (non-deterministic combat)', () => {
@@ -224,7 +201,7 @@ describe('processMissionTick — edge cases', () => {
       estimatedEndTime: 120_000,
       phase: 'traveling',
       arrivalTime: null,
-      combatMode: null,
+      targetPriority: 'focus',
     };
     const store = makeStore([am1, am2]);
     const events = processMissionTick(store, 15_000);

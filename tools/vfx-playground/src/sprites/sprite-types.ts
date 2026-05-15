@@ -20,4 +20,5 @@ export interface CharacterManifest {
 
 export interface SpriteManifest {
   characters: CharacterManifest[]
+  enemies: CharacterManifest[]
 }

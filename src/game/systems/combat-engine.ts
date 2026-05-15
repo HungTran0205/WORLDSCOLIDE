@@ -7,8 +7,11 @@
 import type { Member, InventoryState } from '@/game/state/game-state';
 import type { EnemyTemplate } from '@/game/data/enemies';
 import type { CombatEvent, CombatTick, CombatResult, CombatOutcome } from './combat-types';
-import type { ArenaEntity, Formation } from './combat-arena-types';
-import { getFormationPosition, isRangedArchetype } from './combat-arena-types';
+import type { ArenaEntity, Formation, TargetPriority } from './combat-arena-types';
+import { getFormationPosition, DEFAULT_TARGET_PRIORITY } from './combat-arena-types';
+import type { CombatStageSpec } from '@/scene/combat/maps/stage-spec-types';
+import { getStageSpawnPosition } from '@/scene/combat/maps/stage-formation-positions';
+import type { ArenaSpawnPos } from './combat-entity-factory';
 import { calcAutoAttackDamage, calcSkillDamage, rollCrit } from './combat-formulas';
 import { applyEffectTick } from './combat-effects';
 import {
@@ -16,7 +19,8 @@ import {
   consumeShock, activateTeamBuff, isTeamBuffActive,
   resolveThienLuTimers, isCloneActive,
 } from './combat-passives';
-import { findTarget, stepForwardToAttack, returnToHome, processAbilities } from './combat-ai';
+import { findTarget, processAbilities } from './combat-ai';
+import { pickFocusPrimary } from './target-priority-resolver';
 import { memberToArenaEntity, enemyToArenaEntity } from './combat-entity-factory';
 
 const LOGIC_TICK_MS = 100;
@@ -25,28 +29,21 @@ const MAX_COMBAT_MS = 120_000; // 2 min hard cap
 // extra tick (100ms) past this value, so effective display = 600 + 100 = 700ms.
 const ANIM_ATTACK_DURATION = 600;
 
-// Back animation: 4 frames @ 12fps = 333ms, effective 300ms + engine granularity
-const WARRIOR_BACK_DURATION = 300;
-// Warrior jumps this far from home toward enemy (world units).
-// At step speed 6 u/s: 3.5 u → ~583ms forward; fits inside attack anim (600ms).
-const WARRIOR_JUMP_DISTANCE = 3.5;
-
 export class CombatEngine {
   entities: ArenaEntity[] = [];
   time = 0;
   /** Called when all enemies are dead — return true if more waves exist */
   onWaveCheck?: () => boolean;
-  /** Manual mode: allies wait for player input before attacking */
-  manualMode = false;
-  /** Manual mode: which ally's turn is currently paused for player input */
-  pausedForAllyTurn: string | null = null;
+  /** Team-level targeting strategy for ally AI (focus | balance) */
+  targetPriority: TargetPriority = DEFAULT_TARGET_PRIORITY;
+  /** Focus mode: shared primary target id for all allies (null = pick on next tick) */
+  primaryTargetId: string | null = null;
   private accumulator = 0;
   private eventQueue: CombatEvent[] = [];
   private ticks: CombatTick[] = [];
   private totalDamageDealt = 0;
   private finished = false;
   private pendingSkills: Set<string> = new Set();
-  private pendingAttacks: Set<string> = new Set();
   private nextEnemyIndex = 0;
   /** Sequential turn lock — id of entity currently executing its full action cycle, or null if queue is idle */
   private activeActorId: string | null = null;
@@ -54,6 +51,9 @@ export class CombatEngine {
   totalSyringesLoaded = 0;
   /** Syringes actually consumed during combat — deduct this from inventory at combat end */
   syringesConsumed = 0;
+  /** Active stage spec — drives spawn anchors (and y per platform). null →
+   *  fallback to legacy FORMATION_POSITIONS (y=0). Set during init(). */
+  private stageSpec: CombatStageSpec | null = null;
 
   /** Initialize combat from formation + enemies */
   init(
@@ -62,6 +62,7 @@ export class CombatEngine {
     enemyTemplates: EnemyTemplate[],
     hpMultiplier = 1,
     inventory?: InventoryState,
+    stageSpec?: CombatStageSpec,
   ): void {
     this.entities = [];
     this.time = 0;
@@ -70,14 +71,13 @@ export class CombatEngine {
     this.totalDamageDealt = 0;
     this.finished = false;
     this.pendingSkills.clear();
-    this.pendingAttacks.clear();
     this.activeActorId = null;
-    this.manualMode = false;
-    this.pausedForAllyTurn = null;
+    this.primaryTargetId = null;
     this.eventQueue = [];
     this.nextEnemyIndex = 0;
     this.totalSyringesLoaded = 0;
     this.syringesConsumed = 0;
+    this.stageSpec = stageSpec ?? null;
 
     // Distribute available syringes evenly among formation members who have loadout configured
     const formationMembers = formation
@@ -98,14 +98,14 @@ export class CombatEngine {
       if (!memberId) return;
       const member = members.find(m => m.id === memberId);
       if (!member) return;
-      const pos = getFormationPosition(slotIndex, 'ally');
+      const pos = this.resolveSpawn(slotIndex, 'ally');
       this.entities.push(memberToArenaEntity(member, pos, syringeMap.get(member.id) ?? 0));
     });
 
     // Place enemies with optional hp scaling
     enemyTemplates.forEach((tmpl, i) => {
       const slotIndex = i % 6;
-      const pos = getFormationPosition(slotIndex, 'enemy');
+      const pos = this.resolveSpawn(slotIndex, 'enemy');
       this.entities.push(enemyToArenaEntity(tmpl, this.nextEnemyIndex++, pos, hpMultiplier));
     });
 
@@ -119,41 +119,30 @@ export class CombatEngine {
   addEnemies(templates: EnemyTemplate[], xOffset: number, hpMultiplier: number): void {
     templates.forEach((tmpl, i) => {
       const slotIndex = i % 6;
-      const pos = getFormationPosition(slotIndex, 'enemy');
+      const pos = this.resolveSpawn(slotIndex, 'enemy');
       pos.x += xOffset;
       this.entities.push(enemyToArenaEntity(tmpl, this.nextEnemyIndex++, pos, hpMultiplier));
     });
   }
 
+  /** Resolve a spawn slot to {x,y,z}. Prefers stage spec when present (y from
+   *  the platform top); falls back to legacy FORMATION_POSITIONS (y=0) for
+   *  legacy callers and tests without a stage. */
+  private resolveSpawn(slotIndex: number, side: 'ally' | 'enemy'): ArenaSpawnPos {
+    if (this.stageSpec) {
+      try {
+        return getStageSpawnPosition(this.stageSpec, slotIndex, side);
+      } catch {
+        // Spec missing the slot → fall through to legacy.
+      }
+    }
+    const legacy = getFormationPosition(slotIndex, side);
+    return { x: legacy.x, y: 0, z: legacy.z };
+  }
+
   /** Advance combat by dt milliseconds. Call from useFrame. */
   tick(dt: number): CombatEvent[] {
     if (this.finished) return [];
-
-    // EC-3: manual mode turned OFF while paused — clear pause state so enemies aren't frozen
-    if (!this.manualMode && this.pausedForAllyTurn !== null) {
-      const ally = this.entities.find(e => e.id === this.pausedForAllyTurn);
-      if (ally) ally.waitingForInput = false;
-      this.pausedForAllyTurn = null;
-    }
-
-    // Manual mode pause: freeze entire engine while waiting for player action
-    if (this.manualMode && this.pausedForAllyTurn !== null) {
-      const pausedAlly = this.entities.find(e => e.id === this.pausedForAllyTurn && e.currentHp > 0);
-      if (!pausedAlly) {
-        // Ally died while waiting — auto-clear and resume
-        this.pausedForAllyTurn = null;
-      } else if (
-        !this.pendingAttacks.has(pausedAlly.id) &&
-        !this.pendingSkills.has(pausedAlly.id)
-      ) {
-        // Still waiting for player — freeze time entirely (enemies don't attack)
-        return [];
-      } else {
-        // Player has acted — clear pause and fall through to process
-        this.pausedForAllyTurn = null;
-        pausedAlly.waitingForInput = false;
-      }
-    }
 
     this.accumulator += dt;
     const frameEvents: CombatEvent[] = [];
@@ -166,26 +155,12 @@ export class CombatEngine {
       this.processLogicTick();
       this.checkVictoryCondition();
 
-      // After tick: detect if an ally's turn just fired (manual mode)
-      if (this.manualMode && this.pausedForAllyTurn === null) {
-        const waitingAlly = this.entities
-          .filter(e => e.isAlly && e.currentHp > 0 && e.waitingForInput)
-          .sort((a, b) => a.nextAttackAt - b.nextAttackAt)[0] ?? null;
-        if (waitingAlly) {
-          this.pausedForAllyTurn = waitingAlly.id;
-          this.eventQueue.push({ type: 'ally-turn-start', entityId: waitingAlly.id });
-        }
-      }
-
       if (this.eventQueue.length > 0) {
         this.ticks.push({ time: this.time, events: [...this.eventQueue] });
         frameEvents.push(...this.eventQueue);
       }
 
       if (this.time >= MAX_COMBAT_MS) this.finished = true;
-
-      // Break while loop immediately when we just paused for a turn
-      if (this.manualMode && this.pausedForAllyTurn !== null) break;
     }
 
     return frameEvents;
@@ -196,21 +171,14 @@ export class CombatEngine {
     this.pendingSkills.add(memberId);
   }
 
-  /** Toggle manual mode — allies wait for player input each attack cycle */
-  setManualMode(on: boolean): void { this.manualMode = on; }
-
-  /** Queue a basic attack for a waiting ally (manual mode) */
-  queueAttack(memberId: string): void { this.pendingAttacks.add(memberId); }
-
-  /** Set a specific manual target for an ally (manual mode) */
-  setManualTarget(allyId: string, enemyId: string | null): void {
-    const ally = this.entities.find(e => e.id === allyId && e.isAlly);
-    if (ally) ally.manualTargetId = enemyId;
+  /** Update team-level targeting strategy at runtime (e.g. player toggles in panel) */
+  setTargetPriority(priority: TargetPriority): void {
+    this.targetPriority = priority;
+    // Force re-pick on next tick when switching strategies
+    this.primaryTargetId = null;
   }
 
   isFinished(): boolean { return this.finished; }
-
-  getPausedForAllyTurn(): string | null { return this.pausedForAllyTurn; }
 
   getActiveActorId(): string | null { return this.activeActorId; }
 
@@ -247,7 +215,9 @@ export class CombatEngine {
       if (stunned) stunnedThisTick.add(entity.id);
     }
 
-    // Phase B: if active actor exists, continue its movement; don't start new actions this tick
+    // Phase B: if active actor still in attack/skill animation, hold the lock
+    // until the animation reverts. Stand-still attacks have no movement to
+    // advance — actor either is "done" or is mid-anim; we just wait.
     if (this.activeActorId !== null) {
       const actor = this.entities.find(e => e.id === this.activeActorId);
       if (!actor || actor.currentHp <= 0) {
@@ -260,7 +230,7 @@ export class CombatEngine {
       } else if (this.isActorDone(actor)) {
         this.activeActorId = null;
       } else {
-        this.processActorMovement(actor);
+        // Mid-anim — hold lock, no movement to advance.
         return;
       }
     }
@@ -286,18 +256,28 @@ export class CombatEngine {
     }
 
     this.processEntityAction(nextActor);
-    if (nextActor.waitingForInput) return;
     if (!this.isActorDone(nextActor)) {
       this.activeActorId = nextActor.id;
     }
   }
 
-  /** Resolve attack target: manual target first (if valid), else findTarget */
+  /** Resolve attack target via team-level target priority (focus | balance) */
   private resolveTarget(entity: ArenaEntity): ArenaEntity | null {
-    if (entity.isAlly && this.manualMode && entity.manualTargetId) {
-      const manual = this.entities.find(e => e.id === entity.manualTargetId);
-      if (manual && manual.currentHp > 0 && manual.isAlly !== entity.isAlly) return manual;
-      entity.manualTargetId = null;
+    if (entity.isAlly) {
+      // Refresh shared focus target if needed (dead/missing → re-pick on next call)
+      if (this.targetPriority === 'focus') {
+        const current = this.primaryTargetId
+          ? this.entities.find(e => e.id === this.primaryTargetId && e.currentHp > 0 && !e.isAlly)
+          : null;
+        if (!current) {
+          const next = pickFocusPrimary(this.entities);
+          this.primaryTargetId = next?.id ?? null;
+          return next;
+        }
+        return current;
+      }
+      // Balance mode: row-aligned target via combat-ai (per-ally)
+      return findTarget(entity, this.entities, 'balance');
     }
     return findTarget(entity, this.entities);
   }
@@ -308,14 +288,8 @@ export class CombatEngine {
     // Use strict > (not >=) to avoid same-tick collision: if attack expires at T=800
     // and enemy also attacks at T=800, the ally stays 'attacking' for that tick.
     if (entity.animStateUntil > 0 && this.time > entity.animStateUntil) {
-      if (entity.animState === 'attacking' && entity.archetype === 'warrior') {
-        // Warrior: after 8-frame jump attack, play return-jump animation
-        entity.animState = 'back';
-        entity.animStateUntil = this.time + WARRIOR_BACK_DURATION;
-      } else {
-        entity.animState = 'battle-idle';
-        entity.animStateUntil = 0;
-      }
+      entity.animState = 'battle-idle';
+      entity.animStateUntil = 0;
     }
 
     if (entity.passiveState) applyPassiveTick(entity);
@@ -363,47 +337,12 @@ export class CombatEngine {
     }
     if (effectResult.skipTurn) {
       entity.position.x = entity.homeX;
+      entity.position.y = entity.homeY;
       entity.position.z = entity.homeZ;
       entity.attackMoveState = 'home';
     }
 
     return { dead: false, stunned: effectResult.skipTurn };
-  }
-
-  /** Advance melee step-forward/returning movement for the active turn owner only */
-  private processActorMovement(actor: ArenaEntity): void {
-    if (isRangedArchetype(actor.archetype)) return;
-
-    const dtSeconds = LOGIC_TICK_MS / 1000;
-    const isWarrior = actor.archetype === 'warrior';
-
-    if (actor.attackMoveState === 'step-forward') {
-      const target = this.resolveTarget(actor);
-      const arrived = stepForwardToAttack(actor, dtSeconds);
-      if (arrived) {
-        if (target && target.currentHp > 0) {
-          if (isWarrior) {
-            // Warrior: animState/nextAttackAt already set by initiateWarriorJump; just deal damage on arrival
-            if (target.dodgeRate > 0 && Math.random() < target.dodgeRate) {
-              this.eventQueue.push({ type: 'dodge', attackerId: actor.id, targetId: target.id });
-            } else {
-              this.dealDamage(actor, target);
-            }
-          } else {
-            this.tryAttack(actor, target);
-          }
-        }
-        actor.attackMoveState = 'returning';
-      }
-    } else if (actor.attackMoveState === 'returning') {
-      // Warrior stays at midpoint until attack anim expires; processEntityStatus then starts 'back'
-      if (isWarrior && actor.animState === 'attacking') return;
-      const atHome = returnToHome(actor, dtSeconds);
-      if (atHome) {
-        actor.attackMoveState = 'home';
-        if (!isWarrior) actor.animState = 'battle-idle';
-      }
-    }
   }
 
   /** Initiate action for the entity selected as the next turn owner */
@@ -415,59 +354,12 @@ export class CombatEngine {
     }
     entity.targetId = target.id;
 
-    const hasPendingAttack = this.pendingAttacks.has(entity.id);
-    const hasPendingSkill = this.pendingSkills.has(entity.id);
-
-    if (entity.isAlly && this.manualMode) {
-      if (!hasPendingAttack && !hasPendingSkill) {
-        entity.waitingForInput = true;
-        entity.animState = 'battle-idle';
-        return;
-      }
-      entity.waitingForInput = false;
-    } else {
-      entity.waitingForInput = false;
-    }
-
-    if (isRangedArchetype(entity.archetype)) {
-      if (entity.isAlly && this.manualMode) {
-        if (hasPendingAttack) {
-          this.pendingAttacks.delete(entity.id);
-          this.tryAttack(entity, target);
-        }
-        // only pendingSkill: don't auto-attack, skill fires below
-      } else {
-        this.tryAttack(entity, target);
-      }
-    } else if (entity.archetype === 'warrior') {
-      // Warrior: jump forward to enemy with attack animation, deal damage on arrival
-      if (entity.isAlly && this.manualMode) {
-        if (hasPendingAttack) {
-          this.pendingAttacks.delete(entity.id);
-          this.initiateWarriorJump(entity, target);
-        }
-        // only pendingSkill: stay at home, skill fires below
-      } else {
-        this.initiateWarriorJump(entity, target);
-      }
-    } else {
-      // Standard melee: initiate step-forward
-      if (entity.isAlly && this.manualMode) {
-        if (hasPendingAttack) {
-          this.pendingAttacks.delete(entity.id);
-          entity.stepTargetX = target.position.x + (entity.isAlly ? -1 : 1) * entity.attackRange * 0.8;
-          entity.stepTargetZ = target.position.z;
-          entity.attackMoveState = 'step-forward';
-          entity.animState = 'walking';
-        }
-        // only pendingSkill: stay at home, skill fires below
-      } else {
-        entity.stepTargetX = target.position.x + (entity.isAlly ? -1 : 1) * entity.attackRange * 0.8;
-        entity.stepTargetZ = target.position.z;
-        entity.attackMoveState = 'step-forward';
-        entity.animState = 'walking';
-      }
-    }
+    // Idle-panel mode: every archetype attacks in place. Damage lands instantly,
+    // the attack animation plays for ANIM_ATTACK_DURATION, then animState
+    // reverts to battle-idle in processEntityStatus. Ranged behaviour is the
+    // baseline; melee/warrior step-forward + warrior-jump removed (Phase 6+
+    // user feedback — no movement during the idle combat panel).
+    this.tryAttack(entity, target);
 
     if (entity.isAlly && this.pendingSkills.has(entity.id)) {
       this.trySkill(entity, target);
@@ -500,27 +392,11 @@ export class CombatEngine {
     }
   }
 
-  /** True when the turn owner has completed its full action cycle and the lock can be released */
+  /** True when the turn owner has completed its full action cycle and the lock can be released.
+   *  Stand-still attacks: every archetype is done as soon as the attack/skill
+   *  animation reverts to battle-idle. */
   private isActorDone(actor: ArenaEntity): boolean {
-    if (isRangedArchetype(actor.archetype)) {
-      return actor.animState !== 'attacking' && actor.animState !== 'skill';
-    }
-    if (actor.archetype === 'warrior') {
-      // Done when physically home (same as standard melee); back anim may still play after
-      return actor.attackMoveState === 'home';
-    }
-    return actor.attackMoveState === 'home';
-  }
-
-  /** Warrior jump-forward attack: hop toward enemy midpoint, animation plays once, then back home */
-  private initiateWarriorJump(entity: ArenaEntity, _target: ArenaEntity): void {
-    const dir = entity.isAlly ? 1 : -1;
-    entity.stepTargetX = entity.homeX + dir * WARRIOR_JUMP_DISTANCE;
-    entity.stepTargetZ = entity.homeZ;
-    entity.attackMoveState = 'step-forward';
-    entity.animState = 'attacking';
-    entity.animStateUntil = this.time + ANIM_ATTACK_DURATION;
-    entity.nextAttackAt = this.time + entity.attackIntervalMs;
+    return actor.animState !== 'attacking' && actor.animState !== 'skill';
   }
 
   private tryAttack(entity: ArenaEntity, target: ArenaEntity): void {
@@ -615,10 +491,8 @@ export class CombatEngine {
     if (target.currentHp <= 0) {
       target.animState = 'dead';
       this.eventQueue.push({ type: 'death', entityId: target.id });
-      // Clear manual target references to this dead entity
-      for (const e of this.entities) {
-        if (e.manualTargetId === target.id) e.manualTargetId = null;
-      }
+      // Focus mode: shared primary target died → clear so resolveTarget picks a new one
+      if (this.primaryTargetId === target.id) this.primaryTargetId = null;
     }
 
     // Process enemy abilities (poison, stun, enrage, heal) — only if target survived
@@ -637,6 +511,25 @@ export class CombatEngine {
     const isCrit2 = rollCrit(entity.stats.LCK);
     let skillDmg = calcSkillDamage(baseDmg, entity.skill.damageMultiplier, entity.stats.DEX);
     if (isCrit2) skillDmg = Math.floor(skillDmg * entity.critDmg);
+
+    // AOE telegraph — emit BEFORE damage so the React subscriber can spawn the
+    // ground decal in the same tick the skill animation begins. Damage is still
+    // applied instantly (Phase 08 v1: cosmetic only, no wind-up gating).
+    // Color defaults to red ('danger') regardless of caster faction — an ally
+    // offensive AOE on enemies is still a danger zone visually. Use aoeColor
+    // override (e.g. blue) only for explicit beneficial-zone skills (heal AOE).
+    if (entity.skill.aoeRadius && entity.skill.aoeRadius > 0 && target.position) {
+      this.eventQueue.push({
+        type: 'aoe-telegraph',
+        attackerId: entity.id,
+        skillId: entity.skill.id,
+        position: [target.position.x, target.position.y ?? 0, target.position.z],
+        radius: entity.skill.aoeRadius,
+        shape: entity.skill.aoeShape ?? 'circle',
+        durationMs: entity.skill.aoeCastTimeMs ?? ANIM_ATTACK_DURATION,
+        color: entity.skill.aoeColor ?? '#ff5a5a',
+      });
+    }
 
     target.currentHp -= skillDmg;
     this.totalDamageDealt += entity.isAlly ? skillDmg : 0;

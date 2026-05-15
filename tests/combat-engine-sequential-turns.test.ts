@@ -26,14 +26,13 @@ function makeEnemy(id: string): EnemyTemplate {
 
 type MemberDef = { id: string; archetype?: 'scholar' | 'warrior' };
 
-function makeEngine(memberDefs: MemberDef[], enemyIds: string[], manual = false) {
+function makeEngine(memberDefs: MemberDef[], enemyIds: string[]) {
   const engine = new CombatEngine();
   const members = memberDefs.map(d => makeMember(d.id, d.archetype ?? 'scholar'));
   // Formation needs to be accepted by init; pass as-is (init uses forEach, any length works)
   const formation = memberDefs.map(d => d.id) as unknown as Formation;
   const enemies = enemyIds.map(id => makeEnemy(id));
   engine.init(members, formation, enemies);
-  engine.setManualMode(manual);
   return { engine };
 }
 
@@ -70,10 +69,15 @@ describe('CombatEngine — sequential turn queue', () => {
 
     const enemyNASnapshot = enemy.nextAttackAt;
 
-    // While ally holds the lock, enemy nextAttackAt must not change
+    // While ally exclusively holds the lock, enemy nextAttackAt must not change.
+    // The engine intentionally allows same-tick handoff: when ally's anim
+    // expires, Phase B releases the lock and Phase C immediately picks the
+    // next actor in the SAME logic tick. So we stop asserting on the tick
+    // that released the lock.
     let iters = 0;
     while (engine.getActiveActorId() === ally.id && iters < 200 && !engine.isFinished()) {
       engine.tick(100);
+      if (engine.getActiveActorId() !== ally.id) break;
       expect(enemy.nextAttackAt).toBe(enemyNASnapshot);
       iters++;
     }
@@ -152,22 +156,4 @@ describe('CombatEngine — sequential turn queue', () => {
     }
   });
 
-  it('Test 6: manual mode — activeActorId is null while paused for player input', () => {
-    const { engine } = makeEngine([{ id: 'sq6-ally' }], ['sq6-enemy'], true);
-    const ally = engine.entities.find(e => e.isAlly)!;
-
-    engine.tick(ally.attackIntervalMs + 100);
-
-    // Engine paused for player turn
-    expect(engine.getPausedForAllyTurn()).not.toBeNull();
-    // Lock must NOT be held while waiting for input
-    expect(engine.getActiveActorId()).toBeNull();
-
-    // Player queues an attack
-    engine.queueAttack(ally.id);
-    const events = engine.tick(200);
-
-    expect(events.some(e => e.type === 'auto-attack')).toBe(true);
-    expect(engine.getPausedForAllyTurn()).toBeNull();
-  });
 });

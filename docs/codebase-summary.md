@@ -2,7 +2,7 @@
 
 **Worlds Collide** — An HD-2D auto-RPG idle guild builder where civilizations collide. Build your guild hall, recruit members from different civilizations, dispatch quests, and watch your guild grow — even while you're away.
 
-**Last Updated**: 2026-04-11 (Logging Site Finite Harvest System v1.18.0)
+**Last Updated**: 2026-05-03 (Combat Panel Idle Redesign Phase 6 - v1.27.4)
 
 ## Technology Stack
 
@@ -34,7 +34,7 @@
 │   │   ├── screens/         # Full-screen views (title screen with slot selection)
 │   │   ├── panels/          # Collapsible UI panels (quest board, roster, build, combat, settings)
 │   │   ├── hud/             # Heads-up display overlay + panel toggle bar + save status badge
-│   │   ├── components/      # Reusable UI components (stat bars, cards, dialogs, civ-badge, game-icon, cost-display, rank-badge, member-book)
+│   │   ├── components/      # Reusable UI components (stat bars, HP/EXP bars, tier-badge, rank-badge, member-card with rank treatment, inventory-slot with rarity modifier, civ-badge, game-icon, cost-display)
 │   │   ├── utils/           # Utility functions (icon-paths for convention-based icon resolution)
 │   │   └── styles/          # CSS for panels, HUD, and screens
 │   ├── audio/               # Howler.js audio manager + sound key enums (6 new keys)
@@ -362,6 +362,14 @@
 - **Dismissable**: Click to acknowledge, popup clears without manual claiming
 - **No Offline Loss**: All production accumulated accurately from timestamp
 
+### Game-Day Timing Constants (CRITICAL)
+- **1 game-day = 14400 real ticks = 4 real-hour** (online scheduler runs at 1Hz via Web Worker)
+- `TICKS_PER_DAY = 14400` const lives in `facility-production-system.ts`; `STONE_QUARRY_CONFIG.ticksPerDay = 14400` mirrors the same value
+- Online tick path (`processLoggingSiteTick`, `processStoneQuarryTick`) runs once per real-second
+- Offline catch-up (`processFacilityProduction`) multiplies per-tick rates × `TICKS_PER_DAY` per game-day → must use the same constant or rates diverge
+- Vein strike probability: `dailyStrikeChance / 14400` per tick — keeps "X strikes per game-day" intent
+- UI labels read "+N Wood/gameday" / "+N Stone/gameday" so player-visible numbers match the per-game-day rate
+
 ### State Management (NEW - Game State Extension)
 - **`facilities: GuildFacility[]`** — Array of facility objects (type, level, assignedMemberIds)
 - **`facilityProduction: LastProductionDay`** — Timestamp tracking for offline catch-up
@@ -612,13 +620,21 @@
 - 22 missions, 15 enemy types, 7 skills, 6 audio keys
 - Civilization archetype system, icon asset integration (60+ pixel-art icons)
 
-## Recent Changes (Inventory & Multi-Resource Economy — v1.5)
+## Recent Changes (Inventory & Multi-Resource Economy — v1.5, Enhanced v1.20+)
 
-### Item Database & Inventory System (Major Feature)
-- **8 Core Item Types**: WOOD, STONE, IRON_ORE, SLIME_GEL, BOAR_PELT, WOLF_FANG, GOBLIN_EAR, ORC_TUSK
-- **Inventory Zustand Slice**: Atomic `consumeItems()` and `addItems()` actions
-- **Item Registry**: `items.ts` defines all item types with names and stack limits
-- **Inventory State**: Stores quantity per item type in guild state
+### Item Database & Inventory System (Major Feature, v1.5 — Enhanced v1.20+)
+- **Item Types**: 8 core materials (WOOD, STONE, IRON_ORE, etc.), consumables, equipment with rarity tiers
+- **Rarity System**: COMMON, UNCOMMON, RARE, EPIC, LEGENDARY — applies to items and equipment
+- **Inventory State Structure**: `{ items: Partial<Record<ItemID, number>>; equipmentInventory?: EquipmentItem[]; categoryCapacity?: Partial<Record<InventoryCategory, number>>; }`
+  - `items`: Quantity map by ItemID
+  - `equipmentInventory`: Unequipped equipment instances (EquipmentItem with id, templateId, durability)
+  - `categoryCapacity`: Optional per-category slot overrides (defaults to 30/category, max 200 when expanded)
+- **Inventory Categories**: `'material' | 'consumable' | 'weapon' | 'armor'`
+- **Inventory Zustand Slice**: Atomic `consumeItems()`, `addItem()`, `removeItem()`, `expandCategorySlots()`, `removeEquipmentFromInventory()`
+- **Item Registry**: `items.ts` defines all item types with name, type, rarity, and stack limits
+- **Unified Slot Entry** (NEW v1.20): Discriminated union pattern for inventory grid rendering
+  - `{ kind: 'item'; itemId: ItemID; quantity: number }`
+  - `{ kind: 'equipment'; item: EquipmentItem; templateId: EquipmentTemplateId }`
 
 ### Multi-Resource Loot System (Major Feature)
 - **Loot Rules**: Each enemy has `LootRule[]` with `chance`, `minQuantity`, `maxQuantity`
@@ -773,6 +789,276 @@
 
 **Key Files (Modified)**:
 - `src/scene/combat-arena-environment.tsx` — Added `<ArenaAtmosphericVFX placements={biomeConfig.atmosphericVFX ?? []} />` render
+
+## Recent Changes (HD-2D Atmospheric Depth — Phase 01 Foundation — 2026-05-12)
+
+### Per-Room Atmospheric Theming Foundation (NEW - Context & Plumbing Only)
+- **Module**: `src/scene/atmospheric/` — 7-file foundation for room-specific post-FX, particles, and lighting presets
+- **Context Provider**: `AtmosphereProvider` wraps world scene; exports `useAtmosphere()` for consumer components
+- **Preset Registry**: 9 room IDs (guild-hall, main-hall, tavern, training-yard, infirmary, workshop, logging-site, stone-quarry, alchemy-lab) with typed `AtmospherePreset` shape
+- **Active-Room Detection**: `useActiveRoomId()` derives current room from camera position; triggers smooth preset transitions via `useLerpedAtmosphere()` over 500ms
+- **Settings Integration**: `GameSettings.atmosphericEnabled` toggle (default true); when disabled, provider returns null (zero overhead)
+- **Zero Visual Changes at Phase 01**: Pure data/plumbing; phases 02–05 mount actual post-FX effects, particles, and lighting
+- **Deviation Notes**: Phase 01 implemented 9 rooms (not 11 as prose stated); preset shape locked; context split into 3 files per react-refresh lint rules
+
+**Key Files (New)**:
+- `src/scene/atmospheric/atmosphere-types.ts` — `RoomId` union, `AtmospherePreset` interface, `BASELINE_PRESET`
+- `src/scene/atmospheric/atmosphere-presets.ts` — Registry of 9 tuned presets (Phase 04 complete)
+- `src/scene/atmospheric/atmosphere-context-store.ts` — Zustand store instance
+- `src/scene/atmospheric/atmosphere-context.tsx` — React provider component
+- `src/scene/atmospheric/use-atmosphere.ts` — Consumer hook
+- `src/scene/atmospheric/use-active-room-id.ts` — Camera→room selector
+- `src/scene/atmospheric/use-lerped-atmosphere.ts` — Numeric preset lerp helper
+
+**Key Files (Modified)**:
+- `src/game/state/guild-slice.ts` — Added `atmosphericEnabled: boolean` setting
+- `src/scene/world.tsx` — Wrapped scene with `<AtmosphereProvider>`
+
+### World Atmospheric Composer & Effect Stack (Phase 02–05 — 2026-05-12)
+- **Replaces** static `src/scene/world-bloom-post.tsx` with preset-driven composer `src/scene/atmospheric/world-atmospheric-post.tsx`.
+- **WebGL Stack**: N8AO → DOF (dynamic room-tracking target) → TiltShift → Bloom → GodRays → HueSat → BrightnessContrast → Vignette → Noise → ChromaticAberration → ToneMapping (ACES Filmic, last).
+- **WebGPU Path** (Phase 05): TSL chain (Bloom → TiltShift → ColorGrade → Vignette → ChromaticAberration → ACES ToneMapping); functional parity for five core effects achieved (DOF/GodRays remain WebGL-only). TiltShift: Gaussian masked blur, SIGMA=4, half-res, mask formula `smoothstep(0, 0.3, abs(uv.y - 0.5) - halfWidth)` matches WebGL exactly.
+- **Quality Tier**: `graphicsQuality='low'` strips DOF, GodRays, ChromaticAberration, LUT; Bloom + Noise + ToneMapping always on.
+- **Per-Room Tuning**: DOF `focalLength` & `bokehScale` per preset; target syncs auto from camera controller lerp (no preset transition needed on room change).
+- **RT Leak Fix** (Phase 05): `chainDisposables` array in pass closure collects TempNode dispose closures for cleanup on unmount.
+
+**Key Files (New)**:
+- `src/scene/atmospheric/world-atmospheric-post.tsx` — Composer entry wrapping effect stack or WebGPU pass
+- `src/scene/atmospheric/atmospheric-effect-stack.tsx` — WebGL effect children chain
+- `src/scene/atmospheric/atmospheric-webgpu-pass.tsx` — TSL chain: bloom → tilt-shift → colorGrade → vignette → chromAb → ACES; refs-based preset sync; chainDisposables for RT cleanup
+- `src/scene/atmospheric/tsl/vignette-node.ts` — TSL vignette node (pmndrs DEFAULT radial darkening)
+- `src/scene/atmospheric/tsl/color-grade-node.ts` — TSL color-grade node (hue/saturation/brightness/contrast chained)
+- `src/scene/atmospheric/tsl/tilt-shift-node.ts` — TSL tilt-shift node (Gaussian masked blur, SIGMA=4, half-res, strength-driven mask)
+- `src/scene/atmospheric/tsl/types.ts` — `TslChainHolder` + uniform interfaces (bloom, vignette, colorGrade, tiltShift required; chromAb optional)
+- `src/scene/atmospheric/atmospheric-leva-controls.ts` — Dev tuning multipliers schema
+
+**Key Files (Modified)**:
+- `src/scene/atmospheric/atmosphere-types.ts` — Added `GodRaysConfig.sourceId` field, `ChromaticAberrationConfig` on `AtmospherePreset`
+- `src/scene/world.tsx` — Updated import: `world-bloom-post` → `world-atmospheric-post`
+
+### Ambient Particle System (Phase 03 — 2026-05-12)
+- **4 Particle Types**: dust-motes (warm drift), embers (upward hot), magic-motes (cool swirl), pollen (settlement). All use additive blending, wrap-on-bounds lifecycle, tier-aware counts.
+- **Deterministic PRNG**: Mulberry32 seeded RNG (replaces Math.random for React purity compliance); deterministic particle layout per seed.
+- **Procedural Texture**: 32×32 soft-circle DataTexture (SSR-safe singleton), reused across all archetypes.
+- **Bounds Helper**: RoomId → Box3 lookup + `randomInBounds(prng)` utility; floor-Y assumption documented.
+- **Router & Wiring**: `particles-router.tsx` key-driven preset.particles → component switch. Mounted in `world.tsx` inside AtmosphereProvider.
+- **Tier Scaling**: Quality tier (`graphicsQuality='low'`) reduces counts by ~65% (dust: 30, embers: 20, magic: 15, pollen: 10).
+- **React Integration**: useState + useRef for mutable frame buffers (idiomatic r3f pattern); exhaustive-deps compliant.
+
+**Key Files (New)**:
+- `src/scene/atmospheric/particles/shared-particle-texture.ts` — Shared 32×32 texture singleton
+- `src/scene/atmospheric/particles/particle-prng.ts` — Mulberry32 PRNG with seed determinism
+- `src/scene/atmospheric/particles/particle-bounds.ts` — RoomId bounds + spawn helpers
+- `src/scene/atmospheric/particles/dust-motes.tsx` — Slow warm drift (high/low: 100/30)
+- `src/scene/atmospheric/particles/embers.tsx` — Upward hot orange (high/low: 80/20)
+- `src/scene/atmospheric/particles/magic-motes.tsx` — Cool purple swirl with opacity pulse (high/low: 60/15)
+- `src/scene/atmospheric/particles/pollen.tsx` — Yellow settlement toward ground (high/low: 40/10)
+- `src/scene/atmospheric/particles/particles-router.tsx` — Preset-driven particle type switch
+
+**Key Files (Modified)**:
+- `src/scene/world.tsx` — Mount `<AmbientParticlesRouter>` inside AtmosphereProvider
+
+### Per-Room Atmospheric Presets Tuning (Phase 04 — 2026-05-12)
+- **9 Tuned Presets**: Guild hall, main hall, tavern, training yard, infirmary, workshop, logging site, stone quarry, alchemy lab each with distinct mood, bloom, DOF, vignette, and particle settings.
+- **Hemisphere Light Mounting**: Conditional mount in `AtmosphereProvider` reads `hemisphereLight` from lerped preset; rooms with `null` skip entirely (zero cost).
+- **Mood Field**: Optional `mood?: string` added to `AtmospherePreset` for designer notes (documentation-only, not read at runtime).
+- **Lerp Integration**: `useLerpedAtmosphere()` passes `mood` through unchanged; hemisphereLight properties (skyColor, groundColor, intensity) lerp smoothly across 500ms transitions.
+
+**Key Files (Modified)**:
+- `src/scene/atmospheric/atmosphere-presets.ts` — Replaced baseline stubs with 9 per-room tuned presets
+- `src/scene/atmospheric/atmosphere-types.ts` — Added optional `mood?: string` field to `AtmospherePreset`
+- `src/scene/atmospheric/use-lerped-atmosphere.ts` — Routes `mood` field from target preset (no lerp, informational only)
+- `src/scene/atmospheric/atmosphere-context.tsx` — Conditional `<hemisphereLight>` mount gated by `hemi` presence
+
+## Recent Changes (Inventory Panel Redesign — v1.20)
+
+### Inventory Panel UI Overhaul (NEW - Major UI Component)
+- **Tab Navigation**: All | Weapons | Armor | Materials | Consumables with tab counts
+- **Search Bar**: Real-time filtering by item name (case-insensitive substring match)
+- **Rarity Filter**: All | COMMON | UNCOMMON | RARE | EPIC | LEGENDARY (visual color-coded buttons)
+- **Sort Options**: By rarity (default), by name (A–Z), by quantity (descending)
+- **8-Column Grid Layout**: Responsive slot grid with empty placeholders
+- **Detail Panel** (Right sidebar): Shows selected item/equipment details, rarity, stats, equipped-by info
+- **Slot Expansion UI**: Per-category upgrade panel showing current capacity, cost, max (200)
+- **Equip Mode Toggle**: Dedicated button to switch to equipment assignment for members
+- **Keyboard Shortcut**: ESC closes panel
+
+### Inventory UI Components (NEW - v1.20)
+- **InventoryPanel**: Main container with tabs, search, filter, sort, grid + detail panel
+- **InventorySlot**: Single grid cell showing item icon, rarity border, quantity badge
+  - Rarity modifiers: `.inventory-slot--rarity-{uncommon,rare,epic,legendary}` (COMMON has no border)
+  - Selected state: `.inventory-slot--selected` highlighting
+  - Empty state: Grey placeholder
+- **InventoryDetailPanel**: Right-side panel showing selected item/equipment full details
+  - Item view: Icon, name, rarity, stack limit, description
+  - Equipment view: Icon, name, rarity, stats (damage/HP/defense), durability, equipped-by member
+- **InventorySlotExpansion**: Tier-based capacity upgrade UI showing costs and current/max slots
+
+### Per-Category Slot System (NEW - v1.20)
+- **Default Capacity**: 30 slots per category (weapon, armor, material, consumable)
+- **Expansion Tiers**:
+  - Tier 1: +10 slots → 40 total, costs 20 WOOD + 10 STONE
+  - Tier 2: +10 slots → 50 total, costs 10 IRON_ORE + 2 GEM
+  - Further expansions up to 200 per category
+- **Slot Calculation**: Items that stack split into multiple visual slots (stack limit 99)
+  - Non-stackable equipment: Each item = 1 visual slot
+  - Stackable items: `ceil(quantity / 99)` slots per item type
+- **Zustand Action**: `expandCategorySlots(category, amount)` — increments category capacity, capped at 200
+- **Save Compatibility**: `categoryCapacity` field optional (old saves default to 30/category on load)
+
+## Recent Changes (UI Handoff Ink Refresh — v1.20)
+
+### Expanded Design Token System (NEW - HD-2D Token Library)
+- **Token Prefix**: All new tokens use `--ink-*` convention per existing patterns
+- **Token Growth**: 35 → 81 total `--ink-*` tokens in `game-ui-tokens.css`
+- **New Token Groups**:
+  - **Gold Bright**: `--ink-gold-bright` (#ffd700) for prominent highlights and display text
+  - **Combat Log Accents**: `--ink-log-skill`, `--ink-log-dodge`, `--ink-log-heal`, `--ink-log-zone` for combat log line color-coding
+  - **Wood/Chest Theme**: `--ink-wood-edge`, `--ink-wood-edge-light`, `--ink-wood-edge-dark`, `--ink-wood-fill-from`, `--ink-wood-fill-to`, `--ink-stud-bright`, `--ink-stud-mid` for InventoryPanel wooden chest aesthetic
+  - **Rank Palette** (6 colors): `--ink-rank-recruit`, `--ink-rank-member`, `--ink-rank-veteran`, `--ink-rank-officer`, `--ink-rank-commander`, `--ink-rank-mercenary` for member card borders and insignia frames
+  - **Tier Palette** (7 colors): `--ink-tier-f` through `--ink-tier-s` for quest difficulty badges
+  - **Font UI**: `--ink-font-ui` (Segoe UI, sans-serif) for HUD top bar and title screen
+  - **Type Scale** (8 sizes): `--ink-fs-display`, `--ink-fs-h1`, `--ink-fs-h2`, `--ink-fs-body`, `--ink-fs-small`, `--ink-fs-meta`, `--ink-fs-label`, `--ink-fs-tiny` (rem-based)
+  - **Spacing Scale** (6 steps): `--ink-space-1` through `--ink-space-6` (4px base)
+  - **Additional Radii**: `--ink-radius-lg` (8px), `--ink-radius-chest` (12px) for container shapes
+  - **Additional Effects**: `--ink-glow-bright`, `--ink-shadow-panel`, `--ink-dur-fast`, `--ink-dur-bar` for motion and visual depth
+
+### New Typography Utility Classes (NEW - `typography.css`)
+- **9 semantic type classes**: `.ink-display`, `.ink-h1`, `.ink-h2`, `.ink-section-title`, `.ink-body`, `.ink-small`, `.ink-stat`, `.ink-label`, `.ink-tiny`
+- **rem-based sizing**: Ensures `--ui-scale` responsive scaling doesn't double-apply (contrasts with px-based borders)
+- **Font stacks**: Semantic pairing (title = Cinzel, body = IM Fell English, mono = Share Tech Mono, UI = Segoe UI sans)
+- **Integration**: Single-source type styling eliminates inline font-size/color inconsistencies
+
+### New Components: TierBadge & Refactored HpExpBar (NEW)
+- **TierBadge**: Quest difficulty badge (F–S tiers) with per-tier scale compensation
+  - `TIER_SCALE` record: Tier-specific size multipliers (F=1.00, S=1.05, A=1.20, D=1.20)
+  - `TIER_COLOR` + `TIER_SOFT`: Per-tier color tokens + semi-transparent background
+  - `TIER_DESCRIPTOR`: Readable labels (F="Errand", S="Legendary")
+  - Props: `tier` (required), `size` (28|36|64px), `showLabel` (optional)
+- **HpExpBar**: Consolidated HP/EXP value bar (was split across components)
+  - Props: `kind` ('hp'|'exp'), `current`, `max`, `variant` ('compact'|'default'|'combat'), optional `label`
+  - Gradient fill: `--ink-hp-*` for HP, `--ink-exp-*` for EXP
+  - Animation: 300ms fill animation via `--ink-dur-bar` token, respects `prefers-reduced-motion`
+
+### Refactored Components: RankBadge, MemberCard, InventorySlot (ENHANCED)
+- **RankBadge**: Converted to CSS variable system
+  - Before: inline `style={{ color, background }}` properties
+  - After: `--rank-color` and `--rank-soft` CSS variables referencing `--ink-rank-*` tokens
+  - Size variants: 'sm'|'md'|'lg' (14–48px icon sizes)
+  - Mercenary rank: Special styling (lowercase "MERC" label)
+- **MemberCard**: Full rank treatment with visual hierarchy
+  - **6 rank modifiers**: `.member-card--{recruit,member,veteran,officer,commander,mercenary}` each sets `--rank-color` + `--rank-soft`
+  - **Corner diamonds**: 4-corner rotated square ornaments (TL/TR via ::before/::after, BL/BR via child spans), scaled per rank
+  - **Insignia frame**: Rank badge sprite in top-left corner (26×26px) with radial shadow + border
+  - **Mercenary slash**: Diagonal gradient overlay on avatar band
+  - **Commander glow**: Extra bright on hover, thicker 3px border
+  - **Recruit dashed border**: Distinctive appearance for new members
+- **InventorySlot**: Rarity modifier classes instead of inline styles
+  - Before: `style={{ borderColor: rarityColor }}`
+  - After: `.inventory-slot--rarity-{common,uncommon,rare,epic,legendary}` modifier classes
+  - Selected state: `.inventory-slot--selected` for consistency
+
+### CSS Extraction & File Organization (REFACTOR)
+- **New**: `src/ui/styles/typography.css` — Semantic type utility classes (loaded after game-ui-tokens.css)
+- **New**: `src/ui/styles/member-card.css` — Extracted from `guild-roster.css` for modularity
+- **Moved**: All `.member-card*` rules from `guild-roster.css` → `member-card.css` (imported by `member-card.tsx`)
+- **Existing**: `tier-badge.css`, `rank-badge.css`, `stat-bar.css` follow component-based naming
+
+### Accessibility: `prefers-reduced-motion` Guards (NEW)
+- **Added to**: All new/modified animation rules in `game-ui-tokens.css`, `member-card.css`, `tier-badge.css`
+- **Pattern**:
+  ```css
+  @keyframes slide { ... }
+  .my-class { animation: slide var(--ink-dur-panel); }
+  @media (prefers-reduced-motion: reduce) { .my-class { animation: none; } }
+  ```
+- **Scope**: Covers panel slide-in, bar fills, member card hovers, badge animations
+
+### Code Standards Update (DOCUMENTATION)
+- **New Section**: "Design Tokens System (v1.20)" in `docs/code-standards.md`
+- **Guidelines**: All future tokens must use `--ink-*` prefix, organized by category
+- **Token Usage Pattern**: Components reference tokens, never hardcoded colors
+- **Type Scale Usage**: Prefer `var(--ink-fs-*)` with rem units; avoid px-based type scaling
+- **Responsive Scale**: `--ui-scale` media queries handle panel rescaling; developers should use rem for type, px for layout
+
+## Recent Changes (Combat Panel Idle Redesign — Phase 3 - v1.27.3)
+
+### Combat Panel Overlay (NEW - Single-Canvas Architecture D8)
+- **Paradigm Shift**: Combat no longer scene-changes; remains on single Canvas with group visibility toggling
+  - `world.tsx <group visible={!isCombatOpen}>` hides guild hall, facilities, post-processing
+  - `world.tsx <group visible={isCombatOpen}>` shows combat backdrop (solid black plane D9)
+  - `OrthographicCamera` switches to dedicated combat camera (position [0, 5, 10], zoom 60) via `makeDefault={isCombatOpen}`
+  - `CameraController` unmounts when `isCombatOpen` to prevent lerping combat camera toward guild hall target
+  - **Benefit**: Avoids WebGL context limit (only 1 Canvas per page) seen in multi-scene architecture
+- **Ephemeral UI Store**: New Zustand store `useCombatPanelStore` (NOT persisted to IndexedDB)
+  - `isOpen: boolean` — Panel visibility
+  - `phase: 'formation' | 'battle' | 'result'` — Current sub-phase
+  - `missionId: string | null` — Mission being fought
+  - `resultData: MissionResult | null` — Combat outcome for result phase
+  - `openCombatPanel(missionId)`, `setPhase()`, `setResult()`, `closeCombatPanel()` actions
+
+### Combat Panel Components (NEW - HD-2D Ink Styling)
+- **combat-panel.tsx** — Shell component, manages phase routing (formation → battle → result)
+- **combat-panel-header.tsx** — Title bar, close button, phase indicators
+- **combat-panel-formation.tsx** — 2×3 formation grid, member assignment, target priority (Focus/Balance toggle), "Start Battle" button
+  - `target-priority-resolver.ts` — Pure resolver function for Focus vs Balance targeting preference
+  - Refactored from legacy `combat-prep-panel.tsx` (kept but suppressed)
+- **combat-panel-battle.tsx** — Phase 4 stub; will mount mini combat scene + VFX in Phase 4
+- **combat-panel-result.tsx** — Victory/defeat banner, rewards, injury recovery list, "Return to Guild Hall" button
+- **combat-panel.css** — New stylesheet using existing `--ink-*` tokens, no new tokens introduced
+
+### Arrival Flow Changes
+- **ArrivalModal** (lightweight): Shows when mission reaches "arrived" phase
+  - Enemy count + level preview
+  - "Enter Battle" button → `openCombatPanel(missionId)` (does NOT change mission.phase yet)
+  - "Close" button → dismisses modal, mission stays in "arrived"
+- **Key Fix (Phase 3)**: `mission.phase` stays "arrived" until player presses "Start Battle" in formation panel
+  - Prevents race condition where mission tick loop would flip phase to "in-combat" before UI was ready
+  - Only "Start Battle" click triggers `updateMissionPhase(missionId, 'in-combat')`
+- **Legacy Panels Suppressed**: CombatPrepPanel, CombatTimelineBar, CombatSkillHotbar, CombatResultOverlay still exist in codebase but render hidden when `isCombatOpen` (Phase 7 will remove)
+
+### New Sprites & Utilities
+- **combat-sprite-resolver.ts** — Maps entity templates → sprite sheet paths (used by Phase 4 mini combat scene)
+
+### Zero Breaking Changes (Phase 3 Scope)
+- Combat engine (`src/game/systems/combat-engine.ts`) untouched — will refactor in Phase 7
+- Save format stable (no v21→v22 migration yet, deferred to Phase 7)
+- Existing combat-arena overlays suppressed but functional as fallback during transition
+
+## Recent Changes (Combat Panel IDLE Redesign Phase 6 — Skip & Snapshot — v1.27.4)
+
+### Skip Button with Combat Snapshot (D11)
+- **Skip Mechanism**: DOM button dispatches `COMBAT_SKIP_DOM_EVENT` → `combat-fight-controller` listener owns engine handoff
+- **Snapshot Path**: `cloneCombatEntity()` deep-clones all live entities (HP, dead-flags, status effects, cooldowns) → `simulateCombatFromSnapshot()` runs to completion
+- **Re-Targeting**: Random-alive per entity during skip simulation (simplified per D11 spec)
+- **Result Stability**: Skip outcome identical to active battle completion — no variance vs. live fighting
+- **Key File**: `tests/combat-skip-snapshot.test.ts` — 7 tests validating cloning semantics + simulator paths
+
+### Mid-Fight Snapshot Persistence (D12)
+- **Autosave Cadence**: `saveCombatSnapshot()` action dispatched every 2s during battle phase
+- **Snapshot Fields**: `ActiveMission.combatSnapshot` (entity list) + `combatSnapshotTime` (epoch)
+- **Resume Flow**: On browser close + relaunch, `mission-tick.ts` detects `mission.phase === 'in-combat'` → checks for snapshot → calls `simulateCombatFromSnapshot()` if exists
+- **Backward Compat**: Falls back to simulate-from-scratch if no snapshot (old saves)
+- **Result**: Close-tab mid-battle no longer rerolls outcome; resume picks up at snapshot state (~losses preserved, no cheating)
+
+### Combat Balance Tuning (Phase 6)
+- **Damage Multiplier**: Added `BASE_DAMAGE_MULTIPLIER = 1.2` constant in `combat-formulas.ts`
+- **Application**: Applied equally to allies + enemies in `calcAutoAttackDamage()`
+- **Migration**: No save migration (in-progress battles replay with 1.2x)
+- **Tuning Knob**: Additive for future balance adjustments
+
+### Files Modified (Phase 6)
+- `combat-formulas.ts` — Added `BASE_DAMAGE_MULTIPLIER = 1.2`
+- `combat-engine.ts` — Added `simulateCombatFromSnapshot()` method + snapshot rebase logic
+- `combat-fight-controller.tsx` — Added `saveCombatSnapshot` action + 2s autosave via useFrame
+- `active-missions.ts` → mission save shape — Added optional `combatSnapshot` + `combatSnapshotTime` fields
+- `combat-panel-battle.tsx` — Skip button → `COMBAT_SKIP_DOM_EVENT` dispatch
+- `mission-tick.ts` — Resume path via simulator on close+relaunch
+
+### Zero Breaking Changes (Phase 6 Scope)
+- Snapshot is ephemeral (lost on browser restart, only persists within active session for auto-save)
+- All existing combat formulas reused; multiplier is additive knob
+- Tests: `tsc -b ✓`, all 7 combat-skip-snapshot tests pass
 
 ## Recent Changes (Logging Site Finite Harvest System — v1.18)
 

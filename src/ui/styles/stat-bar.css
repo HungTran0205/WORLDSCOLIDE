@@ -1,0 +1,53 @@
+/* ─── HP / EXP Stat Bar ───────────────────────────────────────────────────── */
+.stat-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.stat-bar__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.stat-bar__label {
+  font-family: var(--ink-font-mono);
+  font-size: var(--ink-fs-label);
+  color: var(--ink-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.stat-bar__value {
+  font-family: var(--ink-font-mono);
+  font-size: var(--ink-fs-meta);
+  color: var(--ink-text-dim);
+}
+
+.stat-bar__track {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: 2px;
+  overflow: hidden;
+  height: 6px;
+}
+
+.stat-bar__fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width var(--ink-dur-bar) var(--ink-ease-out);
+}
+
+/* ── Kind variants ── */
+.stat-bar--hp  .stat-bar__fill { background: linear-gradient(90deg, var(--ink-hp-from), var(--ink-hp-to)); }
+.stat-bar--exp .stat-bar__fill { background: linear-gradient(90deg, var(--ink-exp-from), var(--ink-exp-to)); }
+
+/* ── Size variants ── */
+.stat-bar--compact .stat-bar__track { height: 4px; }
+.stat-bar--default .stat-bar__track { height: 6px; }
+.stat-bar--combat  .stat-bar__track { height: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-bar__fill { transition: none; }
+}

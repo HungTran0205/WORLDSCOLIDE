@@ -45,7 +45,7 @@
 
 .panel-btn {
   background: linear-gradient(135deg, #4a3f2f, #2a2520);
-  color: #ffd700;
+  color: var(--ink-gold-bright);
   border: 1px solid rgba(255, 215, 0, 0.4);
   padding: 8px 16px;
   border-radius: 6px;
@@ -53,6 +53,7 @@
   font-size: 0.9rem;
   width: 100%;
   margin-top: 8px;
+  transition: background var(--ink-dur-fast);
 }
 
 .panel-btn:hover {
@@ -61,8 +62,8 @@
 
 .panel-btn--active {
   background: linear-gradient(135deg, #5a4a20, #3a3010);
-  border-color: #ffd700;
-  color: #ffd700;
+  border-color: var(--ink-gold-bright);
+  color: var(--ink-gold-bright);
 }
 
 .panel-btn:disabled {
@@ -202,38 +203,6 @@ input[type="range"] {
   border-radius: 4px;
   font-size: 0.7rem;
   font-weight: bold;
-}
-
-/* Quest detail modal */
-.quest-detail-modal {
-  background: rgba(20, 20, 30, 0.98);
-  border: 1px solid rgba(255, 215, 0, 0.3);
-  border-radius: 12px;
-  padding: 20px;
-  max-width: 400px;
-  width: 90vw;
-}
-
-.quest-detail-modal__tier {
-  color: #ffd700;
-  font-size: 0.8rem;
-}
-
-.quest-detail-modal__zone {
-  color: #87ceeb;
-  font-size: 0.85rem;
-  margin: 8px 0;
-}
-
-.quest-detail-modal__enemies {
-  list-style: none;
-  padding: 0;
-}
-
-.quest-detail-modal__enemy {
-  padding: 4px 0;
-  font-size: 0.85rem;
-  color: #ddd;
 }
 
 /* Combat log */

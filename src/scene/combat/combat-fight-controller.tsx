@@ -1,173 +1,151 @@
 /**
- * Combat fight controller — drives CombatEngine tick loop inside the R3F Canvas.
- * Initializes engine on phase='fighting', ticks each frame, syncs snapshots to store.
- * Listens for 'combat-skill' CustomEvents from the skill hotbar.
+ * Combat fight controller — drives the CombatEngine tick loop inside the
+ * shared world canvas (D8). Mounted by `<CombatScene>` and only does work
+ * while `combatPanelStore.phase === 'battle'`.
  *
- * V2: Uses CombatStateBridge for GPU-driven rendering (Phase 04 redesign).
- * Engine → Bridge → AnimationStateBuffer → InstancedSpriteRenderer
- * Store sync throttled to 5Hz (UI panels only).
+ * Responsibilities (Phase 4 minimal):
+ *   - Initialize engine + WaveManager from active mission data when battle
+ *     phase begins.
+ *   - Tick engine each frame, throttle entity-snapshot store sync to ~5Hz.
+ *   - Listen for the legacy `combat-skill` window event (skill hotbar).
+ *   - Spawn damage / heal / poison popups via the projection store.
+ *   - On finish: apply mission rewards via `applyMissionResultSideEffects`,
+ *     then push the result into combat-panel-store so the result sub-phase
+ *     opens. Mission cleanup (exitArena) is deferred to the panel close.
+ *
+ * GPU instancing, mega-atlas building, and damage-pool refs are all gone —
+ * per the plan, that pipeline stays dormant in tree (D1) but is no longer
+ * used. Per-entity sprites live in `combat-idle-sprite.tsx`.
  */
 
-import { useRef, useEffect } from 'react';
-import { useFrame, useThree, type RootState } from '@react-three/fiber';
+import { useEffect, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
+import { useVFXEmitter } from 'r3f-vfx';
 import { CombatEngine } from '@/game/systems/combat-engine';
 import { useGameStore } from '@/game/state/store';
+import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { MISSIONS } from '@/game/data/missions';
 import { ENEMIES } from '@/game/data/enemies';
-import { useArenaDebug } from './combat-arena-debug';
 import { WaveManager, legacyToWaves } from '@/game/systems/combat-wave-manager';
-// sprite-path-resolver used internally by mega-atlas-builder
-import { combatLog, clearCombatLog, downloadCombatLog } from './combat-logger';
-import { DEBUG_MODE } from '@/debug';
-import { CombatStateBridge } from './combat-state-bridge';
-import { preloadCombatAtlases } from './mega-atlas-builder';
-import type { MegaAtlasResult } from './mega-atlas-builder';
-import type { DamageNumberPoolHandle } from './damage-number-pool';
-import type { CombatSlashPoolHandle } from './combat-slash-pool';
-import type { CombatArrowPoolHandle } from './combat-arrow-pool';
-import type { CanvasTexture } from 'three';
-import type { SpriteRegistry } from './sprite-registry';
+import { applyMissionResultSideEffects } from '@/game/systems/arena-result-handler';
+import { simulateCombatFromSnapshot, cloneCombatEntity } from '@/game/systems/combat-simulator';
+import { resolveCombatMapId, getStageSpec } from './maps/combat-map-registry';
+import { useCombatProjectionStore } from './combat-projection-store';
+import {
+  COMBAT_VFX_PRESETS, COMBAT_VFX_COUNTS,
+  COMBAT_CRIT_DOM_EVENT, COMBAT_SKIP_DOM_EVENT,
+} from './combat-vfx-bridge';
+import type { CombatEvent, CombatResult } from '@/game/systems/combat-types';
+import type { CombatEngine as CombatEngineType } from '@/game/systems/combat-engine';
+import type { ArenaEntitySnapshot } from '@/game/state/combat-arena-slice';
 
-/** Max dt per frame to prevent massive tick bursts after tab suspend */
+/** Emitter callbacks resolved per preset id at component mount via useVFXEmitter. */
+type VfxEmit = (position: [number, number, number], count?: number) => void;
+interface VfxEmitters {
+  hit: VfxEmit;
+  crit: VfxEmit;
+  heal: VfxEmit;
+  death: VfxEmit;
+}
+
+/** Cap per-frame engine dt so a tab-suspend resume doesn't replay 30s in one frame. */
 const MAX_FRAME_DT_MS = 200;
-/** Throttle store sync to ~5Hz (200ms) — reduced from 10Hz for less GC pressure */
+/** Throttle store sync to ~5Hz (200ms) — keeps React renders cheap. */
 const SYNC_INTERVAL_MS = 200;
+/** Brief pause between waves so the player sees the clear before the next spawn. */
+const WAVE_TRANSITION_MS = 1000;
+/** Autosave engine entity snapshot to the active mission every 2s — keeps
+ *  mid-fight reload (D12) cheap (~3.6KB serialized, ≪ once-per-tick churn). */
+const SNAPSHOT_INTERVAL_MS = 2000;
 
-/** Props passed down to CombatArena for instanced rendering */
-export interface CombatRenderState {
-  bridge: CombatStateBridge;
-  atlasTextures: CanvasTexture[];
-  registry: SpriteRegistry;
-}
-
-/** Shared render state stored in a ref for child components */
-let _renderState: CombatRenderState | null = null;
-export function getCombatRenderState(): CombatRenderState | null {
-  return _renderState;
-}
-
-export function CombatFightController({
-  damagePoolRef,
-  slashPoolRef,
-  arrowPoolRef,
-}: {
-  damagePoolRef?: React.RefObject<DamageNumberPoolHandle | null>;
-  slashPoolRef?: React.RefObject<CombatSlashPoolHandle | null>;
-  arrowPoolRef?: React.RefObject<CombatArrowPoolHandle | null>;
-}) {
+export function CombatFightController() {
   const engineRef = useRef<CombatEngine | null>(null);
   const waveManagerRef = useRef<WaveManager | null>(null);
-  const bridgeRef = useRef<CombatStateBridge | null>(null);
-  const atlasResultRef = useRef<MegaAtlasResult | null>(null);
   const lastSyncRef = useRef(0);
+  const lastSnapshotRef = useRef(0);
   const waveTransitioningRef = useRef(false);
   const waveTransitionUntilRef = useRef(0);
-  const { camera } = useThree();
-  const arenaPhase = useGameStore(s => s.arenaPhase);
-  const formation = useGameStore(s => s.formation);
-  const arenaMissionId = useGameStore(s => s.arenaMissionId);
-  const speedMultiplier = useGameStore(s => s.speedMultiplier);
-  const combatMode = useGameStore(s =>
-    s.activeMissions.find(m => m.missionId === arenaMissionId)?.combatMode ?? 'auto',
-  );
-  const syncArenaState = useGameStore(s => s.syncArenaState);
-  const syncWaveState = useGameStore(s => s.syncWaveState);
-  const setActiveAllyTurn = useGameStore(s => s.setActiveAllyTurn);
-  const endCombat = useGameStore(s => s.endCombat);
-  const founder = useGameStore(s => s.founder);
-  const roster = useGameStore(s => s.roster);
-  const inventory = useGameStore(s => s.inventory);
-  const removeItem = useGameStore(s => s.removeItem);
 
-  // Initialize engine when fighting starts
+  const phase = useCombatPanelStore((s) => s.phase);
+  const missionId = useCombatPanelStore((s) => s.missionId);
+  const setPanelResult = useCombatPanelStore((s) => s.setResult);
+
+  // Emitter handles for each combat VFX event. Resolved once per Canvas
+  // lifetime — useVFXEmitter returns a stable closure tied to the preset
+  // instance registered by <AllPresetParticles>.
+  const hitEmitter = useVFXEmitter(COMBAT_VFX_PRESETS.hit);
+  const critEmitter = useVFXEmitter(COMBAT_VFX_PRESETS.crit);
+  const healEmitter = useVFXEmitter(COMBAT_VFX_PRESETS.heal);
+  const deathEmitter = useVFXEmitter(COMBAT_VFX_PRESETS.death);
+  const vfxRef = useRef<VfxEmitters | null>(null);
+  vfxRef.current = {
+    hit: (pos, count) => hitEmitter.emit(pos, count ?? COMBAT_VFX_COUNTS.hit),
+    crit: (pos, count) => critEmitter.emit(pos, count ?? COMBAT_VFX_COUNTS.crit),
+    heal: (pos, count) => healEmitter.emit(pos, count ?? COMBAT_VFX_COUNTS.heal),
+    death: (pos, count) => deathEmitter.emit(pos, count ?? COMBAT_VFX_COUNTS.death),
+  };
+
+  const formation = useGameStore((s) => s.formation);
+  const speedMultiplier = useGameStore((s) => s.speedMultiplier);
+  const targetPriority = useGameStore((s) =>
+    s.activeMissions.find((m) => m.missionId === missionId)?.targetPriority ?? 'focus',
+  );
+  const syncArenaState = useGameStore((s) => s.syncArenaState);
+  const syncWaveState = useGameStore((s) => s.syncWaveState);
+  const endCombat = useGameStore((s) => s.endCombat);
+  const founder = useGameStore((s) => s.founder);
+  const roster = useGameStore((s) => s.roster);
+  const inventory = useGameStore((s) => s.inventory);
+  const removeItem = useGameStore((s) => s.removeItem);
+  const saveCombatSnapshot = useGameStore((s) => s.saveCombatSnapshot);
+
+  // (Re)initialize engine when the battle phase starts.
   useEffect(() => {
-    if (arenaPhase !== 'fighting') {
+    if (phase !== 'battle' || !missionId) {
       engineRef.current = null;
       waveManagerRef.current = null;
       waveTransitioningRef.current = false;
-      // Clean up bridge
-      if (bridgeRef.current) {
-        bridgeRef.current.clear();
-        bridgeRef.current = null;
-      }
-      _renderState = null;
+      lastSyncRef.current = 0;
+      lastSnapshotRef.current = 0;
       return;
     }
 
     const allMembers = founder ? [founder, ...roster] : roster;
-    const missionData = MISSIONS.find(m => m.id === arenaMissionId);
+    const missionData = MISSIONS.find((m) => m.id === missionId);
     if (!missionData) return;
 
-    const members = allMembers.filter(m => formation.includes(m.id));
-
-    // Clear previous combat log and start fresh
-    clearCombatLog();
-    combatLog(`=== COMBAT START === mission:${arenaMissionId} members:${members.map(m => m.name).join(',')}`);
-
-    // Wave system
+    const members = allMembers.filter((m) => formation.includes(m.id));
     const waves = missionData.waves ?? legacyToWaves(missionData.enemyIds);
     const waveManager = new WaveManager(waves);
     waveManagerRef.current = waveManager;
 
     const firstWave = waveManager.current();
-    const enemyTemplates = firstWave.enemyIds.map(id => ENEMIES[id]).filter(Boolean);
+    const enemyTemplates = firstWave.enemyIds.map((id) => ENEMIES[id]).filter(Boolean);
 
-    // Collect ALL unique enemy templates from ALL waves for atlas building
-    const allEnemyIds = new Set<string>();
-    for (const wave of waves) {
-      for (const id of wave.enemyIds) allEnemyIds.add(id);
-    }
-    const allEnemyTemplates = [...allEnemyIds].map(id => ENEMIES[id]).filter(Boolean);
+    // Resolve stage spec → engine reads spawn anchors (xyz) from spec.
+    // Falls back to legacy FORMATION_POSITIONS (y=0) inside engine if spec
+    // is missing for some mapId. resolveCombatMapId always returns a valid
+    // mapId (defaults to lolo-village-outskirt on miss).
+    const stageSpec = getStageSpec(resolveCombatMapId(missionId));
 
-    // Initialize engine — engine distributes syringes from inventory internally
     const engine = new CombatEngine();
-    engine.init(members, formation, enemyTemplates, firstWave.hpMultiplier ?? 1, inventory);
+    engine.init(members, formation, enemyTemplates, firstWave.hpMultiplier ?? 1, inventory, stageSpec);
     engine.onWaveCheck = () => waveManagerRef.current?.hasNext() ?? false;
-    engine.setManualMode(combatMode === 'manual');
+    engine.setTargetPriority(targetPriority);
     engineRef.current = engine;
 
     syncWaveState(0, waveManager.totalWaves());
-
-    // Build mega-atlas and initialize bridge
-    preloadCombatAtlases(members, allEnemyTemplates).then((result) => {
-      atlasResultRef.current = result;
-
-      // Create bridge
-      const bridge = new CombatStateBridge();
-      bridge.initFromEngine(engine, result.registry);
-      if (damagePoolRef) bridge.setDamagePool(damagePoolRef);
-      if (slashPoolRef) bridge.setSlashPool(slashPoolRef);
-      if (arrowPoolRef) bridge.setArrowPool(arrowPoolRef);
-      bridgeRef.current = bridge;
-
-      // Expose render state for CombatArena
-      _renderState = {
-        bridge,
-        atlasTextures: result.textures,
-        registry: result.registry,
-      };
-
-      // Initial UI snapshot — don't syncFromEngine here so the buffer
-      // retains the 'idle' state set by addEntity(), giving characters
-      // their proper IDLE starting pose before the first frame renders.
-      const snapshots = bridge.buildUISnapshots(engine);
-      syncArenaState(snapshots, 0, []);
-
-      combatLog(`Atlas built: ${result.textures.length} texture(s), ${result.registry.getTypeIds().length} types`);
-    });
-
-    // Legacy initial sync (before atlas is ready)
-    const snapshots = buildLegacySnapshots(engine);
-    syncArenaState(snapshots, 0, []);
+    syncArenaState(buildSnapshots(engine), 0, []);
+    useCombatProjectionStore.getState().clear();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [arenaPhase]);
+  }, [phase, missionId]);
 
-  // Sync combatMode changes to running engine
+  // Sync targetPriority changes to running engine (player toggles in panel).
   useEffect(() => {
-    engineRef.current?.setManualMode(combatMode === 'manual');
-  }, [combatMode]);
+    engineRef.current?.setTargetPriority(targetPriority);
+  }, [targetPriority]);
 
-  // Listen for skill activation events from hotbar
+  // Skill activation pipe — same global event the legacy hotbar already emits.
   useEffect(() => {
     const handler = (e: Event) => {
       const memberId = (e as CustomEvent).detail;
@@ -177,178 +155,130 @@ export function CombatFightController({
     return () => window.removeEventListener('combat-skill', handler);
   }, []);
 
-  // Listen for manual basic attack dispatch
+  // Skip → simulator handoff (D11). Snapshot the live engine state, deep
+  // clone, run the headless tick loop with random target picking, then
+  // finalize using the simulator's result instead of the engine's.
   useEffect(() => {
-    const handler = (e: Event) => {
-      const memberId = (e as CustomEvent).detail;
-      engineRef.current?.queueAttack(memberId);
+    const handler = () => {
+      const engine = engineRef.current;
+      if (!engine || engine.isFinished()) return;
+      const snapshot = engine.entities.map((e) => cloneCombatEntity(e));
+      const skippedResult = simulateCombatFromSnapshot(snapshot, engine.time);
+      finalizeCombat(engine, skippedResult);
     };
-    window.addEventListener('combat-attack', handler);
-    return () => window.removeEventListener('combat-attack', handler);
+    window.addEventListener(COMBAT_SKIP_DOM_EVENT, handler);
+    return () => window.removeEventListener(COMBAT_SKIP_DOM_EVENT, handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Listen for manual target selection
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const { allyId, enemyId } = (e as CustomEvent).detail;
-      engineRef.current?.setManualTarget(allyId, enemyId);
-    };
-    window.addEventListener('combat-target', handler);
-    return () => window.removeEventListener('combat-target', handler);
-  }, []);
-
-  // Update damage pool ref when it changes
-  useEffect(() => {
-    if (bridgeRef.current && damagePoolRef) {
-      bridgeRef.current.setDamagePool(damagePoolRef);
-    }
-  }, [damagePoolRef]);
-
-  // Update slash pool ref when it changes
-  useEffect(() => {
-    if (bridgeRef.current && slashPoolRef) {
-      bridgeRef.current.setSlashPool(slashPoolRef);
-    }
-  }, [slashPoolRef]);
-
-  // Update arrow pool ref when it changes
-  useEffect(() => {
-    if (bridgeRef.current && arrowPoolRef) {
-      bridgeRef.current.setArrowPool(arrowPoolRef);
-    }
-  }, [arrowPoolRef]);
-
-  // Tick engine each frame — skip when debug paused
-  const debugPaused = useArenaDebug()?.paused ?? false;
   useFrame((_, delta) => {
     const engine = engineRef.current;
-    if (!engine || arenaPhase !== 'fighting' || debugPaused) return;
+    if (!engine || phase !== 'battle') return;
 
-    const bridge = bridgeRef.current;
+    // Wave transition pause — engine is held while we let players see "wave clear".
     const now = performance.now();
-
-    // Wave transition pause
     if (waveTransitioningRef.current) {
-      advanceCameraFollow(engine, camera);
-      if (now >= waveTransitionUntilRef.current) {
-        waveTransitioningRef.current = false;
-        const wm = waveManagerRef.current;
-        if (wm) {
-          const nextWave = wm.advance();
-          if (nextWave) {
-            const templates = nextWave.enemyIds.map(id => ENEMIES[id]).filter(Boolean);
-            engine.addEnemies(templates, nextWave.spawnXOffset, nextWave.hpMultiplier ?? 1);
-            syncWaveState(wm.currentWaveIndex(), wm.totalWaves());
-
-            // Add new entities to bridge
-            if (bridge && atlasResultRef.current) {
-              bridge.addEntities(engine.entities.slice(-templates.length) as any, atlasResultRef.current.registry);
-            }
-          }
+      if (now < waveTransitionUntilRef.current) return;
+      waveTransitioningRef.current = false;
+      const wm = waveManagerRef.current;
+      if (wm) {
+        const nextWave = wm.advance();
+        if (nextWave) {
+          const templates = nextWave.enemyIds.map((id) => ENEMIES[id]).filter(Boolean);
+          engine.addEnemies(templates, nextWave.spawnXOffset, nextWave.hpMultiplier ?? 1);
+          syncWaveState(wm.currentWaveIndex(), wm.totalWaves());
         }
       }
+      // Sync immediately so new entities mount sprites this frame.
+      syncArenaState(buildSnapshots(engine), engine.time, []);
+      lastSyncRef.current = engine.time;
       return;
     }
 
     const dtMs = Math.min(delta * 1000, MAX_FRAME_DT_MS) * speedMultiplier;
     const events = engine.tick(dtMs);
-
-    // Sync active ally turn to store each frame (cheap string or null)
-    setActiveAllyTurn(engine.getPausedForAllyTurn());
-
-    // Log combat events
-    for (const e of events) {
-      if (e.type === 'auto-attack' || e.type === 'skill-use') {
-        const attacker = engine.entities.find(en => en.id === e.attackerId);
-        const target   = engine.entities.find(en => en.id === e.targetId);
-        combatLog(
-          `${e.type} | ${attacker?.name ?? e.attackerId} → ${target?.name ?? e.targetId}` +
-          ` | dmg=${e.damage}${e.isCrit ? '(CRIT)' : ''} | HP=${target?.currentHp ?? '?'}/${target?.maxHp ?? '?'}`,
-        );
-      } else if (e.type === 'death') {
-        const dead = engine.entities.find(en => en.id === e.entityId);
-        combatLog(`DEATH: ${dead?.name ?? e.entityId}`);
-      } else if (e.type === 'dodge' || e.type === 'block') {
-        combatLog(`${e.type.toUpperCase()}: ${e.targetId}`);
-      } else if (e.type === 'wave-cleared') {
-        combatLog(`--- WAVE CLEARED ---`);
-      }
+    if (events.length > 0) {
+      emitDamagePopups(events, engine);
+      emitVfxFromEvents(events, engine, vfxRef.current);
     }
 
-    // Sync engine → buffer (every frame, fast)
-    if (bridge) {
-      bridge.syncFromEngine(engine);
-      bridge.emitCombatEvents(events, engine);
-    }
-
-    // Handle wave-cleared
-    const waveClearedEvent = events.find(e => e.type === 'wave-cleared');
-    if (waveClearedEvent && !waveTransitioningRef.current && waveManagerRef.current?.hasNext()) {
+    // Detect wave clear → schedule pause before next spawn.
+    if (events.some((e) => e.type === 'wave-cleared') && waveManagerRef.current?.hasNext()) {
       waveTransitioningRef.current = true;
-      waveTransitionUntilRef.current = now + 1000;
+      waveTransitionUntilRef.current = now + WAVE_TRANSITION_MS;
     }
 
-    // Camera follow
-    advanceCameraFollow(engine, camera);
-
-    // Throttled store sync for UI panels (5Hz)
     const shouldSync = events.length > 0 || engine.time - lastSyncRef.current >= SYNC_INTERVAL_MS;
-    if (shouldSync && bridge) {
+    if (shouldSync) {
       lastSyncRef.current = engine.time;
-      const snapshots = bridge.buildUISnapshots(engine);
-      syncArenaState(snapshots, engine.time, events);
+      syncArenaState(buildSnapshots(engine), engine.time, events);
     }
 
-    // Check if combat finished
+    // Autosave entity snapshot to active mission — supports mid-fight reload
+    // (D12). Throttled to 2s to keep IndexedDB writes cheap.
+    if (missionId && engine.time - lastSnapshotRef.current >= SNAPSHOT_INTERVAL_MS) {
+      lastSnapshotRef.current = engine.time;
+      saveCombatSnapshot(
+        missionId,
+        engine.entities.map((e) => cloneCombatEntity(e)),
+        engine.time,
+      );
+    }
+
+    // Cleanup transient damage popups (>1s old).
+    useCombatProjectionStore.getState().pruneDamages(1000);
+
     if (engine.isFinished()) {
-      engineRef.current = null;
-      if (bridge) {
-        const snapshots = bridge.buildUISnapshots(engine);
-        syncArenaState(snapshots, engine.time, events);
-      }
-      const result = engine.getResult();
-      combatLog(`=== COMBAT END === outcome:${result.outcome} duration:${result.durationMs}ms`);
-      // Deduct only syringes actually consumed during combat
-      if (engine.syringesConsumed > 0) removeItem('HEALING_SYRINGE', engine.syringesConsumed);
-      if (DEBUG_MODE) downloadCombatLog();
-      endCombat(result);
+      finalizeCombat(engine);
     }
   });
 
-  return null; // Pure logic component — no visual output
+  /** Apply rewards + transition panel to result sub-phase. Idempotent (engineRef cleared).
+   *  When a `resultOverride` is supplied (e.g. from the Skip path), it replaces
+   *  the engine's natural getResult() outcome. */
+  function finalizeCombat(engine: CombatEngineType, resultOverride?: CombatResult) {
+    const id = useCombatPanelStore.getState().missionId;
+    if (!id) return;
+
+    const result = resultOverride ?? engine.getResult();
+    if (engine.syringesConsumed > 0) removeItem('HEALING_SYRINGE', engine.syringesConsumed);
+
+    // Combat resolved — drop snapshot so reload doesn't re-resolve from stale state.
+    saveCombatSnapshot(id, null, 0);
+    syncArenaState(buildSnapshots(engine), engine.time, []);
+    endCombat(result);
+
+    const store = useGameStore.getState();
+    const mission = MISSIONS.find((m) => m.id === id);
+    const active = store.activeMissions.find((m) => m.missionId === id);
+    if (!mission || !active) {
+      engineRef.current = null;
+      return;
+    }
+    const allMembers = store.founder ? [store.founder, ...store.roster] : store.roster;
+    const members = allMembers.filter((m) => active.memberIds.includes(m.id));
+
+    const missionResult = applyMissionResultSideEffects(mission, active, members, result);
+    setPanelResult(missionResult);
+    engineRef.current = null;
+  }
+
+  return null;
 }
 
-/** Smoothly lerp camera X toward midpoint between ally and enemy centroids */
-function advanceCameraFollow(
-  engine: CombatEngine,
-  camera: RootState['camera'],
-): void {
-  const allies = engine.entities.filter(e => e.isAlly && e.currentHp > 0);
-  const enemies = engine.entities.filter(e => !e.isAlly && e.currentHp > 0);
-  if (allies.length === 0 && enemies.length === 0) return;
-  const allyCentroidX = allies.length > 0
-    ? allies.reduce((sum, e) => sum + e.position.x, 0) / allies.length
-    : camera.position.x;
-  const enemyCentroidX = enemies.length > 0
-    ? enemies.reduce((sum, e) => sum + e.position.x, 0) / enemies.length
-    : camera.position.x;
-  const midX = (allyCentroidX + enemyCentroidX) / 2;
-  camera.position.x += (midX - camera.position.x) * 0.05;
-}
-
-/** Legacy snapshot builder — used before atlas is ready */
-function buildLegacySnapshots(engine: CombatEngine) {
-  return engine.entities.map(e => ({
+/** Build store snapshots from engine entities (used to drive UI subscriptions). */
+function buildSnapshots(engine: CombatEngineType): ArenaEntitySnapshot[] {
+  return engine.entities.map((e) => ({
     id: e.id,
     name: e.name,
     isAlly: e.isAlly,
     maxHp: e.maxHp,
     currentHp: e.currentHp,
-    position: { x: e.position.x, z: e.position.z },
+    position: { x: e.position.x, y: e.position.y, z: e.position.z },
     animState: e.animState,
     facingRight: e.facingRight,
     skillCooldownUntil: e.skillCooldownUntil,
-    statusEffects: e.statusEffects.map(se => ({ type: se.type, ticksRemaining: se.ticksRemaining })),
+    statusEffects: e.statusEffects.map((se) => ({ type: se.type, ticksRemaining: se.ticksRemaining })),
     skillName: e.skill?.name,
     skillId: e.skill?.id,
     archetype: e.archetype,
@@ -360,7 +290,60 @@ function buildLegacySnapshots(engine: CombatEngine) {
     attackIntervalMs: e.attackIntervalMs,
     isBoss: e.isBoss,
     attackMoveState: e.attackMoveState,
-    waitingForInput: e.waitingForInput,
-    manualTargetId: e.manualTargetId,
   }));
 }
+
+/**
+ * Translate combat events into VFX preset emits + crit screen shake.
+ * Crit shakes are dispatched via window event so the DOM panel listener can
+ * toggle a CSS class without subscribing to the engine. Hit sparks also fire
+ * for crits — we want both the spark and the larger gold burst on crit.
+ */
+function emitVfxFromEvents(
+  events: CombatEvent[],
+  engine: CombatEngineType,
+  vfx: VfxEmitters | null,
+): void {
+  if (!vfx) return;
+  for (const event of events) {
+    if (event.type === 'auto-attack' || event.type === 'skill-use') {
+      const target = engine.entities.find((e) => e.id === event.targetId);
+      if (!target) continue;
+      const pos: [number, number, number] = [target.position.x, 1.2, target.position.z];
+      vfx.hit(pos);
+      if (event.isCrit) {
+        vfx.crit(pos);
+        window.dispatchEvent(new CustomEvent(COMBAT_CRIT_DOM_EVENT));
+      }
+    } else if (event.type === 'heal' || event.type === 'syringe-used') {
+      const targetId = event.type === 'heal' ? event.targetId : event.entityId;
+      const target = engine.entities.find((e) => e.id === targetId);
+      if (target) vfx.heal([target.position.x, 1.2, target.position.z]);
+    } else if (event.type === 'death') {
+      const dead = engine.entities.find((e) => e.id === event.entityId);
+      if (dead) vfx.death([dead.position.x, 1.0, dead.position.z]);
+    }
+  }
+}
+
+/** Translate combat events into floating damage / heal / poison popups. */
+function emitDamagePopups(events: CombatEvent[], engine: CombatEngineType): void {
+  const spawn = useCombatProjectionStore.getState().spawnDamage;
+  for (const event of events) {
+    if (event.type === 'auto-attack' || event.type === 'skill-use') {
+      spawn(event.targetId, String(event.damage), event.isCrit ? 'crit' : 'normal');
+    } else if (event.type === 'effect-tick') {
+      spawn(event.targetId, String(event.damage), event.effect === 'poison' ? 'poison' : 'normal');
+    } else if (event.type === 'heal') {
+      spawn(event.targetId, `+${event.amount}`, 'heal');
+    } else if (event.type === 'syringe-used') {
+      spawn(event.entityId, `+${event.healAmount}`, 'heal');
+    } else if (event.type === 'dodge') {
+      const target = engine.entities.find((e) => e.id === event.targetId);
+      if (target) spawn(target.id, 'DODGE', 'normal');
+    } else if (event.type === 'block') {
+      spawn(event.targetId, `BLOCK ${event.reducedDamage}`, 'normal');
+    }
+  }
+}
+

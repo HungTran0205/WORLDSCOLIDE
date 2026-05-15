@@ -41,6 +41,36 @@ The generated `<VFXParticles ... />` code uses `r3f-vfx` props. To use in the ma
 2. Ensure Three.js version compatibility (r3f-vfx needs ^0.182.0)
 3. Paste the copied code into any R3F `<Canvas>` scene
 
+## Skill Sequencer Mode
+
+Switch to **🎬 Skill Sequencer** tab to compose multi-track skill animations.
+
+### 7 Track Types
+
+| Track | Purpose | Payload keys |
+|-------|---------|--------------|
+| ✨ VFX | Particle / meshline effect (references preset) | — |
+| 🏃 Motion | Target position path (linear/arc/sine/orbit/pingpong) | — |
+| 📷 Camera | Shake / zoom-in / zoom-out | intensity, freq, factor |
+| ⏱️ Time Scale | Hit-stop / slow-motion | factor (0=freeze) |
+| 💥 Flash | Screen color flash overlay | color, alpha |
+| 🔊 SFX | Sound effect trigger | — |
+| 📡 Event | Game event (onHit, onComplete, custom) | — |
+
+### Exporting a Skill
+
+1. Compose your skill timeline
+2. Click **📤 Export .tsx**
+3. Set the preset import path (default `@/vfx/presets/preset-registry`)
+4. Copy or download the generated `.tsx` component
+5. In your game, wrap the scene with `<SkillEngineCtx.Provider value={myAdapter}>`
+
+See `src/sequencer/engine-adapters.ts` for the full adapter interface.
+
+### Saving Skills
+
+Skills auto-save to `localStorage`. Use **↓ JSON / ↑ JSON** in the skill picker to backup/restore across browsers.
+
 ## Tech Stack
 
 - Vite + React 19 + TypeScript

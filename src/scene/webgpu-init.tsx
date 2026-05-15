@@ -48,10 +48,11 @@ export async function createWebGPURenderer(props: Record<string, unknown>) {
     return new WebGLRenderer(glProps as any);
   }
 
-  // Probe adapter before constructing the renderer — null means no
-  // compatible GPU (blocklisted driver, software rasterizer only, etc.)
+  // Probe adapter — capture so we can negotiate higher limits below before
+  // letting three.js request the device with default ceilings.
+  let adapter: GPUAdapter | null = null;
   try {
-    const adapter = await navigator.gpu.requestAdapter();
+    adapter = await navigator.gpu.requestAdapter();
     if (!adapter) {
       console.log('[Renderer] WebGL active — no WebGPU adapter available');
       return new WebGLRenderer(glProps as any);
@@ -61,21 +62,61 @@ export async function createWebGPURenderer(props: Record<string, unknown>) {
     return new WebGLRenderer(glProps as any);
   }
 
+  // Negotiate higher per-stage texture/sampler limits.
+  //
+  // Combat scene mounts sprite atlases (idle + death per entity) plus VFX
+  // preset particles whose compute pipelines bind 18+ samplers per stage,
+  // blowing past WebGPU's default `16 samplersPerShaderStage` ceiling. Most
+  // desktop adapters report 1000s; we ask for adapter-max (capped at hard
+  // upper bounds so the request stays portable).
+  const adapterLimits = adapter.limits;
+  const pickLimit = (current: number | undefined, target: number) => {
+    if (current === undefined) return target;
+    return current >= target ? target : current;
+  };
+  const requiredLimits: Record<string, number> = {
+    maxSampledTexturesPerShaderStage: pickLimit(
+      adapterLimits.maxSampledTexturesPerShaderStage, 64,
+    ),
+    maxSamplersPerShaderStage: pickLimit(
+      adapterLimits.maxSamplersPerShaderStage, 64,
+    ),
+    maxBindingsPerBindGroup: pickLimit(
+      adapterLimits.maxBindingsPerBindGroup, 1000,
+    ),
+  };
+  console.log('[Renderer] WebGPU adapter limits — samplers/stage:',
+    adapterLimits.maxSamplersPerShaderStage,
+    'sampledTextures/stage:', adapterLimits.maxSampledTexturesPerShaderStage,
+    '— requested:', requiredLimits);
+
+  // Manually create the device with our limits, then pass to WebGPURenderer
+  // via `device` parameter. Bypasses three.js's `requiredLimits` flow which
+  // — empirically — wasn't lifting the samplersPerShaderStage default in
+  // some Chromium WebGPU builds even when the adapter supports higher.
+  let device: GPUDevice;
+  try {
+    device = await adapter.requestDevice({ requiredLimits });
+  } catch (e) {
+    console.warn('[Renderer] WebGPU device request failed (limits unsupported?), falling back to WebGL:', e);
+    return new WebGLRenderer(glProps as any);
+  }
+  console.log('[Renderer] WebGPU device created — samplers/stage:',
+    device.limits.maxSamplersPerShaderStage,
+    'sampledTextures/stage:', device.limits.maxSampledTexturesPerShaderStage);
+
   // Try WebGPU init — transient failures here fall back for this load only,
   // but leave no persistent flag so the next reload retries.
   try {
     const { WebGPURenderer } = await import('three/webgpu');
-    const renderer = new WebGPURenderer(glProps as any);
+    const renderer = new WebGPURenderer({ ...glProps, device, requiredLimits } as any);
     await renderer.init();
 
     // Device loss: warn + reload. No flag — next load retries WebGPU.
-    const device = (renderer as any).backend?.device as GPUDevice | undefined;
-    if (device) {
-      device.lost.then((info) => {
-        console.warn('[Renderer] WebGPU device lost — reloading to retry', info);
-        window.location.reload();
-      });
-    }
+    device.lost.then((info) => {
+      console.warn('[Renderer] WebGPU device lost — reloading to retry', info);
+      window.location.reload();
+    });
 
     console.log('[Renderer] WebGPU active');
     return renderer;

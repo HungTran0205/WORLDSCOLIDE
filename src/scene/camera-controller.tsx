@@ -1,6 +1,11 @@
 /**
  * Isometric camera controller — zoom/pan only, no rotation.
  * Animates smoothly toward `cameraTarget` from Zustand store on each frame.
+ *
+ * Two framing modes (driven by `cameraFocus`):
+ *  - 'default'     : standard isometric offset for room navigation
+ *  - 'quest-board' : tight offset zoomed onto the drum at the guild hall centre
+ *                    (drives the diegetic quest board cinematic, Phase 3).
  */
 
 import { useRef, useEffect } from 'react';
@@ -9,17 +14,20 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '@/game/state/store';
 
-// Fixed camera offset derived from initial position=[15,10,14] minus target=[5,0,3.5]
-const CAM_OFFSET_X = 10;
-const CAM_OFFSET_Y = 10;
-const CAM_OFFSET_Z = 10.5;
-const LERP_SPEED = 0.08;
+// Default isometric offset (initial camera [15,10,14] minus target [5,0,3.5])
+const CAM_OFFSET_DEFAULT: [number, number, number] = [10, 10, 10.5];
+
+// Quest-board focus: pulls the camera in to the drum and lowers eye-line for a
+// cinematic close-up. Y kept above ground to avoid clipping the drum mesh.
+const CAM_OFFSET_QUEST: [number, number, number] = [4, 5, 4.5];
+
 const ARRIVE_THRESHOLD = 0.01;
 
 /** Isometric camera — zoom/pan only, animates smoothly to cameraTarget from store */
 export function CameraController() {
   const isBuildMode = useGameStore((s) => s.isBuildMode);
   const cameraTarget = useGameStore((s) => s.cameraTarget);
+  const cameraFocus = useGameStore((s) => s.cameraFocus);
   const setCameraSettled = useGameStore((s) => s.setCameraSettled);
   const { camera, invalidate } = useThree();
 
@@ -28,13 +36,14 @@ export function CameraController() {
   const goalTarget = useRef(new THREE.Vector3(5, 0, 3.5));
   const goalPosition = useRef(new THREE.Vector3(15, 10, 14));
 
-  // Sync goal vectors and kick first invalidation when target changes
+  // Sync goal vectors and kick first invalidation when target or focus changes
   useEffect(() => {
     const [tx, ty, tz] = cameraTarget;
+    const [ox, oy, oz] = cameraFocus === 'quest-board' ? CAM_OFFSET_QUEST : CAM_OFFSET_DEFAULT;
     goalTarget.current.set(tx, ty, tz);
-    goalPosition.current.set(tx + CAM_OFFSET_X, CAM_OFFSET_Y, tz + CAM_OFFSET_Z);
+    goalPosition.current.set(tx + ox, oy, tz + oz);
     invalidate();
-  }, [cameraTarget, invalidate]);
+  }, [cameraTarget, cameraFocus, invalidate]);
 
   useFrame((_state, delta) => {
     const controls = controlsRef.current;
@@ -65,12 +74,16 @@ export function CameraController() {
     invalidate();
   });
 
+  // Disable OrbitControls user input while the quest board is focused — the
+  // panel owns the framing for the cinematic; user pan/zoom would fight the lerp.
+  const userControlsEnabled = cameraFocus === 'default';
+
   return (
     <OrbitControls
       ref={controlsRef}
       enableRotate={false}
-      enablePan={!isBuildMode}
-      enableZoom={true}
+      enablePan={!isBuildMode && userControlsEnabled}
+      enableZoom={userControlsEnabled}
       minZoom={40}
       maxZoom={150}
     />

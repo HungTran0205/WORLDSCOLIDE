@@ -27,6 +27,12 @@ export const useGameStore = create<GameStore>()((...a) => ({
   ...createCameraSlice(...a),
 }));
 
+// Dev-only: expose store for E2E test scripts (puppeteer/playwright) to read/drive state.
+// Stripped from production by Vite tree-shaking on `import.meta.env.DEV`.
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  (window as unknown as { useGameStore: typeof useGameStore }).useGameStore = useGameStore;
+}
+
 /** Reset all game data to fresh-game defaults (preserves action functions) */
 export function resetGameState(): void {
   useGameStore.setState({
@@ -36,7 +42,7 @@ export function resetGameState(): void {
     guildLevel: 1,
     gold: 100,
     guildHall: createDefaultFloor(),
-    settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high' },
+    settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high', shadowsEnabled: false, bloomEnabled: false, bloomThreshold: 0.85, atmosphericEnabled: true },
     tavern: { lastRefreshTime: 0, availableMercenaries: [] },
     facilities: [
       { id: 'tavern' as const,        type: 'tavern' as const,        level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
@@ -49,6 +55,7 @@ export function resetGameState(): void {
     ],
     offlineFacilityReport: null,
     offlineElapsedHours: 0,
+    offlineWorkshopSummary: null,
     founder: null,
     roster: [],
     activeMissions: [],
@@ -70,5 +77,7 @@ export function resetGameState(): void {
     pendingFacilityPanel: null,
     focusFacilityType: null,
     cameraTarget: [5, 0, 3.5] as [number, number, number],
+    cameraFocus: 'default' as const,
+    pendingQuestPanel: false,
   });
 }

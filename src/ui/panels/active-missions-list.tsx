@@ -7,6 +7,7 @@ import { MISSIONS } from '@/game/data/missions';
 import { MissionProgressBar } from '@/ui/components/mission-progress-bar';
 import { GameIcon } from '@/ui/components/game-icon';
 import { ArrivalModal } from '@/ui/panels/arrival-modal';
+import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 
 const PHASE_BADGE: Partial<Record<MissionPhase, string>> = {
   traveling: 'Traveling...',
@@ -49,9 +50,8 @@ export function ActiveMissionsList() {
   const activeMissions = useGameStore((s) => s.activeMissions);
   const [now, setNow] = useState(() => Date.now());
   const [arrivalModalFor, setArrivalModalFor] = useState<string | null>(null);
-  const setCombatMode = useGameStore((s) => s.setCombatMode);
-  const updateMissionPhase = useGameStore((s) => s.updateMissionPhase);
   const enterCombatPrep = useGameStore((s) => s.enterCombatPrep);
+  const openCombatPanel = useCombatPanelStore((s) => s.openCombatPanel);
 
   useEffect(() => {
     if (activeMissions.length === 0) return;
@@ -64,13 +64,13 @@ export function ActiveMissionsList() {
   const openArrival = (missionId: string) => setArrivalModalFor(missionId);
   const closeArrival = () => setArrivalModalFor(null);
 
-  const handleCombatChoice = (missionId: string, mode: 'auto' | 'manual') => {
-    setCombatMode(missionId, mode);
-    // Tick loop pauses when gameScene becomes 'combat-arena', so we update phase explicitly
-    updateMissionPhase(missionId, 'in-combat');
-    if (mode === 'manual') {
-      enterCombatPrep(missionId);
-    }
+  const handleStartCombat = (missionId: string) => {
+    // Idle pattern (Phase 3 redesign): open the panel and seed the legacy
+    // arena-slice formation. mission.phase stays 'arrived' until the player
+    // explicitly presses Start Battle in the formation sub-phase — this avoids
+    // the auto-resolve race when the player closes the panel mid-formation.
+    enterCombatPrep(missionId);
+    openCombatPanel(missionId);
     closeArrival();
   };
 
@@ -109,7 +109,7 @@ export function ActiveMissionsList() {
             )}
             {isArrived && (
               <div style={{ fontSize: '0.8rem', color: '#f39c12', marginTop: 4 }}>
-                ⚔️ Click to choose combat mode
+                ⚔️ Click to start combat
               </div>
             )}
             {am.phase === 'in-combat' && (
@@ -129,8 +129,7 @@ export function ActiveMissionsList() {
             missionName={missionData.name}
             zone={missionData.zone ?? ''}
             enemyIds={missionData.enemyIds}
-            onChooseManual={() => handleCombatChoice(am.missionId, 'manual')}
-            onChooseAuto={() => handleCombatChoice(am.missionId, 'auto')}
+            onStartCombat={() => handleStartCombat(am.missionId)}
             onClose={closeArrival}
           />
         );

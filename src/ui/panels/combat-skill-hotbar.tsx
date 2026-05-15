@@ -1,6 +1,9 @@
 /**
  * Combat skill hotbar — bottom bar showing ally skills with cooldowns.
  * Keys 1-4 activate skills. Speed toggle (1x/2x) and combat timer included.
+ *
+ * Idle-mode (post Phase 1 cleanup): no manual basic-attack control.
+ * Skills are still player-triggered to give the idle game a tactical hook.
  */
 
 import { useEffect, useCallback } from 'react';
@@ -12,7 +15,6 @@ export function CombatSkillHotbar() {
   const arenaTime = useGameStore(s => s.arenaTime);
   const speedMultiplier = useGameStore(s => s.speedMultiplier);
   const setSpeedMultiplier = useGameStore(s => s.setSpeedMultiplier);
-  const activeAllyTurnId = useGameStore(s => s.activeAllyTurnId);
 
   // Get alive ally entities with skills (max 4)
   const allySkills = entities
@@ -20,14 +22,6 @@ export function CombatSkillHotbar() {
     .slice(0, 4);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    // Q key: basic attack for first waiting ally (manual mode)
-    if (e.key === 'q' || e.key === 'Q') {
-      const waiting = entities.find(en => en.isAlly && en.currentHp > 0 && en.waitingForInput);
-      if (waiting) {
-        window.dispatchEvent(new CustomEvent('combat-attack', { detail: waiting.id }));
-      }
-      return;
-    }
     const keyIndex = parseInt(e.key) - 1;
     if (keyIndex >= 0 && keyIndex < allySkills.length) {
       const ally = allySkills[keyIndex];
@@ -35,7 +29,7 @@ export function CombatSkillHotbar() {
         window.dispatchEvent(new CustomEvent('combat-skill', { detail: ally.id }));
       }
     }
-  }, [allySkills, arenaTime, entities]);
+  }, [allySkills, arenaTime]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -64,22 +58,16 @@ export function CombatSkillHotbar() {
           ally={ally}
           keyLabel={String(idx + 1)}
           arenaTime={arenaTime}
-          waiting={ally.waitingForInput ?? false}
-          isActiveTurn={activeAllyTurnId === null || ally.id === activeAllyTurnId}
-          showYourTurn={ally.id === activeAllyTurnId}
         />
       ))}
     </div>
   );
 }
 
-function SkillSlot({ ally, keyLabel, arenaTime, waiting, isActiveTurn, showYourTurn }: {
+function SkillSlot({ ally, keyLabel, arenaTime }: {
   ally: ArenaEntitySnapshot;
   keyLabel: string;
   arenaTime: number;
-  waiting: boolean;
-  isActiveTurn: boolean;
-  showYourTurn: boolean;
 }) {
   const isReady = ally.skillCooldownUntil <= arenaTime;
   const isDead = ally.currentHp <= 0;
@@ -92,21 +80,12 @@ function SkillSlot({ ally, keyLabel, arenaTime, waiting, isActiveTurn, showYourT
     }
   };
 
-  const waitingStyle: React.CSSProperties = waiting ? {
-    boxShadow: '0 0 10px rgba(255,235,59,0.8)',
-    borderColor: 'rgba(255,235,59,0.8)',
-  } : {};
-
   return (
     <div onClick={onClick} style={{
       ...SKILL_SLOT,
-      opacity: isDead ? 0.3 : isActiveTurn ? 1 : 0.4,
-      cursor: isReady && !isDead && isActiveTurn ? 'pointer' : 'default',
-      ...waitingStyle,
+      opacity: isDead ? 0.3 : 1,
+      cursor: isReady && !isDead ? 'pointer' : 'default',
     }}>
-      {showYourTurn && (
-        <div style={YOUR_TURN_BADGE}>YOUR TURN</div>
-      )}
       <div style={KEY_BADGE}>{keyLabel}</div>
       <div style={{ fontSize: '0.7rem', color: '#ffd700', marginTop: 2 }}>{ally.skillName}</div>
       <div style={{ fontSize: '0.6rem', color: '#aaa' }}>{ally.name}</div>
@@ -166,13 +145,4 @@ const KEY_BADGE: React.CSSProperties = {
   fontSize: '0.6rem', color: '#888',
   background: 'rgba(0,0,0,0.4)', padding: '1px 4px',
   borderRadius: 3,
-};
-
-const YOUR_TURN_BADGE: React.CSSProperties = {
-  position: 'absolute', top: -18, left: '50%', transform: 'translateX(-50%)',
-  background: '#ffd700', color: '#000',
-  fontSize: '0.55rem', fontWeight: 'bold',
-  padding: '1px 4px', borderRadius: 3,
-  whiteSpace: 'nowrap', pointerEvents: 'none',
-  zIndex: 1,
 };

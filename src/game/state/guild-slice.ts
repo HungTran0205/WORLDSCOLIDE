@@ -1,22 +1,26 @@
-import type { StateCreator } from 'zustand';
+import type { StateCreator, StoreApi } from 'zustand';
 import type { GuildHall, GameSettings, TavernState, Member, FloorTile, PlacedFurniture, GridCell, Rotation, FurnitureType, GuildRank, FacilityType, GuildFacility, SyringeLoadout, AlchemyCraftJob, MemberEquipment, MedicineSlot, MedicineCondition } from './game-state';
 import type { InventoryState } from './game-state';
 import type { InventorySlice } from './inventory-slice';
 import type { RosterSlice } from './roster-slice';
+import type { ClockSlice } from './clock-slice';
 import type { ItemID } from '@/game/data/items';
 import type { EquipmentSlot } from '@/game/data/equipment-templates';
 import { getEquipmentTemplate } from '@/game/data/equipment-templates';
 import type { FacilityProductionResult, LoggingTickResult } from '@/game/systems/facility-production-system';
 import type { StoneQuarryTickResult } from '@/game/systems/stone-quarry-production-system';
-import type { AlchemyProductionResult } from '@/game/systems/alchemy-production-system';
+import type { AcXpGain } from '@/game/systems/alchemy-production-system';
+import { calcAcLevel } from '@/game/systems/alchemy-production-system';
 import { FACILITY_DEFINITIONS, LOGGING_SITE_CONFIG } from '@/game/data/facility-definitions';
 import { FLOOR_TILE_COST } from '@/game/data/buildings';
 import { getFurnitureDefinition } from '@/game/data/furniture';
 import { checkTileAdjacency, isCellOccupiedByFurniture } from '@/game/systems/building-system';
 import { canPlaceFurnitureOnFloor } from '@/game/systems/furniture-system';
 import { GUILD_RANKS, getNextRank } from '@/game/data/ranks';
+import { createWorkshopActions, type WorkshopActions } from './guild-slice-workshop';
+import type { WorkshopOfflineSummary } from '@/game/systems/workshop-offline-system';
 
-export interface GuildSlice {
+export interface GuildSlice extends WorkshopActions {
   guildName: string;
   guildLevel: number;
   gold: number;
@@ -57,8 +61,8 @@ export interface GuildSlice {
   applyLoggingProduction: (result: LoggingTickResult) => void;
   /** Apply per-tick stone quarry production results (MC XP gains) */
   applyStoneQuarryProduction: (result: StoneQuarryTickResult) => void;
-  /** Apply alchemy lab production results (AC XP gains) */
-  applyAlchemyProduction: (result: AlchemyProductionResult) => void;
+  /** Apply alchemy lab AC skill XP gains (used by offline catch-up). */
+  applyAlchemyProduction: (result: { acXpGains: AcXpGain[] }) => void;
   /** Set or clear a member's syringe loadout (auto-use config) */
   setSyringeLoadout: (memberId: string, loadout: SyringeLoadout | null) => void;
   /** Equip an item from equipmentInventory onto a member. Swaps if slot occupied. Returns success. */
@@ -79,6 +83,9 @@ export interface GuildSlice {
   offlineFacilityReport: FacilityProductionResult[] | null;
   offlineElapsedHours: number;
   clearOfflineFacilityReport: () => void;
+  /** Ephemeral workshop offline summary (cleared after popup display) */
+  offlineWorkshopSummary: WorkshopOfflineSummary | null;
+  clearOfflineWorkshopSummary: () => void;
 }
 
 export const DEFAULT_MEDICINE_SLOTS: [MedicineSlot, MedicineSlot] = [
@@ -101,6 +108,7 @@ const GRAPHICS_QUALITY_KEY = 'graphics-quality';
 const SHADOWS_KEY = 'shadows-enabled';
 const BLOOM_KEY = 'bloom-enabled';
 const BLOOM_THRESHOLD_KEY = 'bloom-threshold';
+const ATMOSPHERIC_KEY = 'atmospheric-enabled';
 
 /** Read graphics quality at module load — used by Canvas before store hydrates */
 export function getStoredGraphicsQuality(): 'high' | 'low' {
@@ -121,6 +129,18 @@ export function getStoredBloomThreshold(): number {
   return isNaN(v) ? 0.85 : Math.max(0, Math.min(1, v));
 }
 
+/** HD-2D atmospheric stack toggle. Browser-only — guards against `localStorage`
+ *  being absent in test/SSR contexts. Default-on for high tier; default-off
+ *  for low. Explicit user override (either value present in storage) wins.
+ *  Intended to be called at Canvas mount, not at store module load. */
+export function getStoredAtmospheric(): boolean {
+  if (typeof localStorage === 'undefined') return true;
+  const v = localStorage.getItem(ATMOSPHERIC_KEY);
+  if (v === 'true') return true;
+  if (v === 'false') return false;
+  return getStoredGraphicsQuality() === 'high';
+}
+
 const DEFAULT_SETTINGS: GameSettings = {
   musicVolume: 0.5,
   sfxVolume: 0.7,
@@ -129,6 +149,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   shadowsEnabled: false,
   bloomEnabled: false,
   bloomThreshold: 0.85,
+  atmosphericEnabled: true,
 };
 
 const DEFAULT_TAVERN: TavernState = {
@@ -146,7 +167,10 @@ const DEFAULT_FACILITIES: GuildFacility[] = [
   { id: 'alchemy-lab',   type: 'alchemy-lab',   level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
 ];
 
-export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & RosterSlice, [], [], GuildSlice> = (set, get) => ({
+export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & RosterSlice & ClockSlice, [], [], GuildSlice> = (set, get) => ({
+  ...createWorkshopActions(
+    set as unknown as StoreApi<GuildSlice & InventorySlice & RosterSlice & ClockSlice>['setState'],
+  ),
   guildName: '',
   guildLevel: 1,
   gold: 100,
@@ -156,6 +180,7 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
   facilities: DEFAULT_FACILITIES,
   offlineFacilityReport: null,
   offlineElapsedHours: 0,
+  offlineWorkshopSummary: null,
 
   setGuildName: (name) => set({ guildName: name }),
 
@@ -191,6 +216,9 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
     }
     if (partial.bloomThreshold !== undefined) {
       localStorage.setItem(BLOOM_THRESHOLD_KEY, String(partial.bloomThreshold));
+    }
+    if (partial.atmosphericEnabled !== undefined) {
+      localStorage.setItem(ATMOSPHERIC_KEY, String(partial.atmosphericEnabled));
     }
     set((s) => ({ settings: { ...s.settings, ...partial } }));
   },
@@ -560,11 +588,15 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
       // Build lookup for WC XP gains
       const wcGainMap = new Map(result.wcXpGains.map((g) => [g.memberId, g]));
 
-      // Collect member IDs to auto-unassign from depleted facilities
-      const depletedTypes = new Set<string>(result.reserveUpdates.filter((u) => u.depleted).map((u) => u.facilityType));
+      // Collect member IDs to auto-unassign — only from the SPECIFIC depleted facility(ies),
+      // matched by facility id. Matching by facility type would cascade unassign across all
+      // logging-sites of same type when only one depleted.
+      const depletedFacilityIds = new Set<string>(
+        result.reserveUpdates.filter((u) => u.depleted).map((u) => u.facilityId),
+      );
       const depletedMemberIds = new Set<string>();
       for (const f of s.facilities) {
-        if (depletedTypes.has(f.type)) {
+        if (depletedFacilityIds.has(f.id)) {
           for (const id of f.assignedMemberIds) depletedMemberIds.add(id);
         }
       }
@@ -587,7 +619,7 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
       };
 
       const updatedFacilities = s.facilities.map((f) => {
-        const update = result.reserveUpdates.find((u) => u.facilityType === f.type);
+        const update = result.reserveUpdates.find((u) => u.facilityId === f.id);
         if (!update) return f;
         return update.depleted
           ? { ...f, woodReserve: 0, assignedMemberIds: [] }
@@ -752,20 +784,58 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
 
   tickAlchemyQueues: () => {
     const completed: { itemId: string; qty: number }[] = [];
-    set((s) => ({
-      facilities: s.facilities.map((f) => {
+    // memberId → AC XP credited this tick (split among assigned alchemists per facility)
+    const xpAccum = new Map<string, number>();
+
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null };
+      const updatedFacilities = s.facilities.map((f) => {
         if (f.type !== 'alchemy-lab' || !f.craftQueue?.length) return f;
+        const assignedIds = f.assignedMemberIds;
         const newQueue: AlchemyCraftJob[] = [];
         for (const job of f.craftQueue) {
           if (job.remainingSeconds <= 1) {
             completed.push({ itemId: job.outputItemId, qty: job.outputQuantity });
+            // AC XP only for healing-syringe completions, split across assigned alchemists
+            if (job.outputItemId === 'HEALING_SYRINGE' && assignedIds.length > 0) {
+              const xpPerMember = job.outputQuantity / assignedIds.length;
+              for (const id of assignedIds) {
+                xpAccum.set(id, (xpAccum.get(id) ?? 0) + xpPerMember);
+              }
+            }
           } else {
             newQueue.push({ ...job, remainingSeconds: job.remainingSeconds - 1 });
           }
         }
         return { ...f, craftQueue: newQueue };
-      }),
-    }));
+      });
+
+      if (xpAccum.size === 0) {
+        return { facilities: updatedFacilities } as unknown as Partial<GuildSlice>;
+      }
+
+      const updateMember = (m: Member): Member => {
+        const xp = xpAccum.get(m.id);
+        if (!xp) return m;
+        const currentXp = m.craftSkills?.alchemy?.xpAccumulated ?? 0;
+        const newXp = currentXp + xp;
+        return {
+          ...m,
+          craftSkills: {
+            woodcutting: m.craftSkills?.woodcutting ?? { level: 0, xpAccumulated: 0 },
+            mining: m.craftSkills?.mining ?? { level: 0, xpAccumulated: 0 },
+            alchemy: { level: calcAcLevel(newXp), xpAccumulated: newXp },
+          },
+        };
+      };
+
+      return {
+        facilities: updatedFacilities,
+        roster: fullState.roster.map(updateMember),
+        ...(fullState.founder ? { founder: updateMember(fullState.founder) } : {}),
+      } as unknown as Partial<GuildSlice>;
+    });
+
     for (const { itemId, qty } of completed) {
       get().addItem(itemId as ItemID, qty);
     }
@@ -780,10 +850,11 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
       const assignedIds = new Set(facility.assignedMemberIds);
       // Primary instance (id === type): reset to level 0 to preserve template slot
       // Secondary instances: remove from array entirely
+      // Workshop v2: also wipe queue + blueprints so tasks don't freeze on a level-0 workshop
       const isPrimary = id === facility.type;
       return {
         facilities: isPrimary
-          ? s.facilities.map((f) => f.id === id ? { ...f, level: 0, placedSlot: null, assignedMemberIds: [], woodReserve: null } : f)
+          ? s.facilities.map((f) => f.id === id ? { ...f, level: 0, placedSlot: null, assignedMemberIds: [], woodReserve: null, workshopQueue: [], workshopBlueprints: [], craftQueue: [] } : f)
           : s.facilities.filter((f) => f.id !== id),
         roster: fullState.roster.map((m) => assignedIds.has(m.id) ? { ...m, status: 'idle' as const } : m),
         ...(fullState.founder && assignedIds.has(fullState.founder.id)
@@ -794,6 +865,8 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
   },
 
   clearOfflineFacilityReport: () => set({ offlineFacilityReport: null, offlineElapsedHours: 0 }),
+
+  clearOfflineWorkshopSummary: () => set({ offlineWorkshopSummary: null }),
 
   setMedicineSlot: (memberId, slotIdx, slot) => {
     set((s) => {

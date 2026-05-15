@@ -34,6 +34,26 @@ export function setAtlasFrame(atlas: SpriteAtlas, frameIndex: number): void {
 }
 
 /**
+ * Pure UV calculation for a frame in the atlas — sharable across both the
+ * texture-matrix path (setAtlasFrame, used by guild hall animators) and the
+ * uniform path (combat panel idle sprite, see combat/idle-sprite-material.ts).
+ * No side effects; safe to call per frame in render loops.
+ */
+export function getAtlasFrameUv(
+  atlas: SpriteAtlas,
+  frameIndex: number,
+): { u: number; v: number; w: number; h: number } {
+  const col = frameIndex % atlas.cols;
+  const row = Math.floor(frameIndex / atlas.cols);
+  return {
+    u: col / atlas.cols,
+    v: 1 - (row + 1) / atlas.rows,
+    w: 1 / atlas.cols,
+    h: 1 / atlas.rows,
+  };
+}
+
+/**
  * Build a sprite atlas from an array of already-loaded Three.js Textures.
  * Draws all frames onto a single Canvas in a grid layout.
  *

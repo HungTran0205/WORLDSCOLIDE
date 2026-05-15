@@ -4,11 +4,14 @@ export type ItemID =
   | 'WOOD' | 'STONE' | 'IRON_ORE' | 'GEM'
   | 'SLIME_GEL' | 'BOAR_PELT' | 'WOLF_FANG'
   | 'GOBLIN_EAR' | 'ORC_TUSK'
+  // Workshop v2 future-phase monster materials (declare-only stubs; not yet in ITEM_DATABASE)
+  | 'BAT_WING' | 'SPIDER_LEGS' | 'METAL_PLATE' | 'DRONE_SENSOR' | 'SLIME_KING_CORE'
   | 'LOGGING_SITE_ACCESS'
   | 'HEALING_SYRINGE' | 'HEALING_SYRINGE_2' | 'HEALING_SYRINGE_3';
 
 export type ItemType = 'MATERIAL' | 'CONSUMABLE' | 'EQUIPMENT' | 'CURRENCY';
 export type ItemRarity = 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
+export type InventoryCategory = 'material' | 'consumable' | 'weapon' | 'armor';
 
 export interface ItemTemplate {
   id: ItemID;
@@ -39,6 +42,12 @@ export const ITEM_DATABASE: Record<ItemID, ItemTemplate> = {
   HEALING_SYRINGE:   { id: 'HEALING_SYRINGE',   name: 'Healing Syringe',      type: 'CONSUMABLE', rarity: 'COMMON',   basePrice: 12, description: 'Alchemical syringe that restores 30% max HP. Auto-uses when HP drops below a set threshold.', stackable: true },
   HEALING_SYRINGE_2: { id: 'HEALING_SYRINGE_2', name: 'Healing Syringe II',   type: 'CONSUMABLE', rarity: 'UNCOMMON', basePrice: 30, description: 'Enhanced syringe that restores 50% max HP. Auto-uses when HP drops below a set threshold.', stackable: true },
   HEALING_SYRINGE_3: { id: 'HEALING_SYRINGE_3', name: 'Healing Syringe III',  type: 'CONSUMABLE', rarity: 'RARE',     basePrice: 80, description: 'Masterwork syringe that restores 80% max HP. Auto-uses when HP drops below a set threshold.', stackable: true },
+  // Workshop v2 future-phase monster materials — stubs only (workshop affinity disabled in MVP)
+  BAT_WING:        { id: 'BAT_WING',        name: 'Bat Wing',        type: 'MATERIAL', rarity: 'COMMON',   basePrice: 4,  description: 'Leathery wing membrane.',          stackable: true },
+  SPIDER_LEGS:     { id: 'SPIDER_LEGS',     name: 'Spider Legs',     type: 'MATERIAL', rarity: 'COMMON',   basePrice: 5,  description: 'Chitinous spider appendage.',      stackable: true },
+  METAL_PLATE:     { id: 'METAL_PLATE',     name: 'Metal Plate',     type: 'MATERIAL', rarity: 'UNCOMMON', basePrice: 12, description: 'Reinforced metal plating.',        stackable: true },
+  DRONE_SENSOR:    { id: 'DRONE_SENSOR',    name: 'Drone Sensor',    type: 'MATERIAL', rarity: 'UNCOMMON', basePrice: 18, description: 'Salvaged precision sensor array.', stackable: true },
+  SLIME_KING_CORE: { id: 'SLIME_KING_CORE', name: 'Slime King Core', type: 'MATERIAL', rarity: 'RARE',     basePrice: 60, description: 'Pulsing core from the Slime King.', stackable: true },
 };
 
 /** O(1) lookup of item template by ID */

@@ -57,6 +57,75 @@
 
   /* Scale — desktop default */
   --ui-scale: 1;
+
+  /* ── Gold (glint additions) ──────────────────────────────────────────── */
+  --ink-gold-bright:    #ffd700;
+
+  /* ── Combat-log accent line colors ──────────────────────────────────── */
+  --ink-log-skill:      #4a90d9;
+  --ink-log-dodge:      #7fffd4;
+  --ink-log-heal:       #2ecc71;
+  --ink-log-zone:       #87ceeb;
+
+  /* ── Wood / chest theme — InventoryPanel only ───────────────────────── */
+  --ink-wood-edge:       #8B4513;
+  --ink-wood-edge-light: #9e5a28;
+  --ink-wood-edge-dark:  #6b3410;
+  --ink-wood-fill-from:  rgba(45, 30, 16, 0.98);
+  --ink-wood-fill-to:    rgba(28, 18, 8, 0.99);
+  --ink-stud-bright:     #ffe87c;
+  --ink-stud-mid:        #b8860b;
+
+  /* ── Rank palette ────────────────────────────────────────────────────── */
+  --ink-rank-recruit:    #7d8a9b;
+  --ink-rank-member:     #4a90d9;
+  --ink-rank-veteran:    #6dbf6d;
+  --ink-rank-officer:    #9f7acc;
+  --ink-rank-commander:  #ffd700;
+  --ink-rank-mercenary:  #c44a4a;
+
+  /* ── Quest tier palette ──────────────────────────────────────────────── */
+  --ink-tier-f: #7d8a9b;
+  --ink-tier-e: #8da66d;
+  --ink-tier-d: #6dbf6d;
+  --ink-tier-c: #4a90d9;
+  --ink-tier-b: #9f7acc;
+  --ink-tier-a: #d4a843;
+  --ink-tier-s: #ffd700;
+
+  /* ── Additional UI sans (HUD top bar + title screen) ─────────────────── */
+  --ink-font-ui:    'Segoe UI', system-ui, sans-serif;
+
+  /* ── Type scale (rem so --ui-scale doesn't double-apply) ─────────────── */
+  --ink-fs-display:  3rem;
+  --ink-fs-h1:       1.2rem;
+  --ink-fs-h2:       1.05rem;
+  --ink-fs-body:     0.9rem;
+  --ink-fs-small:    0.78rem;
+  --ink-fs-meta:     0.7rem;
+  --ink-fs-label:    0.62rem;
+  --ink-fs-tiny:     0.5rem;
+
+  /* ── Spacing scale (4px base) ────────────────────────────────────────── */
+  --ink-space-1:  4px;
+  --ink-space-2:  8px;
+  --ink-space-3:  12px;
+  --ink-space-4:  16px;
+  --ink-space-5:  20px;
+  --ink-space-6:  24px;
+
+  /* ── Additional radii ────────────────────────────────────────────────── */
+  --ink-radius-lg:    8px;
+  --ink-radius-chest: 12px;
+
+  /* ── Additional shadows / glows ──────────────────────────────────────── */
+  --ink-glow-bright:  0 0 20px rgba(255, 215, 0, 0.4);
+  --ink-shadow-panel: 0 4px 12px rgba(0, 0, 0, 0.5),
+                      0 12px 40px rgba(0, 0, 0, 0.55);
+
+  /* ── Additional motion durations ─────────────────────────────────────── */
+  --ink-dur-fast:    120ms;
+  --ink-dur-bar:     300ms;
 }
 
 @media (max-width: 1199px) { :root { --ui-scale: 0.9; } }
@@ -143,3 +212,6 @@
   to   { opacity: 1; transform: translateY(0)     scale(var(--ui-scale)); }
 }
 .ink-enter { animation: ink-slide-in var(--ink-dur-panel) var(--ink-ease-out) both; }
+@media (prefers-reduced-motion: reduce) {
+  .ink-enter { animation: none; }
+}

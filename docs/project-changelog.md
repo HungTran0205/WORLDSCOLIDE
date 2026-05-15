@@ -2,8 +2,597 @@
 
 All notable changes to Worlds Collide are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
-**Current Version**: 1.26.0
-**Release Date**: 2026-04-28 (HD-2D Ink UI Redesign)
+**Current Version**: 1.27.9
+**Release Date**: 2026-05-10 (Combat AOE Telegraph)
+
+---
+
+## [Unreleased] — 2026-05-12 (Quest Board Diegetic Redesign + Tiles + Platformer + HD-2D Atmospheric)
+
+### feat(atmospheric): per-room theming foundation — context provider, preset registry, active-room detection (Phase 01)
+
+HD-2D atmospheric depth system Phase 01: pure plumbing foundation for per-room post-FX, particles, and lighting. New module `src/scene/atmospheric/` (7 files) introduces `AtmosphereProvider` context, preset registry, active-room detection via camera position, and smooth 500ms lerp transitions. `GameSettings.atmosphericEnabled` toggle added; disabled = provider returns null (zero overhead). Phases 02–05 consume this plumbing to mount post-FX stack, particles, volumetric lighting, and diegetic UI. Zero user-visible changes at this phase.
+
+**New files**:
+- `src/scene/atmospheric/atmosphere-types.ts` — `RoomId` union (9 rooms), `AtmospherePreset` interface, `BASELINE_PRESET`
+- `src/scene/atmospheric/atmosphere-presets.ts` — Preset registry (9 stub entries; Phase 04 tuning)
+- `src/scene/atmospheric/atmosphere-context.tsx` — React provider component
+- `src/scene/atmospheric/atmosphere-context-store.ts` — Zustand store instance
+- `src/scene/atmospheric/use-atmosphere.ts` — Consumer hook
+- `src/scene/atmospheric/use-active-room-id.ts` — Camera→room selector
+- `src/scene/atmospheric/use-lerped-atmosphere.ts` — Numeric lerp helper
+- `src/scene/atmospheric/CLAUDE.md` — Module reference
+
+**Modified**:
+- `src/game/state/guild-slice.ts` — +`atmosphericEnabled: boolean` setting
+- `src/scene/world.tsx` — Wrapped `<WorldSceneContent>` with `<AtmosphereProvider>`
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; all 264 game tests pass; zero visual diff.
+
+**Plan reference**: `plans/260512-1520-guild-hall-hd2d-atmospheric-depth/phase-01-atmosphere-foundation.md`
+
+### feat(atmospheric): replace world-bloom-post with preset-driven composer; full effect stack on WebGL, bloom-only on WebGPU (Phase 02)
+
+Replaces static `src/scene/world-bloom-post.tsx` with `src/scene/atmospheric/world-atmospheric-post.tsx` — a preset-driven EffectComposer reading active room via `useAtmosphere()` context. **WebGL**: Full stack (N8AO → DOF → TiltShift → Bloom → GodRays → HueSat → BrightnessContrast → Vignette → Noise → ChromaticAberration → ToneMapping). DOF target auto-syncs from camera lerp per-frame (no room-transition popping). **WebGPU** (Phase 02): TSL chain (Bloom → ColorGrade → Vignette → ACES ToneMapping); logs warning once if full-stack requested. Quality tier `graphicsQuality='low'` strips DOF, GodRays, ChromaticAberration; WebGPU chain always full per preset.
+
+**New files**:
+- `src/scene/atmospheric/world-atmospheric-post.tsx` — Composer entry; wraps effect stack OR WebGPU pass
+- `src/scene/atmospheric/atmospheric-effect-stack.tsx` — WebGL effect children
+- `src/scene/atmospheric/atmospheric-webgpu-pass.tsx` — TSL chain: bloom → colorGrade → vignette; preset-driven uniforms via refs
+- `src/scene/atmospheric/atmospheric-leva-controls.ts` — Dev tuning multipliers
+- `src/scene/atmospheric/tsl/vignette-node.ts` — TSL vignette node (pmndrs DEFAULT, radial darkening)
+- `src/scene/atmospheric/tsl/color-grade-node.ts` — TSL color-grade node (hue/sat/brightness/contrast; HueSaturation + BrightnessContrast chained)
+- `src/scene/atmospheric/tsl/types.ts` — `TslChainHolder` interface + uniform shape definitions (bloom, vignette, colorGrade; future: fog, chromAb, tiltShift)
+
+**Modified**:
+- `src/scene/atmospheric/atmosphere-types.ts` — +`GodRaysConfig.sourceId`, +`ChromaticAberrationConfig`, +`colorGrade` + `vignette` config on `AtmospherePreset`
+- `src/scene/atmospheric/tsl/types.ts` — `vignette` + `colorGrade` flipped from optional to required on `TslChainHolder`
+- `src/scene/world.tsx` — Updated import: `world-bloom-post` → `world-atmospheric-post`
+
+**Deleted**: `src/scene/world-bloom-post.tsx` (migrated to modular `src/scene/atmospheric/`)
+
+**Implementation Pattern**:
+- Async IIFE tail + per-preset `useEffect` both call `applyPreset(holder, preset, overrides)` to sync uniform `.value` properties without pipeline rebuild.
+- Refs (`presetRef`/`overridesRef`) prevent seed-race where preset mutation during dynamic-import window would stale uniforms.
+- `post.dispose()` wired on cleanup to prevent WebGPU texture/buffer leaks.
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; visual parity on WebGL; WebGPU parity gap (Bloom + ToneMapping only, as designed).
+
+**Plan reference**: `plans/260512-1520-guild-hall-hd2d-atmospheric-depth/phase-02-atmospheric-post-stack.md`
+
+### feat(atmospheric): ambient particle system (dust, embers, magic, pollen) with tier-aware counts and router (Phase 03)
+
+Implements Phase 03 of HD-2D atmospheric depth plan: 4 production particle components (dust-motes, embers, magic-motes, pollen) with shared infrastructure (deterministic PRNG, procedural texture, bounds helper). All particles use additive blending, tier-aware counts (high: 100 dust / 80 embers / 60 magic / 40 pollen; low: 30/20/15/10), and wrap-on-bounds lifecycle. Particle preset selection via `preset.particles` wired to `<AmbientParticlesRouter>` mounted in `world.tsx` inside AtmosphereProvider. Deterministic mulberry32 PRNG replaces Math.random for React purity compliance. TypeScript compilation ✓, lint clean, 99/99 tests pass, no regressions.
+
+**New files**:
+- `src/scene/atmospheric/particles/shared-particle-texture.ts` — 32×32 soft-circle DataTexture (SSR-safe singleton)
+- `src/scene/atmospheric/particles/particle-prng.ts` — Mulberry32 seeded PRNG (deterministic, React-pure)
+- `src/scene/atmospheric/particles/particle-bounds.ts` — RoomId → Box3 lookup; `randomInBounds(prng)` helper
+- `src/scene/atmospheric/particles/dust-motes.tsx` — Warm slow drift, infinite lifecycle, tier-aware count
+- `src/scene/atmospheric/particles/embers.tsx` — Hot orange upward-rising, 3–4s lifespan + fade-out
+- `src/scene/atmospheric/particles/magic-motes.tsx` — Cool purple circular swirl, opacity pulse via sine wave
+- `src/scene/atmospheric/particles/pollen.tsx` — Yellow outdoor vibe, slow settlement toward ground
+- `src/scene/atmospheric/particles/particles-router.tsx` — Key-driven preset.particles → component preset switch
+
+**Modified**:
+- `src/scene/world.tsx` — Added `<AmbientParticlesRouter>` mount inside AtmosphereProvider
+
+**Deviations from spec** (all acceptable):
+- Math.random → mulberry32 PRNG: Passes exhaustive-deps lint; determinism bonus (identical layout per seed)
+- Buffer init via useState + useRef (not useMemo): idiomatic r3f pattern for mutable frame buffers in useFrame
+- `randomInBounds(prng)` signature: requires explicit Prng instance (callers updated, no API breaks)
+- Profiling deferred to Phase 06: Phase 03 code ready, measurement postponed for tier-specific baselines
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; 99/99 tests pass; no pre-existing errors introduced.
+
+**Plan reference**: `plans/260512-1520-guild-hall-hd2d-atmospheric-depth/phase-03-ambient-particles.md`
+
+### feat(atmospheric/webgpu): ACES tonemap TSL node closes parity for four core effects (Phase 03)
+
+WebGPU post-processing achieves functional parity with WebGL for Bloom, ColorGrade, Vignette, and ACES Filmic tonemap. Phase 03 of `atmospheric-webgpu-tsl-parity` plan (separate effort, 2026-05-12): adds `acesTonemapNode(input)` TSL node (Narkowicz approximation, param-free, must be chain tail) and removes parity-gap console warning from `world-atmospheric-post.tsx`. WebGPU chain now reads: Bloom → ColorGrade → Vignette → ACES Tonemap. Future phases (04/05) will add Chromatic Aberration and Tilt-Shift before the ACES guard line; DOF and GodRays remain WebGL-only.
+
+**New files**:
+- `src/scene/atmospheric/tsl/aces-tonemap-node.ts` — ACES Filmic tone mapping (Narkowicz formula, ~10 LOC, no uniforms)
+
+**Modified**:
+- `src/scene/atmospheric/atmospheric-webgpu-pass.tsx` — Append ACES at chain tail with guard comment "ACES MUST BE LAST"
+- `src/scene/atmospheric/world-atmospheric-post.tsx` — Removed `webgpuParityWarned` flag and `WebGPUWithParityWarning` wrapper; WebGPU branch returns pass directly
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; visual diff WebGL vs WebGPU on 3 representative rooms (guild-hall, workshop, infirmary) shows functional parity within ±2 LSB per channel.
+
+**Plan reference**: `plans/260512-2039-atmospheric-webgpu-tsl-parity/phase-03-aces-tonemap-node.md`
+
+### feat(atmospheric/webgpu): chromatic aberration TSL node — opt-in per preset (Phase 04)
+
+Phase 04 of atmospheric-webgpu-tsl-parity: adds `chromaticAberrationNode(input, offsetU)` TSL node (UV-offset RGB split, matches pmndrs convention). Inserted before ACES guard; all 9 current presets pass `chromaticAberration: null` → zero visible behavior change. Known parity deviation: pmndrs WebGL multiplies Y offset by screen aspect; WebGPU node uses offset unscaled (revisit Phase 06 if designer enables chromAb).
+
+**New files**:
+- `src/scene/atmospheric/tsl/chromatic-aberration-node.ts` — RGB split via `convertToTexture(input)` + offset UV sampling
+
+**Modified**:
+- `src/scene/atmospheric/atmospheric-webgpu-pass.tsx` — +`chromAbOffsetU = uniform(vec2(0, 0))`, insert `chromaticAberrationNode(chain, chromAbOffsetU)` before ACES, add to holder + applyPreset sync logic
+- `src/scene/atmospheric/tsl/types.ts` — +`chromaticAberration: { offset: Uniform<Vector2> }` on `TslChainHolder`
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; visual test (temp workshop preset flip to `enabled: true`) shows RGB fringing; all presets remain at `chromaticAberration: null` → zero diff.
+
+**Plan reference**: `plans/260512-2039-atmospheric-webgpu-tsl-parity/phase-04-chromatic-aberration-node.md`
+
+### feat(atmospheric): per-room preset tuning; hemisphereLight conditional mount (Phase 04)
+
+Phase 04 of atmospheric depth system: replaces baseline preset stubs with 9 per-room tuned presets across guild hall rooms. Adds optional `mood?: string` field to `AtmospherePreset` for designer documentation (runtime no-op). Conditional `<hemisphereLight>` mount in `AtmosphereProvider` reads `hemisphereLight` config from lerped preset; rooms with null skip entirely (zero cost). Skylight & groundColor properties lerp smoothly over 500ms per preset transitions.
+
+**Modified**:
+- `src/scene/atmospheric/atmosphere-presets.ts` — Replaced 9 baseline stub presets with per-room tuning (bloom, DOF, vignette, particles, lighting per room)
+- `src/scene/atmospheric/atmosphere-types.ts` — +`mood?: string` field on `AtmospherePreset` (documentation-only)
+- `src/scene/atmospheric/use-lerped-atmosphere.ts` — Routes `mood` field from target preset unchanged
+- `src/scene/atmospheric/atmosphere-context.tsx` — Conditional `<hemisphereLight color={hemi.skyColor} groundColor={hemi.groundColor} intensity={hemi.intensity} />` mount gated by lerped preset presence
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; all 264 tests pass; zero visual regressions.
+
+### feat(atmospheric/webgpu): tilt-shift TSL node + chainDisposables RT leak fix (Phase 05)
+
+Phase 05 of atmospheric-webgpu-tsl-parity: adds `tiltShiftNode(input, strength)` TSL node (Gaussian masked blur, separable 2-pass, SIGMA=4, resolutionScale=0.5). Mask uses `focusBandHalfWidth = (1 - strength) * 0.5`, formula: `smoothstep(0, 0.3, abs(uv.y - 0.5) - halfWidth)` matches pmndrs WebGL `focusArea = 1 - strength, feather = 0.3` exactly. Disabled state: `tiltShift.enabled === false` → strength=0 → output equals sharp input (no chain rebuild). Inserted in WebGPU chain before colorGrade. **RT Leak Fix**: Introduced `chainDisposables` array in pass closure to collect dispose closures from TSL TempNode children (PostProcessing.dispose() doesn't walk child tree). Tilt-shift returns `{ output, dispose }` tuple; closure fed to array for cleanup on unmount.
+
+**New files**:
+- `src/scene/atmospheric/tsl/tilt-shift-node.ts` — TSL tilt-shift node (Gaussian masked blur, mask-strength formula, returns output + dispose)
+
+**Modified**:
+- `src/scene/atmospheric/atmospheric-webgpu-pass.tsx` — Insert tilt-shift after bloom, before colorGrade; update chain order to bloom → tilt-shift → colorGrade → vignette → chromAb → ACES; add `chainDisposables` array + collect dispose closures from TempNodes
+- `src/scene/atmospheric/tsl/types.ts` — +`tiltShift: { strength: Uniform<number>, enabled: Uniform<boolean> }` on `TslChainHolder`
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; visual test shows tilt-shift blur on y-axis with masked hard/soft transitions; disabled state returns sharp input; no RT leaks on preset switch. All 264 tests pass.
+
+**Plan reference**: `plans/260512-2039-atmospheric-webgpu-tsl-parity/phase-05-tilt-shift-node.md`
+
+---
+
+### feat(quest-board): diegetic trigger, camera zoom + scene blur, 5-SFX cinematic transition
+
+Phase 03 of `plans/260512-1002-quest-board-diegetic-redesign/`. Wired drum mesh in guild hall as interactive gateway to quest panel: click triggers camera zoom-in (0.5s) + scene overlay blur (0→4px animated) + panel slide-up. All UI state synced via cameraFocus + pendingQuestPanel. Added 5 SFX: paper-unroll (open), seal-break (close), paper-flip (card hover, 120ms debounce), wood-clink (member toggle), ink-stamp (dispatch).
+
+**New files**:
+- `src/scene/guild-hall/interactive-drum.tsx` — click-interactive drum with hitbox, hover light, cursor pointer
+
+**Modified**:
+- `src/game/state/camera-slice.ts` — +cameraFocus state, +pendingQuestPanel, +requestQuestPanel action; reset to defaults in store
+- `src/scene/camera-controller.tsx` — focus-based offset (CAM_OFFSET_DEFAULT vs CAM_OFFSET_QUEST); consolidated into existing controller
+- `src/scene/guild-hall/guild-hall-props.tsx` — DrumFireHolder → InteractiveDrum
+- `src/ui/screens/game-screen.tsx` — bridge activePanel ↔ cameraFocus + sync effects
+- `src/ui/styles/quest-board.css` — animated overlay blur: 0→4px, reduced-motion fallback
+- `src/ui/panels/quest-board.tsx` — 5 SFX wired (open/close lifecycle + hover/toggle/dispatch handlers), custom 120ms debounce
+- `src/ui/panels/quest-card.tsx` — +onHover prop for SFX
+- `src/ui/panels/quest-detail-pane.tsx` — +onMemberToggle prop for SFX
+
+**Verification**: `npm run build` ✓ (941 modules); `npx tsc --noEmit` ✓; HUD + drum both trigger same state path; reduced-motion respected.
+
+---
+
+### feat(quest-board): tutorial sparkle, keyboard shortcuts, full a11y polish
+
+Phase 04 of `plans/260512-1002-quest-board-diegetic-redesign/`. Final phase: first-visit discoverability + complete keyboard + screen reader support. Added sparkle particle hint + DOM tooltip arrow on guild-hall drum (first load only, persisted in localStorage). Global keyboard shortcuts: `Q` toggles quest board, `ESC` closes any panel (capture-phase handlers). Updated quest board to `role="dialog" aria-modal aria-label` with auto-focus on first quest card. All animations respect `prefers-reduced-motion`. Code review fixed invalid `role="listbox"` on tooltip + removed noisy `aria-live` redundancy. Lighthouse a11y ≥90.
+
+**New files**:
+- `src/ui/hud/keyboard-shortcuts.tsx` — global Q/ESC handler with input-detection guard
+- `src/ui/overlays/drum-tooltip-arrow.tsx` — first-visit DOM tooltip + CSS bobbing animation (reduced-motion safe)
+
+**Modified**:
+- `src/game/state/ui-store.ts` — +questBoardTutorialSeen boolean, +markQuestTutorialSeen / +resetTutorials actions (localStorage persist)
+- `src/scene/guild-hall/interactive-drum.tsx` — +sparkle particle conditional render (20 particles, 60fps maintained)
+- `src/ui/screens/game-screen.tsx` — mount global `<KeyboardShortcuts />` + `<DrumTooltipArrow />`
+- `src/ui/panels/quest-board.tsx` — upgraded `role="dialog" aria-modal aria-label="Quest Board"`; capture-phase ESC handler; auto-focus first card; removed bubble-phase conflict
+- `src/ui/panels/quest-detail-pane.tsx` — updated `aria-label` descriptors
+- Settings panel — added "Reset Tutorials" button (clears localStorage flag)
+
+**Verification**: `npm run build` ✓; `npx tsc --noEmit` ✓; all 17 manual QA test cases pass (tutorial flow, keyboard nav, mobile 375px–1024px, screen reader, reduced-motion, contrast ≥4.5:1, 60fps); Lighthouse a11y = 92.
+
+**Plan Completion**: Quest Board Diegetic Redesign (Plan B, Phases 1–4) complete. Diegetic UI pattern established: R3F drum mesh + DOM tooltip + DOM panel + global keyboard handler with proper capture-phase ordering. State owned by `useUIStore` (cross-cutting flags) + `game-screen.tsx` local state (activePanel) + `camera-slice` bridge (pendingQuestPanel). a11y baseline met: dialog semantics, no stale ARIA contracts, reduced-motion honored, keyboard-full navigable.
+
+---
+
+### feat(ui): unified split-pane quest board with parchment skin + mobile layout
+
+Complete refactor of quest board UI (plan: `plans/260512-1002-quest-board-diegetic-redesign/`, phase 02). Eliminated stacked-modal architecture; replaced with single unified split-pane layout: 55% list (desktop) / 45% detail on desktop; single-pane swap on mobile (<1024px).
+
+**New components**:
+- `quest-card.tsx` — list-item card for mission entry
+- `quest-detail-pane.tsx` — right-side detail panel with empty state
+- `party-select-list.tsx` — checkbox member selector
+
+**Modified**:
+- `quest-board.tsx` — REWRITTEN: unified panel, `useIsMobile()` hook gates layout mode, parchment skin, "Return to Guild" button bottom-right replaces X close. Dispatch button styled with wax-seal accent + ink-stamp CSS-only keyframes (no SVG asset).
+
+**Removed**:
+- `quest-detail-modal.tsx` — legacy stacked-modal flow eliminated
+- `panels.css` → removed `.quest-detail-modal*` rules
+
+**Styling**:
+- New `quest-board.css` — parchment skin for unified layout
+- Unified theme via Phase 1 `parchment.css`
+
+**Responsive behavior**:
+- Desktop ≥1024px: split-pane (list | detail)
+- Mobile <1024px: single-pane swap (list XOR detail)
+
+**Verification**: `tsc --noEmit` ✓; `npm run build` ✓; all game-state/mission-dispatch/store references intact.
+
+---
+
+## [Unreleased] — 2026-05-10 (Combat Tiles + Platformer Redesign)
+
+### feat(combat): multi-phase tile palette + platformer stage layout overhaul
+
+Complete redesign of combat ground rendering and stage layout (plan: `plans/260510-1611-combat-tiles-platformer-redesign/`, phases 01–06 complete, phase 07 docs sync). Tile palette flattened from 50+ variants per biome to 3–5 base tiles + decal overlays; stage layout shifted from flat single-arena to multi-tier side-scroller platforms with optional Y-axis elevation.
+
+**Tile palette reduction** (phase 02):
+- Curated `public/tiles/2d/` from ~120 PNGs → 47. Kept 4–5 most distinct frames per biome; remapped consumers to survivors.
+- Visual diversity delegated to `<FloorDecal>` overlays, not base-tile inflation.
+- Source of truth: biome palette table in `docs/code-standards.md` (primary + variants, ≤5 per biome cap).
+
+**Stage spec DSL** (phases 03–04):
+- Pure data specs under `src/scene/combat/maps/stages/` (examples: lolo-village-outskirt, broken-cliff-outskirt, the-forest).
+- Types: CombatStageSpec, PlatformSpec, SpawnSlot, DecalPlacement, DecalDensitySpec in `stage-spec-types.ts`.
+- Decouples stage design from hardcoded global positions. Render flow: `combat-scene.tsx` → `getStageSpec(mapId)` → `<StageRenderHost spec>` → `<CombatPlatform>[]` per platform.
+
+**Platformer layout** (phases 05–06):
+- Spatial-Y extension: `entity.position.y` now optional (defaults 0, backward-compat). Sprites, shadows, AOE telegraphs read Y.
+- Spawn anchors inherit Y from platform; `FORMATION_POSITIONS` deprecated (preserved for legacy code paths).
+- Demo stage `broken-cliff-outskirt`: allies at y=0 (lower-ground), enemies at y=1.5 (upper-cliff with exposed cracked-stone side wall).
+- Decal patterns: manual (exact coords, story moments) vs scatter (seed-driven per-cell probability, ambient grunge).
+
+**Dead code pruned**:
+- `combat-arena-environment.tsx` — orphaned pre-D8 arena setup
+- `combat-tile-grid.tsx` — orphaned flat-grid asset helper
+
+**Documentation**:
+- New `docs/combat-stage-spec.md` (~400 LOC): full authoring guide (type hierarchy, render flow, decal patterns, Y-axis extension, authoring examples).
+- Updated `docs/system-architecture.md`: render layer, phases progress table, render flow diagram.
+- Updated `docs/code-standards.md`: cross-reference to combat-stage-spec.md.
+
+**Verification**: `npm run build` ✓; all stages render correctly; spawn parity maintained.
+
+---
+
+### feat(combat): typed stage spec DSL for platformer-capable combat layout
+
+Phase 03 of `260510-1611-combat-tiles-platformer-redesign`. Introduced typed DSL defining multi-platform combat stages with spawn anchors, decal placement, and background layer specs. Pure data + types (dormant — no render wiring until phase 04). All code under `src/scene/combat/maps/`:
+
+**New files**:
+- `stage-spec-types.ts` — 6 interfaces (BgLayer, DecalPlacement, DecalDensitySpec, PlatformSpec, SpawnSlot, CombatStageSpec); extensible, all optional except core fields.
+- `stages/lolo-village-outskirt.ts` — 1st stage data reproducing current flat-ground layout (1 platform at y=0, existing tile setup, spawn anchors).
+- `stage-formation-positions.ts` — helpers: `getStageSpec(mapId)`, `getStageSpawnPosition(spec, slotIndex, side)`.
+
+**Modified**:
+- `combat-map-registry.ts` — add `STAGE_SPECS` table + `getStageSpec()` resolver.
+
+**Design**: Stage spec owns spawn positions; deprecates `FORMATION_POSITIONS` for future spec-driven combat (phase 05+). No save migration — y-axis spawn positions optional, default 0.
+
+**Verification**: `npm run build` ✓; spawn parity test verifies coordinates match existing layout.
+
+---
+
+### chore(tiles): reduce tile-variant explosion from 50+ to 4-5 per biome
+
+Phase 02 of `260510-1611-combat-tiles-platformer-redesign`. Curated `public/tiles/2d/` from ~120 PNGs down to 47 — kept the 4-5 most distinct frames per biome and remapped consumers to surviving filenames. Visual diversity now comes from `<FloorDecal>` overlays (Phase 01 decal palette), not base-tile inflation.
+
+**Removed (74 PNGs)**:
+- `cave_0006..0016` (11), `forest-grass-32_0006..0016` (11), `paving-stone-32_0006..0016` (11), `deep-forest-grass_0006..0010` (5)
+- `stone-64_0005..0016` (12), `ruined-village_0005..0006` (2), `ruined-paving-stone_0005..0006` (2), `wood-guild-floor_0006..0010` (5), `wooden-floor-64_0006..0018` (13)
+- `wooden-floor-128_0005..0006` (2)
+
+**Consumer remaps**:
+- `src/scene/combat/maps/lolo-village-outskirt-scene.tsx` — `ACCENT_TILES` drops `_0005, _0006`, gains `_0004`
+- `src/scene/guild-hall/linh-son-floor.tsx` — `wood-guild-floor_0010` → `_0001`
+- `src/scene/facility/facility-room.tsx` — logging-site variants now `forest-grass-32_{0001, 0002, 0004, 0005}`; stone-quarry `cave_0011` → `cave_0001`; alchemy variant `_0006` → `_0004`; workshop `stone-64_0009` → `_0001`
+
+**Docs**:
+- `docs/code-standards.md` → "Floor Rendering Pattern" section gets a new **Biome Palette** table (source-of-truth: primary + variants + recommended mode per biome) + cap rule (≤5/biome).
+
+**Verification**: `npm run build` passes (4.13s, 0 errors); zero remaining `_0006+` references in `src/`.
+
+---
+
+## [1.27.9] — 2026-05-10 (Combat AOE Telegraph)
+
+### feat(combat): animated AOE skill telegraph indicator on combat floor
+
+Phase 08 (final) of the standard tile floor system. AOE skill casts now project an animated ground decal warning the player about the danger zone. Built on Phase 07 `<FloorDecal>`; engine emits `aoe-telegraph` events that React subscribes to and mounts an `<AoeTelegraph>` per event.
+
+**Three-phase animation** drives the "danger" read:
+- **Spawn** (0–100ms): opacity 0 → 0.7 fade-in
+- **Pulse** (100ms..durationMs−200ms): 0.5..0.9 sinusoidal at 4Hz
+- **Lock** (last 200ms): opacity 1.0 solid — damage imminent
+
+`useFrame` mutates `material.opacity` directly via ref — no React rerender per frame.
+
+**New files**:
+- `src/scene/sprites/aoe-telegraph.tsx` — `<AoeTelegraph>` component (~115 LOC, 3-phase animation, useFrame opacity)
+- `src/scene/combat/combat-aoe-layer.tsx` — `<CombatAoeLayer>` subscriber (~85 LOC, prevEventsRef guard, arenaPhase gate)
+- `public/decals/floor/aoe-circle.png`, `aoe-cone.png`, `aoe-rect.png` — 256×256 placeholder decals (straight alpha, white shape + crosshatch for free tinting)
+- `scripts/generate_aoe_decals.py` — placeholder asset generator (PIL)
+
+**Modified**:
+- `src/game/state/game-state.ts` — `Skill` interface gains optional `aoeRadius`, `aoeShape`, `aoeCastTimeMs`, `aoeColor` (additive — no save migration needed)
+- `src/game/systems/combat-types.ts` — `CombatEvent` union gets `aoe-telegraph` variant; new shared `AoeShape` type alias
+- `src/game/systems/combat-engine.ts` — `trySkill()` emits telegraph event (with target snapshot position) before damage when skill has `aoeRadius`
+- `src/game/data/skills.ts` — `SKILL_HOA_CAU` (Hoả Cầu / Fireball) annotated with `aoeRadius=2.2, aoeShape='circle'` so Phase 08 wires through Scholar archetype organically
+- `src/scene/sprites/floor-decal.tsx` — added optional `materialRef` prop forwarded to inner `meshBasicMaterial` (lets AoeTelegraph drive opacity per-frame)
+- `src/scene/combat/combat-scene-shell.tsx` — `<CombatAoeLayer>` mounted (Suspense-wrapped) between shadow and entity layers
+- `docs/code-standards.md` — new "Combat AOE Telegraph" section (pipeline, conventions, asset authoring, schema, forbidden patterns)
+
+**Design trade-off (documented)**: Engine v1 keeps damage **synchronous** with cast — telegraph is cosmetic, plays alongside skill animation rather than gating damage. Future phase may convert to wind-up timing.
+
+**Color policy**: red (`#ff5a5a`) is universal danger default regardless of caster faction. Blue reserved for future explicit beneficial-zone skills (heal AOE) via `Skill.aoeColor` override.
+
+**Concurrency safety**:
+- `prevEventsRef` guard in CombatAoeLayer (matches existing `combat-vfx-layer.tsx` / `combat-entity-sprite.tsx` pattern) prevents Suspense replay from duplicate-spawning
+- `arenaPhase === 'fighting'` gate drops in-flight telegraphs on panel close
+- Per-instance unique key (`attackerId-skillId-Date.now()-counter`) survives remount
+- Sub-300ms `aoeCastTimeMs` clamped to `MIN_TOTAL_MS=350` so spawn+pulse+lock all get a slice
+
+**Tests**: tsc clean (`tsc --noEmit -p tsconfig.app.json`). Code review passed with concerns addressed (M1 prevEventsRef guard, M2 color default red, M3 duration clamp, m1 dead ternary, m2 shared AoeShape, m3 redundant cast).
+
+**Plan**: `plans/260509-1253-standard-tile-floor-system/` — Phase 08 complete, marks the entire 9-phase plan as ✅ done.
+
+---
+
+## [1.27.8] — 2026-05-10 (Floor Atmospheric Lighting)
+
+### feat(scene): atmospheric floor lighting (lambert material + decal overlay)
+
+Floor rendering enhanced with lighting reactivity and atmospheric overlays. **Part A** upgrades `<TiledFloor>` from `meshBasicMaterial` to `meshLambertMaterial` with `emissiveMap` trick (default `lighting='lit'` with `emissiveIntensity={0.7}`) so floors respond to scene pointLight/ambientLight while retaining pre-shaded pixel-art tone; backwards-compatible via `lighting='unlit'` opt-out. **Part B** adds `<FloorDecal>` component (~95 LOC) for static atmospheric overlays: flat planeGeometry above floor (y=0.01), `meshBasicMaterial transparent depthWrite=false alphaTest=0.05`, texture cloned per-instance for lifecycle safety.
+
+**New files**:
+- `src/scene/sprites/floor-decal.tsx` — `<FloorDecal>` component (position, size, texture, rotation, color, opacity, yOffset props)
+- `public/decals/floor/lamp-pool.png` — 256×256 radial gradient placeholder (warm yellow alpha)
+- `public/decals/floor/magic-rune-circle.png` — 256×256 ring placeholder
+
+**Modified**:
+- `src/scene/sprites/tiled-floor.tsx` — added `lighting?: 'lit' | 'unlit'` + `emissiveIntensity?: number` (default 0.7) props; conditional render lambert vs basic material
+- `src/scene/guild-hall/linh-son-floor.tsx` — set `emissiveIntensity={0.6}` (torch-rich scene)
+- `src/scene/facility/facility-room.tsx` — added `FACILITY_EMISSIVE_INTENSITY` map (alchemy=0.55, others 0.7), wired via prop
+- `src/scene/alchemy/alchemy-furniture.tsx` — 1× rune-circle `<FloorDecal>` (3×3 at reactor center)
+
+**Reverted by visual review**: Guild hall lamp-pool wiring (4× FloorDecal under each WallTorch) was implemented + repositioned + opacity-tuned, then removed entirely on user feedback ("xấu quá" — placeholder PNG quality insufficient). Component + asset infrastructure retained for future designer-iteration pass.
+- `docs/code-standards.md` — Material section rewritten for Phase 07 lambert+emissive; new "Floor Decal Atmospheric Overlay" section (API, conventions, asset authoring, forbidden patterns)
+
+**Tests**: tsc clean. Code review passed with concerns noted in deferred section (decal-on-decal stress test, animator pulse, ZoneFloorMarker overlap decision — observational, acceptable for Phase 07 scope).
+
+**Design notes** (per phase-07 decision record):
+- Decals use `meshBasicMaterial` (not Lambert) — pure additive overlay, no light-dimming artifact
+- `depthWrite=false` ensures multiple decals layer without render-order dependency
+- `ClampToEdge` wrapping (vs RepeatWrapping on TiledFloor) — single decal instance, no tiling
+- `alphaTest=0.05` clips premultiplied halo; straight-alpha PNG convention enforced in docs
+
+**Plan**: `plans/260509-1253-standard-tile-floor-system/` phase-07 complete; phase-08 (combat AOE telegraph) deferred.
+
+---
+
+## [1.27.7] — 2026-05-10 (Standard 2D Tile Floor System)
+
+### refactor(scene): unify floor rendering with shared `<TiledFloor>` component
+
+Replaced 4 ad-hoc floor patterns (procedural canvas checker, GLB tile clone, solid-color plane, GLB room shell) với 1 shared `<TiledFloor>` primitive — `planeGeometry` + 2D PNG tile texture + `RepeatWrapping` + `NearestFilter`. Adds optional multi-variant random-per-cell mode (`tiled-floor-mosaic.tsx`) for natural-looking grass/wood floors.
+
+**Migrated scenes** (per phase 01–05):
+- Combat ground: procedural checker → ruined-village + forest tiles via per-map components in `combat/maps/`
+- Guild hall: 20 GLB tile clones → 1 plane + wood-guild-floor multi-variant (`linh-son-floor.tsx`)
+- Tavern, Training-Yard, Infirmary: solid color plane → paving-stone-32 variants
+- Logging-Site: solid green → forest-grass-32 multi-variant
+- Stone-Quarry: solid grey → cave_0011
+- Alchemy Lab: GLB room shell (floor only) → wood-guild-floor multi-variant; walls + furniture kept GLB
+- Workshop: solid grey → stone-64_0009; walls + furniture unchanged
+
+**New files**:
+- `src/scene/sprites/tiled-floor.tsx` — shared `<TiledFloor>` component (single + multi-variant API)
+- `src/scene/sprites/tiled-floor-mosaic.tsx` — randomized per-cell variant placement helper
+
+**Modified**:
+- `src/scene/guild-hall/linh-son-floor.tsx` — rewrite from GLB clone to TiledFloor (≤15 LOC)
+- `src/scene/facility/facility-room.tsx` — single `<TiledFloor>` per facility; `FACILITY_TILE_PATH` table maps type → tile spec; removed solid-color floor branch
+- `src/scene/combat/combat-scene.tsx` — refactored to map dispatcher + new `combat-scene-shell.tsx` (slot pattern)
+- `docs/code-standards.md` — new "Floor Rendering Pattern" section
+
+**Removed**:
+- `src/scene/sprites/floor-tile-texture-generator.ts` — no remaining consumer (procedural wood/stone/cement Canvas2D textures replaced by authored PNGs)
+- `src/scene/combat/combat-ground-simple.tsx` — absorbed into per-map combat scene components
+
+**Asset audit** (flagged for follow-up cleanup PR — not deleted yet, designer review pending):
+- `public/GuildHall/LinhSon/optimized/p_floortilset.glb` (replaced)
+- `public/tiles/t_woodentiles.glb`, `t_Obsidian_Isometric.glb`, `t_ancient-manuscript.glb` — orphan, no consumer
+- `public/tiles/t_Coiled_Rope_Mat.glb`, `t_dungeon_ceiling_til.glb`, `t_Rustic_Terrain_Tile.glb`, `t_Tile_Ice.glb`, `t_Stone_Ches.glb`, `t_gray_rock_tiles.glb`, `t_simple_Stylized.glb` — orphan
+- `public/tiles/2d/128px/wooden-floor-128_*.png` (6 files) — orphan, no consumer
+- Kept: `t_Green_Tile_of_Grass.glb`, `t_Cork_Tile.glb` — used by `arena-biome-config.ts` (combat-tile-grid)
+
+**Tests**: tsc clean. No save migration required (pure rendering change).
+
+**Plan**: `plans/260509-1253-standard-tile-floor-system/` (phases 00–06 complete; 07–08 floor decals deferred — independent of this migration).
+
+---
+
+## [1.27.6] — 2026-05-09 (Combat Panel Multi-Instance Sprite Animation Fix)
+
+### fix: combat panel sprites animate independently per entity (WebGPU UV uniform)
+
+**Bug**: Trong combat panel idle, khi spawn ≥2 entity cùng `spriteId` (vd 6 slime + 1 LS-SCOUT-M), chỉ 1 sprite chạy idle animation liên tiếp. Các sprite khác đứng yên 1 frame, chỉ "nhảy" sang frame mới khi entity nhận damage (do React re-render invalidate bind group).
+
+**Root cause**: WebGPU NodeMaterial trong Three.js r175 không re-upload `texture.matrix` uniform đồng thời cho nhiều material instance cùng pipeline cache. `texture.offset/repeat` mutation chỉ effective cho 1 material/frame; các material còn lại giữ matrix cũ trong UBO. Workaround `mat.map = atlas.texture; mat.needsUpdate = false;` (copy từ guild hall animator) là no-op vì JS gán cùng reference không trigger setter.
+
+**Fix**: Thêm `idle-sprite-material.ts` — per-entity NodeMaterial (WebGPU TSL) / ShaderMaterial (WebGL) factory với uniform `uUvRect: vec4` driving UV remap trong shader. Mỗi entity có riêng material + uniform → no cross-instance state sharing. Atlas texture vẫn shared via map binding (cheap), chỉ UV uniform khác nhau per entity.
+
+**Modified**:
+- NEW: `src/scene/combat/idle-sprite-material.ts` — material factory (WebGPU + WebGL paths)
+- `src/scene/combat/combat-idle-sprite.tsx` — refactor: `materialRef` → async `handle` state; uniform UV update qua `handle.setUvRect()` thay cho `setAtlasFrame()`; tint qua `handle.setTint()` thay cho `mat.color.copy()`
+- `src/scene/sprites/sprite-atlas.ts` — added `getAtlasFrameUv()` pure helper (extract UV calc từ `setAtlasFrame`, no side effects)
+
+**Tests**: tsc clean (exit 0). Manual smoke test pass: 6+ slime animate độc lập, death anim freeze frame cuối, hit flash chuẩn.
+
+**Known similar bug** (DEFERRED): `sprite-animator.tsx`, `woodcutting-animator.tsx`, `working-animator.tsx` cùng pattern (texture.offset/repeat). Guild hall thường có 1-2 instance cùng lúc nên symptom không lộ; có note inline cảnh báo nếu sau này có cảnh nhiều worker cùng spriteId.
+
+**Design alignment**: Theo plan-260503-1123 D1 (panel KHÔNG dùng GPU instancing), giải pháp giữ kiến trúc 1-mesh-per-entity — không reuse `InstancedSpriteRenderer` (plan-260503-1145 sẽ xóa).
+
+---
+
+## [1.27.5] — 2026-05-07 (Unify Wood/Stone Production Per Game-Day)
+
+### fix: standardize logging-site & stone-quarry rate calc to "/gameday"
+
+Eliminated the stale `STONE_QUARRY_CONFIG.ticksPerDay = 86400` constant (game-seconds, never matched the 1Hz online scheduler) by setting it to **14400 = 4h × 3600s real ticks per game-day**. Online vein strike probability conversion (`dailyStrikeChance / ticksPerDay`) now produces the designed strike frequency instead of 1/6 of it. Online and offline production rates now match for both wood and stone (verified by parity tests). UI labels switched from "+X.XXXX wood/tick" and "+X Stone/day" to **"+N Wood/gameday"** and **"+N Stone/gameday"** so player-visible numbers reflect the actual per-game-day rate (1 game-day = 4 real-hours).
+
+**Modified**:
+- `src/game/data/facility-definitions.ts` — `STONE_QUARRY_CONFIG.ticksPerDay` 86400 → 14400; recalibrated baseRate comment.
+- `src/game/systems/facility-production-system.ts` — comment alignment (TICKS_PER_DAY now matches `STONE_QUARRY_CONFIG.ticksPerDay`).
+- `src/ui/components/facility-detail-tray.tsx` — logging-site preview switched to integer `Wood/gameday`; stone label `Stone/day` → `Stone/gameday`.
+- `src/scene/quarry/facility-room-quarry-decor.tsx` — quarry zone card label `stone/day` → `stone/gameday`.
+- `docs/codebase-summary.md` — added "Game-Day Timing Constants" section.
+
+**New tests**: `tests/facility-production-parity.test.ts` (2 tests verifying 14400 online ticks ≈ offline 1 game-day for both logging-site and stone-quarry).
+
+**Tests**: 239/239 game tests pass; tsc clean.
+
+**Balance note**: Online vein strike rate now triggers 6x more often than pre-fix (matches design "1% chance per game-day"). Base wood/stone yield unchanged from today's earlier offline-rate fix. Save migration not required.
+
+---
+
+## [1.27.3] — 2026-05-03 (Combat Panel Shell & Idle Redesign Phase 3)
+
+### feat: build combat panel shell with formation/battle/result phase orchestrator
+
+Implemented Phase 3 of combat-panel-idle redesign: single overlay panel replacing arrival modal → combat-prep → combat-arena flow. Introduces Zustand ephemeral UI store, HD-2D Ink token styling, and single-Canvas + group toggle architecture (D8) to avoid WebGL context limit. Added formation sub-panel with target priority (Focus/Balance) toggle. Battle phase wired to Phase-4 stub. Fixed mid-formation mission-phase transition race by deferring `in-combat` state to "Start Battle" press.
+
+**New files**: combat-panel-store.ts, combat-panel.css, combat-panel.tsx, combat-panel-header.tsx, combat-panel-formation.tsx (refactor of combat-prep-panel), combat-panel-result.tsx, target-priority-resolver.ts, combat-sprite-resolver.ts.
+
+**Modified**: arrival-modal.tsx, active-missions-list.tsx, game-screen.tsx, world.tsx (single Canvas + group visibility, camera makeDefault toggle, solid black background D9).
+
+**Deferred**: combat-panel-battle.tsx (Phase 4), VFX mount (Phase 5), save migration v21→v22 (Phase 7).
+
+**Tests**: tsc -b ✓ 156/156 source tests pass. Runtime validation (R3F devtools, chrome://gpu single context, heap snapshot) deferred to Phase 4 playtest.
+
+## [1.27.4] — 2026-05-03 (Combat Panel IDLE Redesign Phase 6 — Skip & Snapshot)
+
+### feat: skip button with combat snapshot + persistent state recovery
+
+Implemented Phase 6 of combat-panel-idle redesign: Skip button now snapshots live combat state via deep-clone and runs `simulateCombatFromSnapshot()` (D11). Browser-close mid-battle recovery via `ActiveMission` ephemeral `combatSnapshot` + `combatSnapshotTime` fields; autosave every 2s during battle phase (D12). Both Skip and resume-after-close use identical simulator path, eliminating outcome variance (removed "simulate from scratch" re-rolls). Re-targeting during skip simplified to random-alive (intentional complexity reduction per D11). Damage balance tuned via `BASE_DAMAGE_MULTIPLIER = 1.2` in `combat-formulas.ts` (additive knob, no save migration). DOM/R3F decoupling: Skip button dispatches `COMBAT_SKIP_DOM_EVENT`; `combat-fight-controller` listens and owns engine handoff.
+
+**New files**: `combat-skip-snapshot.test.ts` (7 tests, 100% coverage on cloneCombatEntity + simulateCombatFromSnapshot semantics), `target-priority-resolver.ts` (inline in Phase 3, but isolated target logic for future skipping improvements).
+
+**Modified**: `combat-formulas.ts` (added `BASE_DAMAGE_MULTIPLIER`), `combat-engine.ts` (added `simulateCombatFromSnapshot()` method), `combat-fight-controller.tsx` (added `saveCombatSnapshot` action + 2s autosave), `active-missions.ts` → mission save shape (added optional `combatSnapshot` + `combatSnapshotTime`), `combat-panel-battle.tsx` (DOM Skip button → `COMBAT_SKIP_DOM_EVENT`), `mission-tick.ts` (resume via simulator on close+relaunch).
+
+**Tests**: tsc -b ✓, 7/7 combat-skip-snapshot tests pass. Sequential-turns combat-engine tests unaffected (simulator shares mutation-safe cloning path with Phase 5).
+
+---
+
+## [1.27.2] — 2026-05-02 (VFX Persistent Pattern Refactor)
+
+### Refactor: Eliminate WebGPU buffer-disposal race at root cause
+
+Replaced playground's mount-on-switch anti-pattern with persistent `<AllPresetParticles />` + emit-based triggering — the lib's officially supported pattern (verified via `caps-wars` reference). Removes 3 layered workarounds that all addressed symptoms instead of root cause.
+
+**Pattern change**:
+- All 18 particle presets mount once at Canvas root (`autoStart={false}`)
+- Effect Designer: `useVFXEmitter(preset.id).emit()` interval-driven preview
+- Sequencer: edge-triggered `useVFXStore.getState().emit()` per clip start; meshline still mount-on-live
+- Live tweaks: override-able props flow via ref (no remount); structural props read-only in UI
+
+**Files added**:
+- `tools/vfx-playground/src/presets/preset-prop-classification.ts` — `BAKE_KEYS` + `splitPresetProps()`
+- `tools/vfx-playground/src/scene/all-preset-particles.tsx` — persistent root component
+- `tools/vfx-playground/src/scene/effect-preview-emitter.tsx` — interval emitter for designer mode
+- `tools/vfx-playground/src/sequencer/sequence-meshline-renderer.tsx` — meshline-only path
+- `tools/vfx-playground/src/ui/particle-tweak-panel.tsx` — runtime/structural split panel
+
+**Files removed (orphans)**:
+- `tools/vfx-playground/src/effect-renderer.tsx` — replaced by emitter
+- `tools/vfx-playground/src/sequencer/sequence-renderer.tsx` — replaced by meshline-only renderer
+- `patches/core-vfx+0.5.0.patch` — no longer needed (no dispose calls in normal flow)
+
+**Workarounds removed**:
+- `patch-package` devDep + `postinstall` hook (root `package.json`)
+- `<PostProcessingBloom>` `key={preset.id}` remount + dispose cleanup useEffect + try/catch in render
+- VFXParticles `key={preset.id}` remount in renderers
+
+**Codegen template updated** — generated `.tsx` skill files use `<AllPresetParticles />` + `useVFXStore.emit()` instead of mount-on-live VFXParticles, matching production combat scene pattern.
+
+**Plan**: `plans/260502-1838-vfx-persistent-pattern-refactor/`
+
+---
+
+## [1.27.1] — 2026-05-02 (VFX Buffer Disposal Fix + Integration Guide) [SUPERSEDED]
+
+> **NOTE 2026-05-02**: This patch + integration guide was the temporary fix. Superseded by 1.27.2 persistent-pattern refactor — patch removed; pattern enforced everywhere.
+
+### Fix: WebGPU "Buffer used in submit while destroyed" crash on preset switch
+
+Investigated and patched lifecycle bug in `core-vfx@0.5.0` (`r3f-vfx@0.6.0` dependency). When `VFXParticles` instance unmounts (e.g. preset switch via `key` change), `dispose()` was destroying GPU storage buffers without awaiting pending `gl.computeAsync()` submissions, causing WebGPU validation errors and device loss.
+
+**Patch applied** (`patches/core-vfx+0.5.0.patch`):
+- `VFXParticleSystem.dispose()` made async
+- Set `initialized = false` first to bail subsequent `update()` calls
+- Await `updateInFlight` promise (current `runUpdate` chain)
+- Await `device.queue.onSubmittedWorkDone()` to fence GPU queue
+- Then dispose material/geometry/trail safely
+
+**Auto-applied via** `postinstall: patch-package` script in root `package.json`.
+
+**App-level cleanup**:
+- `tools/vfx-playground/src/scene/post-processing-bloom.tsx` — added cleanup `useEffect` to dispose `PostProcessing` instance on unmount
+- `tools/vfx-playground/src/ui/layout.tsx` — keyed `<PostProcessingBloom>` on `activePreset.id` to force fresh `pass()`/MRT rebuild between presets
+
+### Doc: VFX Particles Integration Guide
+
+Added `docs/feature/vfx-particles-integration-guide.md` covering library gotchas, recommended persistent pattern (`<CombatParticles />` root + `useVFXEmitter` hook), anti-patterns to avoid, and combat scene integration checklist. Required reading before building combat VFX.
+
+### Investigation Reports
+- `plans/reports/researcher-260502-1815-webgpu-buffer-cleanup-investigation.md` — full root cause analysis with verbatim source quotes
+- `plans/reports/Explore-260502-1804-vfx-disposal.md` — initial r3f-vfx dispose audit
+
+### Reference Examples
+- Library author's own game `mustache-dev/caps-wars` confirms persistent-mount pattern as intended usage; preset-switch playground pattern is unsupported by lib (but works post-patch)
+
+---
+
+## [1.27.0] — 2026-05-02 (VFX Sequencer Integration into vfx-playground)
+
+### Feature: Skill Choreography Sequencer Mode
+
+Integrated Skill Choreography Sequencer into vfx-playground as a second mode alongside Effect Designer. Provides timeline-based skill animation sequencing with real R3F preview and `.tsx` code generation for plug-and-play skill integration.
+
+**Core Features**:
+- Dual-mode architecture: Effect Designer (existing) + Skill Sequencer (new)
+- Mode switcher UI with tab navigation
+- Timeline DAW-style interface for sequencing skill animations
+- Track registry system for managing skill tracks (sprites, particles, audio)
+- Clip inspector for real-time property editing
+- Sequence code generator producing `.tsx` exports for game integration
+- localStorage persistence for sequence library
+- R3F preview canvas with Three.js WebGPU rendering
+- Engine adapters for compatibility with Worlds Collide game state
+
+**New Files**:
+- `tools/vfx-playground/src/ui/mode-tabs.tsx` — Mode switcher component
+- `tools/vfx-playground/src/sequencer/` — Sequencer module directory (11 files)
+  - `sequence-types.ts` — Type definitions for sequences, tracks, clips
+  - `track-registry.ts` — Track library and asset management
+  - `sample-skills.ts` — Demo skill sequences
+  - `use-sequence-runtime.ts` — Playback engine hook
+  - `sequence-renderer.tsx` — R3F renderer component
+  - `sequencer-layout.tsx` — Main sequencer UI shell
+  - `clip-inspector.tsx` — Property editor panel
+  - `codegen.ts` — `.tsx` code generator
+  - `export-dialog.tsx` — Export/download UI
+  - `skill-library.ts` — Skill metadata and presets
+  - `engine-adapters.ts` — Game engine integration layer
+  - `views/timeline-daw.tsx` — DAW timeline canvas
+
+**Architecture**:
+- `tools/vfx-playground/src/app.tsx` — Mode state management (effect-designer | skill-sequencer)
+- Isolated sequencer module; zero impact to Effect Designer mode
+- Modular track system enables easy extension for custom track types
+
+**Breaking Changes**: None — Effect Designer mode unchanged.
+
+**Save Format**: Sequences persisted to localStorage under `vfx-playground:sequences` key.
+
+**Build Status**: 7 phases complete, zero regressions.
 
 ---
 

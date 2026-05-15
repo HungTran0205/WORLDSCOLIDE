@@ -4,10 +4,12 @@
  * All other facilities: walking patrol animation with per-facility positions.
  */
 
-import { useRef, useMemo, Suspense } from 'react';
+import { useRef, useMemo, useCallback, Suspense } from 'react';
 import { Billboard, Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
+import { useVFXEmitter } from 'r3f-vfx';
 import { useGameStore } from '@/game/state/store';
+import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
 import { SpriteAnimator } from '../sprites/sprite-animator';
@@ -17,6 +19,13 @@ import { getSpritePath } from '../sprites/sprite-path-resolver';
 import type { SpriteDirection } from '../sprites/sprite-path-resolver';
 import type { Member, FacilityType } from '@/game/state/game-state';
 import type { MutableRefObject } from 'react';
+import { BLACKSMITH_SPARK_NAME } from '../atmospheric/particles/ambient-vfx-root';
+
+/** Animation frame that lands the hammer on the anvil. Sparks fly here. */
+const BLACKSMITH_IMPACT_FRAME = 3;
+/** Sparks per strike. ~150 maxParticles ÷ ~0.5s lifetime gives room for 3
+ *  concurrent strikes if multiple blacksmiths exist (only 1 today). */
+const BLACKSMITH_SPARK_COUNT = 18;
 
 interface SpotDef {
   offset: [number, number]; // [dx, dz] from room center
@@ -98,8 +107,12 @@ function usePatrolAnimation(
   });
 }
 
-/** Member name label above sprite */
+/** Member name label above sprite — hidden when combat panel is open
+ *  because drei <Html> portals to DOM and bypasses the visibility wrapper
+ *  in world.tsx. */
 function NameLabel({ name }: { name: string }) {
+  const isCombatOpen = useCombatPanelStore((s) => s.isOpen);
+  if (isCombatOpen) return null;
   return (
     <Html position={[0, 1.3, 0]} center>
       <span style={{
@@ -124,14 +137,25 @@ function FacilityMemberSprite({ member, facilityType, slotIndex, roomCx, roomCz 
   const spots = FACILITY_SPOTS[facilityType] ?? FACILITY_SPOTS['training-yard'];
   const spot = spots[slotIndex] ?? spots[0];
 
+  // Workshop slot 0 swings a hammer (blacksmith); slots 1-2 do generic
+  // crafting (working). Slot 3 patrols. All slots in alchemy-lab use
+  // working. Logging-site slot 0 chops wood.
   const isWoodcutting = facilityType === 'logging-site' && slotIndex === 0;
-  const isWorking     = facilityType === 'alchemy-lab';
+  const isBlacksmith  = facilityType === 'workshop' && slotIndex === 0;
+  const isWorking     =
+    facilityType === 'alchemy-lab' ||
+    (facilityType === 'workshop' && (slotIndex === 1 || slotIndex === 2));
 
   const dirRef = useRef<SpriteDirection>(spot.facing);
   const isMovingRef = useRef(true);
 
-  // Stationary workers don't patrol; woodcutting and working use fixed-direction animators
-  usePatrolAnimation(dirRef, isMovingRef, spot.facing, !isWoodcutting && !isWorking);
+  // Stationary workers don't patrol; woodcutting/working/blacksmith use fixed-direction animators
+  usePatrolAnimation(
+    dirRef,
+    isMovingRef,
+    spot.facing,
+    !isWoodcutting && !isWorking && !isBlacksmith,
+  );
 
   const civConfig = CIV_CONFIG[member.civilization as Civilization];
   const archetype = member.archetype ?? civConfig?.archetypes[0] ?? 'warrior';
@@ -140,6 +164,20 @@ function FacilityMemberSprite({ member, facilityType, slotIndex, roomCx, roomCz 
 
   const x = roomCx + spot.offset[0];
   const z = roomCz + spot.offset[1];
+
+  // Spark emitter — hook is called unconditionally per React rules. The
+  // returned closure is a no-op when no <VFXParticles name="blacksmith-spark">
+  // is mounted, but AmbientVfxRoot mounts it at scene root, so every sprite
+  // can fire sparks if they happen to be the blacksmith.
+  const sparkEmitter = useVFXEmitter(BLACKSMITH_SPARK_NAME);
+
+  // Emit at the anvil in front of the blacksmith — member faces north
+  // (spot.facing = 'north'), so the anvil sits at z - 0.4. Waist height for
+  // a believable strike origin.
+  const handleBlacksmithFrame = useCallback((frameIdx: number) => {
+    if (frameIdx !== BLACKSMITH_IMPACT_FRAME) return;
+    sparkEmitter.emit([x+1, 1.2, z + 1], BLACKSMITH_SPARK_COUNT);
+  }, [sparkEmitter, x, z]);
 
   return (
     <group position={[x, 1.05, z]}>
@@ -152,6 +190,12 @@ function FacilityMemberSprite({ member, facilityType, slotIndex, roomCx, roomCz 
         <Suspense fallback={null}>
           {isWoodcutting ? (
             <WoodcuttingAnimator basePath={basePath} />
+          ) : isBlacksmith ? (
+            <WorkingAnimator
+              basePath={basePath}
+              animationName="blacksmith"
+              onFrame={handleBlacksmithFrame}
+            />
           ) : isWorking ? (
             // WorkingAnimator with SpriteAnimator (isMoving=false) as fallback via Suspense
             <WorkingAnimator basePath={basePath} />

@@ -1,7 +1,14 @@
 /** Core type definitions for game state — all interfaces must be JSON-serializable */
 
-import type { ItemID } from '@/game/data/items';
+import type { ItemID, InventoryCategory } from '@/game/data/items';
 import type { EquipmentTemplateId } from '@/game/data/equipment-templates';
+import type { TargetPriority } from '@/game/systems/combat-arena-types';
+import type { CombatEntity } from '@/game/systems/combat-types';
+import type {
+  EquipmentSlotData,
+  WorkshopTask,
+  WorkshopBlueprint,
+} from '@/game/data/workshop-types';
 
 export interface EquipmentItem {
   /** Unique instance ID — uuid */
@@ -9,6 +16,10 @@ export interface EquipmentItem {
   templateId: EquipmentTemplateId;
   /** Current durability (0 = broken, gives no stat bonus) */
   durability: number;
+  /** Workshop v2: rolled stat affixes (default [] for legacy/non-crafted items) */
+  slots?: EquipmentSlotData[];
+  /** Workshop v2: max affix slots (default 4 per spec §1.1.3.4) */
+  maxSlots?: number;
 }
 
 export interface MemberEquipment {
@@ -56,6 +67,14 @@ export interface Skill {
   damageMultiplier: number;
   cooldownMs: number;
   autoEnabled: boolean;
+  /** AOE telegraph radius (world units). Set only on skills that visualize a ground danger zone. */
+  aoeRadius?: number;
+  /** Telegraph shape; defaults to 'circle' when aoeRadius is set. */
+  aoeShape?: import('@/game/systems/combat-types').AoeShape;
+  /** Telegraph cast duration override in ms; defaults to engine ANIM_ATTACK_DURATION (600ms). MUST be ≥ 300ms. */
+  aoeCastTimeMs?: number;
+  /** Optional tint hex (e.g. '#ff5a5a' danger / '#5a9bff' beneficial). Defaults to red danger. */
+  aoeColor?: string;
 }
 
 export type MemberStatus = 'idle' | 'on-mission' | 'injured' | 'training' | 'assigned';
@@ -92,6 +111,10 @@ export interface GuildFacility {
   woodReserve?: number | null;
   /** Active craft jobs queued at this alchemy lab */
   craftQueue?: AlchemyCraftJob[];
+  /** Workshop v2: queued craft/enhance/repair tasks (workshop facilities only) */
+  workshopQueue?: WorkshopTask[];
+  /** Workshop v2: saved blueprint presets (workshop facilities only) */
+  workshopBlueprints?: WorkshopBlueprint[];
 }
 
 /** Guild hierarchy ranks (promotable). MERCENARY is orthogonal — not in hierarchy. */
@@ -164,7 +187,15 @@ export interface ActiveMission {
   estimatedEndTime: number;
   phase: MissionPhase;
   arrivalTime: number | null;
-  combatMode: 'auto' | 'manual' | null;
+  /** Team-level targeting strategy chosen in the combat panel formation phase */
+  targetPriority: TargetPriority;
+  /** Live combat snapshot autosaved every ~2s while phase === 'in-combat'.
+   *  Cleared on completion. Used by mid-fight reload (D12) so close-tab
+   *  doesn't re-roll combat from scratch. */
+  combatSnapshot?: CombatEntity[];
+  /** Engine clock (ms) when the snapshot was captured — needed to rebase
+   *  per-entity timers when the snapshot is fed back into the simulator. */
+  combatSnapshotTime?: number;
 }
 
 export type Rotation = 0 | 90 | 180 | 270;
@@ -242,6 +273,8 @@ export interface InventoryState {
   items: Partial<Record<ItemID, number>>;
   /** Equipment item instances not currently equipped by any member */
   equipmentInventory?: EquipmentItem[];
+  /** Per-category slot capacity overrides; absent in old saves → default 30 */
+  categoryCapacity?: Partial<Record<InventoryCategory, number>>;
 }
 
 export interface GameSettings {
@@ -252,4 +285,7 @@ export interface GameSettings {
   shadowsEnabled: boolean;
   bloomEnabled: boolean;
   bloomThreshold: number;
+  /** HD-2D atmospheric stack (post-FX + particles + per-room presets). Default
+   *  true on high tier, false on low tier — see Phase 06 mobile degradation. */
+  atmosphericEnabled: boolean;
 }

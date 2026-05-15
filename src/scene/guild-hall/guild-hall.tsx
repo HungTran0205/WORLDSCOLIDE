@@ -3,6 +3,7 @@
 import { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { useGameStore } from '@/game/state/store';
+import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { BuildOverlay } from './build-overlay';
 import { FurnitureModel } from './furniture-model';
 import { GuildHallWall } from './guild-hall-wall';
@@ -54,11 +55,17 @@ function GuildHallLighting() {
 export function GuildHall() {
   const furniture = useGameStore((s) => s.guildHall.furniture);
   const isBuildMode = useGameStore((s) => s.isBuildMode);
+  // Walls leak into combat scene on WebGPU even when the wrapping
+  // `<group visible={!isCombatOpen}>` is set in world.tsx (visibility prop on
+  // group doesn't always propagate to mesh descendants reliably under the
+  // WebGPU renderer). Conditional unmount of the wall pair is safe — they
+  // hold no VFXParticles, so disposal can't race the GPU pipeline.
+  const isCombatOpen = useCombatPanelStore((s) => s.isOpen);
 
   return (
     <group>
       <GuildHallLighting />
-      <GuildHallWall gridWidth={10} gridDepth={7} />
+      {!isCombatOpen && <GuildHallWall gridWidth={10} gridDepth={7} />}
       <LinhSonFloor gridWidth={10} gridDepth={7} />
       <GuildHallProps />
       {furniture.map((f) => (

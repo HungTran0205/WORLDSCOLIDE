@@ -18,11 +18,14 @@ export const presetById: Record<string, VfxPreset> = Object.fromEntries(
 )
 
 export const presetsByCategory: Record<PresetCategory, VfxPreset[]> = {
-  'linh-son': linhSonPresets,
-  'de-quoc': deQuocPresets,
-  'thien-lu': thienLuPresets,
-  'generic': genericPresets,
-  'weapon-fx': meshlinePresets,
+  'linh-son': [],
+  'de-quoc': [],
+  'thien-lu': [],
+  'generic': [],
+  'weapon-fx': [],
+}
+for (const p of allPresets) {
+  presetsByCategory[p.category].push(p)
 }
 
 export const categoryOrder: PresetCategory[] = [

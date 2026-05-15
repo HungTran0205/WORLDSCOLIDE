@@ -1,0 +1,495 @@
+/* Workshop Panel — HD-2D Ink UI (mirrors facilities-panel tokens) */
+
+/* ── Overlay + shell ───────────────────────────────────────────── */
+.ws-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 220;
+}
+
+.ws-panel {
+  width: min(720px, 92vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--ink-bg-panel);
+  border: var(--ink-border-w) solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-md);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), var(--ink-glow-gold);
+  overflow: hidden;
+  font-family: var(--ink-font-body);
+  color: var(--ink-text);
+}
+
+/* ── Header ─────────────────────────────────────────────────────── */
+.ws-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ink-gold-dim);
+  background: var(--ink-bg-deep);
+  flex-shrink: 0;
+}
+.ws-header-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ws-title {
+  font-family: var(--ink-font-title);
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  color: var(--ink-gold);
+}
+.ws-badge {
+  font-family: var(--ink-font-mono);
+  font-size: 0.55rem;
+  color: var(--ink-text-dim);
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  padding: 1px 5px;
+}
+.ws-worker-badge {
+  font-family: var(--ink-font-mono);
+  font-size: 0.6rem;
+  color: var(--ink-amber);
+  background: rgba(212, 168, 67, 0.08);
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  padding: 2px 7px;
+}
+.ws-worker-badge.is-full { color: var(--ink-status-ok); border-color: var(--ink-status-ok); }
+.ws-close {
+  background: none;
+  border: 1px solid var(--ink-gold-dim);
+  color: var(--ink-text-muted);
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: var(--ink-radius-sm);
+  cursor: pointer;
+}
+.ws-close:hover { color: var(--ink-gold); border-color: var(--ink-gold); }
+
+/* ── Tabs ───────────────────────────────────────────────────────── */
+.ws-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--ink-gold-dim);
+  background: var(--ink-bg-deep);
+  flex-shrink: 0;
+}
+.ws-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  border-right: 1px solid var(--ink-gold-dim);
+  padding: 8px 12px;
+  font-family: var(--ink-font-title);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-text-muted);
+  cursor: pointer;
+  transition: color 120ms, background 120ms;
+}
+.ws-tab:last-child { border-right: none; }
+.ws-tab:hover { color: var(--ink-gold); background: var(--ink-bg-hover); }
+.ws-tab.is-active { color: var(--ink-gold); background: var(--ink-bg-selected); }
+
+/* ── Body / sections ────────────────────────────────────────────── */
+.ws-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
+.ws-tab-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ws-section { display: flex; flex-direction: column; gap: 6px; }
+.ws-section-title {
+  font-family: var(--ink-font-mono);
+  font-size: 0.62rem;
+  color: var(--ink-text-dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ws-empty {
+  font-family: var(--ink-font-mono);
+  color: var(--ink-text-muted);
+  font-size: 0.65rem;
+  font-style: italic;
+}
+
+/* ── Material picker row ────────────────────────────────────────── */
+.ws-mat-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.ws-mat-cell {
+  width: 64px; height: 64px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border: 1px dashed var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  padding: 4px;
+}
+.ws-mat-cell:hover { background: var(--ink-bg-hover); }
+.ws-mat-cell.is-selected {
+  border: 1px solid var(--ink-gold);
+  background: var(--ink-bg-selected);
+  box-shadow: var(--ink-glow-gold);
+}
+.ws-mat-cell.is-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.ws-mat-cell .ws-mat-count {
+  font-family: var(--ink-font-mono);
+  font-size: 0.55rem;
+  color: var(--ink-text-dim);
+  margin-top: 2px;
+}
+.ws-mat-none {
+  font-size: 1.1rem;
+  color: var(--ink-text-muted);
+}
+
+/* ── Select / input ─────────────────────────────────────────────── */
+.ws-select, .ws-input {
+  background: var(--ink-bg-deep);
+  border: 1px solid var(--ink-gold-dim);
+  color: var(--ink-text);
+  padding: 5px 8px;
+  border-radius: var(--ink-radius-sm);
+  font-family: var(--ink-font-body);
+  font-size: 0.7rem;
+  outline: none;
+}
+.ws-input:focus, .ws-select:focus { border-color: var(--ink-gold); }
+
+/* ── Path card ──────────────────────────────────────────────────── */
+.ws-path-card {
+  border: 1px solid var(--ink-gold-dim);
+  background: rgba(212, 168, 67, 0.04);
+  padding: 8px 10px;
+  border-radius: var(--ink-radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ws-path-label {
+  font-family: var(--ink-font-title);
+  font-size: 0.7rem;
+  color: var(--ink-gold);
+  letter-spacing: 0.05em;
+}
+.ws-path-detail, .ws-cost-line {
+  font-size: 0.7rem;
+  color: var(--ink-text-dim);
+}
+
+/* ── Buttons ────────────────────────────────────────────────────── */
+.ws-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.ws-btn {
+  padding: 6px 14px;
+  border-radius: var(--ink-radius-sm);
+  font-family: var(--ink-font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  border: 1px solid var(--ink-gold-dim);
+  background: rgba(212, 168, 67, 0.05);
+  color: var(--ink-text-dim);
+  transition: background 120ms, color 120ms, border-color 120ms;
+}
+.ws-btn:hover:not(:disabled) {
+  background: var(--ink-bg-hover);
+  color: var(--ink-gold);
+  border-color: var(--ink-gold);
+}
+.ws-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.ws-btn-primary { color: var(--ink-gold); border-color: var(--ink-gold); }
+.ws-btn-ghost { background: transparent; }
+.ws-btn-danger { color: var(--ink-status-bad); border-color: var(--ink-status-bad); }
+.ws-btn-danger:hover:not(:disabled) {
+  background: rgba(196, 74, 74, 0.12);
+  color: var(--ink-status-bad);
+}
+.ws-btn-small { padding: 3px 8px; font-size: 0.55rem; }
+
+/* ── Toggle (Add/Reroll) ────────────────────────────────────────── */
+.ws-toggle-row { display: flex; gap: 4px; }
+.ws-toggle {
+  flex: 1;
+  padding: 6px 12px;
+  background: var(--ink-bg-deep);
+  border: 1px solid var(--ink-gold-dim);
+  color: var(--ink-text-muted);
+  font-family: var(--ink-font-mono);
+  font-size: 0.62rem;
+  cursor: pointer;
+  border-radius: var(--ink-radius-sm);
+}
+.ws-toggle.is-active {
+  background: var(--ink-bg-selected);
+  color: var(--ink-gold);
+  border-color: var(--ink-gold);
+}
+
+/* ── Equipment list rows ────────────────────────────────────────── */
+.ws-eq-list { display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow-y: auto; }
+.ws-eq-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid transparent;
+  border-radius: var(--ink-radius-sm);
+  cursor: pointer;
+}
+.ws-eq-row:hover { background: var(--ink-bg-hover); }
+.ws-eq-row.is-selected {
+  border-color: var(--ink-gold);
+  background: var(--ink-bg-selected);
+}
+.ws-eq-info { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.ws-eq-name {
+  font-family: var(--ink-font-body);
+  font-size: 0.78rem;
+  color: var(--ink-text);
+}
+.ws-eq-meta, .ws-eq-slots {
+  font-family: var(--ink-font-mono);
+  font-size: 0.55rem;
+  color: var(--ink-text-dim);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+.ws-slot-chip {
+  display: inline-block;
+  padding: 1px 5px;
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: 8px;
+  color: var(--ink-amber);
+  font-size: 0.5rem;
+}
+
+.ws-dur-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 3px;
+}
+.ws-dur-bar-fill {
+  height: 100%;
+  background: linear-gradient(to right, var(--ink-hp-from), var(--ink-hp-to));
+}
+
+/* ── Blueprint list ─────────────────────────────────────────────── */
+.ws-bp-list { display: flex; flex-direction: column; gap: 4px; }
+.ws-bp-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--ink-radius-sm);
+}
+.ws-bp-info { flex: 1; display: flex; flex-direction: column; }
+.ws-bp-name { font-size: 0.75rem; color: var(--ink-text); }
+.ws-bp-meta { font-family: var(--ink-font-mono); font-size: 0.55rem; color: var(--ink-text-dim); }
+
+/* ── Blueprint sub-panel (Phase 06) ─────────────────────────────── */
+.ws-bp-section { gap: 8px; }
+.ws-bp-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.ws-bp-slots-badge {
+  font-family: var(--ink-font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-amber);
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  padding: 1px 6px;
+  background: rgba(212, 168, 67, 0.06);
+}
+.ws-bp-empty {
+  padding: 8px 10px;
+  border: 1px dashed var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  text-align: center;
+}
+.ws-bp-cards { display: flex; flex-direction: column; gap: 6px; }
+
+.ws-bp-card {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  transition: background 120ms, border-color 120ms;
+}
+.ws-bp-card:hover {
+  background: var(--ink-bg-hover);
+  border-color: var(--ink-gold);
+}
+.ws-bp-card-info {
+  flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0;
+}
+.ws-bp-card-head {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.ws-bp-qty-badge {
+  font-family: var(--ink-font-mono);
+  font-size: 0.55rem;
+  color: var(--ink-amber);
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: 8px;
+  padding: 0 5px;
+}
+.ws-bp-card-icons {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font-family: var(--ink-font-mono);
+  font-size: 0.55rem;
+  color: var(--ink-text-dim);
+}
+.ws-bp-icon-cell {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 1px 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--ink-radius-sm);
+}
+.ws-bp-icon-qty { color: var(--ink-text-muted); }
+.ws-bp-card-template { color: var(--ink-text-muted); }
+.ws-bp-card-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+/* ── Blueprint modals (Use / Edit / Delete) ─────────────────────── */
+.ws-bp-modal-recipe {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 6px 8px;
+  background: rgba(212, 168, 67, 0.05);
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  font-family: var(--ink-font-body);
+  font-size: 0.7rem;
+  color: var(--ink-text);
+}
+.ws-bp-estimate {
+  font-family: var(--ink-font-mono);
+  font-size: 0.62rem;
+  color: var(--ink-amber);
+  letter-spacing: 0.04em;
+}
+.ws-bp-estimate-note { color: var(--ink-text-muted); font-style: italic; }
+.ws-bp-warn {
+  font-family: var(--ink-font-mono);
+  font-size: 0.6rem;
+  color: var(--ink-status-bad);
+  border: 1px solid var(--ink-status-bad);
+  background: rgba(196, 74, 74, 0.08);
+  padding: 4px 8px;
+  border-radius: var(--ink-radius-sm);
+}
+.ws-bp-edit-note {
+  font-family: var(--ink-font-mono);
+  font-size: 0.55rem;
+  color: var(--ink-text-muted);
+  font-style: italic;
+}
+
+/* ── Footer queue ───────────────────────────────────────────────── */
+.ws-footer {
+  border-top: 1px solid var(--ink-gold-dim);
+  background: var(--ink-bg-deep);
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.ws-footer-title {
+  font-family: var(--ink-font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  color: var(--ink-text-dim);
+  text-transform: uppercase;
+}
+.ws-q-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: var(--ink-radius-sm);
+}
+.ws-q-active { background: rgba(212, 168, 67, 0.06); }
+.ws-q-name { flex: 0 0 30%; font-size: 0.7rem; color: var(--ink-text); }
+.ws-q-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.ws-q-bar-fill {
+  height: 100%;
+  background: linear-gradient(to right, var(--ink-gold-dim), var(--ink-gold));
+}
+.ws-q-time {
+  font-family: var(--ink-font-mono);
+  font-size: 0.55rem;
+  color: var(--ink-amber);
+  min-width: 32px;
+  text-align: right;
+}
+.ws-q-pending-label {
+  font-family: var(--ink-font-mono);
+  font-size: 0.55rem;
+  color: var(--ink-text-muted);
+  font-style: italic;
+  flex: 1;
+}
+
+/* ── Modal (Save Blueprint) ─────────────────────────────────────── */
+.ws-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 250;
+}
+.ws-modal {
+  background: var(--ink-bg-panel);
+  border: 1px solid var(--ink-gold);
+  border-radius: var(--ink-radius-md);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 300px;
+  box-shadow: var(--ink-glow-gold);
+}
+.ws-modal-title {
+  font-family: var(--ink-font-title);
+  font-size: 0.85rem;
+  color: var(--ink-gold);
+}
+.ws-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--ink-font-mono);
+  font-size: 0.6rem;
+  color: var(--ink-text-dim);
+}

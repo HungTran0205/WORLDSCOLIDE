@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const SPRITES_ROOT = path.resolve(__dirname, '../../public/sprites')
 const CHARACTERS_DIR = path.join(SPRITES_ROOT, 'characters')
+const ENEMIES_DIR = path.join(SPRITES_ROOT, 'enemies')
 
 interface ManifestAnim {
   name: string
@@ -17,14 +18,14 @@ interface ManifestChar {
   animations: ManifestAnim[]
 }
 
-function buildManifest() {
-  const characters: ManifestChar[] = []
-  if (!fs.existsSync(CHARACTERS_DIR)) return { characters }
+function scanSpriteDir(baseDir: string, urlPrefix: string): ManifestChar[] {
+  const entries: ManifestChar[] = []
+  if (!fs.existsSync(baseDir)) return entries
 
-  for (const charId of fs.readdirSync(CHARACTERS_DIR).sort()) {
-    const charDir = path.join(CHARACTERS_DIR, charId)
-    if (!fs.statSync(charDir).isDirectory()) continue
-    const animsDir = path.join(charDir, 'animations')
+  for (const id of fs.readdirSync(baseDir).sort()) {
+    const entityDir = path.join(baseDir, id)
+    if (!fs.statSync(entityDir).isDirectory()) continue
+    const animsDir = path.join(entityDir, 'animations')
     if (!fs.existsSync(animsDir)) continue
 
     const animations: ManifestAnim[] = []
@@ -39,7 +40,7 @@ function buildManifest() {
         const frames = fs.readdirSync(dirPath)
           .filter(f => /\.png$/i.test(f))
           .sort()
-          .map(f => `/game-sprites/characters/${charId}/animations/${animName}/${dir}/${f}`)
+          .map(f => `/game-sprites/${urlPrefix}/${id}/animations/${animName}/${dir}/${f}`)
         if (frames.length > 0) {
           directions[dir] = frames
           hasFrames = true
@@ -47,9 +48,16 @@ function buildManifest() {
       }
       if (hasFrames) animations.push({ name: animName, directions })
     }
-    if (animations.length > 0) characters.push({ id: charId, animations })
+    if (animations.length > 0) entries.push({ id, animations })
   }
-  return { characters }
+  return entries
+}
+
+function buildManifest() {
+  return {
+    characters: scanSpriteDir(CHARACTERS_DIR, 'characters'),
+    enemies: scanSpriteDir(ENEMIES_DIR, 'enemies'),
+  }
 }
 
 function gameSpritesPlugin(): Plugin {

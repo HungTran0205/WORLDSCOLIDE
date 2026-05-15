@@ -1,14 +1,21 @@
 /**
  * Pure functions for calculating guild facility production per game-day.
  * Caller is responsible for applying results to the store.
+ *
+ * Workshop & Alchemy Lab are queue-based (see workshop-offline-system.ts /
+ * advanceAlchemyQueues) — they are NOT auto-produced here.
  */
 
 import type { GuildFacility, Member } from '@/game/state/game-state';
 import type { ItemID } from '@/game/data/items';
 import { FACILITY_DEFINITIONS, LOGGING_SITE_CONFIG, STONE_QUARRY_CONFIG } from '@/game/data/facility-definitions';
 import { calcDerivedGuildStats } from './derived-guild-stats';
-import { calcMcLevel } from './stone-quarry-production-system';
-import { processAlchemyProduction } from './alchemy-production-system';
+import { calcMcLevel, type MiningXpGain } from './stone-quarry-production-system';
+
+// Real ticks per game-day. Online produces 1 cycle per real-second, and 1 game-day = 4 real hours,
+// so 14400 real ticks elapse per game-day. Offline catch-up must use the same scale to stay
+// consistent with online production rate (otherwise offline yields ~6x online).
+const TICKS_PER_DAY = 14400;
 
 // --- Logging Site per-tick production types ---
 
@@ -22,6 +29,8 @@ export interface WcXpGain {
 
 export interface ReserveUpdate {
   facilityType: 'logging-site';
+  /** Specific facility instance id — required so multiple facilities of same type don't collide. */
+  facilityId: string;
   newReserve: number;
   depleted: boolean;
 }
@@ -39,6 +48,15 @@ export function calcWcLevel(xp: number): number {
     if (xp >= thresholds[i]) return i;
   }
   return 0;
+}
+
+/** Per-member daily wood output potential (no reserve cap) */
+function calcLoggingDailyWood(member: Member): number {
+  const { STR, END, DEX } = member.stats;
+  const baseScore = STR * 0.5 + END * 0.3 + DEX * 0.2;
+  const wcLevel = member.craftSkills?.woodcutting.level ?? 0;
+  const skillMult = 1 + LOGGING_SITE_CONFIG.wcSkillBonusPct[wcLevel] / 100;
+  return LOGGING_SITE_CONFIG.baseRate * (baseScore / 100) * skillMult * TICKS_PER_DAY;
 }
 
 /**
@@ -89,7 +107,7 @@ export function processLoggingSiteTick(
 
     const newReserve = Math.max(0, reserve - totalWoodThisTick);
     result.woodProduced += totalWoodThisTick;
-    result.reserveUpdates.push({ facilityType: 'logging-site', newReserve, depleted: newReserve === 0 });
+    result.reserveUpdates.push({ facilityType: 'logging-site', facilityId: facility.id, newReserve, depleted: newReserve === 0 });
   }
 
   return result;
@@ -100,25 +118,18 @@ export interface FacilityProductionResult {
   facilityName: string;
   /** EXP gains keyed by memberId — Training Yard */
   expGains: Record<string, number>;
-  /** Item gains — Workshop, Alchemy Lab */
+  /** Item gains — Logging Site (WOOD), Stone Quarry (STONE) */
   itemGains: Partial<Record<ItemID, number>>;
-  /** Items consumed — Alchemy Lab (SLIME_GEL) */
-  itemConsumed: Partial<Record<ItemID, number>>;
   /** Gold saved from upkeep reduction — Tavern CHA bonus */
   upkeepSaved: number;
   /** Whether infirmary recovery multiplier was applied */
   recoveryApplied: boolean;
-  /** Alchemy XP gains keyed by memberId */
-  alchemyXpGains?: Record<string, { newXp: number; newLevel: number }>;
-}
-
-// --- Logging Site + Stone Quarry ---
-
-const LOGGING_BASE: number[] = [5, 9, 15];
-
-function calcExtractionOutput(member: Member, level: number, baseTable: number[]): number {
-  const { gatherSpeed } = calcDerivedGuildStats(member.stats, member.level);
-  return Math.floor(baseTable[level - 1] * (1 + gatherSpeed));
+  /** Logging site only — wood reserve depletion result */
+  reserveUpdate?: ReserveUpdate;
+  /** Logging site only — woodcutting XP per assigned member */
+  wcXpGains?: WcXpGain[];
+  /** Stone quarry only — mining XP per assigned member */
+  mcXpGains?: MiningXpGain[];
 }
 
 // --- Training Yard ---
@@ -127,28 +138,6 @@ function calcTrainingYardExpPerDay(member: Member, level: number): number {
   const base = [12, 22, 40][level - 1];
   const { trainingEff } = calcDerivedGuildStats(member.stats, member.level);
   return Math.floor(base * (1 + trainingEff));
-}
-
-// --- Workshop ---
-
-const WORKSHOP_BASE_OUTPUT: Partial<Record<ItemID, number>>[] = [
-  { WOOD: 3, STONE: 2 },
-  { WOOD: 5, STONE: 3, IRON_ORE: 1 },
-  { WOOD: 8, STONE: 5, IRON_ORE: 3 },
-];
-
-function calcWorkshopOutputPerDay(member: Member, level: number): Partial<Record<ItemID, number>> {
-  const base = WORKSHOP_BASE_OUTPUT[level - 1];
-  const { gatherSpeed, craftSkill } = calcDerivedGuildStats(member.stats, member.level);
-  const speedMult = 1 + gatherSpeed;
-  // craftSkill quality: chance to double iron ore at lv2+ (higher craftSkill → higher chance)
-  const qualityRoll = level >= 2 && Math.random() < craftSkill * 0.001;
-  const result: Partial<Record<ItemID, number>> = {};
-  for (const [k, v] of Object.entries(base)) {
-    result[k as ItemID] = Math.floor((v ?? 0) * speedMult);
-  }
-  if (qualityRoll && result.IRON_ORE) result.IRON_ORE = (result.IRON_ORE ?? 0) * 2;
-  return result;
 }
 
 // --- Tavern ---
@@ -182,21 +171,20 @@ export function calcInfirmaryRecoveryMult(assignedMembers: Member[], level: numb
 
 /**
  * Process facility production for gameDays elapsed.
- * Returns per-facility results — caller applies EXP, items, and gold to store.
- * inventoryItems: current inventory snapshot needed for alchemy gel consumption.
+ * Returns per-facility results — caller applies EXP, items, gold, XP, and reserve to store.
+ *
+ * Workshop & Alchemy Lab are queue-based and processed by their own offline systems
+ * (advanceWorkshopQueues / advanceAlchemyQueues) — skipped here.
  */
 export function processFacilityProduction(
   facilities: GuildFacility[],
   allMembers: Member[],
   gameDays: number,
   dailyUpkeep: number,
-  inventoryItems?: Partial<Record<ItemID, number>>,
 ): FacilityProductionResult[] {
   if (gameDays <= 0) return [];
 
   const results: FacilityProductionResult[] = [];
-  // Track remaining gel across all alchemy-lab facilities (shared inventory)
-  let remainingGel = inventoryItems?.SLIME_GEL ?? 0;
 
   for (const facility of facilities) {
     if (facility.level === 0 || facility.assignedMemberIds.length === 0) continue;
@@ -211,7 +199,6 @@ export function processFacilityProduction(
       facilityName: def.name,
       expGains: {},
       itemGains: {},
-      itemConsumed: {},
       upkeepSaved: 0,
       recoveryApplied: false,
     };
@@ -224,18 +211,6 @@ export function processFacilityProduction(
         }
         break;
 
-      case 'workshop': {
-        const combined: Partial<Record<ItemID, number>> = {};
-        for (const member of assignedMembers) {
-          const daily = calcWorkshopOutputPerDay(member, facility.level);
-          for (const [k, v] of Object.entries(daily)) {
-            combined[k as ItemID] = ((combined[k as ItemID] ?? 0) + (v ?? 0)) * gameDays;
-          }
-        }
-        result.itemGains = combined;
-        break;
-      }
-
       case 'tavern':
         result.upkeepSaved = calcTavernUpkeepSavedPerDay(assignedMembers, facility.level, dailyUpkeep) * gameDays;
         break;
@@ -245,48 +220,102 @@ export function processFacilityProduction(
         break;
 
       case 'logging-site': {
-        const combined: Partial<Record<ItemID, number>> = {};
-        for (const member of assignedMembers) {
-          const daily = calcExtractionOutput(member, facility.level, LOGGING_BASE);
-          combined.WOOD = ((combined.WOOD ?? 0) + daily) * gameDays;
+        let reserve = facility.woodReserve ?? 0;
+        if (reserve <= 0) break;
+
+        // Per-member daily potential (snapshot — WC level changes mid-window are ignored for simplicity)
+        const memberDaily = assignedMembers.map((member) => ({
+          member,
+          wcLevel: member.craftSkills?.woodcutting.level ?? 0,
+          dailyWood: calcLoggingDailyWood(member),
+        }));
+
+        const memberGained = new Map<string, number>();
+        let totalWood = 0;
+
+        // Day-by-day loop so we can cap on reserve depletion within the window
+        for (let day = 0; day < gameDays && reserve > 0; day++) {
+          for (const { member, dailyWood } of memberDaily) {
+            if (reserve <= 0) break;
+            const actual = Math.min(dailyWood, reserve);
+            reserve -= actual;
+            totalWood += actual;
+            memberGained.set(member.id, (memberGained.get(member.id) ?? 0) + actual);
+          }
         }
-        result.itemGains = combined;
+
+        if (totalWood > 0) {
+          result.itemGains = { WOOD: Math.floor(totalWood) };
+        }
+
+        // Build WC XP gains (XP = wood produced, same as online tick)
+        result.wcXpGains = memberDaily.map(({ member, wcLevel }) => {
+          const gained = memberGained.get(member.id) ?? 0;
+          const currentXp = member.craftSkills?.woodcutting.xpAccumulated ?? 0;
+          const newXp = currentXp + gained;
+          const newLevel = calcWcLevel(newXp);
+          return {
+            memberId: member.id,
+            xpGained: gained,
+            newXp,
+            newLevel,
+            leveledUp: newLevel > wcLevel,
+          };
+        });
+
+        result.reserveUpdate = {
+          facilityType: 'logging-site',
+          facilityId: facility.id,
+          newReserve: Math.max(0, reserve),
+          depleted: reserve <= 0,
+        };
         break;
       }
 
       case 'stone-quarry': {
-        // Use same per-tick formula as online production scaled to days (skip vein strikes offline)
         const levelMult = STONE_QUARRY_CONFIG.levelMult[facility.level - 1];
-        let totalDailyStone = 0;
+        let totalStone = 0;
+        const mcXpGains: MiningXpGain[] = [];
+
         for (const member of assignedMembers) {
           const { STR } = member.stats;
           const baseScore = STR * 0.5;
-          const mcXp = member.craftSkills?.mining?.xpAccumulated ?? 0;
-          const mcLevel = calcMcLevel(mcXp);
-          const yieldMult = 1 + STONE_QUARRY_CONFIG.mcSkillYieldPct[mcLevel] / 100;
-          const dailyStone = STONE_QUARRY_CONFIG.baseRate * (baseScore / 100) * levelMult * yieldMult * STONE_QUARRY_CONFIG.ticksPerDay;
-          totalDailyStone += Math.floor(dailyStone);
+          const currentXp = member.craftSkills?.mining?.xpAccumulated ?? 0;
+          const currentLevel = calcMcLevel(currentXp);
+          const yieldMult = 1 + STONE_QUARRY_CONFIG.mcSkillYieldPct[currentLevel] / 100;
+
+          // Per-day stone (skip vein strikes offline — those are event loot).
+          // TICKS_PER_DAY === STONE_QUARRY_CONFIG.ticksPerDay (14400) — the online tick path uses
+          // the same constant for strike probability, so online/offline rates stay in lockstep.
+          const dailyStone =
+            STONE_QUARRY_CONFIG.baseRate *
+            (baseScore / 100) *
+            levelMult *
+            yieldMult *
+            TICKS_PER_DAY;
+          const stoneForMember = dailyStone * gameDays;
+          totalStone += stoneForMember;
+
+          // MC XP = stone produced (matches online formula)
+          const newXp = currentXp + stoneForMember;
+          const newLevel = calcMcLevel(newXp);
+          mcXpGains.push({
+            memberId: member.id,
+            xpGained: stoneForMember,
+            newXp,
+            newLevel,
+            leveledUp: newLevel > currentLevel,
+          });
         }
-        result.itemGains = { STONE: totalDailyStone * gameDays };
+
+        if (totalStone > 0) {
+          result.itemGains = { STONE: Math.floor(totalStone) };
+        }
+        result.mcXpGains = mcXpGains;
         break;
       }
 
-      case 'alchemy-lab': {
-        const alchemyResult = processAlchemyProduction(
-          [facility], allMembers, remainingGel, gameDays,
-        );
-        if (alchemyResult.syringesProduced > 0) {
-          result.itemGains = { HEALING_SYRINGE: alchemyResult.syringesProduced };
-          result.itemConsumed = { SLIME_GEL: alchemyResult.gelConsumed };
-          remainingGel -= alchemyResult.gelConsumed;
-        }
-        if (alchemyResult.acXpGains.length > 0) {
-          result.alchemyXpGains = Object.fromEntries(
-            alchemyResult.acXpGains.map((g) => [g.memberId, { newXp: g.newXp, newLevel: g.newLevel }]),
-          );
-        }
-        break;
-      }
+      // workshop + alchemy-lab: queue-based — handled by their own offline systems
     }
 
     results.push(result);

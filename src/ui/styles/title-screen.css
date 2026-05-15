@@ -108,13 +108,14 @@
 
 .title-btn {
   background: linear-gradient(135deg, #4a3f2f, #2a2520);
-  color: #ffd700;
+  color: var(--ink-gold-bright);
   border: 1px solid rgba(255, 215, 0, 0.4);
   padding: 10px 24px;
-  border-radius: 8px;
+  border-radius: var(--ink-radius-lg);
   cursor: pointer;
+  font-family: var(--ink-font-ui);
   font-size: 0.95rem;
-  transition: all 0.2s;
+  transition: all var(--ink-dur-fast);
   min-width: 120px;
 }
 
@@ -130,7 +131,7 @@
 
 .title-btn--danger {
   border-color: rgba(231, 76, 60, 0.5);
-  color: #e74c3c;
+  color: var(--ink-status-bad);
 }
 
 .title-btn--danger:hover:not(:disabled) {

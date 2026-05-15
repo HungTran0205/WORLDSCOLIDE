@@ -246,8 +246,6 @@ export class CombatStateBridge {
       attackIntervalMs: e.attackIntervalMs,
       isBoss: e.isBoss,
       attackMoveState: e.attackMoveState,
-      waitingForInput: e.waitingForInput,
-      manualTargetId: e.manualTargetId,
     }));
   }
 

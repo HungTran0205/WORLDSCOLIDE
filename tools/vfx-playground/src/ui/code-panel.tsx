@@ -94,14 +94,22 @@ export function CodePanel({ preset }: Props) {
 
   if (collapsed) {
     return (
-      <div className="code-panel collapsed">
-        <button
-          className="code-panel-toggle"
-          onClick={() => setCollapsed(false)}
-          title="Show code"
-        >
-          {'<'}
-        </button>
+      <div
+        className="code-panel collapsed"
+        onClick={() => setCollapsed(false)}
+        role="button"
+        tabIndex={0}
+        title="Show code panel"
+        aria-label="Expand code panel"
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setCollapsed(false)
+          }
+        }}
+      >
+        <span className="code-panel-expand-icon">‹</span>
+        <span className="code-panel-expand-label">Code</span>
       </div>
     )
   }
@@ -110,27 +118,32 @@ export function CodePanel({ preset }: Props) {
     <div className="code-panel">
       <div className="code-panel-header">
         <span>📋 Generated Code</span>
-        <button
-          className="code-panel-toggle"
-          onClick={() => setCollapsed(true)}
-          title="Hide panel"
-        >
-          {'>'}
-        </button>
+        <div className="code-panel-header-actions">
+          {preset && (
+            <button
+              type="button"
+              className={`copy-btn-header ${copied ? 'copied' : ''}`}
+              onClick={handleCopy}
+              title="Copy generated code to clipboard"
+            >
+              {copied ? '✓ Copied' : '📋 Copy'}
+            </button>
+          )}
+          <button
+            className="code-panel-toggle"
+            onClick={() => setCollapsed(true)}
+            title="Hide panel"
+            aria-label="Collapse code panel"
+          >
+            ›
+          </button>
+        </div>
       </div>
 
       {preset ? (
-        <>
-          <div className="code-block-wrapper">
-            <pre className="code-block">{code}</pre>
-          </div>
-          <button
-            className={`copy-btn ${copied ? 'copied' : ''}`}
-            onClick={handleCopy}
-          >
-            {copied ? '✓ Copied!' : '📋 Copy Code'}
-          </button>
-        </>
+        <div className="code-block-wrapper">
+          <pre className="code-block">{code}</pre>
+        </div>
       ) : (
         <div className="empty-state">
           <div className="icon">📋</div>

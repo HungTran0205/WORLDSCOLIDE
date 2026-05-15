@@ -67,10 +67,39 @@ function enemyToEntity(template: EnemyTemplate, index: number): CombatEntity {
   };
 }
 
-function pickTarget(entities: CombatEntity[], opposingTeam: boolean): CombatEntity | null {
+type TargetPicker = (entities: CombatEntity[], opposingTeam: boolean) => CombatEntity | null;
+
+function pickLowestHpTarget(entities: CombatEntity[], opposingTeam: boolean): CombatEntity | null {
   const alive = entities.filter((e) => e.currentHp > 0 && e.isAlly === opposingTeam);
   if (alive.length === 0) return null;
   return alive.reduce((lowest, e) => (e.currentHp < lowest.currentHp ? e : lowest));
+}
+
+/** Random alive opponent — used by Skip path (D11) so re-targeting is unbiased. */
+function pickRandomTarget(entities: CombatEntity[], opposingTeam: boolean): CombatEntity | null {
+  const alive = entities.filter((e) => e.currentHp > 0 && e.isAlly === opposingTeam);
+  if (alive.length === 0) return null;
+  return alive[Math.floor(Math.random() * alive.length)];
+}
+
+/**
+ * Deep-clone a CombatEntity so the simulator can mutate without corrupting the
+ * caller's live engine state. Required by simulateCombatFromSnapshot (D11/R4).
+ *
+ * IMPORTANT: when CombatEntity gains new fields, mirror them here. The
+ * `tests/clone-combat-entity.test.ts` decoupling check enumerates this.
+ */
+export function cloneCombatEntity(e: CombatEntity): CombatEntity {
+  return {
+    ...e,
+    stats: { ...e.stats },
+    baseStats: e.baseStats ? { ...e.baseStats } : undefined,
+    skill: e.skill ? { ...e.skill } : null,
+    statusEffects: e.statusEffects.map((s) => ({ ...s })),
+    abilities: e.abilities.map((a) => ({ ...a })),
+    passiveState: e.passiveState ? { ...e.passiveState } : undefined,
+    position: e.position ? { ...e.position } : undefined,
+  };
 }
 
 /** Run full combat simulation — pure function, returns CombatResult */
@@ -79,10 +108,55 @@ export function simulateCombat(partyMembers: Member[], enemyTemplates: EnemyTemp
     ...partyMembers.map(memberToEntity),
     ...enemyTemplates.map((t, i) => enemyToEntity(t, i)),
   ];
+  return runCombatLoop(entities, pickLowestHpTarget, 0);
+}
 
+/**
+ * Continue simulation from a live combat snapshot (D11). Used by the Skip
+ * button mid-battle and by mid-fight reload (D12). Outcome respects existing
+ * entity state: HP, dead flags, status effects, cooldowns, passive timers.
+ *
+ * Re-targeting uses random picks across alive enemies (per D11) — keeps logic
+ * simple and avoids the need to preserve the focus/balance priority chain.
+ *
+ * Implementation notes:
+ *   - Deep-clones the snapshot so caller engine state is never mutated.
+ *   - Rebases absolute timestamps (nextAttackAt, cooldowns, passive expiries)
+ *     against `baseTime` so the simulator clock starts at 0 with correct
+ *     remaining waits preserved.
+ */
+export function simulateCombatFromSnapshot(
+  snapshot: CombatEntity[],
+  baseTime: number = 0,
+): CombatResult {
+  const entities = snapshot.map(cloneCombatEntity).map((e) => rebaseEntityTimestamps(e, baseTime));
+  return runCombatLoop(entities, pickRandomTarget, 0);
+}
+
+/** Subtract the engine's current absolute time from per-entity timers, preserving
+ *  -1 sentinels (used by ThienLu pending-resolution markers). */
+function rebaseEntityTimestamps(entity: CombatEntity, baseTime: number): CombatEntity {
+  const rebase = (t: number) => (t === -1 ? -1 : Math.max(0, t - baseTime));
+  entity.nextAttackAt = rebase(entity.nextAttackAt);
+  entity.skillCooldownUntil = rebase(entity.skillCooldownUntil);
+  if (entity.passiveState) {
+    entity.passiveState.teamBuffUntil = rebase(entity.passiveState.teamBuffUntil);
+    entity.passiveState.critBonusUntil = rebase(entity.passiveState.critBonusUntil);
+    entity.passiveState.cloneUntil = rebase(entity.passiveState.cloneUntil);
+  }
+  return entity;
+}
+
+/** Shared tick loop — used by simulateCombat (lowest-HP target) and
+ *  simulateCombatFromSnapshot (random target) per D11. */
+function runCombatLoop(
+  entities: CombatEntity[],
+  pickTarget: TargetPicker,
+  startTime: number,
+): CombatResult {
   const ticks: CombatTick[] = [];
   let totalDamageDealt = 0;
-  let time = 0;
+  let time = startTime;
 
   for (let tickCount = 0; tickCount < MAX_TICKS; tickCount++) {
     time += TICK_MS;
@@ -195,7 +269,7 @@ export function simulateCombat(partyMembers: Member[], enemyTemplates: EnemyTemp
         }
 
         // Process enemy abilities
-        processAbilities(entity, entities, events);
+        processAbilities(entity, entities, events, pickTarget);
 
         if (target.currentHp <= 0) events.push({ type: 'death', entityId: target.id });
       }
@@ -242,8 +316,14 @@ export function simulateCombat(partyMembers: Member[], enemyTemplates: EnemyTemp
   return { outcome: 'full-wipe', ticks, survivors: [], injured: entities.filter((e) => e.isAlly).map((e) => e.id), totalDamageDealt, durationMs: time };
 }
 
-/** Process enemy abilities after an attack */
-function processAbilities(entity: CombatEntity, entities: CombatEntity[], events: CombatEvent[]): void {
+/** Process enemy abilities after an attack. Target picker is injected so the
+ *  Skip-snapshot path can keep the random-target rule (D11). */
+function processAbilities(
+  entity: CombatEntity,
+  entities: CombatEntity[],
+  events: CombatEvent[],
+  pickTarget: TargetPicker,
+): void {
   for (const ability of entity.abilities) {
     if (Math.random() >= ability.chance) continue;
 
