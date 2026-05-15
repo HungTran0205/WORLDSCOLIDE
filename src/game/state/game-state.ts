@@ -285,4 +285,7 @@ export interface GameSettings {
   shadowsEnabled: boolean;
   bloomEnabled: boolean;
   bloomThreshold: number;
+  /** HD-2D atmospheric stack (post-FX + particles + per-room presets). Default
+   *  true on high tier, false on low tier — see Phase 06 mobile degradation. */
+  atmosphericEnabled: boolean;
 }

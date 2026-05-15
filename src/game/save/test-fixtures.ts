@@ -75,6 +75,7 @@ export const VALID_SETTINGS: GameSettings = {
   shadowsEnabled: false,
   bloomEnabled: false,
   bloomThreshold: 0.85,
+  atmosphericEnabled: true,
 };
 
 export const VALID_ACTIVE_MISSION: ActiveMission = {

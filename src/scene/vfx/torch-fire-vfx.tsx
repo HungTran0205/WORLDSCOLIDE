@@ -15,12 +15,26 @@ import { useControls } from 'leva';
 import * as THREE from 'three';
 import { VFXParticles, EmitterShape, Blending } from 'r3f-vfx';
 
+/** Default warm flame palette — white core → orange/red edge. */
+const DEFAULT_FIRE_COLOR_START: [string, string] = ['#ffffff', '#ffdd88'];
+const DEFAULT_FIRE_COLOR_END:   [string, string] = ['#ff3300', '#aa1100'];
+
 export interface TorchFireVfxProps {
   offsetY: number;
   scale: number;
   debugLabel?: string;
   /** Reduce particle count to ~40% for a medium-quality path */
   lowQuality?: boolean;
+  /** Multiplier applied to leva-controlled fire intensity. Lets parent boost
+   *  the flame in response to gameplay state (e.g. hover, combat phase). */
+  intensityMul?: number;
+  /** Multiplier applied to turbulence.intensity. Same use-case as above. */
+  turbulenceMul?: number;
+  /** Override starting (core) particle colors. Two-tuple drives r3f-vfx
+   *  per-particle variant. Default = warm white→pale yellow. */
+  colorStart?: [string, string];
+  /** Override ending (edge / dying) particle colors. Default = orange→red. */
+  colorEnd?: [string, string];
 }
 
 /** Build a stable unique name for VFXParticles registration based on debugLabel. */
@@ -31,7 +45,16 @@ function useParticleName(debugLabel: string, suffix: 'fire' | 'smoke'): string {
   );
 }
 
-export function TorchFireVfx({ offsetY, scale, debugLabel = 'Fire', lowQuality = false }: TorchFireVfxProps) {
+export function TorchFireVfx({
+  offsetY,
+  scale,
+  debugLabel = 'Fire',
+  lowQuality = false,
+  intensityMul = 1,
+  turbulenceMul = 1,
+  colorStart = DEFAULT_FIRE_COLOR_START,
+  colorEnd = DEFAULT_FIRE_COLOR_END,
+}: TorchFireVfxProps) {
   // Static core flame sprite (same asset as legacy, preserves visual identity)
   const fireTex = useTexture('/arena/cave/props/fire-flame.png');
   fireTex.magFilter = THREE.NearestFilter;
@@ -92,13 +115,13 @@ export function TorchFireVfx({ offsetY, scale, debugLabel = 'Fire', lowQuality =
         ]}
         gravity={[0, 0.4, 0]}
         size={[0.04 * ps, 0.12 * ps]}
-        colorStart={['#ffffff', '#ffdd88']}
-        colorEnd={['#ff3300', '#aa1100']}
+        colorStart={colorStart}
+        colorEnd={colorEnd}
         fadeOpacity={[1, 0]}
         fadeSize={[0.3, 1.2]}
         blending={Blending.ADDITIVE}
-        intensity={dbg.intensity}
-        turbulence={{ intensity: dbg.turbulence, frequency: 2, speed: 1.5 }}
+        intensity={dbg.intensity * intensityMul}
+        turbulence={{ intensity: dbg.turbulence * turbulenceMul, frequency: 2, speed: 1.5 }}
       />
 
       {/* Smoke particles — normal blending, grey, drifts and spreads above flame */}

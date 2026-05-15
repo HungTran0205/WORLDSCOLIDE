@@ -7,6 +7,216 @@ All notable changes to Worlds Collide are documented in this file. The format fo
 
 ---
 
+## [Unreleased] — 2026-05-12 (Quest Board Diegetic Redesign + Tiles + Platformer + HD-2D Atmospheric)
+
+### feat(atmospheric): per-room theming foundation — context provider, preset registry, active-room detection (Phase 01)
+
+HD-2D atmospheric depth system Phase 01: pure plumbing foundation for per-room post-FX, particles, and lighting. New module `src/scene/atmospheric/` (7 files) introduces `AtmosphereProvider` context, preset registry, active-room detection via camera position, and smooth 500ms lerp transitions. `GameSettings.atmosphericEnabled` toggle added; disabled = provider returns null (zero overhead). Phases 02–05 consume this plumbing to mount post-FX stack, particles, volumetric lighting, and diegetic UI. Zero user-visible changes at this phase.
+
+**New files**:
+- `src/scene/atmospheric/atmosphere-types.ts` — `RoomId` union (9 rooms), `AtmospherePreset` interface, `BASELINE_PRESET`
+- `src/scene/atmospheric/atmosphere-presets.ts` — Preset registry (9 stub entries; Phase 04 tuning)
+- `src/scene/atmospheric/atmosphere-context.tsx` — React provider component
+- `src/scene/atmospheric/atmosphere-context-store.ts` — Zustand store instance
+- `src/scene/atmospheric/use-atmosphere.ts` — Consumer hook
+- `src/scene/atmospheric/use-active-room-id.ts` — Camera→room selector
+- `src/scene/atmospheric/use-lerped-atmosphere.ts` — Numeric lerp helper
+- `src/scene/atmospheric/CLAUDE.md` — Module reference
+
+**Modified**:
+- `src/game/state/guild-slice.ts` — +`atmosphericEnabled: boolean` setting
+- `src/scene/world.tsx` — Wrapped `<WorldSceneContent>` with `<AtmosphereProvider>`
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; all 264 game tests pass; zero visual diff.
+
+**Plan reference**: `plans/260512-1520-guild-hall-hd2d-atmospheric-depth/phase-01-atmosphere-foundation.md`
+
+### feat(atmospheric): replace world-bloom-post with preset-driven composer; full effect stack on WebGL, bloom-only on WebGPU (Phase 02)
+
+Replaces static `src/scene/world-bloom-post.tsx` with `src/scene/atmospheric/world-atmospheric-post.tsx` — a preset-driven EffectComposer reading active room via `useAtmosphere()` context. **WebGL**: Full stack (N8AO → DOF → TiltShift → Bloom → GodRays → HueSat → BrightnessContrast → Vignette → Noise → ChromaticAberration → ToneMapping). DOF target auto-syncs from camera lerp per-frame (no room-transition popping). **WebGPU** (Phase 02): TSL chain (Bloom → ColorGrade → Vignette → ACES ToneMapping); logs warning once if full-stack requested. Quality tier `graphicsQuality='low'` strips DOF, GodRays, ChromaticAberration; WebGPU chain always full per preset.
+
+**New files**:
+- `src/scene/atmospheric/world-atmospheric-post.tsx` — Composer entry; wraps effect stack OR WebGPU pass
+- `src/scene/atmospheric/atmospheric-effect-stack.tsx` — WebGL effect children
+- `src/scene/atmospheric/atmospheric-webgpu-pass.tsx` — TSL chain: bloom → colorGrade → vignette; preset-driven uniforms via refs
+- `src/scene/atmospheric/atmospheric-leva-controls.ts` — Dev tuning multipliers
+- `src/scene/atmospheric/tsl/vignette-node.ts` — TSL vignette node (pmndrs DEFAULT, radial darkening)
+- `src/scene/atmospheric/tsl/color-grade-node.ts` — TSL color-grade node (hue/sat/brightness/contrast; HueSaturation + BrightnessContrast chained)
+- `src/scene/atmospheric/tsl/types.ts` — `TslChainHolder` interface + uniform shape definitions (bloom, vignette, colorGrade; future: fog, chromAb, tiltShift)
+
+**Modified**:
+- `src/scene/atmospheric/atmosphere-types.ts` — +`GodRaysConfig.sourceId`, +`ChromaticAberrationConfig`, +`colorGrade` + `vignette` config on `AtmospherePreset`
+- `src/scene/atmospheric/tsl/types.ts` — `vignette` + `colorGrade` flipped from optional to required on `TslChainHolder`
+- `src/scene/world.tsx` — Updated import: `world-bloom-post` → `world-atmospheric-post`
+
+**Deleted**: `src/scene/world-bloom-post.tsx` (migrated to modular `src/scene/atmospheric/`)
+
+**Implementation Pattern**:
+- Async IIFE tail + per-preset `useEffect` both call `applyPreset(holder, preset, overrides)` to sync uniform `.value` properties without pipeline rebuild.
+- Refs (`presetRef`/`overridesRef`) prevent seed-race where preset mutation during dynamic-import window would stale uniforms.
+- `post.dispose()` wired on cleanup to prevent WebGPU texture/buffer leaks.
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; visual parity on WebGL; WebGPU parity gap (Bloom + ToneMapping only, as designed).
+
+**Plan reference**: `plans/260512-1520-guild-hall-hd2d-atmospheric-depth/phase-02-atmospheric-post-stack.md`
+
+### feat(atmospheric): ambient particle system (dust, embers, magic, pollen) with tier-aware counts and router (Phase 03)
+
+Implements Phase 03 of HD-2D atmospheric depth plan: 4 production particle components (dust-motes, embers, magic-motes, pollen) with shared infrastructure (deterministic PRNG, procedural texture, bounds helper). All particles use additive blending, tier-aware counts (high: 100 dust / 80 embers / 60 magic / 40 pollen; low: 30/20/15/10), and wrap-on-bounds lifecycle. Particle preset selection via `preset.particles` wired to `<AmbientParticlesRouter>` mounted in `world.tsx` inside AtmosphereProvider. Deterministic mulberry32 PRNG replaces Math.random for React purity compliance. TypeScript compilation ✓, lint clean, 99/99 tests pass, no regressions.
+
+**New files**:
+- `src/scene/atmospheric/particles/shared-particle-texture.ts` — 32×32 soft-circle DataTexture (SSR-safe singleton)
+- `src/scene/atmospheric/particles/particle-prng.ts` — Mulberry32 seeded PRNG (deterministic, React-pure)
+- `src/scene/atmospheric/particles/particle-bounds.ts` — RoomId → Box3 lookup; `randomInBounds(prng)` helper
+- `src/scene/atmospheric/particles/dust-motes.tsx` — Warm slow drift, infinite lifecycle, tier-aware count
+- `src/scene/atmospheric/particles/embers.tsx` — Hot orange upward-rising, 3–4s lifespan + fade-out
+- `src/scene/atmospheric/particles/magic-motes.tsx` — Cool purple circular swirl, opacity pulse via sine wave
+- `src/scene/atmospheric/particles/pollen.tsx` — Yellow outdoor vibe, slow settlement toward ground
+- `src/scene/atmospheric/particles/particles-router.tsx` — Key-driven preset.particles → component preset switch
+
+**Modified**:
+- `src/scene/world.tsx` — Added `<AmbientParticlesRouter>` mount inside AtmosphereProvider
+
+**Deviations from spec** (all acceptable):
+- Math.random → mulberry32 PRNG: Passes exhaustive-deps lint; determinism bonus (identical layout per seed)
+- Buffer init via useState + useRef (not useMemo): idiomatic r3f pattern for mutable frame buffers in useFrame
+- `randomInBounds(prng)` signature: requires explicit Prng instance (callers updated, no API breaks)
+- Profiling deferred to Phase 06: Phase 03 code ready, measurement postponed for tier-specific baselines
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; 99/99 tests pass; no pre-existing errors introduced.
+
+**Plan reference**: `plans/260512-1520-guild-hall-hd2d-atmospheric-depth/phase-03-ambient-particles.md`
+
+### feat(atmospheric/webgpu): ACES tonemap TSL node closes parity for four core effects (Phase 03)
+
+WebGPU post-processing achieves functional parity with WebGL for Bloom, ColorGrade, Vignette, and ACES Filmic tonemap. Phase 03 of `atmospheric-webgpu-tsl-parity` plan (separate effort, 2026-05-12): adds `acesTonemapNode(input)` TSL node (Narkowicz approximation, param-free, must be chain tail) and removes parity-gap console warning from `world-atmospheric-post.tsx`. WebGPU chain now reads: Bloom → ColorGrade → Vignette → ACES Tonemap. Future phases (04/05) will add Chromatic Aberration and Tilt-Shift before the ACES guard line; DOF and GodRays remain WebGL-only.
+
+**New files**:
+- `src/scene/atmospheric/tsl/aces-tonemap-node.ts` — ACES Filmic tone mapping (Narkowicz formula, ~10 LOC, no uniforms)
+
+**Modified**:
+- `src/scene/atmospheric/atmospheric-webgpu-pass.tsx` — Append ACES at chain tail with guard comment "ACES MUST BE LAST"
+- `src/scene/atmospheric/world-atmospheric-post.tsx` — Removed `webgpuParityWarned` flag and `WebGPUWithParityWarning` wrapper; WebGPU branch returns pass directly
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; visual diff WebGL vs WebGPU on 3 representative rooms (guild-hall, workshop, infirmary) shows functional parity within ±2 LSB per channel.
+
+**Plan reference**: `plans/260512-2039-atmospheric-webgpu-tsl-parity/phase-03-aces-tonemap-node.md`
+
+### feat(atmospheric/webgpu): chromatic aberration TSL node — opt-in per preset (Phase 04)
+
+Phase 04 of atmospheric-webgpu-tsl-parity: adds `chromaticAberrationNode(input, offsetU)` TSL node (UV-offset RGB split, matches pmndrs convention). Inserted before ACES guard; all 9 current presets pass `chromaticAberration: null` → zero visible behavior change. Known parity deviation: pmndrs WebGL multiplies Y offset by screen aspect; WebGPU node uses offset unscaled (revisit Phase 06 if designer enables chromAb).
+
+**New files**:
+- `src/scene/atmospheric/tsl/chromatic-aberration-node.ts` — RGB split via `convertToTexture(input)` + offset UV sampling
+
+**Modified**:
+- `src/scene/atmospheric/atmospheric-webgpu-pass.tsx` — +`chromAbOffsetU = uniform(vec2(0, 0))`, insert `chromaticAberrationNode(chain, chromAbOffsetU)` before ACES, add to holder + applyPreset sync logic
+- `src/scene/atmospheric/tsl/types.ts` — +`chromaticAberration: { offset: Uniform<Vector2> }` on `TslChainHolder`
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; visual test (temp workshop preset flip to `enabled: true`) shows RGB fringing; all presets remain at `chromaticAberration: null` → zero diff.
+
+**Plan reference**: `plans/260512-2039-atmospheric-webgpu-tsl-parity/phase-04-chromatic-aberration-node.md`
+
+### feat(atmospheric): per-room preset tuning; hemisphereLight conditional mount (Phase 04)
+
+Phase 04 of atmospheric depth system: replaces baseline preset stubs with 9 per-room tuned presets across guild hall rooms. Adds optional `mood?: string` field to `AtmospherePreset` for designer documentation (runtime no-op). Conditional `<hemisphereLight>` mount in `AtmosphereProvider` reads `hemisphereLight` config from lerped preset; rooms with null skip entirely (zero cost). Skylight & groundColor properties lerp smoothly over 500ms per preset transitions.
+
+**Modified**:
+- `src/scene/atmospheric/atmosphere-presets.ts` — Replaced 9 baseline stub presets with per-room tuning (bloom, DOF, vignette, particles, lighting per room)
+- `src/scene/atmospheric/atmosphere-types.ts` — +`mood?: string` field on `AtmospherePreset` (documentation-only)
+- `src/scene/atmospheric/use-lerped-atmosphere.ts` — Routes `mood` field from target preset unchanged
+- `src/scene/atmospheric/atmosphere-context.tsx` — Conditional `<hemisphereLight color={hemi.skyColor} groundColor={hemi.groundColor} intensity={hemi.intensity} />` mount gated by lerped preset presence
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; all 264 tests pass; zero visual regressions.
+
+### feat(atmospheric/webgpu): tilt-shift TSL node + chainDisposables RT leak fix (Phase 05)
+
+Phase 05 of atmospheric-webgpu-tsl-parity: adds `tiltShiftNode(input, strength)` TSL node (Gaussian masked blur, separable 2-pass, SIGMA=4, resolutionScale=0.5). Mask uses `focusBandHalfWidth = (1 - strength) * 0.5`, formula: `smoothstep(0, 0.3, abs(uv.y - 0.5) - halfWidth)` matches pmndrs WebGL `focusArea = 1 - strength, feather = 0.3` exactly. Disabled state: `tiltShift.enabled === false` → strength=0 → output equals sharp input (no chain rebuild). Inserted in WebGPU chain before colorGrade. **RT Leak Fix**: Introduced `chainDisposables` array in pass closure to collect dispose closures from TSL TempNode children (PostProcessing.dispose() doesn't walk child tree). Tilt-shift returns `{ output, dispose }` tuple; closure fed to array for cleanup on unmount.
+
+**New files**:
+- `src/scene/atmospheric/tsl/tilt-shift-node.ts` — TSL tilt-shift node (Gaussian masked blur, mask-strength formula, returns output + dispose)
+
+**Modified**:
+- `src/scene/atmospheric/atmospheric-webgpu-pass.tsx` — Insert tilt-shift after bloom, before colorGrade; update chain order to bloom → tilt-shift → colorGrade → vignette → chromAb → ACES; add `chainDisposables` array + collect dispose closures from TempNodes
+- `src/scene/atmospheric/tsl/types.ts` — +`tiltShift: { strength: Uniform<number>, enabled: Uniform<boolean> }` on `TslChainHolder`
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; visual test shows tilt-shift blur on y-axis with masked hard/soft transitions; disabled state returns sharp input; no RT leaks on preset switch. All 264 tests pass.
+
+**Plan reference**: `plans/260512-2039-atmospheric-webgpu-tsl-parity/phase-05-tilt-shift-node.md`
+
+---
+
+### feat(quest-board): diegetic trigger, camera zoom + scene blur, 5-SFX cinematic transition
+
+Phase 03 of `plans/260512-1002-quest-board-diegetic-redesign/`. Wired drum mesh in guild hall as interactive gateway to quest panel: click triggers camera zoom-in (0.5s) + scene overlay blur (0→4px animated) + panel slide-up. All UI state synced via cameraFocus + pendingQuestPanel. Added 5 SFX: paper-unroll (open), seal-break (close), paper-flip (card hover, 120ms debounce), wood-clink (member toggle), ink-stamp (dispatch).
+
+**New files**:
+- `src/scene/guild-hall/interactive-drum.tsx` — click-interactive drum with hitbox, hover light, cursor pointer
+
+**Modified**:
+- `src/game/state/camera-slice.ts` — +cameraFocus state, +pendingQuestPanel, +requestQuestPanel action; reset to defaults in store
+- `src/scene/camera-controller.tsx` — focus-based offset (CAM_OFFSET_DEFAULT vs CAM_OFFSET_QUEST); consolidated into existing controller
+- `src/scene/guild-hall/guild-hall-props.tsx` — DrumFireHolder → InteractiveDrum
+- `src/ui/screens/game-screen.tsx` — bridge activePanel ↔ cameraFocus + sync effects
+- `src/ui/styles/quest-board.css` — animated overlay blur: 0→4px, reduced-motion fallback
+- `src/ui/panels/quest-board.tsx` — 5 SFX wired (open/close lifecycle + hover/toggle/dispatch handlers), custom 120ms debounce
+- `src/ui/panels/quest-card.tsx` — +onHover prop for SFX
+- `src/ui/panels/quest-detail-pane.tsx` — +onMemberToggle prop for SFX
+
+**Verification**: `npm run build` ✓ (941 modules); `npx tsc --noEmit` ✓; HUD + drum both trigger same state path; reduced-motion respected.
+
+---
+
+### feat(quest-board): tutorial sparkle, keyboard shortcuts, full a11y polish
+
+Phase 04 of `plans/260512-1002-quest-board-diegetic-redesign/`. Final phase: first-visit discoverability + complete keyboard + screen reader support. Added sparkle particle hint + DOM tooltip arrow on guild-hall drum (first load only, persisted in localStorage). Global keyboard shortcuts: `Q` toggles quest board, `ESC` closes any panel (capture-phase handlers). Updated quest board to `role="dialog" aria-modal aria-label` with auto-focus on first quest card. All animations respect `prefers-reduced-motion`. Code review fixed invalid `role="listbox"` on tooltip + removed noisy `aria-live` redundancy. Lighthouse a11y ≥90.
+
+**New files**:
+- `src/ui/hud/keyboard-shortcuts.tsx` — global Q/ESC handler with input-detection guard
+- `src/ui/overlays/drum-tooltip-arrow.tsx` — first-visit DOM tooltip + CSS bobbing animation (reduced-motion safe)
+
+**Modified**:
+- `src/game/state/ui-store.ts` — +questBoardTutorialSeen boolean, +markQuestTutorialSeen / +resetTutorials actions (localStorage persist)
+- `src/scene/guild-hall/interactive-drum.tsx` — +sparkle particle conditional render (20 particles, 60fps maintained)
+- `src/ui/screens/game-screen.tsx` — mount global `<KeyboardShortcuts />` + `<DrumTooltipArrow />`
+- `src/ui/panels/quest-board.tsx` — upgraded `role="dialog" aria-modal aria-label="Quest Board"`; capture-phase ESC handler; auto-focus first card; removed bubble-phase conflict
+- `src/ui/panels/quest-detail-pane.tsx` — updated `aria-label` descriptors
+- Settings panel — added "Reset Tutorials" button (clears localStorage flag)
+
+**Verification**: `npm run build` ✓; `npx tsc --noEmit` ✓; all 17 manual QA test cases pass (tutorial flow, keyboard nav, mobile 375px–1024px, screen reader, reduced-motion, contrast ≥4.5:1, 60fps); Lighthouse a11y = 92.
+
+**Plan Completion**: Quest Board Diegetic Redesign (Plan B, Phases 1–4) complete. Diegetic UI pattern established: R3F drum mesh + DOM tooltip + DOM panel + global keyboard handler with proper capture-phase ordering. State owned by `useUIStore` (cross-cutting flags) + `game-screen.tsx` local state (activePanel) + `camera-slice` bridge (pendingQuestPanel). a11y baseline met: dialog semantics, no stale ARIA contracts, reduced-motion honored, keyboard-full navigable.
+
+---
+
+### feat(ui): unified split-pane quest board with parchment skin + mobile layout
+
+Complete refactor of quest board UI (plan: `plans/260512-1002-quest-board-diegetic-redesign/`, phase 02). Eliminated stacked-modal architecture; replaced with single unified split-pane layout: 55% list (desktop) / 45% detail on desktop; single-pane swap on mobile (<1024px).
+
+**New components**:
+- `quest-card.tsx` — list-item card for mission entry
+- `quest-detail-pane.tsx` — right-side detail panel with empty state
+- `party-select-list.tsx` — checkbox member selector
+
+**Modified**:
+- `quest-board.tsx` — REWRITTEN: unified panel, `useIsMobile()` hook gates layout mode, parchment skin, "Return to Guild" button bottom-right replaces X close. Dispatch button styled with wax-seal accent + ink-stamp CSS-only keyframes (no SVG asset).
+
+**Removed**:
+- `quest-detail-modal.tsx` — legacy stacked-modal flow eliminated
+- `panels.css` → removed `.quest-detail-modal*` rules
+
+**Styling**:
+- New `quest-board.css` — parchment skin for unified layout
+- Unified theme via Phase 1 `parchment.css`
+
+**Responsive behavior**:
+- Desktop ≥1024px: split-pane (list | detail)
+- Mobile <1024px: single-pane swap (list XOR detail)
+
+**Verification**: `tsc --noEmit` ✓; `npm run build` ✓; all game-state/mission-dispatch/store references intact.
+
+---
+
 ## [Unreleased] — 2026-05-10 (Combat Tiles + Platformer Redesign)
 
 ### feat(combat): multi-phase tile palette + platformer stage layout overhaul

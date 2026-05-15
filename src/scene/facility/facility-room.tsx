@@ -3,7 +3,10 @@
  * Point light activates when camera navigates into this room.
  */
 
+import { useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
+import type * as THREE from 'three';
 import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
 import { FACILITY_SLOTS } from '@/game/data/facility-slot-positions';
 import { useGameStore } from '@/game/state/store';
@@ -16,6 +19,8 @@ import { QuarryRoomDecor } from '../quarry/quarry-furniture';
 import { QuarryZoneCard } from '../quarry/facility-room-quarry-decor';
 import { AlchemyZoneCard } from '../alchemy/facility-room-alchemy-decor';
 import { AlchemyWalls } from '../alchemy/facility-room-alchemy-walls';
+import { WorkshopWalls } from '../workshop/workshop-walls';
+import { TorchFireEffect } from '../vfx/torch-fire-particles';
 import { TiledFloor, type TileTextureSpec } from '@/scene/sprites/tiled-floor';
 import type { GuildFacility, FacilityType } from '@/game/state/game-state';
 
@@ -51,7 +56,7 @@ const FACILITY_TILE_PATH: Record<FacilityType, TileTextureSpec> = {
     ],
     variantChance: 0.05,
   },
-  workshop: '/tiles/2d/64px/stone-64_0001.png',
+  workshop: '/tiles/2d/64px/stone-64_0004.png',
 };
 
 /**
@@ -90,11 +95,52 @@ const ROOM_LIGHT: Record<FacilityType, { color: string; intensity: number }> = {
   tavern: { color: '#ffaa44', intensity: 6 },
   'training-yard': { color: '#ff6633', intensity: 5 },
   infirmary: { color: '#88aaff', intensity: 6 },
-  workshop: { color: '#ffcc44', intensity: 5 },
+  // Workshop: ceiling light dimmed to fill role; forge fire is the key light.
+  workshop: { color: '#ffb066', intensity: 2 },
   'logging-site': { color: '#fff5cc', intensity: 18 },
   'stone-quarry': { color: '#aaaacc', intensity: 5 },
   'alchemy-lab': { color: '#ffcc44', intensity: 5 },
 };
+
+// Cozy_Brick_Fireplace.glb sits at [cx-0.5, 0, cz-2.55] with height ~3.5.
+// Fire opening is mid-lower; offsets tuned to seat flames inside the arch.
+const FORGE_OFFSET = { x: -0.5, y: 0.95, z: -2.45 } as const;
+
+/**
+ * Hanging lantern: 2 point lights offset ±along the model's local front/back
+ * axis. A single light at center leaves the model's far face in shadow because
+ * back-facing normals receive no contribution. Two flanking lights illuminate
+ * both faces of the cage. Each runs the same flicker phase.
+ * Positions MUST match Crimson_Ember_Flask in workshop-furniture.tsx.
+ */
+function LanternLight({ x, y, z, isActive, seed, base = 1.8, axis = 'z', offset = 0.28 }: {
+  x: number; y: number; z: number; isActive: boolean; seed: number;
+  base?: number; axis?: 'x' | 'z'; offset?: number;
+}) {
+  const refA = useRef<THREE.PointLight>(null);
+  const refB = useRef<THREE.PointLight>(null);
+  useFrame((state) => {
+    if (!isActive) {
+      if (refA.current) refA.current.intensity = 0;
+      if (refB.current) refB.current.intensity = 0;
+      return;
+    }
+    const t = state.clock.elapsedTime;
+    // Two sine waves at different freqs/phases → organic ember flicker
+    const flicker = 1 + 0.18 * Math.sin(t * 7 + seed) * Math.sin(t * 13 + seed * 2);
+    const i = base * flicker;
+    if (refA.current) refA.current.intensity = i;
+    if (refB.current) refB.current.intensity = i;
+  });
+  const dx = axis === 'x' ? offset : 0;
+  const dz = axis === 'z' ? offset : 0;
+  return (
+    <>
+      <pointLight ref={refA} position={[x - dx, y, z - dz]} color="#ff9544" distance={4} decay={2} />
+      <pointLight ref={refB} position={[x + dx, y, z + dz]} color="#ff9544" distance={4} decay={2} />
+    </>
+  );
+}
 
 interface FacilityRoomProps {
   facility: GuildFacility;
@@ -143,9 +189,46 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
       {isQuarry && (
         <ambientLight color="#9999bb" intensity={isActive ? 0.6 : 0} />
       )}
-      {/* Workshop ambient fill */}
+      {/* Workshop ambient — cool/dim teal fill so warm forge fire reads as key light */}
       {isWorkshop && (
-        <ambientLight color="#ffffff" intensity={isActive ? 2 : 0} />
+        <ambientLight color="#2a3040" intensity={isActive ? 0.25 : 0} />
+      )}
+      {/* Workshop forge + window rim: always MOUNTED for stable WebGPU buffer
+          lifecycle (VFXParticles' TSL compute pipeline crashes if unmounted
+          while submits are pending). Intensity is gated by isActive instead. */}
+      {isWorkshop && (
+        <>
+          <pointLight
+            position={[cx + FORGE_OFFSET.x, FORGE_OFFSET.y + 0.2, cz + FORGE_OFFSET.z]}
+            color="#ff6b22"
+            intensity={isActive ? 6 : 0}
+            distance={8}
+            decay={2}
+          />
+          <group
+            position={[cx + FORGE_OFFSET.x, 0, cz + FORGE_OFFSET.z]}
+            visible={isActive}
+          >
+            {/* Sprite-pool flame (CPU billboards) — no TSL compute pipeline
+                to compile on first activation. Cheaper than TorchFireVfx for
+                a small fireplace and avoids workshop-entry FPS spike. */}
+            <TorchFireEffect offsetY={FORGE_OFFSET.y} scale={1.1} debugLabel="Workshop Forge" />
+          </group>
+          {/* Moonlight rim from cracked window on left wall (z≈cz+1.6).
+              Light from outside-left, angled down-right to anvil. */}
+          <directionalLight
+            position={[cx - 7, 6, cz + 1.6]}
+            color="#5577cc"
+            intensity={isActive ? 1.2 : 0}
+          >
+            <object3D attach="target" position={[cx, 0, cz]} />
+          </directionalLight>
+          {/* Hanging lantern lights — positions match Crimson_Ember_Flask
+              models in workshop-furniture.tsx (y+0.5 to seat in lantern body).
+              Distinct seeds keep the two flickers desynchronized. */}
+          <LanternLight x={cx + 3}   y={2.8} z={cz - 3}   isActive={isActive} seed={0.3} />
+          <LanternLight x={cx + 3} y={2.8} z={cz + 2.5} isActive={isActive} seed={1.7} />
+        </>
       )}
       {/* Alchemy-lab point lights */}
       {isAlchemy && (
@@ -166,9 +249,11 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
         emissiveIntensity={FACILITY_EMISSIVE_INTENSITY[facility.type] ?? 0.7}
       />
 
-      {/* Walls — alchemy-lab uses GLB models; all others use procedural geometry */}
+      {/* Walls — alchemy: GLB; workshop: textured stone; rest: flat color */}
       {isAlchemy ? (
         <AlchemyWalls cx={cx} cz={cz} />
+      ) : isWorkshop ? (
+        <WorkshopWalls cx={cx} cz={cz} />
       ) : (
         <>
           <mesh position={[cx, WALL_HEIGHT / 2, oz]}>

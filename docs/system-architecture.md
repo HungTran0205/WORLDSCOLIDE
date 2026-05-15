@@ -19,7 +19,7 @@
 │  │              UI Layer                                  │  │
 │  │  ┌──────────────────────────────────────────────────┐ │  │
 │  │  │ Panels: Quest | Roster | Build | Combat         │ │  │
-│  │  │ (Quest board has progress bars + detail modals) │ │  │
+│  │  │ (Quest board: unified split-pane + mobile swap)  │ │  │
 │  │  └──────────────────────────────────────────────────┘ │  │
 │  │  ┌──────────────────────────────────────────────────┐ │  │
 │  │  │ HUD: Toggle Bar | Save Status Badge             │ │  │
@@ -2238,8 +2238,10 @@ getRoomBounds(room: Room):
 ### `/ui/panels/` — Collapsible Panels
 | File | Purpose |
 |------|---------|
-| `quest-board.tsx` | Dispatch missions, track progress with member count "(selected/min+)" display, quest chain badges, civ filter |
-| `quest-detail-modal.tsx` | Modal showing quest info + party composition + multi-member rewards breakdown |
+| `quest-board.tsx` | Unified split-pane dispatch UI (desktop 55/45 list/detail; mobile single-pane swap). Parchment skin, "Return to Guild" close, wax-seal dispatch button. — REWRITTEN v1.28 |
+| `quest-card.tsx` | List-item card component for mission entries — NEW v1.28 |
+| `quest-detail-pane.tsx` | Right-side detail panel with empty state + party selection — NEW v1.28 |
+| `party-select-list.tsx` | Checkbox member selector for quest dispatch — NEW v1.28 |
 | `guild-roster.tsx` | Compact member list with character detail panel (NEW v1.6), civ badges, civilization filtering |
 | `character-detail-panel.tsx` | Left-side detail panel (avatar, equipment, auto-cast toggle, stats, civ info, passives) — NEW v1.6, ENHANCED v1.9 |
 | `build-menu.tsx` | Room selection UI (enter placement mode instead of direct placement) |
@@ -2264,7 +2266,9 @@ getRoomBounds(room: Room):
 |------|---------|
 | `title-screen.css` | Title screen layout + theme |
 | `hud.css` | HUD bar + badge styling + notification stack + mission progress bars |
-| `panels.css` | Panel container styling + quest detail modal |
+| `panels.css` | Panel container styling |
+| `quest-board.css` | Quest board unified split-pane + parchment skin + responsive mobile layout — NEW v1.28 |
+| `parchment.css` | Parchment theme for diegetic UI (Phase 1) |
 
 ### `/scene/` — 3D Rendering (React Three Fiber)
 | File | Purpose |
@@ -2345,6 +2349,111 @@ getRoomBounds(room: Room):
 |------|---------|
 | `audio-manager.ts` | Audio key registry + Howler.js management, includes 6 new keys (v1.9): BGM_COMBAT, SFX_CRIT, SFX_DODGE, SFX_DEATH, SFX_SKILL, SFX_RECRUIT |
 | `audio-keys.ts` | Enum of all audio keys |
+
+## Diegetic UI Pattern (Quest Board v1.28+)
+
+### Overview
+Quest Board implements a "diegetic-with-DOM-overlay" hybrid pattern: a 3D mesh object (drum in guild hall) serves as the physical trigger, while DOM layers provide tooltips, panels, and keyboard access. This bridges R3F and React UI ownership with clean state boundaries.
+
+### Component Hierarchy
+
+```
+game-screen.tsx (root, mounts global handlers)
+  ├─ scene/
+  │   └─ guild-hall.tsx
+  │       ├─ <InteractiveDrum /> (R3F mesh, raycasting, click handler)
+  │       │   └─ <DrumSparkleHint /> (conditional: !questBoardTutorialSeen)
+  │       └─ ...other guild hall objects
+  │
+  ├─ hud/
+  │   ├─ <KeyboardShortcuts /> (global Q/ESC capture-phase handler)
+  │   └─ ...other HUD elements
+  │
+  └─ overlays/
+      └─ <DrumTooltipArrow /> (conditional: !questBoardTutorialSeen)
+
+ui-store (Zustand):
+  - questBoardTutorialSeen (persisted localStorage)
+  - activePanel ('quests' | ... | null)
+  - resetTutorials action
+
+camera-slice (Redux):
+  - cameraFocus state ('guild-hall' | 'home' | ...)
+  - pendingQuestPanel bridge to activePanel
+
+game-screen.tsx (local):
+  - activePanel state-tracking (sync with ui-store)
+  - panel mount/unmount effects
+```
+
+### State Ownership
+
+| Concern | Owner | Storage |
+|---------|-------|---------|
+| Tutorial seen flag | `useUIStore` | localStorage `questBoardTutorialSeen` |
+| Active panel | `game-screen.tsx` local + `useUIStore` | React state (session-only) |
+| Camera focus (R3F bridge) | `camera-slice` | Redux store |
+| Drum interaction (R3F) | `interactive-drum.tsx` | useFrame + click handler |
+
+### Event Handling & Capture Ordering
+
+**Challenge:** Both `<HomeButton />` (HUD) and `<KeyboardShortcuts />` (global) want to handle ESC, but order matters.
+
+**Solution:** `KeyboardShortcuts` uses **capture-phase** with `stopImmediatePropagation()` to win ESC ordering:
+```typescript
+// hud/keyboard-shortcuts.tsx
+const handler = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && activePanel !== null) {
+    e.preventDefault();
+    e.stopImmediatePropagation(); // WIN vs HomeButton bubble
+    setActivePanel(null);
+  }
+};
+window.addEventListener('keydown', handler, true); // capture=true
+```
+
+**Result:** ESC closes active panel (capture) → HomeButton's bubble listener never fires.
+
+### Accessibility Baseline (WCAG 2.1 AA)
+
+**Dialog Semantics:**
+```tsx
+<div
+  role="dialog"
+  aria-modal="true"
+  aria-label="Quest Board"
+>
+  ...quest cards...
+</div>
+```
+
+**Keyboard Navigation:**
+- `Q` → toggle quest panel (or focus if sidebar)
+- `ESC` → close quest panel
+- `Tab` → cycle through quest cards → detail pane → dispatch button
+- `Enter` → select/dispatch
+
+**Screen Reader:**
+- Drum (R3F mesh): No DOM node; tooltip has `role="status" aria-live="polite"` (non-intrusive update announcement)
+- Quest cards: Plain `<button>` (native semantics, no custom `role="listbox"` override)
+- Dispatch button: Native `<button role="button">`
+
+**Reduced Motion:**
+```css
+@media (prefers-reduced-motion: reduce) {
+  .drum-tooltip-arrow { animation: none; }
+  .quest-detail-pane .animation { animation: none; }
+}
+```
+
+### Implementation Notes
+
+- **First-visit hint:** Sparkle particle (20 instances, R3F) + DOM tooltip. Both gated on `questBoardTutorialSeen`.
+- **Debouncing:** Quest card hover SFX uses 120ms debounce to avoid spammy audio feedback.
+- **Tooltip positioning:** Fixed % approximation (left: 50%, top: 45%). Upgrade to `Vector3.project()` if precision needed.
+- **Reduced-motion:** Sparkle particle can be disabled in settings; tooltip animation removed entirely.
+
+---
 
 ## Key Architectural Decisions
 
@@ -2817,12 +2926,13 @@ export interface GameSettings {
 - Shadow map controlled reactively by `ShadowController` component (no scene reload required)
 - Improves spatial clarity in isometric view, works on both WebGPU and WebGL
 
-**World Post-Processing** (`src/scene/world-bloom-post.tsx`):
-- Dual-path rendering:
-  - **WebGL**: EffectComposer + Bloom + N8AO (N8AO enabled when shadowsEnabled = true)
-  - **WebGPU**: TSL PostProcessing + BloomNode (async-loaded)
-- Both paths subscribe to Zustand for reactive updates
-- Bloom and shadow settings apply per-frame
+**World Post-Processing** (`src/scene/atmospheric/world-atmospheric-post.tsx`):
+- Preset-driven composer replaces static bloom. Reads active room via `useAtmosphere()` context.
+- **WebGL**: Full effect stack (N8AO → DOF → TiltShift → Bloom → GodRays → HueSat → BrightnessContrast → Vignette → Noise → ChromaticAberration → ToneMapping).
+- **WebGPU** (Phase 05): TSL chain (Bloom → TiltShift → ColorGrade → Vignette → ChromaticAberration → ACES ToneMapping); functional parity for five core effects achieved. TiltShift uses Gaussian masked blur (SIGMA=4, half-res), mask formula: `smoothstep(0, 0.3, abs(uv.y - 0.5) - halfWidth)`. ColorGrade includes hue/saturation/brightness/contrast; vignette uses pmndrs DEFAULT radial darkening. DOF/GodRays remain WebGL-only. RT leak fixed via `chainDisposables` array collecting TempNode dispose closures.
+- Per-room DOF target auto-syncs via camera controller lerp; no focus-point popping on room transitions.
+- Quality tier: `graphicsQuality='low'` disables DOF, GodRays, ChromaticAberration, LUT; WebGPU chain always runs per preset.
+- **Preset Sync Pattern**: Refs-based (`presetRef`/`overridesRef`) prevent seed-race during async TSL node import; `applyPreset()` helper syncs uniform `.value` in async tail + per-preset useEffect.
 - **Shadow ownership**: PCFShadowMap (scene), N8AO/post-processing (separate concern)
 
 **Store Integration**:
@@ -2854,6 +2964,100 @@ const bloomThreshold = settings.bloomThreshold;
 - [ ] Film grain intensity
 - [ ] Contrast/brightness sliders
 - [ ] Anti-aliasing mode selection
+
+## Atmospheric Depth System (v1.28+ — Per-Room Post-FX & Lighting Foundation)
+
+### Overview
+
+Foundation infrastructure for per-room atmospheric theming: context provider, preset registry, active-room detection, and smooth lerp transitions. Phases 02–05 (post-FX stack, particles, volumetric lighting, diegetic UI) consume this plumbing.
+
+### Architecture
+
+**Module**: `src/scene/atmospheric/`
+
+- **`atmosphere-types.ts`**: `RoomId` union (9 rooms), `AtmospherePreset` interface (bloom, tilt-shift, DOF, color-grading, vignette, fog, god rays, particles, hemisphere light), `BASELINE_PRESET` constant
+- **`atmosphere-presets.ts`**: Registry mapping room IDs to presets; Phase 04 tuning complete (9 per-room presets)
+- **`atmosphere-context.tsx` + `atmosphere-context-store.ts` + `use-atmosphere.ts`**: React Context provider and consumer hook
+- **`use-active-room-id.ts`**: Derives current room ID from camera position relative to facility room centers (returns `'guild-hall' | 'tavern' | ... | null`)
+- **`use-lerped-atmosphere.ts`**: Smooth transitions between presets over 500ms via frame-independent exponential lerp
+
+### Settings Integration
+
+- **GameSettings field**: `atmosphericEnabled: boolean` (default true; can be toggled in Settings Panel)
+- When `atmosphericEnabled === false`, provider returns null; consumers no-op (zero overhead)
+
+### Data Flow
+
+```
+Camera Position
+    ↓
+useActiveRoomId() → Room ID (e.g., 'tavern')
+    ↓
+getAtmospherePreset(roomId) → Preset
+    ↓
+useLerpedAtmosphere(preset) → Animated Preset (lerped over 500ms)
+    ↓
+AtmosphereProvider (React Context)
+    ↓
+useAtmosphere() hook (Phase 02+ consumers: post-FX composer, particles, lighting)
+```
+
+### Performance
+
+- **Derivation Cost**: Active-room detection is O(n) nearest-room lookup on each frame (n = 9 rooms, negligible)
+- **Lerp Cost**: Frame-independent exponential math only; no draws, textures, or re-renders of scene
+- **Disabled Cost**: When `atmosphericEnabled = false`, provider skips computation entirely
+
+### Ambient Particle System (Phase 03 — COMPLETE)
+
+**Architecture**:
+- 4 particle archetypes (dust-motes, embers, magic-motes, pollen) select via `preset.particles` string key
+- Deterministic mulberry32 PRNG (seeded) replaces Math.random for React purity compliance
+- Shared procedural texture: 32×32 soft-circle DataTexture (SSR-safe singleton, reused across all instances)
+- Bounds helper: RoomId → Box3 lookup table + `randomInBounds(prng)` spawn utility (floor-Y assumption documented)
+- Router component: Key-driven switch `${roomId}:${particleType}` remounts on preset change; zero stale particles
+- Mounted in `world.tsx` inside `<AtmosphereProvider>` alongside post-FX stack
+
+**Particle Types** (all use additive blending, wrap-on-bounds lifecycle):
+- **dust-motes**: Warm slow drift, infinite lifecycle, spawn density high:100 / low:30
+- **embers**: Hot orange upward-rising, 3–4s lifespan + fade-out, spawn high:80 / low:20
+- **magic-motes**: Cool purple circular swirl, opacity pulse via sine wave, spawn high:60 / low:15
+- **pollen**: Yellow outdoor vibe, slow settlement toward ground, respawn at top on wrap, spawn high:40 / low:10
+
+**Data Flow**:
+```
+AtmosphereProvider (context)
+    ↓
+useAtmosphere() → { ..., particles: 'dust-motes' | 'embers' | ... | null }
+    ↓
+<AmbientParticlesRouter roomId={roomId} particleType={particles} />
+    ↓
+Component switch: dust-motes | embers | magic-motes | pollen | null
+    ↓
+Each component: useGraphicsQuality() → tier-aware spawn counts
+```
+
+**Performance**:
+- **Tier Scaling**: `graphicsQuality='low'` reduces counts by ~65% (dust: 30, embers: 20, magic: 15, pollen: 10)
+- **Buffer Strategy**: useState + useRef for mutable frame buffers (idiomatic r3f for useFrame mutations)
+- **Determinism**: Mulberry32 seed produces identical particle layout across remounts (bonus: React pure)
+- **Mount Cost**: Router key change forces component remount; previous particle instance cleaned up immediately
+
+**Integration Points**:
+- `atmosphere-presets.ts`: Each preset includes optional `particles: ParticleType | null` field
+- `world.tsx`: Mounts `<AmbientParticlesRouter>` as child of `<AtmosphereProvider>`
+- `guild-slice.ts`: Settings already include `atmosphericEnabled` toggle (gates entire provider)
+
+### Completed Phases
+
+- **Phase 02**: ✅ Post-FX stack (bloom, tilt-shift, DOF, color-grading, vignette, noise) mounted from `useAtmosphere()`. Full WebGL effect chain; WebGPU TSL chain (Bloom → ColorGrade → Vignette → ACES ToneMapping). Per-room DOF target auto-sync via camera lerp. Refs-based preset sync prevents mutation race during async TSL import.
+- **Phase 03**: ✅ Ambient particle system (dust-motes, embers, magic-motes, pollen) per preset. Deterministic mulberry32 PRNG. Tier-aware counts (high: 100/80/60/40; low: 30/20/15/10). Additive blending, wrap-on-bounds lifecycle. Mounted in `world.tsx` via `<AmbientParticlesRouter>`.
+- **Phase 04**: ✅ Per-room atmospheric presets tuned across 9 guild hall rooms. Hemisphere light conditionally mounted in `AtmosphereProvider` (reads `hemisphereLight` from preset; null = zero cost). Optional `mood?: string` field added to `AtmospherePreset` (documentation-only).
+- **Phase 05 (WebGPU TSL Parity)**: ✅ Tilt-shift TSL node (Gaussian masked blur, SIGMA=4, half-res). Mask formula matches WebGL exactly. Chain order: Bloom → TiltShift → ColorGrade → Vignette → ChromaticAberration → ACES. RT leak fix via `chainDisposables` array for TempNode cleanup.
+
+### Future Phases
+
+- **Phase 06**: Diegetic UI lighting integration; auto-enable on high-tier graphics; profiling & perf validation
 
 ## Browser Compatibility
 

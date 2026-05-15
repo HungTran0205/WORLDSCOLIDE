@@ -45,26 +45,24 @@
 
 ```json
 {
-  "archetype": "warrior",
+  "archetype": "swordman",
   "pose": "standing upright, arms spread at shoulder width (A-pose), feet slightly apart, facing forward — animation reference frame",
   "head": {
     "hair": "short black hair tied in topknot (bun)",
-    "face": "square jaw, thick eyebrows, weathered skin (tan)",
-    "headgear": "bronze headband with mountain crest engraving"
+    "headgear": "Au Lac feather headdress"
   },
   "clothing": {
-    "body": "half naked, bronze drum tattoo on the left shoulder, leather armor on the right shoulder",
-    "lowBody": "golden loincloth, reinforced at thighs with leather strips",
-    "arms": "bare forearms with stone-studded leather bracers, cord wraps at wrists",
-    "legs": "shin guards made of carved wood plating",
-    "shoes": "straw-soled sandals with ankle straps (Vietnamese dep guoc inspired)"
+    "body": "half naked, bronze drum tattoo on the left shoulder, bracelet on the right bicep",
+    "lowBody": "Tactical strouser, with bandana tied around the waist, and a loincloth in front (for modesty)",
+    "arms": "bare forearms with bronze bracers, cord wraps at wrists",
+    "shoes": "black tactical boots with bronze accents"
   },
   "colorPattern": {
     "primary": "#f5f0e6 (cream/bone)",
-    "secondary": "#8B6914 (dark gold)",
+    "secondary": "#920e24 (dark gold)",
     "accent": "#D4A017 (bright gold)",
     "skin": "#c49a6c (warm tan)",
-    "metal": "#8c7853 (bronze)"
+    "metal": "#e9b24c (bronze)"
   },
   "expression": "stoic, determined, eyes forward"
 }
