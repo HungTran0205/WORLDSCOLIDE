@@ -12,13 +12,16 @@ import { calcDerivedCombatStats } from './derived-combat-stats';
 import { createPassiveState, applyPassiveOnInit, snapshotBaseStats } from './combat-passives';
 import { calcGearBonuses } from './equipment-bonuses';
 
+/** Spatial spawn coordinate — y added in phase 05 for multi-platform stages. */
+export interface ArenaSpawnPos { x: number; y: number; z: number }
+
 /**
  * Convert a guild Member into an ArenaEntity at the given position.
  * syringeCount: how many HEALING_SYRINGE the member is loading into combat from inventory.
  */
 export function memberToArenaEntity(
   member: Member,
-  pos: { x: number; z: number },
+  pos: ArenaSpawnPos,
   syringeCount = 0,
 ): ArenaEntity {
   const derived = calcDerivedCombatStats(member.stats, member.level);
@@ -49,7 +52,7 @@ export function memberToArenaEntity(
     blockRate: derived.blockRate,
     critDmg: derived.critDmg,
     hpRegenPerSec: derived.hpRegen,
-    position: { ...pos },
+    position: { x: pos.x, y: pos.y, z: pos.z },
     targetId: null,
     attackRange: getAttackRange(member.archetype),
     moveSpeed: DEFAULT_MOVE_SPEED,
@@ -57,6 +60,7 @@ export function memberToArenaEntity(
     facingRight: true,
     animStateUntil: 0,
     homeX: pos.x,
+    homeY: pos.y,
     homeZ: pos.z,
     attackMoveState: 'home',
     ...(loadout && syringeCount > 0
@@ -71,7 +75,7 @@ export function memberToArenaEntity(
 export function enemyToArenaEntity(
   template: EnemyTemplate,
   index: number,
-  pos: { x: number; z: number },
+  pos: ArenaSpawnPos,
   hpMultiplier = 1.0,
 ): ArenaEntity {
   const derived = calcDerivedCombatStats(template.stats, template.level);
@@ -94,7 +98,7 @@ export function enemyToArenaEntity(
     blockRate: derived.blockRate,
     critDmg: derived.critDmg,
     hpRegenPerSec: derived.hpRegen,
-    position: { ...pos },
+    position: { x: pos.x, y: pos.y, z: pos.z },
     targetId: null,
     attackRange: 1.5,
     moveSpeed: DEFAULT_MOVE_SPEED,
@@ -102,6 +106,7 @@ export function enemyToArenaEntity(
     facingRight: false,
     animStateUntil: 0,
     homeX: pos.x,
+    homeY: pos.y,
     homeZ: pos.z,
     attackMoveState: 'home',
     spriteId: template.spriteId,

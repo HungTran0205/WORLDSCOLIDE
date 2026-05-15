@@ -91,6 +91,10 @@ export function CombatPanelBattle() {
 
       {/* Viewport area — transparent so the world canvas combat group shows through */}
       <div className="combat-panel-battle__viewport">
+        {/* Atmospheric overlays: fog from bottom + vignette at edges */}
+        <div className="combat-panel-battle__fog" />
+        <div className="combat-panel-battle__vignette" />
+        <div className="combat-panel-battle__top-shadow" />
         <CombatPanelHud />
       </div>
 

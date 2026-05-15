@@ -8,7 +8,9 @@ import { MemberLayer } from './member-layer';
 import { CameraController } from './camera-controller';
 import { FacilityRoomsLayer } from './facility/facility-rooms-layer';
 import { createWebGPURenderer, WebGPUInit } from './webgpu-init';
-import { WorldPostProcessing } from './world-bloom-post';
+import { WorldAtmosphericPost } from './atmospheric/world-atmospheric-post';
+import { AtmosphereProvider } from './atmospheric/atmosphere-context';
+import { AmbientVfxRoot, AmbientEmitterDriver } from './atmospheric/particles/particles-router';
 import { CombatScene } from './combat/combat-scene';
 import { CombatVfxRoot } from './combat/combat-vfx-root';
 import {
@@ -120,7 +122,7 @@ function SceneLighting() {
     return Math.abs(cameraTarget[0] - fx) <= 3.5 && Math.abs(cameraTarget[2] - fz) <= 3.5;
   });
 
-  return <ambientLight intensity={isInAlchemy ? 0.08 : 0.6} />;
+  return <ambientLight intensity={isInAlchemy ? 0.08 : 0.2} />;
 }
 
 export interface WorldProps {
@@ -184,6 +186,13 @@ function WorldSceneContent({ onAssetsReady }: { onAssetsReady: () => void }) {
           combat open/close cycles. */}
       <CombatVfxRoot />
 
+      {/* Ambient particle VFX — persistent compute pipelines mounted once.
+          Emission is driven by <AmbientEmitterDriver /> below which reads
+          the active room and emits into its bounds. Sits at scene root so
+          unmount races can't kill the WebGPU device. */}
+      <AmbientVfxRoot />
+      <AmbientEmitterDriver />
+
       <Suspense fallback={null}>
         {/* Visibility toggle (NOT conditional render) — guild hall props
             include continuous-emit VFXParticles (torch/drum fire). Unmounting
@@ -199,7 +208,7 @@ function WorldSceneContent({ onAssetsReady }: { onAssetsReady: () => void }) {
           <GuildHall />
           <FacilityRoomsLayer />
           <MemberLayer />
-          <WorldPostProcessing />
+          <WorldAtmosphericPost />
         </group>
 
         {isCombatOpen && <CombatScene />}
@@ -238,7 +247,9 @@ export function World({ isActive = true }: WorldProps) {
         <VisibilityGuard isActive={isActive} />
         <SceneLighting />
 
-        <WorldSceneContent onAssetsReady={onAssetsReady} />
+        <AtmosphereProvider>
+          <WorldSceneContent onAssetsReady={onAssetsReady} />
+        </AtmosphereProvider>
       </Canvas>
     </QualityContext.Provider>
   );

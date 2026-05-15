@@ -15,7 +15,9 @@ export interface ArenaEntitySnapshot {
   isAlly: boolean;
   maxHp: number;
   currentHp: number;
-  position: { x: number; z: number };
+  /** y is optional — pre-phase 05 snapshots and flat-stage entities omit it.
+   *  Render layers (sprite, shadow, AOE) read `y ?? 0`. */
+  position: { x: number; y?: number; z: number };
   animState: string;
   facingRight: boolean;
   skillCooldownUntil: number;

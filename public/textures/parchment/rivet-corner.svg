@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">
+  <defs>
+    <radialGradient id="rivet" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#7a6a4f"/>
+      <stop offset="55%" stop-color="#3a3025"/>
+      <stop offset="100%" stop-color="#1a1410"/>
+    </radialGradient>
+  </defs>
+  <circle cx="8" cy="8" r="7" fill="url(#rivet)" stroke="#0a0805" stroke-width="0.5"/>
+  <circle cx="6.2" cy="6.2" r="1.4" fill="#c9a14a" opacity="0.55"/>
+</svg>

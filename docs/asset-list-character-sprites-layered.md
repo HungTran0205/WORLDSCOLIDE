@@ -88,15 +88,14 @@ weapon/{weapon-id}.png                   ← unchanged
   "gender": "male",
   "pose": "standing upright, arms spread at shoulder width (A-pose), feet slightly apart, facing forward — animation reference frame",
   "head": {
-    "shape": "bald/shaved clean head, no hair, no headgear, no hat",
-    "face": "square jaw, thick eyebrows, weathered skin (tan)"
+    "shape": "bald/shaved clean head, no hair, no headgear, no hat"
   },
   "clothing": {
-    "body": "half naked, bronze drum tattoo on the left shoulder, leather armor on the right shoulder",
-    "lowBody": "golden loincloth, reinforced at thighs with leather strips",
+    "body": "half naked, bronze drum tattoo on the left shoulder, bracelet on the right bicep",
+    "lowBody": "Tactical strouser, with bandana tied around the waist, and a loincloth in front (for modesty)",
     "arms": "bare forearms with stone-studded leather bracers, cord wraps at wrists",
     "legs": "shin guards made of carved wood plating",
-    "shoes": "straw-soled sandals with ankle straps (Vietnamese dep guoc inspired)"
+    "shoes": "black tactical boots with bronze accents"
   },
   "colorPattern": {
     "primary": "#f5f0e6 (cream/bone)",

@@ -10,9 +10,9 @@ import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { TorchFireVfx } from '../vfx/torch-fire-vfx';
 import { TorchFireEffect as TorchFireEffectLegacy } from '../vfx/torch-fire-particles';
-import { DrumFireVfx } from '../vfx/drum-fire-vfx';
 import { useGraphicsQuality } from '../world';
 import { applyLitMaterial } from './apply-lit-material';
+import { InteractiveDrum } from './interactive-drum';
 
 // ─── GLB paths ────────────────────────────────────────────────────────────────
 
@@ -116,17 +116,6 @@ function DragonFatherStatues() {
   );
 }
 
-function DrumFireHolder() {
-  const { scene } = useGLTF(GLB.drum);
-  const model = useScaledModel(scene, 1.0);
-  return (
-    <group position={[5, 0, 3.5]}>
-      <primitive object={model} />
-      <DrumFireVfx />
-    </group>
-  );
-}
-
 // ─── Wood Pillars ─────────────────────────────────────────────────────────────
 
 function WoodPillar({ position }: { position: [number, number, number] }) {
@@ -164,7 +153,7 @@ export function GuildHallProps() {
       <IronThrone />
       <DragonFatherStatues />
       <FairyMotherStatues />
-      <DrumFireHolder />
+      <InteractiveDrum />
 
       {/* Wood pillars — north corner (back-right) + west corner (front-left) */}
       <WoodPillar position={[9.5, 0, 0.5]} />

@@ -43,7 +43,10 @@ export interface CombatEntity {
   hpRegenPerSec: number;
 
   // Spatial fields (used by real-time arena, absent in auto-resolve)
-  position?: { x: number; z: number };
+  // y is optional — entities on flat (y=0) stages omit it; entities placed
+  // on raised platforms via stage spawn anchors carry y > 0. Auto-resolve
+  // never reads y. Snapshot deserialization treats missing y as 0.
+  position?: { x: number; y?: number; z: number };
   targetId?: string | null;
   attackRange?: number;
   moveSpeed?: number;
@@ -75,6 +78,9 @@ export interface CombatTick {
   events: CombatEvent[];
 }
 
+/** AOE telegraph shape — shared between Skill schema, engine event, and React layer. */
+export type AoeShape = 'circle' | 'cone' | 'rect';
+
 export type CombatEvent =
   | { type: 'auto-attack'; attackerId: string; targetId: string; damage: number; isCrit?: boolean }
   | { type: 'skill-use'; attackerId: string; targetId: string; damage: number; skillName: string; isCrit?: boolean }
@@ -88,7 +94,24 @@ export type CombatEvent =
   | { type: 'wave-cleared'; waveIndex: number }
   | { type: 'victory' }
   | { type: 'ally-turn-start'; entityId: string }
-  | { type: 'wipe' };
+  | { type: 'wipe' }
+  | {
+      type: 'aoe-telegraph';
+      /** Casting entity id (deduplication / debug source). */
+      attackerId: string;
+      /** Skill id that triggered the telegraph. */
+      skillId: string;
+      /** World position of the AOE center [x, y, z]; y is ground level (0). */
+      position: [number, number, number];
+      /** AOE radius in world units. */
+      radius: number;
+      /** Shape variant — selects which decal texture is used. */
+      shape: AoeShape;
+      /** Total telegraph lifetime in ms (spawn → unmount). */
+      durationMs: number;
+      /** Hex tint passed to the React layer. */
+      color: string;
+    };
 
 export type CombatOutcome = 'victory' | 'partial-victory' | 'full-wipe';
 

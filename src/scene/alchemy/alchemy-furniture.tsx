@@ -9,16 +9,14 @@ import { TorchFireVfx } from '../vfx/torch-fire-vfx';
 import { TorchFireEffect as TorchFireEffectLegacy } from '../vfx/torch-fire-particles';
 import { CandleFireEffect } from '../vfx/candle-fire-effect';
 import { SteamVentEffect } from '../vfx/steam-vent-effect';
+import { FloorDecal } from '../sprites/floor-decal';
 import { useGraphicsQuality } from '../world';
-import { applyLitMaterial } from '../guild-hall/apply-lit-material';
 import { useGameStore } from '@/game/state/store';
 
 useGLTF.preload('/models/furnitures/alchemy_reactor.glb');
 useGLTF.preload('/models/furnitures/alchemy_shelf.glb');
 useGLTF.preload('/models/furnitures/alchemy_silo.glb');
 useGLTF.preload('/models/furnitures/alchemy_workbend.glb');
-useGLTF.preload('/tiles/t_ancient-manuscript.glb');
-useGLTF.preload('/tiles/t_woodentiles.glb');
 
 /** Point light với flicker nhẹ dùng cho candle */
 function FlickerPointLight({ position, color, baseIntensity, distance, decay = 2 }: {
@@ -36,58 +34,6 @@ function FlickerPointLight({ position, color, baseIntensity, distance, decay = 2
     ref.current.intensity = baseIntensity * f;
   });
   return <pointLight ref={ref} position={position} color={color} intensity={baseIntensity} distance={distance} decay={decay} />;
-}
-
-/** Single wooden tile scaled to fit tileSize × tileSize footprint */
-function FloorTile({ position, tileSize }: {
-  position: [number, number, number];
-  tileSize: number;
-}) {
-  const { scene } = useGLTF('/tiles/t_woodentiles.glb');
-  const model = useMemo(() => {
-    const clone = scene.clone(true);
-    const box = new THREE.Box3().setFromObject(clone);
-    const size = box.getSize(new THREE.Vector3());
-    const sx = tileSize / (size.x || 1);
-    const sz = tileSize / (size.z || 1);
-    const sy = 0.12 / (size.y || 1);
-    clone.scale.set(sx, sy, sz);
-    clone.position.y = -box.min.y * sy;
-    applyLitMaterial(clone);
-    return clone;
-  }, [scene, tileSize]);
-
-  return (
-    <group position={position}>
-      <primitive object={model} />
-    </group>
-  );
-}
-
-/** 3×3 grid of wooden tiles covering the 7×7 alchemy room floor */
-function AlchemyFloor({ cx, cz }: { cx: number; cz: number }) {
-  const TILE_SIZE = 7 / 3;
-  const positions = useMemo<[number, number, number][]>(() => {
-    const result: [number, number, number][] = [];
-    for (let row = 0; row < 3; row++) {
-      for (let col = 0; col < 3; col++) {
-        result.push([
-          cx - 3.5 + TILE_SIZE * 0.5 + col * TILE_SIZE,
-          -0.12,
-          cz - 3.5 + TILE_SIZE * 0.5 + row * TILE_SIZE,
-        ]);
-      }
-    }
-    return result;
-  }, [cx, cz]);
-
-  return (
-    <>
-      {positions.map((pos, i) => (
-        <FloorTile key={i} position={pos} tileSize={TILE_SIZE} />
-      ))}
-    </>
-  );
 }
 
 export function AlchemyLabFurniture({ cx, cz }: { cx: number; cz: number }) {
@@ -162,8 +108,17 @@ export function AlchemyLabFurniture({ cx, cz }: { cx: number; cz: number }) {
       <primitive object={reactorTarget1} />
       <primitive object={reactorTarget2} />
 
-      <AlchemyFloor cx={cx} cz={cz} />
       <AlchemyWallDecor cx={cx} cz={cz} />
+
+      {/* Phase 07 — magic rune circle decal beneath the reactor (purple ring,
+          static). Pure overlay; gives the reactor base a sense of arcane
+          place-holding even when the reactor light is dim. */}
+      <FloorDecal
+        position={[cx, 0.01, cz - 0.2]}
+        size={[3, 3]}
+        texture="/decals/floor/magic-rune-circle.png"
+      />
+
       <RoomProp castShadow path="/models/furnitures/Verdant_Pipe_Crossroa.glb" position={[cx  - 2.55 , 0, cz - 0.2]} targetHeight={0.5} rotY={0} />
       <RoomProp castShadow path="/models/furnitures/alchemy_reactor.glb" position={[cx, 0, cz - 0.2]} targetHeight={3.1} rotY={0} />
       <RoomProp castShadow path="/models/furnitures/Green_bamboo_tube.glb" position={[cx, 0, cz - 2.1]} targetHeight={0.5} rotY={1.5} />

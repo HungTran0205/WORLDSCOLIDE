@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { useGameStore } from '@/game/state/store';
+import { useUiStore } from '@/game/state/ui-store';
 import { setMusicVolume, setSFXVolume, setMute } from '@/audio/audio-manager';
 import { saveManager } from '@/game/save/save-manager';
 import { saveSlot } from '@/game/save/save-storage';
@@ -19,9 +20,11 @@ interface SettingsPanelProps {
 export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) {
   const settings = useGameStore((s) => s.settings);
   const updateSettings = useGameStore((s) => s.updateSettings);
+  const resetTutorials = useUiStore((s) => s.resetTutorials);
   const [confirmReset, setConfirmReset] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState(false);
+  const [tutorialsReset, setTutorialsReset] = useState(false);
 
   const handleShadows = (enabled: boolean) => {
     if (enabled === settings.shadowsEnabled) return;
@@ -31,10 +34,6 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
   const handleBloom = (enabled: boolean) => {
     if (enabled === settings.bloomEnabled) return;
     updateSettings({ bloomEnabled: enabled });
-  };
-
-  const handleBloomThreshold = (v: number) => {
-    updateSettings({ bloomThreshold: v });
   };
 
   const handleQuality = async (q: 'high' | 'low') => {
@@ -181,16 +180,6 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
           ))}
         </div>
 
-        {settings.bloomEnabled && (
-          <label style={{ display: 'block', marginTop: 8 }}>
-            Threshold: {settings.bloomThreshold.toFixed(2)}
-            <input
-              type="range" min="0" max="1" step="0.05"
-              value={settings.bloomThreshold}
-              onChange={(e) => handleBloomThreshold(Number(e.target.value))}
-            />
-          </label>
-        )}
       </div>
 
       <div className="panel-section">
@@ -202,6 +191,20 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
         )}
         {importSuccess && (
           <div style={{ color: '#4caf50', fontSize: '0.8rem', marginTop: 6 }}>Import successful</div>
+        )}
+      </div>
+
+      <div className="panel-section">
+        <button
+          className="panel-btn"
+          onClick={() => { resetTutorials(); setTutorialsReset(true); }}
+        >
+          Reset Tutorials
+        </button>
+        {tutorialsReset && (
+          <div style={{ color: '#4caf50', fontSize: '0.8rem', marginTop: 6 }}>
+            Tutorial hints will reappear on next visit.
+          </div>
         )}
       </div>
 

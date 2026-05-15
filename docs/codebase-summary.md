@@ -790,6 +790,86 @@
 **Key Files (Modified)**:
 - `src/scene/combat-arena-environment.tsx` — Added `<ArenaAtmosphericVFX placements={biomeConfig.atmosphericVFX ?? []} />` render
 
+## Recent Changes (HD-2D Atmospheric Depth — Phase 01 Foundation — 2026-05-12)
+
+### Per-Room Atmospheric Theming Foundation (NEW - Context & Plumbing Only)
+- **Module**: `src/scene/atmospheric/` — 7-file foundation for room-specific post-FX, particles, and lighting presets
+- **Context Provider**: `AtmosphereProvider` wraps world scene; exports `useAtmosphere()` for consumer components
+- **Preset Registry**: 9 room IDs (guild-hall, main-hall, tavern, training-yard, infirmary, workshop, logging-site, stone-quarry, alchemy-lab) with typed `AtmospherePreset` shape
+- **Active-Room Detection**: `useActiveRoomId()` derives current room from camera position; triggers smooth preset transitions via `useLerpedAtmosphere()` over 500ms
+- **Settings Integration**: `GameSettings.atmosphericEnabled` toggle (default true); when disabled, provider returns null (zero overhead)
+- **Zero Visual Changes at Phase 01**: Pure data/plumbing; phases 02–05 mount actual post-FX effects, particles, and lighting
+- **Deviation Notes**: Phase 01 implemented 9 rooms (not 11 as prose stated); preset shape locked; context split into 3 files per react-refresh lint rules
+
+**Key Files (New)**:
+- `src/scene/atmospheric/atmosphere-types.ts` — `RoomId` union, `AtmospherePreset` interface, `BASELINE_PRESET`
+- `src/scene/atmospheric/atmosphere-presets.ts` — Registry of 9 tuned presets (Phase 04 complete)
+- `src/scene/atmospheric/atmosphere-context-store.ts` — Zustand store instance
+- `src/scene/atmospheric/atmosphere-context.tsx` — React provider component
+- `src/scene/atmospheric/use-atmosphere.ts` — Consumer hook
+- `src/scene/atmospheric/use-active-room-id.ts` — Camera→room selector
+- `src/scene/atmospheric/use-lerped-atmosphere.ts` — Numeric preset lerp helper
+
+**Key Files (Modified)**:
+- `src/game/state/guild-slice.ts` — Added `atmosphericEnabled: boolean` setting
+- `src/scene/world.tsx` — Wrapped scene with `<AtmosphereProvider>`
+
+### World Atmospheric Composer & Effect Stack (Phase 02–05 — 2026-05-12)
+- **Replaces** static `src/scene/world-bloom-post.tsx` with preset-driven composer `src/scene/atmospheric/world-atmospheric-post.tsx`.
+- **WebGL Stack**: N8AO → DOF (dynamic room-tracking target) → TiltShift → Bloom → GodRays → HueSat → BrightnessContrast → Vignette → Noise → ChromaticAberration → ToneMapping (ACES Filmic, last).
+- **WebGPU Path** (Phase 05): TSL chain (Bloom → TiltShift → ColorGrade → Vignette → ChromaticAberration → ACES ToneMapping); functional parity for five core effects achieved (DOF/GodRays remain WebGL-only). TiltShift: Gaussian masked blur, SIGMA=4, half-res, mask formula `smoothstep(0, 0.3, abs(uv.y - 0.5) - halfWidth)` matches WebGL exactly.
+- **Quality Tier**: `graphicsQuality='low'` strips DOF, GodRays, ChromaticAberration, LUT; Bloom + Noise + ToneMapping always on.
+- **Per-Room Tuning**: DOF `focalLength` & `bokehScale` per preset; target syncs auto from camera controller lerp (no preset transition needed on room change).
+- **RT Leak Fix** (Phase 05): `chainDisposables` array in pass closure collects TempNode dispose closures for cleanup on unmount.
+
+**Key Files (New)**:
+- `src/scene/atmospheric/world-atmospheric-post.tsx` — Composer entry wrapping effect stack or WebGPU pass
+- `src/scene/atmospheric/atmospheric-effect-stack.tsx` — WebGL effect children chain
+- `src/scene/atmospheric/atmospheric-webgpu-pass.tsx` — TSL chain: bloom → tilt-shift → colorGrade → vignette → chromAb → ACES; refs-based preset sync; chainDisposables for RT cleanup
+- `src/scene/atmospheric/tsl/vignette-node.ts` — TSL vignette node (pmndrs DEFAULT radial darkening)
+- `src/scene/atmospheric/tsl/color-grade-node.ts` — TSL color-grade node (hue/saturation/brightness/contrast chained)
+- `src/scene/atmospheric/tsl/tilt-shift-node.ts` — TSL tilt-shift node (Gaussian masked blur, SIGMA=4, half-res, strength-driven mask)
+- `src/scene/atmospheric/tsl/types.ts` — `TslChainHolder` + uniform interfaces (bloom, vignette, colorGrade, tiltShift required; chromAb optional)
+- `src/scene/atmospheric/atmospheric-leva-controls.ts` — Dev tuning multipliers schema
+
+**Key Files (Modified)**:
+- `src/scene/atmospheric/atmosphere-types.ts` — Added `GodRaysConfig.sourceId` field, `ChromaticAberrationConfig` on `AtmospherePreset`
+- `src/scene/world.tsx` — Updated import: `world-bloom-post` → `world-atmospheric-post`
+
+### Ambient Particle System (Phase 03 — 2026-05-12)
+- **4 Particle Types**: dust-motes (warm drift), embers (upward hot), magic-motes (cool swirl), pollen (settlement). All use additive blending, wrap-on-bounds lifecycle, tier-aware counts.
+- **Deterministic PRNG**: Mulberry32 seeded RNG (replaces Math.random for React purity compliance); deterministic particle layout per seed.
+- **Procedural Texture**: 32×32 soft-circle DataTexture (SSR-safe singleton), reused across all archetypes.
+- **Bounds Helper**: RoomId → Box3 lookup + `randomInBounds(prng)` utility; floor-Y assumption documented.
+- **Router & Wiring**: `particles-router.tsx` key-driven preset.particles → component switch. Mounted in `world.tsx` inside AtmosphereProvider.
+- **Tier Scaling**: Quality tier (`graphicsQuality='low'`) reduces counts by ~65% (dust: 30, embers: 20, magic: 15, pollen: 10).
+- **React Integration**: useState + useRef for mutable frame buffers (idiomatic r3f pattern); exhaustive-deps compliant.
+
+**Key Files (New)**:
+- `src/scene/atmospheric/particles/shared-particle-texture.ts` — Shared 32×32 texture singleton
+- `src/scene/atmospheric/particles/particle-prng.ts` — Mulberry32 PRNG with seed determinism
+- `src/scene/atmospheric/particles/particle-bounds.ts` — RoomId bounds + spawn helpers
+- `src/scene/atmospheric/particles/dust-motes.tsx` — Slow warm drift (high/low: 100/30)
+- `src/scene/atmospheric/particles/embers.tsx` — Upward hot orange (high/low: 80/20)
+- `src/scene/atmospheric/particles/magic-motes.tsx` — Cool purple swirl with opacity pulse (high/low: 60/15)
+- `src/scene/atmospheric/particles/pollen.tsx` — Yellow settlement toward ground (high/low: 40/10)
+- `src/scene/atmospheric/particles/particles-router.tsx` — Preset-driven particle type switch
+
+**Key Files (Modified)**:
+- `src/scene/world.tsx` — Mount `<AmbientParticlesRouter>` inside AtmosphereProvider
+
+### Per-Room Atmospheric Presets Tuning (Phase 04 — 2026-05-12)
+- **9 Tuned Presets**: Guild hall, main hall, tavern, training yard, infirmary, workshop, logging site, stone quarry, alchemy lab each with distinct mood, bloom, DOF, vignette, and particle settings.
+- **Hemisphere Light Mounting**: Conditional mount in `AtmosphereProvider` reads `hemisphereLight` from lerped preset; rooms with `null` skip entirely (zero cost).
+- **Mood Field**: Optional `mood?: string` added to `AtmospherePreset` for designer notes (documentation-only, not read at runtime).
+- **Lerp Integration**: `useLerpedAtmosphere()` passes `mood` through unchanged; hemisphereLight properties (skyColor, groundColor, intensity) lerp smoothly across 500ms transitions.
+
+**Key Files (Modified)**:
+- `src/scene/atmospheric/atmosphere-presets.ts` — Replaced baseline stubs with 9 per-room tuned presets
+- `src/scene/atmospheric/atmosphere-types.ts` — Added optional `mood?: string` field to `AtmospherePreset`
+- `src/scene/atmospheric/use-lerped-atmosphere.ts` — Routes `mood` field from target preset (no lerp, informational only)
+- `src/scene/atmospheric/atmosphere-context.tsx` — Conditional `<hemisphereLight>` mount gated by `hemi` presence
+
 ## Recent Changes (Inventory Panel Redesign — v1.20)
 
 ### Inventory Panel UI Overhaul (NEW - Major UI Component)

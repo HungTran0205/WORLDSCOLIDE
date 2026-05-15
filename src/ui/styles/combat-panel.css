@@ -308,6 +308,51 @@
   pointer-events: none;
 }
 
+/* ─── Atmospheric overlays (fog + vignette) ────────────────────────────────
+ * These sit atop the canvas viewport to simulate HD-2D depth atmosphere.
+ * pointer-events: none ensures they don't block HUD interaction.
+ */
+.combat-panel-battle__fog {
+  position: absolute;
+  inset: 0;
+  /* Bottom-heavy fog gradient: dark ground fog rises from bottom */
+  background: linear-gradient(
+    to top,
+    rgba(6, 4, 3, 0.45) 0%,
+    rgba(6, 4, 3, 0.18) 30%,
+    transparent 60%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+.combat-panel-battle__vignette {
+  position: absolute;
+  inset: 0;
+  /* Radial vignette: dark edges, transparent center */
+  background: radial-gradient(
+    ellipse 90% 85% at 50% 50%,
+    transparent 45%,
+    rgba(4, 3, 2, 0.55) 80%,
+    rgba(3, 2, 1, 0.8) 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Top-edge shadow to visually separate the bg top from panel header */
+.combat-panel-battle__top-shadow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(to bottom, rgba(4, 3, 2, 0.6) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+
 .combat-panel-battle__footer {
   display: flex;
   justify-content: space-between;
@@ -360,15 +405,17 @@
   display: flex;
   align-items: center;
   gap: var(--ink-space-2);
-  padding: 6px var(--ink-space-3);
-  background: rgb(15, 12, 8);
-  border-bottom: 1px solid var(--ink-gold-dim);
+  /* Slim: reduce vertical padding (was 6px → 4px) */
+  padding: 4px var(--ink-space-3);
+  /* Reduced opacity background for "breathing room" */
+  background: rgba(12, 9, 6, 0.7);
+  border-bottom: 1px solid rgba(201, 161, 74, 0.2);
   flex-shrink: 0;
 }
 
 .combat-roster--allies {
   border-bottom: none;
-  border-top: 1px solid var(--ink-gold-dim);
+  border-top: 1px solid rgba(201, 161, 74, 0.2);
 }
 
 .combat-roster__label {
@@ -399,13 +446,25 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 110px;
-  max-width: 160px;
+  min-width: 90px;
+  max-width: 140px;
   flex: 1 1 0;
   padding: 4px 8px;
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 3px;
+}
+
+/* Slim variant: tighter padding, no chrome border treatment */
+.combat-card--slim {
+  padding: 3px 6px;
+  gap: 2px;
+}
+
+/* No-chrome ally variant: transparent bg, no border */
+.combat-card--no-chrome {
+  background: transparent;
+  border-color: transparent;
 }
 
 .combat-card--dead {
@@ -414,7 +473,7 @@
 
 .combat-card__name {
   font-family: var(--ink-font-mono);
-  font-size: 10px;
+  font-size: 9px;
   color: var(--ink-text);
   letter-spacing: 0.05em;
   white-space: nowrap;
@@ -428,6 +487,13 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 2px;
   overflow: hidden;
+}
+
+/* Thin bar variant (Phase 1 polish) */
+.combat-card__bar--thin {
+  height: 3px;
+  border-width: 0;
+  background: rgba(0, 0, 0, 0.5);
 }
 
 .combat-card__fill {

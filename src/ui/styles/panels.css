@@ -205,38 +205,6 @@ input[type="range"] {
   font-weight: bold;
 }
 
-/* Quest detail modal */
-.quest-detail-modal {
-  background: rgba(20, 20, 30, 0.98);
-  border: 1px solid rgba(255, 215, 0, 0.3);
-  border-radius: 12px;
-  padding: 20px;
-  max-width: 400px;
-  width: 90vw;
-}
-
-.quest-detail-modal__tier {
-  color: #ffd700;
-  font-size: 0.8rem;
-}
-
-.quest-detail-modal__zone {
-  color: #87ceeb;
-  font-size: 0.85rem;
-  margin: 8px 0;
-}
-
-.quest-detail-modal__enemies {
-  list-style: none;
-  padding: 0;
-}
-
-.quest-detail-modal__enemy {
-  padding: 4px 0;
-  font-size: 0.85rem;
-  color: #ddd;
-}
-
 /* Combat log */
 .combat-log {
   max-height: 400px;

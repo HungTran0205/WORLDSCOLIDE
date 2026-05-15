@@ -119,6 +119,7 @@ const GRAPHICS_QUALITY_KEY = 'graphics-quality';
 const SHADOWS_KEY = 'shadows-enabled';
 const BLOOM_KEY = 'bloom-enabled';
 const BLOOM_THRESHOLD_KEY = 'bloom-threshold';
+const ATMOSPHERIC_KEY = 'atmospheric-enabled';
 
 /** Read graphics quality at module load — used by Canvas before store hydrates */
 export function getStoredGraphicsQuality(): 'high' | 'low' {
@@ -139,6 +140,18 @@ export function getStoredBloomThreshold(): number {
   return isNaN(v) ? 0.85 : Math.max(0, Math.min(1, v));
 }
 
+/** HD-2D atmospheric stack toggle. Browser-only — guards against `localStorage`
+ *  being absent in test/SSR contexts. Default-on for high tier; default-off
+ *  for low. Explicit user override (either value present in storage) wins.
+ *  Intended to be called at Canvas mount, not at store module load. */
+export function getStoredAtmospheric(): boolean {
+  if (typeof localStorage === 'undefined') return true;
+  const v = localStorage.getItem(ATMOSPHERIC_KEY);
+  if (v === 'true') return true;
+  if (v === 'false') return false;
+  return getStoredGraphicsQuality() === 'high';
+}
+
 const DEFAULT_SETTINGS: GameSettings = {
   musicVolume: 0.5,
   sfxVolume: 0.7,
@@ -147,6 +160,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   shadowsEnabled: false,
   bloomEnabled: false,
   bloomThreshold: 0.85,
+  atmosphericEnabled: true,
 };
 
 const DEFAULT_TAVERN: TavernState = {
@@ -223,6 +237,9 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
     }
     if (partial.bloomThreshold !== undefined) {
       localStorage.setItem(BLOOM_THRESHOLD_KEY, String(partial.bloomThreshold));
+    }
+    if (partial.atmosphericEnabled !== undefined) {
+      localStorage.setItem(ATMOSPHERIC_KEY, String(partial.atmosphericEnabled));
     }
     set((s) => ({ settings: { ...s.settings, ...partial } }));
   },

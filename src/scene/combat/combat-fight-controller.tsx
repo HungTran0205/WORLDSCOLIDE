@@ -29,6 +29,7 @@ import { ENEMIES } from '@/game/data/enemies';
 import { WaveManager, legacyToWaves } from '@/game/systems/combat-wave-manager';
 import { applyMissionResultSideEffects } from '@/game/systems/arena-result-handler';
 import { simulateCombatFromSnapshot, cloneCombatEntity } from '@/game/systems/combat-simulator';
+import { resolveCombatMapId, getStageSpec } from './maps/combat-map-registry';
 import { useCombatProjectionStore } from './combat-projection-store';
 import {
   COMBAT_VFX_PRESETS, COMBAT_VFX_COUNTS,
@@ -121,8 +122,14 @@ export function CombatFightController() {
     const firstWave = waveManager.current();
     const enemyTemplates = firstWave.enemyIds.map((id) => ENEMIES[id]).filter(Boolean);
 
+    // Resolve stage spec → engine reads spawn anchors (xyz) from spec.
+    // Falls back to legacy FORMATION_POSITIONS (y=0) inside engine if spec
+    // is missing for some mapId. resolveCombatMapId always returns a valid
+    // mapId (defaults to lolo-village-outskirt on miss).
+    const stageSpec = getStageSpec(resolveCombatMapId(missionId));
+
     const engine = new CombatEngine();
-    engine.init(members, formation, enemyTemplates, firstWave.hpMultiplier ?? 1, inventory);
+    engine.init(members, formation, enemyTemplates, firstWave.hpMultiplier ?? 1, inventory, stageSpec);
     engine.onWaveCheck = () => waveManagerRef.current?.hasNext() ?? false;
     engine.setTargetPriority(targetPriority);
     engineRef.current = engine;
@@ -267,7 +274,7 @@ function buildSnapshots(engine: CombatEngineType): ArenaEntitySnapshot[] {
     isAlly: e.isAlly,
     maxHp: e.maxHp,
     currentHp: e.currentHp,
-    position: { x: e.position.x, z: e.position.z },
+    position: { x: e.position.x, y: e.position.y, z: e.position.z },
     animState: e.animState,
     facingRight: e.facingRight,
     skillCooldownUntil: e.skillCooldownUntil,

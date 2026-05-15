@@ -64,6 +64,17 @@ export const MISSIONS: Mission[] = [
     isBossGate: true,
     conditionalDrops: [{ itemId: 'LOGGING_SITE_ACCESS', chance: 0.20, quantity: 1 }],
   },
+  // Phase 06: QA mission for the multi-platform broken-cliff-outskirt stage.
+  // Routes via zone 'Broken Cliff' → mapId 'broken-cliff-outskirt'. Remove
+  // or rebrand in phase 07 once the stage gets its real narrative mission.
+  {
+    id: 'broken-cliff-skirmish', name: 'Broken Cliff Skirmish', tier: 'F',
+    description: 'Bandits hold the high cliff overlooking the trade road. Storm the rise.',
+    zone: 'Broken Cliff',
+    durationMs: 90_000, travelTimeMs: 10_000,
+    goldRewardMin: 70, goldRewardMax: 140, expReward: 160,
+    enemyIds: ['bandit', 'bandit', 'forest-spider'], requiredMembers: 2, requiredLevel: 2,
+  },
 
   // ========== E-Tier (7 total) ==========
   {

@@ -69,6 +69,14 @@ export interface Skill {
   damageMultiplier: number;
   cooldownMs: number;
   autoEnabled: boolean;
+  /** AOE telegraph radius (world units). Set only on skills that visualize a ground danger zone. */
+  aoeRadius?: number;
+  /** Telegraph shape; defaults to 'circle' when aoeRadius is set. */
+  aoeShape?: import('@/game/systems/combat-types').AoeShape;
+  /** Telegraph cast duration override in ms; defaults to engine ANIM_ATTACK_DURATION (600ms). MUST be ≥ 300ms. */
+  aoeCastTimeMs?: number;
+  /** Optional tint hex (e.g. '#ff5a5a' danger / '#5a9bff' beneficial). Defaults to red danger. */
+  aoeColor?: string;
 }
 
 export type MemberStatus = 'idle' | 'on-mission' | 'injured' | 'training' | 'assigned';
@@ -353,4 +361,7 @@ export interface GameSettings {
   shadowsEnabled: boolean;
   bloomEnabled: boolean;
   bloomThreshold: number;
+  /** HD-2D atmospheric stack (post-FX + particles + per-room presets). Default
+   *  true on high tier, false on low tier — see Phase 06 mobile degradation. */
+  atmosphericEnabled: boolean;
 }
