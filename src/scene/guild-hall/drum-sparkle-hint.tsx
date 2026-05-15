@@ -27,6 +27,10 @@ function buildGeometry(): THREE.BufferGeometry {
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+  // TSL pipeline (BloomNode's `pass(scene, camera)`) probes `attribute('uv')`
+  // on every geometry; without it the WebGPU console spams per-frame warnings.
+  // Zero-filled is fine — pointsMaterial ignores UVs.
+  geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(COUNT * 2), 2));
   return geo;
 }
 

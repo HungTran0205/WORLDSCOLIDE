@@ -36,10 +36,6 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
     updateSettings({ bloomEnabled: enabled });
   };
 
-  const handleBloomThreshold = (v: number) => {
-    updateSettings({ bloomThreshold: v });
-  };
-
   const handleQuality = async (q: 'high' | 'low') => {
     if (q === settings.graphicsQuality) return;
     updateSettings({ graphicsQuality: q });
@@ -184,16 +180,6 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
           ))}
         </div>
 
-        {settings.bloomEnabled && (
-          <label style={{ display: 'block', marginTop: 8 }}>
-            Threshold: {settings.bloomThreshold.toFixed(2)}
-            <input
-              type="range" min="0" max="1" step="0.05"
-              value={settings.bloomThreshold}
-              onChange={(e) => handleBloomThreshold(Number(e.target.value))}
-            />
-          </label>
-        )}
       </div>
 
       <div className="panel-section">

@@ -29,18 +29,18 @@ export const FACILITY_SLOTS: [number, number, number][] = [
  * Western slots need +x, Eastern slots need -x to compensate isometric lean.
  */
 export const FACILITY_SLOT_CAMERA_OFFSETS: ([number, number, number] | null)[] = [
-  [0,  0, -2],  // slot 0  — North inner
-  [0, 0, 0],  // slot 1  — East inner
-  [0,  0, -2],  // slot 2  — South inner
-  [-1,  0, 0],  // slot 3  — West inner
-  [1,  0, 0],  // slot 4  — West far
-  [-2,  0, -2],  // slot 5  — Northwest
-  [0,  0, -2],  // slot 6  — North far
-  [-2, 0, -2],  // slot 7  — Northeast
-  [-1, 0, 0],  // slot 8  — East far
-  [-2, 0, -2],  // slot 9  — Southeast
-  [0,  0, -2],  // slot 10 — South far
-  [2,  0, -2],  // slot 11 — Southwest
+  [-1.0,  0, -1.5],  // slot 0  — North inner-1.0
+  [-1.0, 0, -1.5],  // slot 1  — East inner
+  [-1.0,  0, -1.5],  // slot 2  — South inner
+  [-1,  0, -1.5],  // slot 3  — West inner
+  [-1.0,  0, -1.5],  // slot 4  — West far
+  [-1.0,  0, -1.5],  // slot 5  — Northwest
+  [-1.0,  0, -1.5],  // slot 6  — North far
+  [-1.0, 0, -1.5],  // slot 7  — Northeast
+  [-1, 0, -1.5],  // slot 8  — East far
+  [-1.0, 0, -1.5],  // slot 9  — Southeast
+  [-1.0,  0, -1.5],  // slot 10 — South far
+  [-1.0,  0, -1.5],  // slot 11 — Southwest
 ];
 
 export const FACILITY_CAMERA_DEFAULT_OFFSET: [number, number, number] = [0, -1, -2];

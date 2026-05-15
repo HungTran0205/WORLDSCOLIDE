@@ -65,6 +65,15 @@ export interface TiltShiftUniforms {
   strength: TslUniformHandle<number>;
 }
 
+/** Heat-haze node uniforms — sin-based UV displacement in a Y-band.
+ *  `intensity = 0` collapses displacement to vec2(0) → no-op. */
+export interface HeatHazeUniforms {
+  /** Displacement strength. ~0.005 baseline; preset writes 0 when disabled. */
+  intensity: TslUniformHandle<number>;
+  /** Animation phase — host updates per frame from `clock.elapsedTime`. */
+  time: TslUniformHandle<number>;
+}
+
 /**
  * Holder mutated by the WebGPU pass's async `useMemo`. The host stores it in
  * a ref so per-frame and per-preset effects can read uniform handles without
@@ -79,4 +88,5 @@ export interface TslChainHolder {
   fog?: FogUniforms;
   chromaticAberration?: ChromaticAberrationUniforms;
   tiltShift?: TiltShiftUniforms;
+  heatHaze?: HeatHazeUniforms;
 }

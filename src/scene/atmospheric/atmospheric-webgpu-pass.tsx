@@ -65,6 +65,14 @@ function applyPreset(
       ? preset.tiltShift.strength
       : 0;
   }
+  if (holder.heatHaze) {
+    // `heatHaze: null` OR `enabled: false` → intensity = 0 → displacement
+    // collapses to vec2(0) → uv unchanged. No chain rebuild required.
+    const h = preset.heatHaze;
+    holder.heatHaze.intensity.value = h?.enabled ? h.intensity : 0;
+    // `time` is updated in useFrame, not here — applyPreset only carries
+    // preset-driven values, not animation state.
+  }
 }
 
 let depthSpikeLogged = false;
@@ -103,6 +111,7 @@ export function AtmosphericWebGPUPass({ preset, overrides }: AtmosphericWebGPUPa
       const { acesTonemapNode } = await import('./tsl/aces-tonemap-node');
       const { chromaticAberrationNode } = await import('./tsl/chromatic-aberration-node');
       const { tiltShiftNode } = await import('./tsl/tilt-shift-node');
+      const { heatHazeNode } = await import('./tsl/heat-haze-node');
       const { Vector2 } = await import('three');
       if (cancelled) return;
 
@@ -147,6 +156,11 @@ export function AtmosphericWebGPUPass({ preset, overrides }: AtmosphericWebGPUPa
       // Tilt-shift strength uniform — seeded to 0 (disabled). `applyPreset`
       // writes the real value (or 0 if `tiltShift.enabled === false`).
       const tiltShiftStrengthU = (uniform as any)(0);
+      // Heat-haze intensity uniform — seeded to 0 (disabled). Only workshop
+      // preset writes a non-zero value. Time uniform is updated every frame
+      // from clock.elapsedTime in useFrame below.
+      const heatHazeIntensityU = (uniform as any)(0);
+      const heatHazeTimeU = (uniform as any)(0);
 
       // Build chain via single mutable local. Each phase reassigns once.
       // WebGL stack order: DOF → TiltShift → Bloom → grade → Vignette → ChromAb → tonemap.
@@ -156,6 +170,10 @@ export function AtmosphericWebGPUPass({ preset, overrides }: AtmosphericWebGPUPa
       const tilt = tiltShiftNode(chain, tiltShiftStrengthU);
       chain = tilt.output;
       chainDisposables.push(tilt.dispose);
+      // Heat-haze: after tilt-shift (so wobble applies to the tilt-mixed
+      // image), before color-grade (heat distorts geometry, then the warm
+      // tint settles on top). Zero-intensity = no-op uv.
+      chain = heatHazeNode(chain, heatHazeIntensityU, heatHazeTimeU);
       chain = colorGradeNode(chain, hueU, satU, brightU, contU);
       chain = vignetteNode(chain, vignetteOffsetU, vignetteDarknessU);
       chain = chromaticAberrationNode(chain, chromAbOffsetU);
@@ -174,6 +192,7 @@ export function AtmosphericWebGPUPass({ preset, overrides }: AtmosphericWebGPUPa
         vignette: { offset: vignetteOffsetU, darkness: vignetteDarknessU },
         chromaticAberration: { offset: chromAbOffsetU },
         tiltShift: { strength: tiltShiftStrengthU },
+        heatHaze: { intensity: heatHazeIntensityU, time: heatHazeTimeU },
       };
       // Seed uniforms with the LATEST preset (refs always point at current
       // prop values, even if React rendered new ones during the async window).
@@ -208,9 +227,15 @@ export function AtmosphericWebGPUPass({ preset, overrides }: AtmosphericWebGPUPa
     applyPreset(current, preset, overrides);
   }, [setup, preset, overrides]);
 
-  useFrame(() => {
+  useFrame((state) => {
     const current = setup.getCurrent();
     if (!current) return;
+    if (current.heatHaze) {
+      // Drive the shimmer animation. elapsedTime starts at 0 and increases
+      // monotonically — `sin` handles overflow gracefully, so no need to
+      // wrap the value.
+      current.heatHaze.time.value = state.clock.elapsedTime;
+    }
     current.post.render();
   }, 1);
 
