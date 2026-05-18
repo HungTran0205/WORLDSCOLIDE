@@ -24,6 +24,7 @@ import { CombatPanel } from '@/ui/panels/combat-panel';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { AlchemyCraftPanel } from '@/ui/panels/alchemy-craft-panel';
 import { WorkshopPanel } from '@/ui/panels/workshop-panel';
+import { TavernPanel } from '@/ui/panels/tavern-panel';
 import { CombatSkillHotbar } from '@/ui/panels/combat-skill-hotbar';
 import { CombatTimelineBar } from '@/ui/panels/combat-timeline-bar';
 import { CombatResultOverlay } from '@/ui/panels/combat-result-overlay';
@@ -105,9 +106,11 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   const [activePanel, setActivePanel] = useState<PanelId>(null);
   const [alchemyPanelOpen, setAlchemyPanelOpen] = useState(false);
   const [workshopPanelOpen, setWorkshopPanelOpen] = useState(false);
+  const [tavernPanelOpen, setTavernPanelOpen] = useState(false);
   // Tracks whether user explicitly closed the panel while still in the room
   const alchemyUserClosedRef = useRef(false);
   const workshopUserClosedRef = useRef(false);
+  const tavernUserClosedRef = useRef(false);
 
   // Detect when camera is settled inside an alchemy lab room
   const cameraTarget = useGameStore((s) => s.cameraTarget);
@@ -122,6 +125,12 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
 
   const workshopFacility = useMemo(() => allFacilities.find((f) => {
     if (f.type !== 'workshop' || f.level === 0 || f.placedSlot === null) return false;
+    const [fx, , fz] = FACILITY_SLOTS[f.placedSlot];
+    return Math.abs(cameraTarget[0] - fx) <= 3.5 && Math.abs(cameraTarget[2] - fz) <= 3.5;
+  }), [allFacilities, cameraTarget]);
+
+  const tavernFacility = useMemo(() => allFacilities.find((f) => {
+    if (f.type !== 'tavern' || f.level === 0 || f.placedSlot === null) return false;
     const [fx, , fz] = FACILITY_SLOTS[f.placedSlot];
     return Math.abs(cameraTarget[0] - fx) <= 3.5 && Math.abs(cameraTarget[2] - fz) <= 3.5;
   }), [allFacilities, cameraTarget]);
@@ -144,6 +153,15 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
       workshopUserClosedRef.current = false;
     }
   }, [workshopFacility, cameraSettled]);
+
+  useEffect(() => {
+    if (tavernFacility && cameraSettled) {
+      if (!tavernUserClosedRef.current) setTavernPanelOpen(true);
+    } else {
+      setTavernPanelOpen(false);
+      tavernUserClosedRef.current = false;
+    }
+  }, [tavernFacility, cameraSettled]);
 
   const currentCombatReplay = useGameStore((s) => s.currentCombatReplay);
   const gameScene = useGameStore((s) => s.gameScene);
@@ -246,6 +264,12 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
             <WorkshopPanel
               facility={workshopFacility}
               onClose={() => { setWorkshopPanelOpen(false); workshopUserClosedRef.current = true; }}
+            />
+          )}
+          {tavernPanelOpen && tavernFacility && (
+            <TavernPanel
+              facility={tavernFacility}
+              onClose={() => { setTavernPanelOpen(false); tavernUserClosedRef.current = true; }}
             />
           )}
           <HomeButton />

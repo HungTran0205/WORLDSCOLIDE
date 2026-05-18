@@ -3,6 +3,7 @@ import type { GameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
 import { resolveMission, type MissionResult } from './mission-resolver';
 import { calcTotalUpkeep } from './upkeep-system';
+import { memberFromMercContract } from './combat-entity-factory';
 
 export interface OfflineMissionOutcome {
   result: MissionResult;
@@ -23,7 +24,7 @@ const MAX_OFFLINE_GAME_DAYS = 30;
 
 /** Process offline progression when game loads after being away */
 export function processOfflineTime(
-  state: Pick<GameStore, 'gold' | 'roster' | 'founder' | 'activeMissions' | 'realTimeLastTick'>,
+  state: Pick<GameStore, 'gold' | 'roster' | 'founder' | 'activeMissions' | 'realTimeLastTick' | 'tavern'>,
   realNow: number,
 ): { goldDelta: number; report: OfflineReport } {
   const elapsedMs = realNow - state.realTimeLastTick;
@@ -55,16 +56,26 @@ export function processOfflineTime(
     const travelEndAt = active.startTime + missionData.travelTimeMs;
     if (travelEndAt >= realNow) continue; // Still traveling — tick handles it
 
-    const members = allMembers.filter((m) => active.memberIds.includes(m.id));
+    // Phase 04: include hired mercs in offline auto-resolve so quest completion
+    // matches the live tick path. Their ids equal contract.id so callers can
+    // partition survivor ids back into the tavern lifecycle.
+    const realMembers = allMembers.filter((m) => active.memberIds.includes(m.id));
+    const mercMembers = state.tavern.mercContracts
+      .filter((c) => active.mercContractIds.includes(c.id))
+      .map(memberFromMercContract);
+    const members = [...realMembers, ...mercMembers];
     const result = resolveMission(missionData, members);
 
     if (result.outcome !== 'full-wipe') {
       goldFromMissions += result.goldEarned;
     }
 
+    const mercIdSet = new Set(active.mercContractIds);
     missionOutcomes.push({
       result,
-      survivorIds: result.outcome !== 'full-wipe' ? result.survivors : [],
+      survivorIds: result.outcome !== 'full-wipe'
+        ? result.survivors.filter((id) => !mercIdSet.has(id))
+        : [],
     });
   }
 

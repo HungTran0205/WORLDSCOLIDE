@@ -5,10 +5,10 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useGameStore } from '@/game/state/store';
-import { GAME_TIME_MULTIPLIER } from '@/game/state/clock-slice';
+import { GAME_TIME_MULTIPLIER, MS_PER_GAME_DAY } from '@/game/state/clock-slice';
 import { processMissionTick, processInjuryRecovery } from '@/game/systems/mission-tick';
 import { shouldAdvanceTutorial, getNextStep } from '@/game/systems/tutorial-manager';
-import { processFacilityProduction, processLoggingSiteTick, TICKS_PER_DAY } from '@/game/systems/facility-production-system';
+import { processFacilityProduction, processLoggingSiteTick } from '@/game/systems/facility-production-system';
 import { processStoneQuarryTick } from '@/game/systems/stone-quarry-production-system';
 import { advanceWorkshopQueues } from '@/game/systems/workshop-offline-system';
 import { advanceAlchemyQueues } from '@/game/systems/alchemy-production-system';
@@ -108,7 +108,7 @@ export function useGameTickLoop() {
     // Tavern daily-tick (AD3 — inline, guarded by `lastDayProcessed` for idempotency).
     {
       const state = useGameStore.getState();
-      const currentDay = Math.floor(state.gameTime / TICKS_PER_DAY);
+      const currentDay = Math.floor(state.gameTime / MS_PER_GAME_DAY);
       if (currentDay !== state.tavern.lastDayProcessed) {
         state.tickTavernDay(currentDay);
       }
@@ -290,7 +290,7 @@ export function useGameTickLoop() {
     {
       const offlineState = useGameStore.getState();
       const projectedGameTime = offlineState.gameTime + (Date.now() - offlineState.realTimeLastTick) * GAME_TIME_MULTIPLIER;
-      const currentDayAfterOffline = Math.floor(projectedGameTime / TICKS_PER_DAY);
+      const currentDayAfterOffline = Math.floor(projectedGameTime / MS_PER_GAME_DAY);
       if (currentDayAfterOffline !== offlineState.tavern.lastDayProcessed) {
         offlineState.tickTavernDay(currentDayAfterOffline);
       }

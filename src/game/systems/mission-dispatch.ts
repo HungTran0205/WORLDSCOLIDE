@@ -1,48 +1,56 @@
-import type { Member, Mission, ActiveMission } from '@/game/state/game-state';
+import type { Member, Mission, ActiveMission, MercContract } from '@/game/state/game-state';
 import { DEFAULT_TARGET_PRIORITY } from './combat-arena-types';
 
 export interface DispatchValidation {
   valid: boolean;
   reason?: string;
-  mercenaryFee: number; // gold deducted upfront when mercenaries are in the party
 }
 
+/**
+ * Validate a quest party composed of guild Members + tavern MercContracts (Phase 04).
+ * Mercs are paid upfront at hire time (no per-quest fee), so the legacy 50%
+ * `goldRewardMin` deduction for `rank === 'MERCENARY'` was removed entirely
+ * (old `availableMercenaries` path is gone — see plan AD11/Phase 04).
+ *
+ * `currentGold` is unused now but kept on the signature in case future
+ * integrations (e.g. travel cost) need it; passing 0 is safe.
+ */
 export function validateDispatch(
   mission: Mission,
   selectedMembers: Member[],
-  currentGold: number,
+  mercContracts: MercContract[] = [],
+  _currentGold = 0,
 ): DispatchValidation {
-  if (selectedMembers.length < mission.requiredMembers) {
-    return { valid: false, reason: `Need ${mission.requiredMembers}+ members`, mercenaryFee: 0 };
+  const partySize = selectedMembers.length + mercContracts.length;
+  if (partySize < mission.requiredMembers) {
+    return { valid: false, reason: `Need ${mission.requiredMembers}+ in party` };
   }
   if (selectedMembers.some((m) => m.status !== 'idle')) {
-    return { valid: false, reason: 'Some members are unavailable', mercenaryFee: 0 };
+    return { valid: false, reason: 'Some members are unavailable' };
   }
   if (selectedMembers.some((m) => m.level < mission.requiredLevel)) {
-    return { valid: false, reason: `Members must be level ${mission.requiredLevel}+`, mercenaryFee: 0 };
+    return { valid: false, reason: `Members must be level ${mission.requiredLevel}+` };
   }
-
-  const hasMercenary = selectedMembers.some((m) => m.rank === 'MERCENARY');
-  if (hasMercenary) {
-    const fee = Math.floor(mission.goldRewardMin * 0.5);
-    if (currentGold < fee) {
-      return { valid: false, reason: `Need ${fee}g upfront for mercenary (you have ${currentGold}g)`, mercenaryFee: fee };
-    }
-    return { valid: true, mercenaryFee: fee };
+  // Mercs only quest-assignable while contract.status === 'available'.
+  if (mercContracts.some((c) => c.status !== 'available')) {
+    return { valid: false, reason: 'Some mercs are not available' };
   }
-
-  return { valid: true, mercenaryFee: 0 };
+  if (mercContracts.some((c) => c.visitorSnapshot.level < mission.requiredLevel)) {
+    return { valid: false, reason: `Mercs must be level ${mission.requiredLevel}+` };
+  }
+  return { valid: true };
 }
 
 export function createActiveMission(
   mission: Mission,
   memberIds: string[],
+  mercContractIds: string[],
   now: number,
 ): ActiveMission {
   return {
     missionId: mission.id,
     memberIds,
-    mercContractIds: [],
+    mercContractIds,
     startTime: now,
     estimatedEndTime: now + mission.durationMs,
     phase: 'traveling',
