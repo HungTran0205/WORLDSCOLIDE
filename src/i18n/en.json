@@ -61,7 +61,129 @@
   "common": {
     "save": "Save",
     "cancel": "Cancel",
-    "delete": "Delete"
+    "delete": "Delete",
+    "ok": "OK",
+    "close": "Close"
+  },
+  "tavern": {
+    "title": "Tavern",
+    "visitorsTooltip": "{{count}} visitors today · cap {{cap}}",
+    "keeper": {
+      "assign": "Assign keeper",
+      "assignHint": "Assign a keeper to attract visitors",
+      "noneAssigned": "No keeper assigned — visitors will not appear.",
+      "noneEligible": "No idle members available",
+      "choose": "Choose"
+    },
+    "rumor": {
+      "vague": "A traveler is rumored to be on the way.",
+      "class": "A wandering {{archetype}} is expected.",
+      "specific": "A {{archetype}} of {{civ}} will arrive.",
+      "tomorrow": "tomorrow"
+    },
+    "rep": {
+      "label": "Tavern Rep",
+      "aria": "Tavern reputation indicator",
+      "buzzing": "Tavern is buzzing",
+      "poor": "Word travels poorly",
+      "unknown": "Word is spreading…"
+    },
+    "reroll": {
+      "label": "Refresh",
+      "tooltip": "Refresh tavern roster (1/day)",
+      "alreadyUsed": "Already used today",
+      "needGold": "Need {{cost}}g"
+    },
+    "empty": {
+      "noKeeper": "Assign a keeper to begin attracting visitors.",
+      "noVisitors": "Word is spreading… visitors will arrive tomorrow."
+    },
+    "card": {
+      "veteran": "Veteran — has worked for the guild before.",
+      "lockedHint": "Requires Keeper INT + Tavern Lv ≥ {{score}} to reveal.",
+      "mood": "Mood",
+      "demand": "Demand"
+    },
+    "action": {
+      "negotiate": "Negotiate",
+      "hireMerc": "Hire Merc",
+      "notEnoughGold": "Not enough gold (need {{cost}}g)"
+    },
+    "negotiate": {
+      "title": "Negotiate",
+      "keeperNeg": "Negotiation",
+      "successChance": "Success Chance",
+      "lockedHint": "Raise Keeper INT to preview odds.",
+      "demand": "Demand",
+      "neg": "Neg",
+      "roll": "Roll Negotiation →",
+      "rolling": "Rolling…",
+      "noKeeperTitle": "No Keeper Assigned",
+      "noKeeperBody": "Assign a keeper before negotiating."
+    },
+    "modifier": {
+      "treasuryFlex": "Treasury Flex",
+      "tavernLevel": "Tavern Level {{lvl}}",
+      "guildFame": "Guild Fame",
+      "traitMatch": "Trait Match ({{n}} shared)",
+      "refusal": "Recent Refusals ({{n}})",
+      "tavernRep": "Tavern Reputation",
+      "postInsultDebuff": "Recent Insult — wary visitors",
+      "giftPlaceholder": "Gift Item — choose item",
+      "net": "Net Modifier"
+    },
+    "gift": {
+      "title": "Choose a Gift",
+      "empty": "Inventory is empty — no gift available.",
+      "none": "No Gift",
+      "filter": {
+        "all": "All",
+        "consumable": "Consumables",
+        "material": "Materials",
+        "equipment": "Equipment"
+      }
+    },
+    "outcome": {
+      "success": "RECRUITED",
+      "counter": "COUNTER-OFFER",
+      "soft-refuse": "Declined politely",
+      "hard-refuse": "Refused",
+      "insult": "INSULTED",
+      "comfortable": "comfortable success",
+      "tight": "narrow success"
+    },
+    "counter": {
+      "title": "Counter-Offer",
+      "body": "{{archetype}} won't join the guild — but will work as a mercenary for the right price.",
+      "directCost": "Hire cost",
+      "decline": "Let Them Go",
+      "accept": "Accept (+20%)",
+      "premiumHint": "Tip: Direct merc hire would cost less. This is a premium."
+    },
+    "hireMerc": {
+      "title": "Hire {{archetype}} as mercenary?",
+      "body": "Mercs join the guild for one quest only.",
+      "cost": "Cost",
+      "gold": "Treasury",
+      "slots": "Merc slots",
+      "slotsFullHint": "Merc slots full. Dismiss one or upgrade Hall.",
+      "confirm": "Confirm Hire"
+    },
+    "reinvite": {
+      "title": "Re-invite {{archetype}}?",
+      "body": "This veteran was impressed by the guild and may now join as a full member.",
+      "bonus": "Reinvite Bonus",
+      "keeper": "Keeper",
+      "decline": "Let Them Go",
+      "accept": "Invite Now"
+    },
+    "insult": {
+      "title": "{{archetype}} storms off!",
+      "stormOff": "{{archetype}} stormed off, insulted by your offer.",
+      "goneForever": "Word spread. They will not return.",
+      "consequences": "Tavern Reputation -1. Other prospects are warier for the next 24h.",
+      "acknowledge": "Acknowledge"
+    }
   },
   "skills": { "danh_manh": "Heavy Strike" },
   "stats": {

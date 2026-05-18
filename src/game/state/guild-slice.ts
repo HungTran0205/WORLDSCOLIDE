@@ -6,7 +6,26 @@ import {
   rerollSeedForDay,
   type TavernLevel,
 } from '@/game/systems/tavern-spawn';
-import { dailyTavernSeed } from '@/game/systems/seeded-rng';
+import { dailyTavernSeed, mulberry32, attemptSeed, hashSeed } from '@/game/systems/seeded-rng';
+import {
+  buildModifierBundle,
+  hireMercCost,
+  keeperNegotiation,
+  rollNegotiation,
+  targetDemand,
+  type NegotiationResult,
+  type TavernGameSnapshot,
+} from '@/game/systems/tavern-negotiation';
+import {
+  applyMercDeath,
+  applyMercSurvival,
+  clampRep,
+  concurrentMercCap,
+  makeMercContract,
+  materializeVisitorFromVeteran,
+  type MercQuestOutcome,
+} from '@/game/systems/tavern-merc-lifecycle';
+import { promoteMercToMember, REINVITE_SUCCESS_REP_BONUS } from '@/game/systems/tavern-audition';
 import type { InventoryState } from './game-state';
 import type { InventorySlice } from './inventory-slice';
 import type { RosterSlice } from './roster-slice';
@@ -97,6 +116,32 @@ export interface GuildSlice extends WorkshopActions {
   /** Spend `100 × level` gold to regenerate today's roster with the deterministic reroll seed.
    *  Max 1 per game-day. Returns false on insufficient gold or already rerolled. */
   rerollTavernRoster: () => boolean;
+
+  // --- Tavern merc lifecycle (phase 04) ---
+  /** Hire a tavern visitor as a temporary mercenary contract.
+   *  Spends gold, removes visitor from currentRoster, pushes a contract into mercContracts.
+   *  Returns false if visitor missing, cap reached, or insufficient gold. */
+  hireMerc: (visitorId: string, mercFeeMultiplier?: number) => boolean;
+  /** Adjust Tavern Reputation by `delta`, clamped to [-5, +5]. */
+  adjustTavernRep: (delta: number) => void;
+  /** Drop a contract without quest outcome (player abandoned mid-quest etc.). No refund. */
+  releaseMerc: (contractId: string) => void;
+  /** Mark mercs as on-quest at dispatch time — sets status='on-quest', questId. */
+  markMercsOnQuest: (contractIds: string[], missionId: string) => void;
+  /** Resolve a single merc's quest outcome. Routes to applyMercDeath/applyMercSurvival. */
+  applyMercQuestResult: (contractId: string, outcome: MercQuestOutcome, currentDay: number) => void;
+
+  // --- Tavern audition / re-invite (phase 05) ---
+  /** Hire a visitor as a merc at +20% cost (counter-offer flow, spec §6.1). Wraps `hireMerc`. */
+  acceptCounterOffer: (visitorId: string) => boolean;
+  /**
+   * Resolve a queued re-invite prompt.
+   *   accept=true  → roll negotiation with +25 bonus; on success addMember + rep +2.
+   *   accept=false → discard the prompt (contract already in veteranPool from survival).
+   * Returns the negotiation result on accept (null on decline or missing prompt).
+   * ONE-SHOT: the prompt is removed regardless of outcome (no retry).
+   */
+  executeReinvite: (contractId: string, accept: boolean) => NegotiationResult | null;
 }
 
 export const DEFAULT_MEDICINE_SLOTS: [MedicineSlot, MedicineSlot] = [
@@ -176,6 +221,7 @@ const DEFAULT_TAVERN: TavernState = {
   lastDayProcessed: 0,
   reputationLastTickWeek: 0,
   globalNegotiationDebuffUntilDay: null,
+  veteranPool: [],
 };
 
 const DEFAULT_FACILITIES: GuildFacility[] = [
@@ -967,16 +1013,25 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
         reputationLastTickWeek = reputationLastTickWeek + weeksElapsed * 7;
       }
 
-      return {
-        tavern: {
-          ...s.tavern,
-          currentRoster: roster,
-          rerolledToday: false,
-          lastDayProcessed: currentDay,
-          reputation,
-          reputationLastTickWeek,
-        },
+      // Phase 04 (AD10): 5%/day per-veteran chance to re-appear in roster, max
+      // 1 bonus visitor per day. Uses a derived sub-seed so reload-determinism
+      // is preserved (same daySeed → same veteran roll).
+      const baseTavern: TavernState = {
+        ...s.tavern,
+        currentRoster: roster,
+        rerolledToday: false,
+        lastDayProcessed: currentDay,
+        reputation,
+        reputationLastTickWeek,
       };
+      const tavern = maybeAppendVeteranVisitor(baseTavern, seed, currentDay);
+      // Recompute derivedDemand for the veteran (mood/rep may have shifted).
+      if (tavern.currentRoster.length > roster.length) {
+        const last = tavern.currentRoster[tavern.currentRoster.length - 1];
+        last.derivedDemand = targetDemand(last);
+      }
+
+      return { tavern };
     });
   },
 
@@ -1023,4 +1078,206 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
     });
     return success;
   },
+
+  // ── Phase 04: Merc lifecycle ─────────────────────────────────────────────
+
+  hireMerc: (visitorId, mercFeeMultiplier = 1.0) => {
+    let success = false;
+    set((s) => {
+      const visitor = s.tavern.currentRoster.find((v) => v.id === visitorId);
+      if (!visitor) return s;
+      if (s.tavern.mercContracts.length >= concurrentMercCap(s.tavern.level)) return s;
+
+      const cost = hireMercCost(visitor, mercFeeMultiplier);
+      if (s.gold < cost) return s;
+
+      const contract = makeMercContract(visitor, cost, s.tavern.lastDayProcessed);
+      success = true;
+      return {
+        gold: s.gold - cost,
+        tavern: {
+          ...s.tavern,
+          currentRoster: s.tavern.currentRoster.filter((v) => v.id !== visitorId),
+          mercContracts: [...s.tavern.mercContracts, contract],
+        },
+      };
+    });
+    return success;
+  },
+
+  adjustTavernRep: (delta) => {
+    set((s) => ({
+      tavern: { ...s.tavern, reputation: clampRep(s.tavern.reputation + delta) },
+    }));
+  },
+
+  releaseMerc: (contractId) => {
+    set((s) => ({
+      tavern: {
+        ...s.tavern,
+        mercContracts: s.tavern.mercContracts.filter((c) => c.id !== contractId),
+      },
+    }));
+  },
+
+  markMercsOnQuest: (contractIds, missionId) => {
+    if (contractIds.length === 0) return;
+    set((s) => ({
+      tavern: {
+        ...s.tavern,
+        mercContracts: s.tavern.mercContracts.map((c) =>
+          contractIds.includes(c.id)
+            ? { ...c, status: 'on-quest' as const, questId: missionId }
+            : c,
+        ),
+      },
+    }));
+  },
+
+  applyMercQuestResult: (contractId, outcome, currentDay) => {
+    set((s) => {
+      const patch = outcome.defeated
+        ? applyMercDeath(s.tavern, contractId)
+        : applyMercSurvival(s.tavern, contractId, outcome, currentDay);
+      if (Object.keys(patch).length === 0) return s;
+      return { tavern: { ...s.tavern, ...patch } };
+    });
+  },
+
+  // ── Phase 05: Audition / re-invite ─────────────────────────────────────────
+
+  acceptCounterOffer: (visitorId) => {
+    return get().hireMerc(visitorId, 1.2);
+  },
+
+  executeReinvite: (contractId, accept) => {
+    let outcome: NegotiationResult | null = null;
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null };
+      const prompt = (s.tavern.pendingPrompts ?? []).find(
+        (p) => p.contractId === contractId && p.kind === 'reinvite',
+      );
+      if (!prompt) return s;
+
+      // Always strip the prompt — accept or decline both consume it (one-shot).
+      const remainingPrompts = s.tavern.pendingPrompts.filter(
+        (p) => p.contractId !== contractId,
+      );
+
+      if (!accept) {
+        return { tavern: { ...s.tavern, pendingPrompts: remainingPrompts } };
+      }
+
+      // Resolve best-keeper for the roll (AD13). Falls back to founder if no
+      // tavern keepers assigned — prevents the reinvite from dead-ending when
+      // the player has unstaffed the tavern.
+      const tavernFacility = s.facilities.find((f) => f.type === 'tavern');
+      const keeperIds = tavernFacility?.assignedMemberIds ?? [];
+      const memberLookup = (id: string): Member | undefined => {
+        if (fullState.founder?.id === id) return fullState.founder;
+        return fullState.roster.find((m) => m.id === id);
+      };
+      const keepers = keeperIds.map(memberLookup).filter((m): m is Member => Boolean(m));
+      const negotiator: Member | null =
+        (keepers.length > 0
+          ? keepers.reduce((best, k) =>
+              keeperNegotiation(k) > keeperNegotiation(best) ? k : best,
+            )
+          : null) ?? fullState.founder;
+      if (!negotiator) {
+        return { tavern: { ...s.tavern, pendingPrompts: remainingPrompts } };
+      }
+
+      const visitor = prompt.visitorSnapshot;
+      const snapshot: TavernGameSnapshot = {
+        gold: s.gold,
+        guildLevel: s.guildLevel,
+        tavernLevel: s.tavern.level,
+        tavernReputation: s.tavern.reputation,
+        globalNegotiationDebuffUntilDay: s.tavern.globalNegotiationDebuffUntilDay,
+        currentDay: s.tavern.lastDayProcessed,
+      };
+      const mods = buildModifierBundle(negotiator, visitor, snapshot, { reinvite: true });
+      const seed = attemptSeed(
+        hashSeed('reinvite', s.tavern.lastDayProcessed),
+        contractId,
+        (visitor.attemptHistory?.length ?? 0) + 1,
+      );
+      outcome = rollNegotiation(negotiator, visitor, mods, seed);
+
+      // Locate the veteran entry left behind by phase-04 survival promotion.
+      const veteranPool = s.tavern.veteranPool ?? [];
+      const veteranIdx = veteranPool.findIndex((v) => v.contractId === contractId);
+
+      if (outcome.outcome.kind === 'success') {
+        // Reconstruct a synthetic contract for promotion — visitorSnapshot
+        // is identical so member fidelity (stats/civ/archetype/traits/rarity)
+        // is preserved.
+        const syntheticContract = {
+          id: contractId,
+          visitorSnapshot: visitor,
+          hireCost: 0,
+          hireDay: prompt.createdDay,
+          questId: null,
+          relationshipPoints:
+            veteranIdx >= 0 ? veteranPool[veteranIdx].relationshipPoints : 0,
+          status: 'completed' as const,
+        };
+        const newMember = promoteMercToMember(syntheticContract);
+        const nextVeteranPool =
+          veteranIdx >= 0
+            ? veteranPool.filter((_, i) => i !== veteranIdx)
+            : veteranPool;
+        return {
+          tavern: {
+            ...s.tavern,
+            pendingPrompts: remainingPrompts,
+            veteranPool: nextVeteranPool,
+            reputation: clampRep(s.tavern.reputation + REINVITE_SUCCESS_REP_BONUS),
+          },
+          roster: [...fullState.roster, newMember],
+        } as unknown as Partial<GuildSlice>;
+      }
+
+      // Roll failed — visitor stays in veteranPool (phase-04 already placed them).
+      return { tavern: { ...s.tavern, pendingPrompts: remainingPrompts } };
+    });
+    return outcome;
+  },
 });
+
+/**
+ * Helper hoisted from `tickTavernDay` — used by the phase-04 veteran reappear
+ * path. Exposed at module scope so future callers (UI debug, tests) can reuse.
+ *
+ * AD10: max 1 bonus visitor per day; on a hit we splice the veteran out of
+ * the pool and append a freshly-materialized visitor to the day's roster.
+ */
+export function maybeAppendVeteranVisitor(
+  tavern: TavernState,
+  daySeed: number,
+  currentDay: number,
+): TavernState {
+  // Defensive: in-flight v24 saves predate the veteranPool field. Save-migrate
+  // v24→v25 backfills it, but HMR or hand-edited stores may still hit this path
+  // with an undefined pool.
+  const pool = tavern.veteranPool ?? [];
+  if (pool.length === 0) {
+    return pool === tavern.veteranPool ? tavern : { ...tavern, veteranPool: [] };
+  }
+  const rng = mulberry32(daySeed ^ 0xfeedbeef);
+  for (let i = 0; i < pool.length; i++) {
+    if (rng() < 0.05) {
+      const vet = pool[i];
+      const visitor = materializeVisitorFromVeteran(vet, currentDay);
+      const remainingPool = [...pool];
+      remainingPool.splice(i, 1);
+      return {
+        ...tavern,
+        currentRoster: [...tavern.currentRoster, visitor],
+        veteranPool: remainingPool,
+      };
+    }
+  }
+  return { ...tavern, veteranPool: pool };
+}

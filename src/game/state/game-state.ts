@@ -209,6 +209,18 @@ export interface TavernPendingPrompt {
   createdDay: number;
 }
 
+/** Compact veteran-merc record for re-appearance pool. Cap 20, FIFO eviction. */
+export interface VeteranMercSummary {
+  /** Source contract id at time of survival (kept for de-dup). */
+  contractId: string;
+  /** Frozen visitor snapshot at hire time — used by materializeVisitorFromVeteran. */
+  visitorSnapshot: TavernVisitor;
+  /** Final RP at completion time. */
+  relationshipPoints: number;
+  /** Game-day when added to pool. */
+  addedDay: number;
+}
+
 export interface TavernState {
   level: 1 | 2 | 3;                      // MVP cap Lv3 (Lv4-5 deferred)
   keeperId: string | null;
@@ -222,6 +234,8 @@ export interface TavernState {
   lastDayProcessed: number;              // floor(gameTime / TICKS_PER_DAY) snapshot
   reputationLastTickWeek: number;        // passive recovery tracker (game-day)
   globalNegotiationDebuffUntilDay: number | null;  // 24h post-insult global debuff
+  /** Phase 04: veteran-merc pool for 5%/day re-appear (cap 20, FIFO). */
+  veteranPool: VeteranMercSummary[];
 }
 
 export type QuestTier = 'F' | 'E' | 'D' | 'C' | 'B' | 'A' | 'S';

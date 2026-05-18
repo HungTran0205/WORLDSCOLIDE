@@ -56,6 +56,7 @@ export function resetGameState(): void {
       lastDayProcessed: 0,
       reputationLastTickWeek: 0,
       globalNegotiationDebuffUntilDay: null,
+      veteranPool: [],
     },
     facilities: [
       { id: 'tavern' as const,        type: 'tavern' as const,        level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },

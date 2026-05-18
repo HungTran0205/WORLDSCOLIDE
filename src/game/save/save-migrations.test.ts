@@ -116,6 +116,60 @@ describe('migrateSave', () => {
     expect(newbie.traits).toEqual([]);
   });
 
+  // v24→v25: Phase 04 backfill — `tavern.veteranPool: []` for in-flight v24 saves
+  // that predate the field. Without this, day-tick crashes on `.length` of undefined.
+  it('migrates v24→v25: backfills tavern.veteranPool=[] when missing', () => {
+    const v24Envelope = {
+      version: 24,
+      savedAt: Date.now(),
+      metadata: { slotId: 1, guildName: 'Test', guildLevel: 1, playTimeMs: 0, founderName: 'F', createdAt: 0, updatedAt: 0 },
+      gameState: {
+        gameTime: 0, realTimeLastTick: 0, guildName: 'Test', guildLevel: 1, gold: 100,
+        guildHall: { level: 1, floorTiles: [{ x: 0, z: 0, color: '#DAA520' }], furniture: [] },
+        settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high', shadowsEnabled: false, bloomEnabled: false, bloomThreshold: 0.85 },
+        founder: null, roster: [], activeMissions: [], completedMissions: [],
+        tutorialStep: 'complete',
+        // veteranPool intentionally absent — pre-Phase-04 v24 shape.
+        tavern: {
+          level: 1, keeperId: null, reputation: 0, currentRoster: [], rerolledToday: false,
+          factionBias: null, rumor: null, mercContracts: [], pendingPrompts: [],
+          lastDayProcessed: 0, reputationLastTickWeek: 0, globalNegotiationDebuffUntilDay: null,
+        },
+        inventory: { items: {} }, facilities: [],
+      },
+    };
+    const result = migrateSave(v24Envelope as any);
+    expect(result.version).toBe(SAVE_VERSION);
+    expect((result.gameState as any).tavern.veteranPool).toEqual([]);
+  });
+
+  it('migrates v24→v25: preserves existing veteranPool entries', () => {
+    const existingPool = [
+      { contractId: 'merc-old-1', visitorSnapshot: { id: 'v1' }, relationshipPoints: 7, addedDay: 1 },
+    ];
+    const v24Envelope = {
+      version: 24,
+      savedAt: Date.now(),
+      metadata: { slotId: 1, guildName: 'Test', guildLevel: 1, playTimeMs: 0, founderName: 'F', createdAt: 0, updatedAt: 0 },
+      gameState: {
+        gameTime: 0, realTimeLastTick: 0, guildName: 'Test', guildLevel: 1, gold: 100,
+        guildHall: { level: 1, floorTiles: [{ x: 0, z: 0, color: '#DAA520' }], furniture: [] },
+        settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high', shadowsEnabled: false, bloomEnabled: false, bloomThreshold: 0.85 },
+        founder: null, roster: [], activeMissions: [], completedMissions: [],
+        tutorialStep: 'complete',
+        tavern: {
+          level: 1, keeperId: null, reputation: 0, currentRoster: [], rerolledToday: false,
+          factionBias: null, rumor: null, mercContracts: [], pendingPrompts: [],
+          lastDayProcessed: 0, reputationLastTickWeek: 0, globalNegotiationDebuffUntilDay: null,
+          veteranPool: existingPool,
+        },
+        inventory: { items: {} }, facilities: [],
+      },
+    };
+    const result = migrateSave(v24Envelope as any);
+    expect((result.gameState as any).tavern.veteranPool).toEqual(existingPool);
+  });
+
   it('migrates v11→v12+: old tutorial steps remapped to complete', () => {
     const v11Envelope = {
       ...makeV7Envelope({ tutorialStep: 'first-build' }),

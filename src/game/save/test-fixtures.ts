@@ -119,6 +119,7 @@ export const VALID_GAME_SAVE_DATA: GameSaveData = {
     lastDayProcessed: 0,
     reputationLastTickWeek: 0,
     globalNegotiationDebuffUntilDay: null,
+    veteranPool: [],
   },
   inventory: { items: {} },
   facilities: [
