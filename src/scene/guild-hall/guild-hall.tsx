@@ -7,6 +7,7 @@ import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { BuildOverlay } from './build-overlay';
 import { FurnitureModel } from './furniture-model';
 import { GuildHallWall } from './guild-hall-wall';
+import { GuildHallFront } from './guild-hall-front';
 import { GuildHallProps } from './guild-hall-props';
 import { LinhSonFloor } from './linh-son-floor';
 
@@ -72,6 +73,7 @@ export function GuildHall() {
         <FurnitureModel key={f.id} furniture={f} />
       ))}
       {isBuildMode && <BuildOverlay />}
+      {!isCombatOpen && <GuildHallFront gridWidth={10} gridDepth={7} />}
     </group>
   );
 }

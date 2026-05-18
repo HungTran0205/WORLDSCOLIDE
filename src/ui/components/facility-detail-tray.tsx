@@ -5,7 +5,6 @@ import { useGameStore } from '@/game/state/store';
 import type { GuildFacility, Member, FacilityType } from '@/game/state/game-state';
 import { FACILITY_DEFINITIONS, LOGGING_SITE_CONFIG, STONE_QUARRY_CONFIG } from '@/game/data/facility-definitions';
 import { FACILITY_SLOTS, getSlotCameraOffset } from '@/game/data/facility-slot-positions';
-import { calcTotalUpkeep } from '@/game/systems/upkeep-system';
 import { calcMcLevel } from '@/game/systems/stone-quarry-production-system';
 import { FacilityMemberAvatar } from './facility-member-avatar';
 import { InkConfirmDialog } from './ink-confirm-dialog';
@@ -13,7 +12,7 @@ import { InkConfirmDialog } from './ink-confirm-dialog';
 type FacilityDefVal = (typeof FACILITY_DEFINITIONS)[FacilityType];
 
 // ── Bonus preview (extracted from facility-card logic) ──────────────────────
-function getBonusPreview(facility: GuildFacility, members: Member[], dailyUpkeep: number): string {
+function getBonusPreview(facility: GuildFacility, members: Member[]): string {
   if (members.length === 0) return '';
   const lv = facility.level;
   switch (facility.type) {
@@ -26,10 +25,6 @@ function getBonusPreview(facility: GuildFacility, members: Member[], dailyUpkeep
       const totalW = members.reduce((s, m) => s + Math.floor([3, 5, 8][lv - 1] * (1 + m.stats.STR * 0.004)), 0);
       const totalS = members.reduce((s, m) => s + Math.floor([2, 3, 5][lv - 1] * (1 + m.stats.STR * 0.004)), 0);
       return `+${totalW} Wood, +${totalS} Stone/day`;
-    }
-    case 'tavern': {
-      const pct = Math.min(0.10, members.reduce((s, m) => s + m.stats.CHA, 0) * 0.0005 * lv);
-      return `-${(pct * 100).toFixed(1)}% upkeep (~${Math.floor(dailyUpkeep * pct)}g/day)`;
     }
     case 'infirmary': {
       const avgEnd = members.reduce((s, m) => s + m.stats.END, 0) / members.length;
@@ -82,7 +77,6 @@ function BuiltRoomTray({ facility, onClose }: { facility: GuildFacility; onClose
   const setCameraTarget = useGameStore(s => s.setCameraTarget);
 
   const allMembers     = founder ? [founder, ...roster] : roster;
-  const dailyUpkeep    = calcTotalUpkeep(allMembers);
   const def            = FACILITY_DEFINITIONS[facility.type];
   const maxSlots       = def.maxSlots[facility.level - 1];
   const assigned       = allMembers.filter(m => facility.assignedMemberIds.includes(m.id));
@@ -90,7 +84,7 @@ function BuiltRoomTray({ facility, onClose }: { facility: GuildFacility; onClose
   const emptyCount     = maxSlots - assigned.length;
   const canUpgrade     = facility.level < 3 && !!def.upgradeCosts;
   const upgradeCost    = canUpgrade ? def.upgradeCosts![facility.level - 1] : 0;
-  const bonus          = getBonusPreview(facility, assigned, dailyUpkeep);
+  const bonus          = getBonusPreview(facility, assigned);
   const instanceNum    = getInstanceNumber(facility, facilities);
   const displayName    = instanceNum ? `${def.name} #${instanceNum}` : def.name;
 

@@ -236,7 +236,7 @@ export function World({ isActive = true }: WorldProps) {
         frameloop={isActive ? 'always' : 'demand'}
         orthographic
         shadows={{ type: THREE.PCFShadowMap, enabled: true }}
-        camera={{ zoom: 65, position: [15, 10, 14], near: 0.1, far: 1000 }}
+        camera={{ zoom: 150, position: [13, 5.5, 12], near: 0.1, far: 1000 }}
         dpr={quality === 'low' ? [0.75, 1] : [1, 1.5]}
         gl={createWebGPURenderer}
         style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}

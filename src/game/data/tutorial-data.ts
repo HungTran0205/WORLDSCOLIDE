@@ -18,6 +18,8 @@ export const KAEL_TEMPLATE: Omit<Member, 'id'> = {
   isFounder: false,
   rank: 'MEMBER',
   missionsCompleted: 0,
+  rarity: 1,
+  traits: [],
 };
 
 /** Tutorial quest — trivial slime fight, 5s duration, guaranteed win */

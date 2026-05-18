@@ -33,10 +33,11 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
   const guildHall = useGameStore((s) => s.guildHall);
   const gold = useGameStore((s) => s.gold);
   const dispatchMission = useGameStore((s) => s.dispatchMission);
-  const spendGold = useGameStore((s) => s.spendGold);
   const updateMemberStatus = useGameStore((s) => s.updateMemberStatus);
   const completedMissions = useGameStore((s) => s.completedMissions);
   const tutorialStep = useGameStore((s) => s.tutorialStep);
+  const mercContracts = useGameStore((s) => s.tavern.mercContracts);
+  const markMercsOnQuest = useGameStore((s) => s.markMercsOnQuest);
 
   const availableMembers = useMemo(() => {
     const all = founder ? [founder, ...roster] : roster;
@@ -123,16 +124,17 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
     setMobileView('detail');
   };
 
-  const handleDispatch = (memberIds: string[]) => {
+  const handleDispatch = (memberIds: string[], mercContractIds: string[] = []) => {
     if (!selectedMission) return;
     const allMembers = [...(founder ? [founder] : []), ...roster];
     const party = allMembers.filter((m) => memberIds.includes(m.id));
-    const validation = validateDispatch(selectedMission, party, gold);
+    const mercs = mercContracts.filter((c) => mercContractIds.includes(c.id));
+    const validation = validateDispatch(selectedMission, party, mercs, gold);
     if (!validation.valid) return;
-    if (validation.mercenaryFee > 0 && !spendGold(validation.mercenaryFee)) return;
     const now = Date.now();
-    dispatchMission(createActiveMission(selectedMission, memberIds, now));
+    dispatchMission(createActiveMission(selectedMission, memberIds, mercContractIds, now));
     memberIds.forEach((id) => updateMemberStatus(id, 'on-mission'));
+    if (mercContractIds.length > 0) markMercsOnQuest(mercContractIds, selectedMission.id);
     setSelectedId(null);
     setMobileView('list');
     playSFX(AUDIO.SFX_INK_STAMP);

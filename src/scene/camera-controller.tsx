@@ -15,7 +15,7 @@ import * as THREE from 'three';
 import { useGameStore } from '@/game/state/store';
 
 // Default isometric offset (initial camera [15,10,14] minus target [5,0,3.5])
-const CAM_OFFSET_DEFAULT: [number, number, number] = [10, 10, 10.5];
+const CAM_OFFSET_DEFAULT: [number, number, number] = [8, 5.5, 8.5];
 
 // Quest-board focus: pulls the camera in to the drum and lowers eye-line for a
 // cinematic close-up. Y kept above ground to avoid clipping the drum mesh.
@@ -34,7 +34,7 @@ export function CameraController() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const controlsRef = useRef<any>(null);
   const goalTarget = useRef(new THREE.Vector3(5, 0, 3.5));
-  const goalPosition = useRef(new THREE.Vector3(15, 10, 14));
+  const goalPosition = useRef(new THREE.Vector3(13, 5.5, 12));
 
   // Sync goal vectors and kick first invalidation when target or focus changes
   useEffect(() => {
@@ -84,8 +84,8 @@ export function CameraController() {
       enableRotate={false}
       enablePan={!isBuildMode && userControlsEnabled}
       enableZoom={userControlsEnabled}
-      minZoom={40}
-      maxZoom={150}
+      minZoom={140}
+      maxZoom={160}
     />
   );
 }

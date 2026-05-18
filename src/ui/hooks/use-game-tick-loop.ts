@@ -5,22 +5,18 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useGameStore } from '@/game/state/store';
+import { GAME_TIME_MULTIPLIER, MS_PER_GAME_DAY } from '@/game/state/clock-slice';
 import { processMissionTick, processInjuryRecovery } from '@/game/systems/mission-tick';
 import { shouldAdvanceTutorial, getNextStep } from '@/game/systems/tutorial-manager';
-import { generateMercenaries } from '@/game/systems/mercenary-generator';
 import { processFacilityProduction, processLoggingSiteTick } from '@/game/systems/facility-production-system';
 import { processStoneQuarryTick } from '@/game/systems/stone-quarry-production-system';
 import { advanceWorkshopQueues } from '@/game/systems/workshop-offline-system';
 import { advanceAlchemyQueues } from '@/game/systems/alchemy-production-system';
 import type { ItemID } from '@/game/data/items';
 import type { EquipmentItem, Member, MemberEquipment } from '@/game/state/game-state';
-import { calcTotalUpkeep } from '@/game/systems/upkeep-system';
 import { MISSIONS } from '@/game/data/missions';
 import { playSFX } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
-
-const TAVERN_REFRESH_MS = 4 * 60 * 60 * 1000; // 4 real-time hours
-const TAVERN_MERCENARY_COUNT = 3;
 
 export function useGameTickLoop() {
   const workerRef = useRef<Worker | null>(null);
@@ -109,9 +105,13 @@ export function useGameTickLoop() {
       if (next) store.setTutorialStep(next);
     }
 
-    // Refresh tavern mercenaries every 4 real-time hours (or on first load when lastRefreshTime=0)
-    if (now - store.tavern.lastRefreshTime >= TAVERN_REFRESH_MS) {
-      store.refreshTavern(generateMercenaries(TAVERN_MERCENARY_COUNT));
+    // Tavern daily-tick (AD3 — inline, guarded by `lastDayProcessed` for idempotency).
+    {
+      const state = useGameStore.getState();
+      const currentDay = Math.floor(state.gameTime / MS_PER_GAME_DAY);
+      if (currentDay !== state.tavern.lastDayProcessed) {
+        state.tickTavernDay(currentDay);
+      }
     }
   }, []);
 
@@ -126,9 +126,8 @@ export function useGameTickLoop() {
 
       if (gameDays > 0) {
         const allMembers = store.founder ? [store.founder, ...store.roster] : store.roster;
-        const dailyUpkeep = calcTotalUpkeep(allMembers);
         const results = processFacilityProduction(
-          store.facilities, allMembers, gameDays, dailyUpkeep,
+          store.facilities, allMembers, gameDays,
         );
 
         // Apply EXP gains (Training Yard)
@@ -169,17 +168,10 @@ export function useGameTickLoop() {
           }
         }
 
-        // Apply tavern upkeep savings
-        const tavernResult = results.find((r) => r.facilityType === 'tavern');
-        if (tavernResult && tavernResult.upkeepSaved > 0) {
-          store.addGold(tavernResult.upkeepSaved);
-        }
-
         // Store report for popup (only if any production occurred)
         const hasProduction = results.some((r) =>
           Object.keys(r.expGains).length > 0 ||
-          Object.keys(r.itemGains).length > 0 ||
-          r.upkeepSaved > 0,
+          Object.keys(r.itemGains).length > 0,
         );
         if (hasProduction) {
           useGameStore.setState({
@@ -289,6 +281,18 @@ export function useGameTickLoop() {
             useGameStore.getState().applyAlchemyProduction({ acXpGains: al.acXpGains });
           }
         }
+      }
+    }
+
+    // Tavern offline catch-up (AD4): single jump to current game-day, no backlog.
+    // Compute the post-offline game-day from the elapsed wall-clock; tickTavernDay is idempotent,
+    // so the subsequent handleTick(Date.now()) won't double-fire.
+    {
+      const offlineState = useGameStore.getState();
+      const projectedGameTime = offlineState.gameTime + (Date.now() - offlineState.realTimeLastTick) * GAME_TIME_MULTIPLIER;
+      const currentDayAfterOffline = Math.floor(projectedGameTime / MS_PER_GAME_DAY);
+      if (currentDayAfterOffline !== offlineState.tavern.lastDayProcessed) {
+        offlineState.tickTavernDay(currentDayAfterOffline);
       }
     }
 

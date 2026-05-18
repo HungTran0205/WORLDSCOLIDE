@@ -61,7 +61,129 @@
   "common": {
     "save": "Lưu",
     "cancel": "Hủy",
-    "delete": "Xóa"
+    "delete": "Xóa",
+    "ok": "OK",
+    "close": "Đóng"
+  },
+  "tavern": {
+    "title": "Quán Trọ",
+    "visitorsTooltip": "{{count}} vị khách hôm nay · tối đa {{cap}}",
+    "keeper": {
+      "assign": "Chỉ định quản gia",
+      "assignHint": "Chỉ định quản gia để thu hút khách",
+      "noneAssigned": "Chưa có quản gia — không có khách ghé qua.",
+      "noneEligible": "Không có thành viên rảnh",
+      "choose": "Chọn"
+    },
+    "rumor": {
+      "vague": "Có lữ khách sắp ghé qua.",
+      "class": "Một {{archetype}} lữ hành sắp đến.",
+      "specific": "Một {{archetype}} người {{civ}} sẽ tới.",
+      "tomorrow": "ngày mai"
+    },
+    "rep": {
+      "label": "Danh tiếng",
+      "aria": "Chỉ báo danh tiếng quán trọ",
+      "buzzing": "Quán trọ nhộn nhịp",
+      "poor": "Tiếng đồn không hay",
+      "unknown": "Tin đồn đang lan…"
+    },
+    "reroll": {
+      "label": "Làm mới",
+      "tooltip": "Làm mới danh sách khách (1 lần/ngày)",
+      "alreadyUsed": "Đã dùng hôm nay",
+      "needGold": "Cần {{cost}}g"
+    },
+    "empty": {
+      "noKeeper": "Chỉ định quản gia để bắt đầu thu hút khách.",
+      "noVisitors": "Tin đồn đang lan… khách sẽ đến vào ngày mai."
+    },
+    "card": {
+      "veteran": "Cựu chiến — đã từng làm việc cho guild.",
+      "lockedHint": "Cần Keeper INT + Cấp quán ≥ {{score}} để mở khóa.",
+      "mood": "Tâm trạng",
+      "demand": "Đòi"
+    },
+    "action": {
+      "negotiate": "Đàm phán",
+      "hireMerc": "Thuê Lính",
+      "notEnoughGold": "Không đủ vàng (cần {{cost}}g)"
+    },
+    "negotiate": {
+      "title": "Đàm Phán",
+      "keeperNeg": "Đàm phán",
+      "successChance": "Tỉ lệ Thành công",
+      "lockedHint": "Tăng Keeper INT để xem tỉ lệ.",
+      "demand": "Đòi",
+      "neg": "Đàm",
+      "roll": "Tung xúc xắc →",
+      "rolling": "Đang tung…",
+      "noKeeperTitle": "Chưa có Quản gia",
+      "noKeeperBody": "Chỉ định quản gia trước khi đàm phán."
+    },
+    "modifier": {
+      "treasuryFlex": "Khoe Của",
+      "tavernLevel": "Cấp Quán {{lvl}}",
+      "guildFame": "Danh Vọng",
+      "traitMatch": "Trùng Tính Cách ({{n}})",
+      "refusal": "Bị Từ Chối ({{n}})",
+      "tavernRep": "Danh Tiếng Quán",
+      "postInsultDebuff": "Vừa Bị Xúc Phạm — khách dè chừng",
+      "giftPlaceholder": "Quà Tặng — chọn vật phẩm",
+      "net": "Tổng Modifier"
+    },
+    "gift": {
+      "title": "Chọn Quà Tặng",
+      "empty": "Kho trống — không có quà.",
+      "none": "Không tặng",
+      "filter": {
+        "all": "Tất cả",
+        "consumable": "Tiêu dùng",
+        "material": "Nguyên liệu",
+        "equipment": "Trang bị"
+      }
+    },
+    "outcome": {
+      "success": "ĐÃ CHIÊU MỘ",
+      "counter": "ĐỀ NGHỊ NGƯỢC",
+      "soft-refuse": "Từ chối lịch sự",
+      "hard-refuse": "Khước từ",
+      "insult": "BỊ XÚC PHẠM",
+      "comfortable": "thành công thoải mái",
+      "tight": "thành công sát nút"
+    },
+    "counter": {
+      "title": "Đề Nghị Ngược",
+      "body": "{{archetype}} không gia nhập guild — nhưng sẵn sàng làm lính đánh thuê nếu được trả xứng đáng.",
+      "directCost": "Phí thuê",
+      "decline": "Để Họ Đi",
+      "accept": "Đồng ý (+20%)",
+      "premiumHint": "Mẹo: Thuê lính trực tiếp rẻ hơn. Đây là giá premium."
+    },
+    "hireMerc": {
+      "title": "Thuê {{archetype}} làm lính đánh thuê?",
+      "body": "Lính đánh thuê chỉ tham gia một nhiệm vụ.",
+      "cost": "Chi phí",
+      "gold": "Ngân quỹ",
+      "slots": "Ô lính",
+      "slotsFullHint": "Đầy ô lính. Sa thải một hoặc nâng cấp Sảnh.",
+      "confirm": "Xác nhận Thuê"
+    },
+    "reinvite": {
+      "title": "Mời lại {{archetype}}?",
+      "body": "Cựu chiến này ấn tượng với guild và có thể gia nhập với tư cách thành viên chính thức.",
+      "bonus": "Bonus Mời Lại",
+      "keeper": "Quản gia",
+      "decline": "Để Họ Đi",
+      "accept": "Mời Ngay"
+    },
+    "insult": {
+      "title": "{{archetype}} bỏ đi giận dữ!",
+      "stormOff": "{{archetype}} bỏ đi, cảm thấy bị xúc phạm bởi lời đề nghị của bạn.",
+      "goneForever": "Tin đồn lan đi. Họ sẽ không quay lại.",
+      "consequences": "Danh tiếng Quán -1. Khách khác dè chừng hơn trong 24h.",
+      "acknowledge": "Đã hiểu"
+    }
   },
   "skills": { "danh_manh": "Đánh Mạnh" },
   "stats": {

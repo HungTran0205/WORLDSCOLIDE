@@ -62,6 +62,8 @@ export function generateMercenaries(count: number): Member[] {
       isFounder: false,
       rank: 'MERCENARY' as const,
       missionsCompleted: 0,
+      rarity: 1 as const,
+      traits: [],
     };
   });
 }

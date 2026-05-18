@@ -554,6 +554,87 @@ function migrateV22toV23(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+/**
+ * v23→v24: Tavern Facility overhaul.
+ *  - Member: normalize `rarity` to required 1 (legacy default); ensure `traits: []`.
+ *  - TavernState: replace `{ lastRefreshTime, availableMercenaries }` with the new
+ *    recruitment-hub shape. `currentRoster` starts empty; next day-tick respawns it.
+ *  - ActiveMission: add parallel `mercContractIds: []` (AD1).
+ */
+// Game-day scale — gameTime is stored in game-milliseconds (see clock-slice).
+// Kept local to avoid cross-imports from state into save layer; value MUST match MS_PER_GAME_DAY.
+const MIGRATION_MS_PER_GAME_DAY = 86_400_000;
+
+function migrateV23toV24(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+
+  const normalizeMember = (m: AnyRecord): AnyRecord => ({
+    ...m,
+    rarity: typeof m.rarity === 'number' ? m.rarity : 1,
+    traits: Array.isArray(m.traits) ? m.traits : [],
+  });
+
+  const founder = gs.founder ? normalizeMember(gs.founder as AnyRecord) : null;
+  const roster = Array.isArray(gs.roster)
+    ? (gs.roster as AnyRecord[]).map(normalizeMember)
+    : [];
+
+  const currentDay = Math.floor(((gs.gameTime as number) ?? 0) / MIGRATION_MS_PER_GAME_DAY);
+
+  const tavern = {
+    level: 1 as const,
+    keeperId: null,
+    reputation: 0,
+    currentRoster: [],
+    rerolledToday: false,
+    factionBias: null,
+    rumor: null,
+    mercContracts: [],
+    pendingPrompts: [],
+    lastDayProcessed: currentDay,
+    reputationLastTickWeek: currentDay,
+    globalNegotiationDebuffUntilDay: null,
+    veteranPool: [],
+  };
+
+  const activeMissions = Array.isArray(gs.activeMissions)
+    ? (gs.activeMissions as AnyRecord[]).map((am) => ({
+        ...am,
+        mercContractIds: Array.isArray(am.mercContractIds) ? am.mercContractIds : [],
+      }))
+    : gs.activeMissions;
+
+  return {
+    ...envelope,
+    version: 24,
+    gameState: {
+      ...gs,
+      founder,
+      roster,
+      tavern,
+      activeMissions,
+    } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
+/**
+ * v24→v25: Phase 04 merc lifecycle adds `tavern.veteranPool: VeteranMercSummary[]`.
+ * In-flight v24 saves written before the field existed need backfill.
+ */
+function migrateV24toV25(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+  const tavern = (gs.tavern ?? {}) as AnyRecord;
+  const migratedTavern = {
+    ...tavern,
+    veteranPool: Array.isArray(tavern.veteranPool) ? tavern.veteranPool : [],
+  };
+  return {
+    ...envelope,
+    version: 25,
+    gameState: { ...gs, tavern: migratedTavern } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -572,6 +653,8 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   20: migrateV20toV21,
   21: migrateV21toV22,
   22: migrateV22toV23,
+  23: migrateV23toV24,
+  24: migrateV24toV25,
 };
 
 /**
