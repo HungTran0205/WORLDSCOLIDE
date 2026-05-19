@@ -112,6 +112,7 @@ export function AtmosphericWebGPUPass({ preset, overrides }: AtmosphericWebGPUPa
       const { chromaticAberrationNode } = await import('./tsl/chromatic-aberration-node');
       const { tiltShiftNode } = await import('./tsl/tilt-shift-node');
       const { heatHazeNode } = await import('./tsl/heat-haze-node');
+      const { pixelationNode } = await import('./tsl/pixelation-node');
       const { Vector2 } = await import('three');
       if (cancelled) return;
 
@@ -161,6 +162,8 @@ export function AtmosphericWebGPUPass({ preset, overrides }: AtmosphericWebGPUPa
       // from clock.elapsedTime in useFrame below.
       const heatHazeIntensityU = (uniform as any)(0);
       const heatHazeTimeU = (uniform as any)(0);
+      // HARDCODED PIXELATION TEST — set to 1 to disable, 4 = chunky, 8 = retro
+      const pixelGranularityU = (uniform as any)(2);
 
       // Build chain via single mutable local. Each phase reassigns once.
       // WebGL stack order: DOF → TiltShift → Bloom → grade → Vignette → ChromAb → tonemap.
@@ -177,6 +180,11 @@ export function AtmosphericWebGPUPass({ preset, overrides }: AtmosphericWebGPUPa
       chain = colorGradeNode(chain, hueU, satU, brightU, contU);
       chain = vignetteNode(chain, vignetteOffsetU, vignetteDarknessU);
       chain = chromaticAberrationNode(chain, chromAbOffsetU);
+      // HARDCODED PIXELATION TEST — pixelates EVERYTHING (3D + sprites + text).
+      // Sprites are already pixel-art → expect double-pixelation. Set
+      // pixelGranularityU.value = 1 to disable. Revisit with layer-split if
+      // the look is worth keeping.
+      chain = pixelationNode(chain, pixelGranularityU);
       // === ACES MUST BE LAST. Insert new effects ABOVE this line. ===
       chain = acesTonemapNode(chain);
 

@@ -35,7 +35,21 @@ export interface TorchFireVfxProps {
   colorStart?: [string, string];
   /** Override ending (edge / dying) particle colors. Default = orange→red. */
   colorEnd?: [string, string];
+  /** When true, skip leva controls and use baked defaults (dx=0, dz=0,
+   *  dy=offsetY, intensity=2.0, turbulence=0.5). Title scene sets this so
+   *  no debug folder pollutes the leva store. */
+  disableLeva?: boolean;
 }
+
+/** Mirrors the leva schema defaults — used by the leva-free dispatch path. */
+type TorchFireParams = {
+  dx: number;
+  dy: number;
+  dz: number;
+  spriteScale: number;
+  intensity: number;
+  turbulence: number;
+};
 
 /** Build a stable unique name for VFXParticles registration based on debugLabel. */
 function useParticleName(debugLabel: string, suffix: 'fire' | 'smoke'): string {
@@ -45,30 +59,54 @@ function useParticleName(debugLabel: string, suffix: 'fire' | 'smoke'): string {
   );
 }
 
-export function TorchFireVfx({
-  offsetY,
-  scale,
+/** Public component — dispatches between leva-fed and leva-free variants. */
+export function TorchFireVfx(props: TorchFireVfxProps) {
+  return props.disableLeva
+    ? <TorchFireVfxStatic {...props} />
+    : <TorchFireVfxWithLeva {...props} />;
+}
+
+/** Leva-driven variant — used by the in-game guild hall / combat scenes. */
+function TorchFireVfxWithLeva(props: TorchFireVfxProps) {
+  const { offsetY, scale, debugLabel = 'Fire' } = props;
+  const dbg = useControls(debugLabel, {
+    dx:          { value: 0,        min: -5,  max: 5,  step: 0.05, label: 'X offset' },
+    dy:          { value: offsetY,  min: -2,  max: 10, step: 0.05, label: 'Y offset' },
+    dz:          { value: 0,        min: -5,  max: 5,  step: 0.05, label: 'Z offset' },
+    spriteScale: { value: Math.max(0.5, Math.min(scale, 3.0)), min: 0.1, max: 5, step: 0.05, label: 'sprite scale' },
+    intensity:   { value: 2.0,      min: 0,   max: 12, step: 0.1,  label: 'fire intensity' },
+    turbulence:  { value: 0.5,      min: 0,   max: 5,  step: 0.05, label: 'turbulence' },
+  }, { collapsed: true });
+  return <TorchFireVfxImpl {...props} params={dbg} />;
+}
+
+/** Leva-free variant — used by the title scene. Defaults match the leva
+ *  schema's `value:` fields verbatim so visuals stay identical. */
+function TorchFireVfxStatic(props: TorchFireVfxProps) {
+  const params: TorchFireParams = {
+    dx: 0,
+    dy: props.offsetY,
+    dz: 0,
+    spriteScale: Math.max(0.5, Math.min(props.scale, 3.0)),
+    intensity: 2.0,
+    turbulence: 0.5,
+  };
+  return <TorchFireVfxImpl {...props} params={params} />;
+}
+
+function TorchFireVfxImpl({
   debugLabel = 'Fire',
   lowQuality = false,
   intensityMul = 1,
   turbulenceMul = 1,
   colorStart = DEFAULT_FIRE_COLOR_START,
   colorEnd = DEFAULT_FIRE_COLOR_END,
-}: TorchFireVfxProps) {
+  params: dbg,
+}: TorchFireVfxProps & { params: TorchFireParams }) {
   // Static core flame sprite (same asset as legacy, preserves visual identity)
   const fireTex = useTexture('/arena/cave/props/fire-flame.png');
   fireTex.magFilter = THREE.NearestFilter;
   fireTex.minFilter = THREE.NearestFilter;
-
-  // Leva controls — mirror legacy component's knobs + VFX-specific additions
-  const dbg = useControls(debugLabel, {
-    dx:          { value: 0,        min: -5,  max: 5,  step: 0.05, label: 'X offset' },
-    dy:          { value: offsetY,  min: -2,  max: 10, step: 0.05, label: 'Y offset' },
-    dz:          { value: 0,        min: -5,  max: 5,  step: 0.05, label: 'Z offset' },
-    spriteScale: { value: Math.max(0.5, Math.min(scale, 3.0)), min: 0.1, max: 5, step: 0.05, label: 'sprite scale' },
-    intensity:   { value: 4.0,      min: 0,   max: 12, step: 0.1,  label: 'fire intensity' },
-    turbulence:  { value: 1.2,      min: 0,   max: 5,  step: 0.05, label: 'turbulence' },
-  }, { collapsed: true });
 
   const ps = dbg.spriteScale;
   const particleScale = lowQuality ? 0.4 : 1;
@@ -121,7 +159,7 @@ export function TorchFireVfx({
         fadeSize={[0.3, 1.2]}
         blending={Blending.ADDITIVE}
         intensity={dbg.intensity * intensityMul}
-        turbulence={{ intensity: dbg.turbulence * turbulenceMul, frequency: 2, speed: 1.5 }}
+        turbulence={{ intensity: dbg.turbulence * turbulenceMul, frequency: 2, speed: 1 }}
       />
 
       {/* Smoke particles — normal blending, grey, drifts and spreads above flame */}
