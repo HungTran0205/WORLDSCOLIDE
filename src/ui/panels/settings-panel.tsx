@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { useGameStore } from '@/game/state/store';
 import { useUiStore } from '@/game/state/ui-store';
+import { graphicsTierFlags } from '@/game/state/guild-slice';
 import { setMusicVolume, setSFXVolume, setMute } from '@/audio/audio-manager';
 import { saveManager } from '@/game/save/save-manager';
 import { saveSlot } from '@/game/save/save-storage';
@@ -26,19 +27,11 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
   const [importSuccess, setImportSuccess] = useState(false);
   const [tutorialsReset, setTutorialsReset] = useState(false);
 
-  const handleShadows = (enabled: boolean) => {
-    if (enabled === settings.shadowsEnabled) return;
-    updateSettings({ shadowsEnabled: enabled });
-  };
-
-  const handleBloom = (enabled: boolean) => {
-    if (enabled === settings.bloomEnabled) return;
-    updateSettings({ bloomEnabled: enabled });
-  };
-
   const handleQuality = async (q: 'high' | 'low') => {
     if (q === settings.graphicsQuality) return;
-    updateSettings({ graphicsQuality: q });
+    // Cascade all dependent flags so the scene matches the tier without
+    // requiring separate toggles (also fixes title <-> in-game sync drift).
+    updateSettings(graphicsTierFlags(q));
     // Save first so progress isn't lost on reload
     await saveManager.save(() => useGameStore.getState() as unknown as Record<string, unknown>, true);
     window.location.reload();
@@ -146,40 +139,9 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
           ))}
         </div>
 
-        <div style={{ marginTop: 12, marginBottom: 6 }}>Shadows</div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {([true, false] as const).map((v) => (
-            <button
-              key={String(v)}
-              className="panel-btn"
-              style={{
-                borderColor: settings.shadowsEnabled === v ? '#4caf50' : undefined,
-                opacity: settings.shadowsEnabled === v ? 1 : 0.6,
-              }}
-              onClick={() => handleShadows(v)}
-            >
-              {v ? 'On' : 'Off'}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ marginTop: 12, marginBottom: 6 }}>Bloom</div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {([true, false] as const).map((v) => (
-            <button
-              key={String(v)}
-              className="panel-btn"
-              style={{
-                borderColor: settings.bloomEnabled === v ? '#4caf50' : undefined,
-                opacity: settings.bloomEnabled === v ? 1 : 0.6,
-              }}
-              onClick={() => handleBloom(v)}
-            >
-              {v ? 'On' : 'Off'}
-            </button>
-          ))}
-        </div>
-
+        {/* Shadows + Bloom controls removed: shadows crash the WebGPU pipeline
+            (samplers exceed per-stage limit) and bloom is now implicit in the
+            graphics tier above. Tier preset cascades both flags. */}
       </div>
 
       <div className="panel-section">
