@@ -9,6 +9,35 @@ All notable changes to Worlds Collide are documented in this file. The format fo
 
 ## [Unreleased] — 2026-05-12 (Quest Board Diegetic Redesign + Tiles + Platformer + HD-2D Atmospheric)
 
+### feat(ui): title screen Settings + Credits overlays (Phase 5 Title Screen 2000s A.C. Redesign)
+
+Title screen redesign Phase 5: two modal overlays for Settings and Credits. Settings panel features BGM/SFX volume sliders, language toggle (en/vi via i18next), and graphics quality selector (low/med/high); all settings persist to localStorage. Credits overlay displays scrollable credits list with role/name pairs (hardcoded, non-localized). Both overlays triggered from main menu via mode state machine, back button returns to main menu. Settings changes apply live (volume immediate feedback). CSS appended to `title-screen.css` with `.title-settings` and `.title-credits` styling.
+
+**New files**:
+- `src/ui/screens/title-screen-settings.tsx` — Settings form component with state management
+- `src/ui/screens/title-screen-credits.tsx` — Scrollable credits list component
+
+**Modified**:
+- `src/ui/screens/title-screen.tsx` — Wired `mode === 'settings'` and `mode === 'credits'` render branches
+- `src/ui/styles/title-screen.css` — Added Phase 5 overlay CSS (settings sliders, language radio buttons, credits list styling)
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; overlays render, back button functional, localStorage persistence verified.
+
+**Plan reference**: `plans/260519-0926-title-screen-2000s-ac/phase-05-overlays.md`
+
+### feat(audio): title-screen audio crossfade + BGM_TITLE key registration (Phase 6 Title Screen 2000s A.C. Redesign)
+
+Phase 6 completes title-screen-2000s-ac flow integration: splash → title → game audio transitions now use `crossfadeBGM(key, durationMs)` 1500ms fade function. Added `BGM_TITLE` key to audio registry; `crossfadeBGM` uses Howler.js native fade + setTimeout cleanup for clean BGM cutoff during transitions. Audio asset (bgm-title.mp3/mp3) TBD Phase 7. System gracefully handles missing assets (Howler logs 404 silently, Havok continues).
+
+**Modified**:
+- `src/audio/audio-keys.ts` — Added `BGM_TITLE: 'bgm-title'` constant
+- `src/audio/audio-manager.ts` — Registered `bgm-title` Howl + `crossfadeBGM(key, durationMs=1500)` function
+- `src/ui/app.tsx` — Audio transition handlers now use `crossfadeBGM` instead of `playBGM`; `handleReturnToTitle` crossfades back; `handleSplashReady` lazy-inits audio
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; splash → title → game flow audio transitions working; no BGM_TITLE asset errors (Howler graceful 404 handling).
+
+**Plan reference**: `plans/260519-0926-title-screen-2000s-ac/phase-06-app-integration-audio-crossfade.md`
+
 ### feat(atmospheric): per-room theming foundation — context provider, preset registry, active-room detection (Phase 01)
 
 HD-2D atmospheric depth system Phase 01: pure plumbing foundation for per-room post-FX, particles, and lighting. New module `src/scene/atmospheric/` (7 files) introduces `AtmosphereProvider` context, preset registry, active-room detection via camera position, and smooth 500ms lerp transitions. `GameSettings.atmosphericEnabled` toggle added; disabled = provider returns null (zero overhead). Phases 02–05 consume this plumbing to mount post-FX stack, particles, volumetric lighting, and diegetic UI. Zero user-visible changes at this phase.

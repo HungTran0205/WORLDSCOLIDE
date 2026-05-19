@@ -1,4 +1,5 @@
 export const AUDIO = {
+  BGM_TITLE: 'bgm-title',
   BGM_GUILD: 'bgm-guild',
   BGM_COMBAT: 'bgm-combat',
   SFX_CLICK: 'sfx-click',

@@ -84,8 +84,8 @@ export function CameraController() {
       enableRotate={false}
       enablePan={!isBuildMode && userControlsEnabled}
       enableZoom={userControlsEnabled}
-      minZoom={140}
-      maxZoom={160}
+      minZoom={180}
+      maxZoom={220}
     />
   );
 }

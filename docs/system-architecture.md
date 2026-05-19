@@ -2204,6 +2204,8 @@ getRoomBounds(room: Room):
 | File | Purpose |
 |------|---------|
 | `title-screen.tsx` | Save slot selection UI, continue/new/delete actions |
+| `title-screen-settings.tsx` | Settings overlay: BGM/SFX volume, language (en/vi), graphics quality (low/med/high) — NEW v1.29 Phase 5 |
+| `title-screen-credits.tsx` | Credits overlay: scrollable credits list with role/name pairs — NEW v1.29 Phase 5 |
 | `save-slot-card.tsx` | Individual slot card (metadata, buttons) |
 | `game-screen.tsx` | Game world + HUD + panels + tick loop (extracted from App.tsx) |
 
@@ -2347,8 +2349,8 @@ getRoomBounds(room: Room):
 ### `/audio/` — Audio Management
 | File | Purpose |
 |------|---------|
-| `audio-manager.ts` | Audio key registry + Howler.js management, includes 6 new keys (v1.9): BGM_COMBAT, SFX_CRIT, SFX_DODGE, SFX_DEATH, SFX_SKILL, SFX_RECRUIT |
-| `audio-keys.ts` | Enum of all audio keys |
+| `audio-manager.ts` | Audio key registry + Howler.js management, includes 6 new keys (v1.9): BGM_COMBAT, SFX_CRIT, SFX_DODGE, SFX_DEATH, SFX_SKILL, SFX_RECRUIT; `crossfadeBGM(key, durationMs=1500)` for smooth BGM transitions (Phase 6 Title Screen 2000s A.C.) |
+| `audio-keys.ts` | Enum of all audio keys (includes BGM_TITLE for title screen BGM) |
 
 ## Diegetic UI Pattern (Quest Board v1.28+)
 

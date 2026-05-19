@@ -22,6 +22,12 @@ interface GuildHallWallProps {
   gridDepth?: number;
   /** Wall height in world units (default: 5) */
   wallHeight?: number;
+  /** Override back-wall texture URL (default: standard Linh Son guild-hall back wall).
+   *  Used by the title scene to swap in a dedicated cinematic backdrop without
+   *  affecting the in-game hall. */
+  backSrc?: string;
+  /** Override left-wall texture URL (default: standard Linh Son guild-hall left wall). */
+  leftSrc?: string;
 }
 
 const WALL_MATERIAL_PROPS = { roughness: 0.9, metalness: 0 } as const;
@@ -64,8 +70,14 @@ function LeftWall({ gridDepth, wallHeight, texture }: {
 }
 
 /** Diorama walls — back + left — forming an HD-2D interior corner. */
-export function GuildHallWall({ gridWidth = 10, gridDepth = 7, wallHeight = 5 }: GuildHallWallProps) {
-  const [backTexture, leftTexture] = useTexture([BACK_WALL_SPRITE, LEFT_WALL_SPRITE]);
+export function GuildHallWall({
+  gridWidth = 10,
+  gridDepth = 7,
+  wallHeight = 5,
+  backSrc = BACK_WALL_SPRITE,
+  leftSrc = LEFT_WALL_SPRITE,
+}: GuildHallWallProps) {
+  const [backTexture, leftTexture] = useTexture([backSrc, leftSrc]);
 
   return (
     <>
