@@ -141,6 +141,11 @@ export function TavernWalls({ cx, cz }: { cx: number; cz: number }) {
   const foodTex = useDecalTexture(FOOD_STRIP_TEX);
   const crystalTex = useDecalTexture(CRYSTAL_TEX);
   const vineTex = useDecalTexture(VINE_TEX);
+  // Decals temporarily disabled (non-transparent PNGs render as white boxes).
+  // Keep textures preloaded + constants/component referenced so re-enabling is
+  // a single uncomment of the JSX blocks below. Remove this `void` line when
+  // re-enabling.
+  void { drumTex, foodTex, crystalTex, vineTex, VINE_WIDTH, VINE_HEIGHT, DRUM_SIZE, FOOD_STRIP_WIDTH, FOOD_STRIP_HEIGHT, WallDecal };
 
   // Left wall texture — full repeat across 7×3 face (solid wall, no opening).
   const leftTex = useMemo(() => {
@@ -196,13 +201,8 @@ export function TavernWalls({ cx, cz }: { cx: number; cz: number }) {
         />
       </mesh>
 
-      {/* ── Linh Son cavern signature: cyan crystal clusters on left wall ───
-          Two embeds at different positions/scales to break the empty wall:
-          one front-of-bar (camera-facing area, large), one back-corner (above
-          eye, small) for background depth. Each is a transparent decal
-          rotated +90° around Y so it faces into the room (+X).
-          meshBasicMaterial unlit keeps the baked cyan glow vivid regardless
-          of room ambient (low decay so the cave still feels dim). */}
+      {/* TEMP DISABLED — PNG decals lack alpha, render as white boxes.
+          Re-enable once art delivers proper transparent textures.
       <WallDecal
         position={[ox + WALL_THICKNESS / 2 + 0.02, 1.6, oz + 5.8]}
         width={1.4}
@@ -215,10 +215,6 @@ export function TavernWalls({ cx, cz }: { cx: number; cz: number }) {
         height={0.9}
         tex={crystalTex}
       />
-      {/* Cyan glowing vines drooping from the top of the left wall — 2 corners
-          for frame-corner accent. Top edge of plane sits flush with wall top
-          (y=WALL_HEIGHT) so the rock-anchor in the PNG looks like it grows
-          from the ceiling. Slight forward offset prevents z-fighting. */}
       <WallDecal
         position={[ox + WALL_THICKNESS / 2 + 0.025, WALL_HEIGHT - VINE_HEIGHT / 2, oz + 0.6]}
         width={VINE_WIDTH}
@@ -231,6 +227,7 @@ export function TavernWalls({ cx, cz }: { cx: number; cz: number }) {
         height={VINE_HEIGHT}
         tex={vineTex}
       />
+      */}
       {/* Cyan ambient bleed — point light embedded near the large crystal
           cluster so it casts cool reflection on nearby props/floor and reads
           as a real light source (Linh Son chiaroscuro signature). */}
@@ -354,11 +351,8 @@ export function TavernWalls({ cx, cz }: { cx: number; cz: number }) {
       {/* ── Warm god beam pouring from cave mouth into the room ────────────── */}
       <ForestGodBeam x={cx} y={OPENING_HEIGHT * 0.65} z={oz + WALL_THICKNESS / 2 + 0.05} />
 
-      {/* ── Hero prop: Bronze Dong Son drum on back wall LEFT chunk ─────────
-          Centered on the left chunk (x=leftChunkCx) at upper-mid height so
-          camera reads it instantly as the room's hero piece (§13.2). Slight
-          forward offset (z+0.02) prevents z-fighting with the wall face.
-          alphaTest cuts the transparent PNG background. */}
+      {/* TEMP DISABLED — drum + food-strip PNGs lack alpha, render as white
+          boxes. Re-enable once art delivers proper transparent textures.
       <mesh
         position={[leftChunkCx, 2.15, oz + WALL_THICKNESS / 2 + 0.02]}
       >
@@ -370,12 +364,6 @@ export function TavernWalls({ cx, cz }: { cx: number; cz: number }) {
           toneMapped={false}
         />
       </mesh>
-
-      {/* ── Kitchen storytelling: dried fish/peppers/herbs hanging strip ────
-          Sits below the drum on the same chunk. PNG content occupies the
-          lower-half of the 16:9 image (rope near top, items dangling) — so
-          the rendered plane center is positioned to align visible items
-          around y=1.0-1.4 in world space. */}
       <mesh
         position={[leftChunkCx, 1.25, oz + WALL_THICKNESS / 2 + 0.04]}
       >
@@ -387,6 +375,7 @@ export function TavernWalls({ cx, cz }: { cx: number; cz: number }) {
           toneMapped={false}
         />
       </mesh>
+      */}
 
       {/* ── Warm directional light leaking through the opening ─────────────── */}
       <directionalLight
