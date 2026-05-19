@@ -53,7 +53,24 @@ interface DrumFireVfxProps {
 /** Baked-in defaults — match the leva schema values verbatim. Used by the
  *  static dispatch path (title scene) so visuals stay identical even when
  *  leva is bypassed. */
-const DRUM_FIRE_DEFAULTS = {
+type DrumFireSpotParams = {
+  posY: number;
+  targetY: number;
+  color: string;
+  intensity: number;
+  distance: number;
+  angle: number;
+  penumbra: number;
+  decay: number;
+};
+
+type DrumFireParams = {
+  main: DrumFireSpotParams;
+  flicker: { enabled: boolean; amount: number; speed: number };
+  fill: DrumFireSpotParams;
+};
+
+const DRUM_FIRE_DEFAULTS: DrumFireParams = {
   main: {
     posY: 0.45,
     targetY: 5.8,
@@ -75,12 +92,6 @@ const DRUM_FIRE_DEFAULTS = {
     penumbra: 1.95,
     decay: 2.6,
   },
-} as const;
-
-type DrumFireParams = {
-  main: typeof DRUM_FIRE_DEFAULTS.main;
-  flicker: typeof DRUM_FIRE_DEFAULTS.flicker;
-  fill: typeof DRUM_FIRE_DEFAULTS.fill;
 };
 
 const HOVER_LERP_RATE = 8; // 1/s — ~125ms to settle
