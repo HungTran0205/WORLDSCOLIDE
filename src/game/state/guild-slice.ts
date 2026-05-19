@@ -203,10 +203,26 @@ const DEFAULT_SETTINGS: GameSettings = {
   autoSkillDefault: true,
   graphicsQuality: 'high',
   shadowsEnabled: false,
-  bloomEnabled: false,
+  bloomEnabled: true,
   bloomThreshold: 0.85,
   atmosphericEnabled: true,
 };
+
+/**
+ * Resolve all dependent graphics flags from a single tier choice.
+ * High = atmospheric + bloom on (shadows stay off — WebGPU sampler limit).
+ * Low  = everything off for max perf.
+ * Used by both title-screen-settings and the in-game settings panel so the
+ * two stay in lockstep and saves don't drift between tier and flags.
+ */
+export function graphicsTierFlags(quality: 'high' | 'low'): Pick<
+  GameSettings,
+  'graphicsQuality' | 'shadowsEnabled' | 'bloomEnabled' | 'atmosphericEnabled'
+> {
+  return quality === 'high'
+    ? { graphicsQuality: 'high', shadowsEnabled: false, bloomEnabled: true, atmosphericEnabled: true }
+    : { graphicsQuality: 'low', shadowsEnabled: false, bloomEnabled: false, atmosphericEnabled: false };
+}
 
 const DEFAULT_TAVERN: TavernState = {
   level: 1,

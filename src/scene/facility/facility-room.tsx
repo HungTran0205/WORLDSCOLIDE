@@ -49,7 +49,7 @@ const FACILITY_TILE_PATH: Record<FacilityType, TileTextureSpec> = {
       '/tiles/2d/32px/forest-grass-32_0005.png',
     ],
   },
-  'stone-quarry': '/tiles/2d/32px/cave_0001.png',
+  'stone-quarry': '/tiles/2d/64px/stone-64_0002.png ',
   'alchemy-lab': {
     main: '/tiles/2d/64px/wood-guild-floor_0005.png',
     variants: [
