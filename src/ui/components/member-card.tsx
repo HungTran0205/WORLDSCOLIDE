@@ -2,6 +2,7 @@ import '@/ui/styles/member-card.css';
 import { useState } from 'react';
 import type { Member } from '@/game/state/game-state';
 import { getSpritePath } from '@/scene/sprites/sprite-path-resolver';
+import { resolveMemberMaskId, getMaskAssetPath } from '@/scene/sprites/mask-pool';
 import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
 import { GameIcon } from './game-icon';
@@ -33,7 +34,9 @@ interface MemberCardProps {
 /** Grid card for the member browser — avatar, name, rank, civ, top stats, status dot */
 export function MemberCard({ member, onClick }: MemberCardProps) {
   const [imgFailed, setImgFailed] = useState(false);
+  const [maskFailed, setMaskFailed] = useState(false);
   const avatarUrl = getAvatarUrl(member);
+  const maskUrl = getMaskAssetPath(resolveMemberMaskId(member), 'front');
   const civConfig = CIV_CONFIG[member.civilization as Civilization];
   const top2 = topTwoStats(member);
   const statusColor = STATUS_COLOR[member.status] ?? 'var(--ink-text-muted)';
@@ -58,6 +61,15 @@ export function MemberCard({ member, onClick }: MemberCardProps) {
           <img src={avatarUrl} alt={member.name} onError={() => setImgFailed(true)} />
         ) : (
           <div className="card-avatar-initials">{initials}</div>
+        )}
+        {!maskFailed && (
+          <img
+            className="card-mask-overlay"
+            src={maskUrl}
+            alt=""
+            aria-hidden
+            onError={() => setMaskFailed(true)}
+          />
         )}
       </div>
 

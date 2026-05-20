@@ -49,6 +49,8 @@ export function CombatPanelSkillBar() {
             <button
               key={ally.id}
               type="button"
+              // Stable hook for the Phase 06 coachmark on the primary skill (slot 1).
+              data-coach={idx === 0 ? 'skill-hotbar' : undefined}
               className={'combat-skill-icon' + (onCD ? ' combat-skill-icon--cd' : '')}
               onClick={() => {
                 if (onCD) return;

@@ -52,7 +52,7 @@ const FIGURES: MaskedFigureSpec[] = [
   // Stays on the warm SHADOW_TINT so the underlight reads on this figure only.
   {
     avatar: '/sprites/characters/LS-SWORD-M/animations/avatar/frame_000.png',
-    mask: '/sprites/mask/pick/mask-056.png',
+    mask: '/sprites/mask/mask-056.png',
     position: [0, 1, -1],
     scale: 1.5,
     maskOffsetX: 0,
@@ -61,7 +61,7 @@ const FIGURES: MaskedFigureSpec[] = [
   },
     {
     avatar: '/sprites/characters/LS-SWORD-M/animations/avatar/frame_000.png',
-    mask: '/sprites/mask/pick/mask-056.png',
+    mask: '/sprites/mask/mask-056.png',
     position: [-0.4, 0.3, 1.5],
     scale: 1,
     maskOffsetX: 0,
@@ -75,7 +75,7 @@ const FIGURES: MaskedFigureSpec[] = [
     scale: 1.3,
     maskOffsetX: 0,
     maskOffsetY: 0.12,
-    maskScale: 0.23,
+    maskScale: 0.3,
     tint: SHADOW_TINT_DEEP,
   },
   {

@@ -23,7 +23,7 @@ const ASSETS_PNG = [
   '/GuildHall/LinhSon/wall-left.png',
 
   // 5 mask sprite picks
-  '/sprites/mask/pick/mask-056.png',
+  '/sprites/mask/mask-056.png',
   '/sprites/mask/half-mask10.png',
   '/sprites/mask/gasf-mask20.png',
   '/sprites/mask/gasf-mask30.png',

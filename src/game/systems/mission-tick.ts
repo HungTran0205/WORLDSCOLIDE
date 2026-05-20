@@ -8,6 +8,7 @@ import { MISSIONS } from '@/game/data/missions';
 import { resolveMission, resolveMissionWithResult, type MissionResult } from './mission-resolver';
 import { simulateCombatFromSnapshot } from './combat-simulator';
 import { handleTutorialQuestComplete } from './tutorial-quest-handler';
+import { TUTORIAL_BEAR_MISSION_ID } from '@/game/data/tutorial-data';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { memberFromMercContract } from './combat-entity-factory';
 import { applyMercResultsForMission } from './tavern-merc-result-router';
@@ -78,13 +79,16 @@ export function processMissionTick(store: GameStore, now: number): MissionTickEv
           .filter((c) => active.mercContractIds.includes(c.id))
           .map(memberFromMercContract);
         const partyMembers = [...realMembers, ...mercMembers];
+        // Tutorial Moonbear must never be lost, even on the offline/reload
+        // auto-resolve path (Phase 04). Floor allies for that mission only.
+        const tutorialFloor = active.missionId === TUTORIAL_BEAR_MISSION_ID;
         const result = active.combatSnapshot && active.combatSnapshot.length > 0
           ? resolveMissionWithResult(
               mission,
               partyMembers,
-              simulateCombatFromSnapshot(active.combatSnapshot, active.combatSnapshotTime ?? 0),
+              simulateCombatFromSnapshot(active.combatSnapshot, active.combatSnapshotTime ?? 0, tutorialFloor),
             )
-          : resolveMission(mission, partyMembers);
+          : resolveMission(mission, partyMembers, tutorialFloor);
 
         const mercIdSet = new Set(active.mercContractIds);
         const memberSurvivors = result.survivors.filter((id) => !mercIdSet.has(id));

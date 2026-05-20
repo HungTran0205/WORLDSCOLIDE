@@ -554,20 +554,44 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
         } as unknown as Partial<GuildSlice>;
       }
 
-      const cost = FACILITY_DEFINITIONS[type].buildCost;
+      const def = FACILITY_DEFINITIONS[type];
+      const cost = def.buildCost;
       if (cost > 0 && s.guildLevel < 2) return s;
       if (s.gold < cost) return s;
+
+      // Generic material build-cost (e.g. tavern → 200 WOOD). Check + deduct inline so
+      // wood and gold spend atomically in this single set() — mirrors the permit branch above.
+      const materialCost = def.buildMaterialCost;
+      let nextItems = fullState.inventory?.items;
+      if (materialCost) {
+        const items = fullState.inventory?.items ?? {};
+        for (const [id, qty] of Object.entries(materialCost)) {
+          if (qty && qty > 0 && (items[id as ItemID] ?? 0) < qty) return s; // insufficient → blocked
+        }
+        nextItems = { ...items };
+        for (const [id, qty] of Object.entries(materialCost)) {
+          if (qty && qty > 0) nextItems[id as ItemID] = (nextItems[id as ItemID] ?? 0) - qty;
+        }
+        for (const key of Object.keys(nextItems)) {
+          if ((nextItems[key as ItemID] ?? 0) <= 0) delete nextItems[key as ItemID];
+        }
+      }
 
       const primary = s.facilities.find((f) => f.id === type && f.level === 0);
       const instanceId = primary ? type : `${type}-${Date.now()}`;
       newId = instanceId;
       const newEntry: GuildFacility = { id: instanceId, type, level: 1, assignedMemberIds: [], placedSlot: null, woodReserve: null };
-      return {
-        gold: s.gold - cost,
-        facilities: primary
-          ? s.facilities.map((f) => f.id === type ? newEntry : f)
-          : [...s.facilities, newEntry],
-      };
+      const facilities = primary
+        ? s.facilities.map((f) => f.id === type ? newEntry : f)
+        : [...s.facilities, newEntry];
+      if (materialCost) {
+        return {
+          gold: s.gold - cost,
+          facilities,
+          inventory: { ...fullState.inventory, items: nextItems },
+        } as unknown as Partial<GuildSlice>;
+      }
+      return { gold: s.gold - cost, facilities };
     });
     return newId;
   },

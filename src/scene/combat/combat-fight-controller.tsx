@@ -26,6 +26,7 @@ import { useGameStore } from '@/game/state/store';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { MISSIONS } from '@/game/data/missions';
 import { ENEMIES } from '@/game/data/enemies';
+import { TUTORIAL_BEAR_MISSION_ID } from '@/game/data/tutorial-data';
 import { WaveManager, legacyToWaves } from '@/game/systems/combat-wave-manager';
 import { applyMissionResultSideEffects } from '@/game/systems/arena-result-handler';
 import { simulateCombatFromSnapshot, cloneCombatEntity } from '@/game/systems/combat-simulator';
@@ -132,6 +133,9 @@ export function CombatFightController() {
     engine.init(members, formation, enemyTemplates, firstWave.hpMultiplier ?? 1, inventory, stageSpec);
     engine.onWaveCheck = () => waveManagerRef.current?.hasNext() ?? false;
     engine.setTargetPriority(targetPriority);
+    // Tutorial HP-floor (Phase 04): the Moonbear fight must be a guaranteed win.
+    // Scoped to this one mission so all other combat is unaffected.
+    engine.hpFloorActive = missionId === TUTORIAL_BEAR_MISSION_ID;
     engineRef.current = engine;
 
     syncWaveState(0, waveManager.totalWaves());
@@ -163,7 +167,10 @@ export function CombatFightController() {
       const engine = engineRef.current;
       if (!engine || engine.isFinished()) return;
       const snapshot = engine.entities.map((e) => cloneCombatEntity(e));
-      const skippedResult = simulateCombatFromSnapshot(snapshot, engine.time);
+      // Read missionId from the store (effect deps are [] → no stale closure) so
+      // the Skip→simulate path honours the tutorial HP-floor too.
+      const isTutorial = useCombatPanelStore.getState().missionId === TUTORIAL_BEAR_MISSION_ID;
+      const skippedResult = simulateCombatFromSnapshot(snapshot, engine.time, isTutorial);
       finalizeCombat(engine, skippedResult);
     };
     window.addEventListener(COMBAT_SKIP_DOM_EVENT, handler);

@@ -108,6 +108,24 @@
   color: var(--rank-color, var(--ink-gold-dim));
 }
 
+/* Identity mask overlay — pixel-aligned to head area, below insignia (z:2) and merc slash (z:3) */
+/* Compound selector needed: `.card-avatar img` (0,1,1) would otherwise override width/height/object-fit. */
+/* translate(-50%) keeps centering on the GPU compositor — reduces sub-pixel drift across browser zoom levels. */
+.card-avatar img.card-mask-overlay {
+  position: absolute;
+  top: 29%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 25%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+  z-index: 1;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  pointer-events: none;
+}
+
 /* ── Insignia frame (rank-badge sprite, top-left of avatar) ── */
 .card-insignia {
   position: absolute;

@@ -4,6 +4,7 @@ import { MISSIONS } from '@/game/data/missions';
 import { resolveMission, type MissionResult } from './mission-resolver';
 import { calcTotalUpkeep } from './upkeep-system';
 import { memberFromMercContract } from './combat-entity-factory';
+import { TUTORIAL_BEAR_MISSION_ID } from '@/game/data/tutorial-data';
 
 export interface OfflineMissionOutcome {
   result: MissionResult;
@@ -64,7 +65,8 @@ export function processOfflineTime(
       .filter((c) => active.mercContractIds.includes(c.id))
       .map(memberFromMercContract);
     const members = [...realMembers, ...mercMembers];
-    const result = resolveMission(missionData, members);
+    // Tutorial Moonbear is a guaranteed win even when auto-resolved offline (Phase 04).
+    const result = resolveMission(missionData, members, missionData.id === TUTORIAL_BEAR_MISSION_ID);
 
     if (result.outcome !== 'full-wipe') {
       goldFromMissions += result.goldEarned;

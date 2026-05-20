@@ -1,0 +1,93 @@
+/* Retro JRPG speech bubble — pixel/9-slice border, typewriter, blinking caret.
+   Decorative styling only; dynamic positioning is applied inline by the component. */
+
+.retro-bubble-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  cursor: pointer;
+}
+
+.retro-bubble {
+  position: absolute;
+  max-width: 420px;
+  min-width: 240px;
+  padding: 14px 18px;
+  background: #120c1f;
+  color: var(--ink-text, #f0e6d3);
+  font-family: var(--ink-font-mono, 'Share Tech Mono', monospace);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  /* Pixel "9-slice" look: thick gold frame + black keyline + inner shadow,
+     no image asset needed (DRY — reuses ink tokens). */
+  border: 3px solid var(--ink-gold, #d4a843);
+  box-shadow:
+    0 0 0 3px #000,
+    inset 0 0 0 2px rgba(0, 0, 0, 0.6),
+    0 6px 0 3px rgba(0, 0, 0, 0.45);
+  image-rendering: pixelated;
+}
+
+/* World anchor: bubble sits above the point, centred on it. */
+.retro-bubble--world {
+  transform: translate(-50%, calc(-100% - 14px));
+}
+
+/* Fixed fallback: bottom-centre dialogue box. */
+.retro-bubble--fixed {
+  left: 50%;
+  bottom: 7%;
+  transform: translateX(-50%);
+}
+
+.retro-bubble__speaker {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink-gold-bright, #ffd700);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.retro-bubble__portrait {
+  float: left;
+  width: 40px;
+  height: 40px;
+  margin: 0 10px 4px 0;
+  image-rendering: pixelated;
+  border: 2px solid var(--ink-gold-dim, #8a6d2c);
+}
+
+.retro-bubble__text {
+  white-space: pre-line;
+  min-height: 1.5em;
+}
+
+.retro-bubble__caret {
+  margin-left: 4px;
+  color: var(--ink-gold-bright, #ffd700);
+  animation: retro-caret-blink 0.9s steps(1) infinite;
+}
+
+/* Downward tail for the world-anchored bubble, pointing at the sprite below. */
+.retro-bubble__tail {
+  position: absolute;
+  bottom: -12px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 12px solid var(--ink-gold, #d4a843);
+}
+
+@keyframes retro-caret-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .retro-bubble__caret { animation: none; }
+}

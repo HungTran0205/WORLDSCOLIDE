@@ -1,6 +1,7 @@
 /** Static config for each guild facility — costs, slot limits, stat descriptions. */
 
 import type { FacilityType } from '@/game/state/game-state';
+import type { ItemID } from '@/game/data/items';
 
 export interface FacilityDef {
   type: FacilityType;
@@ -8,6 +9,8 @@ export interface FacilityDef {
   description: string;
   /** Gold to unlock from level 0 → 1. 0 = free (tavern). guildLevel >= 2 required for cost > 0. */
   buildCost: number;
+  /** Optional material cost to build (consumed atomically with buildCost gold). e.g. tavern → 200 WOOD. */
+  buildMaterialCost?: Partial<Record<ItemID, number>>;
   /** Gold costs for lv1→2 and lv2→3 upgrades. Absent = no upgrade path (e.g. logging-site). */
   upgradeCosts?: [number, number];
   /** Max assigned member slots per level [lv1, lv2, lv3] */
@@ -26,6 +29,7 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     name: 'Tavern',
     description: 'High CHA members attract better mercenaries and reduce upkeep.',
     buildCost: 0,
+    buildMaterialCost: { WOOD: 200 }, // GDD §0.3: tavern costs 200 wood globally (gate for the tutorial first-haul loop)
     upgradeCosts: [200, 400],
     maxSlots: [1, 2, 2],
     primaryStats: 'CHA',

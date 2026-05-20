@@ -21,6 +21,8 @@ import { useFrame, useLoader, useThree } from '@react-three/fiber';
 import { TextureLoader, Mesh, type Texture } from 'three';
 import type { ArenaEntitySnapshot } from '@/game/state/combat-arena-slice';
 import { COMBAT_CAM_TILT_RAD, getCombatSpriteScale } from './combat-camera-config';
+import { CombatMaskOverlay } from './combat-mask-overlay';
+import { resolveMemberMaskId } from '@/scene/sprites/mask-pool';
 import {
   COMBAT_ATTACK_FRAME_COUNT,
   COMBAT_DEATH_FRAME_COUNT,
@@ -55,6 +57,18 @@ interface CombatIdleSpriteProps {
 export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
   const meshRef = useRef<Mesh>(null);
   const { gl } = useThree();
+
+  // Allies-only identity mask. Enemies render via spriteId and skip the overlay.
+  const maskId = useMemo(() => {
+    if (entity.spriteId || !entity.isAlly) return null;
+    return resolveMemberMaskId({ id: entity.id });
+  }, [entity.id, entity.spriteId, entity.isAlly]);
+
+  // Refs for mask animation/direction sync (mask reads these via useFrame).
+  const animStateRef = useRef<string>(entity.animState);
+  animStateRef.current = entity.animState;
+  const facingRightRef = useRef<boolean>(entity.facingRight ?? true);
+  facingRightRef.current = entity.facingRight ?? true;
   // Material handle is async-loaded (WebGPU TSL imports). Render placeholder
   // mesh-without-material until ready; parent <Suspense> covers texture load.
   const [handle, setHandle] = useState<IdleSpriteMaterialHandle | null>(null);
@@ -271,20 +285,33 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
   // tips UP toward the down-tilted camera ray. (Positive rotation around X
   // tips the normal toward -Y; we need toward +Y to face the camera that
   // sits high looking down.)
+  const isDead = entity.currentHp <= 0;
+
   return (
-    <mesh
-      ref={meshRef}
-      position={[entity.position.x, initialY, entity.position.z]}
-      rotation={[-COMBAT_CAM_TILT_RAD, 0, 0]}
-      scale={[initialScale, initialScale, 1]}
-    >
-      <planeGeometry args={[1, 1]} />
-      {/* Material handle is async-loaded by createIdleSpriteMaterial (WebGPU
-          path lazy-imports three/tsl + three/webgpu). Until ready, the mesh
-          renders without a material — parent <Suspense> + Three.js default
-          fallback covers the brief window without a flash. */}
-      {handle && <primitive object={handle.material} attach="material" />}
-    </mesh>
+    <group position={[entity.position.x, 0, entity.position.z]}>
+      <mesh
+        ref={meshRef}
+        position={[0, initialY, 0]}
+        rotation={[-COMBAT_CAM_TILT_RAD, 0, 0]}
+        scale={[initialScale, initialScale, 1]}
+      >
+        <planeGeometry args={[1, 1]} />
+        {/* Material handle is async-loaded by createIdleSpriteMaterial (WebGPU
+            path lazy-imports three/tsl + three/webgpu). Until ready, the mesh
+            renders without a material — parent <Suspense> + Three.js default
+            fallback covers the brief window without a flash. */}
+        {handle && <primitive object={handle.material} attach="material" />}
+      </mesh>
+      {maskId && (
+        <CombatMaskOverlay
+          maskId={maskId}
+          charScale={initialScale}
+          animStateRef={animStateRef}
+          facingRightRef={facingRightRef}
+          hidden={isDead}
+        />
+      )}
+    </group>
   );
 }
 
