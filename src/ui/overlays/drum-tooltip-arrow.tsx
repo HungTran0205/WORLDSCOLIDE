@@ -28,13 +28,15 @@ interface DrumTooltipArrowProps {
 export function DrumTooltipArrow({ activePanel }: DrumTooltipArrowProps) {
   const seen = useUiStore((s) => s.questBoardTutorialSeen);
   const tutorialStep = useGameStore((s) => s.tutorialStep);
-  // Only at the drum beat (or, post-tutorial, as a one-time first-visit nudge). Scoping
-  // to the step keeps it off during 'arrival-alarm', where the NPC alarm owns the single
-  // shared world-target slot (see coachmark-target-store invariant).
+  // Drum coachmark shows:
+  //  - ALWAYS during the 'open-quest-board' beat (it's the scripted tutorial step — the
+  //    `seen` localStorage flag must NOT suppress it for returning players), and
+  //  - post-tutorial, as a one-time first-visit nudge gated by `seen`.
+  // Scoping to the step also keeps it off during 'arrival-alarm', where the NPC alarm
+  // owns the single shared world-target slot (see coachmark-target-store invariant).
   const active =
-    !seen &&
     activePanel === null &&
-    (tutorialStep === 'open-quest-board' || tutorialStep === 'complete');
+    (tutorialStep === 'open-quest-board' || (tutorialStep === 'complete' && !seen));
 
   return (
     <div aria-hidden="true">

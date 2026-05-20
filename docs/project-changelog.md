@@ -7,6 +7,36 @@ All notable changes to Worlds Collide are documented in this file. The format fo
 
 ---
 
+## [Unreleased] — 2026-05-20 (Tutorial Quest Redesign Phase 07 — Playthrough Fixes & Cleanup)
+
+### fix(tutorial): 6 playthrough fixes from first live test + Phase 07 cleanup
+
+A partial live playthrough surfaced 6 issues; all fixed. (1) **Opening lore modal gated on scene readiness**: added a `worldReady` flag to `ui-store` (set when the existing `SceneReadySignal`/`onAssetsReady` fires); `<WorldBoardModal>` now only renders once the 3D world is interactive, fixing the dead "Begin" button during the 5–10s WebGPU first-load freeze. (2) **Drum beat guidance**: removed `highlightPanel: 'quests'` from the `open-quest-board` step (it pulsed the wrong HUD button) and made the existing world-target drum coachmark (`DrumTooltipArrow`, drum at `[5,1.2,3.5]`) show during that beat regardless of the `questBoardTutorialSeen` localStorage flag — previously suppressed for returning players. (3) **Hint bar repositioned** bottom → prominent top-center banner with a glow pulse. (4) **Kael-rescue deferred**: the rescue dialogue now waits until the combat victory screen is dismissed (`!isCombatPanelOpen`), so order is VICTORY+rewards → Continue → rescue → permit splash. (5) **In-panel guidance**: added the existing `.tutorial-highlight` pulse to the actual elements to click — empty slots → blueprint row → Build button (build beats), and the Logging Site slot → assign dropdown (assign-kael) — previously only the Facilities HUD button was highlighted. (6) **Moonbear combat sprite 404**: registered `moonbear` in `COMBAT_SPRITE_MANIFEST` (idle/attack/death west) so the resolver loads `animations/{idle,attack,death}/west` instead of the non-existent `rotations/west.png`.
+
+**Modified**:
+- `src/game/state/ui-store.ts` — +`worldReady: boolean` + `setWorldReady(v)` (UI-only, not persisted)
+- `src/scene/world.tsx` — set `worldReady` false on mount, true via the existing `onAssetsReady` callback
+- `src/ui/screens/game-screen.tsx` — gate `<WorldBoardModal>` on `worldReady`; gate `<KaelRescueDialogue>` on `!isCombatPanelOpen`; removed a redundant `loreSeen`-reset effect
+- `src/game/systems/tutorial-manager.ts` — dropped `highlightPanel` from `open-quest-board`
+- `src/ui/overlays/drum-tooltip-arrow.tsx` — show drum coachmark during `open-quest-board` regardless of `questBoardTutorialSeen`
+- `src/ui/styles/hud.css` — `.tutorial-hint-bar` moved to top-center + `tutorialHintGlow` pulse
+- `src/ui/panels/facilities-panel.tsx` — pulse empty slots (build beats) / built Logging Site slot (assign-kael)
+- `src/ui/components/facility-detail-tray.tsx` — pulse target blueprint row + Build button (build beats), assign dropdown (assign-kael)
+- `src/scene/sprites/combat-sprite-resolver.ts` — added `moonbear` to `enemiesWithIdleWest/AttackWest/DeathWest`
+
+**Deleted**:
+- `src/ui/overlays/drum-tooltip-arrow.css` — dead (component was refactored to use `<TutorialCoachmark>`; no importer)
+
+**Tests**:
+- `tests/mission-tick.test.ts` — mock updated with `tavern.mercContracts` + `mercContractIds` (a pre-existing gap from the tavern-merc integration, not from this work) → 12/12 pass
+- `npx tsc --noEmit` clean; changed files lint-clean (the repo-wide `npm run lint` still reports pre-existing errors under `tools/vfx-playground/`); full vitest suite green apart from documented infra/hook noise
+
+**Plan Reference**: `plans/260520-1152-tutorial-quest-redesign/` (Phase 07 — code-side tasks done)
+
+**Manual QA — PENDING (requires live browser):** full guided playthrough, GDD §9 edge cases, and legacy v25→v26 save-load test are NOT yet verified. A partial playthrough confirmed the 6 fixes above only.
+
+---
+
 ## [Unreleased] — 2026-05-20 (Tutorial Quest Redesign Phase 06 Complete)
 
 ### feat(tutorial): full state-machine integration + coachmark wiring (Phase 06)

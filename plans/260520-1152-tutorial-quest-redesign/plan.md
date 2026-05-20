@@ -24,7 +24,7 @@ Turn the trivial slime tutorial into a full core-loop onboarding chain (drum →
 | 04 | [Combat tutorial wiring](./phase-04-combat-tutorial-wiring.md) | ✅ done | 02 | 4h | combat-engine.ts (HP-floor), combat-skill-bar coach, retry |
 | 05 | [Narrative beats](./phase-05-narrative-beats.md) | ✅ done | — | 3h | npc-alarm-modal (new), world-board-modal.tsx |
 | 06 | [State machine 9→14 + migration](./phase-06-state-machine-and-migration.md) | ✅ done | 01,02,03,04,05 | 4h | tutorial-manager.ts, game-state TutorialStep, save-migrations, game-screen wiring |
-| 07 | [Integration + tune pass](./phase-07-integration-and-tune.md) | pending | 06 | 2h | cross-cutting verify only |
+| 07 | [Integration + tune pass](./phase-07-integration-and-tune.md) | in-progress | 06 | 2h | cross-cutting verify only; code-side done, manual browser-verify pending |
 
 Phases 01–05 are independently compilable. 06 is the integration spine (wires every prior phase into the step state machine). 07 is the playthrough/balance pass.
 

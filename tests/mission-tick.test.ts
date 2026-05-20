@@ -20,6 +20,7 @@ function makeMission(phase: ActiveMission['phase'], overrides: Partial<ActiveMis
   return {
     missionId: 'slime-extermination',
     memberIds: ['m1'],
+    mercContractIds: [],
     startTime: 0,
     estimatedEndTime: 60_000,
     phase,
@@ -43,6 +44,9 @@ function makeStore(
     calls,
     gold: 100,
     realTimeLastTick: 0,
+    // Tavern merc dispatch integration reads store.tavern.mercContracts in the
+    // in-combat path; provide an empty hub so the mock matches the real store shape.
+    tavern: { mercContracts: [] },
 
     updateMissionPhase: vi.fn((id: string, phase: string, arrivalTime?: number) => {
       calls.push(`updatePhase:${id}:${phase}`);

@@ -32,6 +32,7 @@ import { CombatTimelineBar } from '@/ui/panels/combat-timeline-bar';
 import { CombatResultOverlay } from '@/ui/panels/combat-result-overlay';
 import { useGameTickLoop } from '@/ui/hooks/use-game-tick-loop';
 import { useGameStore } from '@/game/state/store';
+import { useUiStore } from '@/game/state/ui-store';
 import { GUILD_HALL_CAMERA_TARGET } from '@/game/state/camera-slice';
 import { playBGM } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
@@ -228,14 +229,12 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   const isGameOver = allMembers.length > 0 && allMembers.every((m) => m.status === 'injured');
   const tutorialStep = useGameStore((s) => s.tutorialStep);
   const setTutorialStep = useGameStore((s) => s.setTutorialStep);
+  // Gate the opening lore modal on the 3D world being interactive (issue: the WebGPU
+  // first-load freeze leaves the Begin button unclickable behind a black scene).
+  const worldReady = useUiStore((s) => s.worldReady);
 
   // Current step's coachmark config (only guild-hall beats carry one).
   const coachConfig = getCurrentStep(tutorialStep)?.coach;
-
-  // Reset the beat-2 lore sub-phase whenever we leave 'arrival-alarm'.
-  useEffect(() => {
-    if (tutorialStep !== 'arrival-alarm') setLoreSeen(false);
-  }, [tutorialStep]);
 
   // Fire the graduation toast only on the live build-tavern → complete transition.
   const prevStepRef = useRef(tutorialStep);
@@ -280,7 +279,7 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
               onReturnToTitle={onReturnToTitle}
             />
           )}
-          {tutorialStep === 'arrival-alarm' && !loreSeen && (
+          {tutorialStep === 'arrival-alarm' && !loreSeen && worldReady && (
             <WorldBoardModal onBegin={() => setLoreSeen(true)} />
           )}
           {alchemyPanelOpen && alchemyFacility && (
@@ -311,7 +310,9 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
       {tutorialStep === 'arrival-alarm' && loreSeen && (
         <NpcAlarm onComplete={() => setTutorialStep('open-quest-board')} />
       )}
-      {tutorialStep === 'kael-rescue' && <KaelRescueDialogue />}
+      {/* Rescue dialogue waits until the combat victory screen is dismissed, so the
+          player sees VICTORY + rewards first, THEN the Kael-rescue payoff. */}
+      {tutorialStep === 'kael-rescue' && !isCombatPanelOpen && <KaelRescueDialogue />}
       {tutorialStep === 'reward-splash' && <TutorialRewardSplash />}
       {tutorialStep === 'first-haul-reward' && <TutorialFirstHaulSplash />}
       {showGraduation && <TutorialGraduationToast onClose={() => setShowGraduation(false)} />}

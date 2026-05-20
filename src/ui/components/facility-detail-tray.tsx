@@ -3,13 +3,30 @@
 import { useState } from 'react';
 import { useGameStore } from '@/game/state/store';
 import type { GuildFacility, Member, FacilityType } from '@/game/state/game-state';
+import type { ItemID } from '@/game/data/items';
+import { ITEM_DATABASE } from '@/game/data/items';
 import { FACILITY_DEFINITIONS, LOGGING_SITE_CONFIG, STONE_QUARRY_CONFIG } from '@/game/data/facility-definitions';
 import { FACILITY_SLOTS, getSlotCameraOffset } from '@/game/data/facility-slot-positions';
 import { calcMcLevel } from '@/game/systems/stone-quarry-production-system';
+import { handleFirstHaul } from '@/game/systems/tutorial-first-haul-handler';
 import { FacilityMemberAvatar } from './facility-member-avatar';
 import { InkConfirmDialog } from './ink-confirm-dialog';
 
 type FacilityDefVal = (typeof FACILITY_DEFINITIONS)[FacilityType];
+
+// ── Material build-cost helpers ──────────────────────────────────────────────
+/** "200 Oak Wood" or "200 Oak Wood, 50 Stone" — uses canonical item names. */
+function materialCostLabel(cost: Partial<Record<ItemID, number>>): string {
+  return Object.entries(cost)
+    .filter(([, qty]) => qty && qty > 0)
+    .map(([id, qty]) => `${qty} ${ITEM_DATABASE[id as ItemID].name}`)
+    .join(', ');
+}
+
+/** True if inventory holds every material in the cost. */
+function hasMaterials(cost: Partial<Record<ItemID, number>>, items: Partial<Record<ItemID, number>>): boolean {
+  return Object.entries(cost).every(([id, qty]) => !qty || (items[id as ItemID] ?? 0) >= qty);
+}
 
 // ── Bonus preview (extracted from facility-card logic) ──────────────────────
 function getBonusPreview(facility: GuildFacility, members: Member[]): string {
@@ -75,6 +92,10 @@ function BuiltRoomTray({ facility, onClose }: { facility: GuildFacility; onClose
   const unassignMember  = useGameStore(s => s.unassignMemberFromFacility);
   const upgradeFacility = useGameStore(s => s.upgradeFacility);
   const setCameraTarget = useGameStore(s => s.setCameraTarget);
+  const tutorialStep    = useGameStore(s => s.tutorialStep);
+
+  // Tutorial: pulse the assign slot when the player must put Kael on the Logging Site.
+  const highlightAssign = tutorialStep === 'assign-kael' && facility.type === 'logging-site';
 
   const allMembers     = founder ? [founder, ...roster] : roster;
   const def            = FACILITY_DEFINITIONS[facility.type];
@@ -116,11 +137,15 @@ function BuiltRoomTray({ facility, onClose }: { facility: GuildFacility; onClose
             <FacilityMemberAvatar key={m.id} member={m} onUnassign={mid => unassignMember(mid, facility.id)} />
           ))}
           {Array.from({ length: emptyCount }).map((_, i) => (
-            <div key={i} className="fp-assign-card">
+            <div key={i} className={`fp-assign-card${highlightAssign ? ' tutorial-highlight' : ''}`}>
               <span className="fp-assign-plus">＋</span>
               <span className="fp-assign-label">Assign</span>
               {eligible.length > 0 && (
-                <select value="" onChange={e => { if (e.target.value) assignMember(e.target.value, facility.id); }}>
+                <select value="" onChange={e => {
+                  if (!e.target.value) return;
+                  // Grant the scripted first haul if this is Kael → logging site at the tutorial step.
+                  if (assignMember(e.target.value, facility.id)) handleFirstHaul(e.target.value, facility.id);
+                }}>
                   <option value="">—</option>
                   {eligible.map(m => <option key={m.id} value={m.id}>{m.name} Lv.{m.level}</option>)}
                 </select>
@@ -157,6 +182,13 @@ function EmptySlotTray({ slotIdx, onBuildComplete }: { slotIdx: number; onBuildC
   const inventory     = useGameStore(s => s.inventory);
   const buildFacility = useGameStore(s => s.buildFacility);
   const placeFacility = useGameStore(s => s.placeFacility);
+  const tutorialStep  = useGameStore(s => s.tutorialStep);
+
+  // Tutorial in-panel guidance: which blueprint should the player pick on this build beat.
+  const tutorialTarget: FacilityType | null =
+    tutorialStep === 'build-logging-site' ? 'logging-site'
+    : tutorialStep === 'build-tavern' ? 'tavern'
+    : null;
 
   const getActiveCount = (type: FacilityType) =>
     facilities.filter(fac => fac.type === type && fac.level > 0).length;
@@ -167,11 +199,15 @@ function EmptySlotTray({ slotIdx, onBuildComplete }: { slotIdx: number; onBuildC
 
   function canAfford(def: FacilityDefVal): boolean {
     if (def.type === 'logging-site') return (inventory.items['LOGGING_SITE_ACCESS'] ?? 0) > 0;
+    if (def.buildMaterialCost && !hasMaterials(def.buildMaterialCost, inventory.items)) return false;
     return def.buildCost === 0 || gold >= def.buildCost;
   }
 
   function costLabel(def: FacilityDefVal): string {
     if (def.type === 'logging-site') return 'Permit';
+    // Material cost takes the label; assumes no facility charges both gold AND materials
+    // (tavern's gold buildCost is 0). Revisit if a mixed-cost facility is ever added.
+    if (def.buildMaterialCost) return materialCostLabel(def.buildMaterialCost);
     return def.buildCost === 0 ? 'Free' : `${def.buildCost}g`;
   }
 
@@ -196,7 +232,7 @@ function EmptySlotTray({ slotIdx, onBuildComplete }: { slotIdx: number; onBuildC
             return (
               <div
                 key={def.type}
-                className={`fp-blueprint-row${selectedBp === def.type ? ' selected' : ''}${!affordable ? ' unaffordable' : ''}`}
+                className={`fp-blueprint-row${selectedBp === def.type ? ' selected' : ''}${!affordable ? ' unaffordable' : ''}${tutorialTarget === def.type && selectedBp !== def.type ? ' tutorial-highlight' : ''}`}
                 onClick={() => affordable && setSelectedBp(def.type)}
               >
                 <span className="fp-bp-name">{def.name}</span>
@@ -205,11 +241,20 @@ function EmptySlotTray({ slotIdx, onBuildComplete }: { slotIdx: number; onBuildC
                   <span className="fp-bp-instance-count">{getActiveCount(def.type)}/3</span>
                 )}
                 <span className="fp-bp-cost">{costLabel(def)}</span>
+                {def.buildMaterialCost && !affordable && (
+                  <span style={{ fontSize: '0.65rem', color: '#d9534f', marginLeft: 6 }}>
+                    Need {materialCostLabel(def.buildMaterialCost)}
+                  </span>
+                )}
               </div>
             );
           })}
         </div>
-        <button className="fp-btn-build" disabled={!selectedBp} onClick={() => setBuildConfirm(true)}>
+        <button
+          className={`fp-btn-build${tutorialTarget && selectedBp === tutorialTarget ? ' tutorial-highlight' : ''}`}
+          disabled={!selectedBp}
+          onClick={() => setBuildConfirm(true)}
+        >
           {selDef ? `Build ${selDef.name} — ${costLabel(selDef)}` : 'Select a blueprint'}
         </button>
       </div>

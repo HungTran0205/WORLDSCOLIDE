@@ -38,7 +38,8 @@ export const TUTORIAL_STEPS: TutorialStepConfig[] = [
     // world-target) guides this; advance fires when the quest panel opens (cameraFocus).
     step: 'open-quest-board',
     message: 'Beat the war drum in the hall to open the Quest Board.',
-    highlightPanel: 'quests',
+    // No highlightPanel: guidance is the world-target drum coachmark (DrumTooltipArrow),
+    // NOT the HUD Quests button — pointing at the button is the old flow.
     autoAdvance: true,
     advanceCondition: (state) => state.cameraFocus === 'quest-board',
   },
