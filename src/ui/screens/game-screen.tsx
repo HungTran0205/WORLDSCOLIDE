@@ -6,7 +6,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { FACILITY_SLOTS } from '@/game/data/facility-slot-positions';
 import { World } from '@/scene/world';
-import { CombatArenaCanvas } from '@/scene/combat/combat-arena';
 import { HUD } from '@/ui/hud/hud';
 import { QuestBoard } from '@/ui/panels/quest-board';
 import { GuildRoster } from '@/ui/panels/guild-roster';
@@ -230,7 +229,6 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
       <div style={{ display: gameScene === 'guild-hall' || isCombatPanelOpen ? 'block' : 'none' }}>
         <World isActive={gameScene === 'guild-hall' || isCombatPanelOpen} />
       </div>
-      {gameScene === 'combat-arena' && !isCombatPanelOpen && <CombatArenaCanvas />}
 
       {/* HUD + panels (only in guild-hall) */}
       {gameScene === 'guild-hall' && (
