@@ -272,6 +272,9 @@ Combat rendering overhauled from per-entity React components to 1-draw-call GPU 
 - HP bars rendered via InstancedMesh (one bar per entity)
 - Red fill = current HP, grey background
 
+**CombatMaskOverlay** (`combat-mask-overlay.tsx`)
+- Per-ally identity mask sprite (R3F plane inside Billboard) using deterministic mask from pool; tracks animation state with per-state offset table and frame lerp
+
 **CombatVfxSpawner** (`combat-vfx-spawner.tsx`)
 - VFX layer for combat effects (particle emitters, visual polish)
 
@@ -1905,6 +1908,24 @@ interface Member {
 - No data loss; backward compatible
 - Old saves load with slots initialized but empty
 
+### Save Migration v25 → v26 (Phase 06 Tutorial State Machine Integration)
+
+**`migrateV25toV26()`** (`src/game/save/save-migrations.ts`):
+- **TutorialStep Remap** (`STEP_REMAP` table): Remaps legacy 8-step IDs forward to 14-beat narrative flow
+  - 'char-creation' → 'char-creation' (unchanged)
+  - 'world-board' → 'arrival-alarm' (prerequisites met; no blocking items)
+  - 'tutorial-quest-dispatch', 'tutorial-quest-active' → 'open-quest-board' (dead mission strips below; player re-dispatches)
+  - 'tutorial-kael-rescue' → 'kael-rescue' (Kael + permit already pre-granted)
+  - 'tutorial-reward' → 'reward-splash' (permit already granted)
+  - 'build-logging-site' → 'build-logging-site' (unchanged, new beat exists)
+  - 'assign-kael' → 'assign-kael' (unchanged)
+  - Unknown legacy IDs → 'complete' (defensive fallback)
+- **Stranded Member Cleanup**: Removes 'tutorial-into-the-clearing' mission from `activeMissions[]`
+  - Any members stuck 'on-mission' for that mission reset to 'idle' status (frees them so they're available for new tutorial flow)
+  - The deleted mission no longer exists in MISSIONS registry, so members would be stranded if not cleaned up
+- **Data Preservation**: Transparent migration; auto-triggered on load, no player interaction required
+- **Backward Compat**: Old saves load seamlessly with 14-beat flow; player simply continues from remapped beat
+
 ### Inventory Panel Updates (v1.26)
 
 **Changes**:
@@ -2235,6 +2256,8 @@ getRoomBounds(room: Room):
 | `mission-notification.tsx` | Individual toast notification |
 | `stat-bar.tsx` | Character stat bar with icon display |
 | `rank-badge.tsx` | Rank display with icon + color coding |
+| `retro-speech-bubble.tsx` | JRPG-style narrative dialogue bubble with typewriter reveal + click-through (world-anchored via coachmark bridge or fixed-bottom fallback) — NEW v1.28, Phase 05 tutorial-quest-redesign |
+| `npc-alarm.tsx` | Beat-2 narrative driver mounting RetroSpeechBubble (messenger alarm scene) — NEW v1.28, Phase 05 |
 | Other UI components | Stat bars, cards, buttons |
 
 ### `/ui/panels/` — Collapsible Panels

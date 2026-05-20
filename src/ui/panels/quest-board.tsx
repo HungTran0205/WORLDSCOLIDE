@@ -36,6 +36,7 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
   const updateMemberStatus = useGameStore((s) => s.updateMemberStatus);
   const completedMissions = useGameStore((s) => s.completedMissions);
   const tutorialStep = useGameStore((s) => s.tutorialStep);
+  const setTutorialStep = useGameStore((s) => s.setTutorialStep);
   const mercContracts = useGameStore((s) => s.tavern.mercContracts);
   const markMercsOnQuest = useGameStore((s) => s.markMercsOnQuest);
 
@@ -122,6 +123,10 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
   const handleSelect = (id: string) => {
     setSelectedId(id);
     setMobileView('detail');
+    // Tutorial beat 4 → 5: selecting the tutorial quest advances to assign-and-dispatch.
+    if (tutorialStep === 'accept-bear-quest' && id.startsWith('tutorial-')) {
+      setTutorialStep('assign-and-dispatch');
+    }
   };
 
   const handleDispatch = (memberIds: string[], mercContractIds: string[] = []) => {

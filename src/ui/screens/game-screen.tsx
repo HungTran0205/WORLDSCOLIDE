@@ -15,7 +15,10 @@ import { CombatView } from '@/ui/panels/combat-view';
 import { SettingsPanel } from '@/ui/panels/settings-panel';
 import { GameOverOverlay } from '@/ui/panels/game-over-overlay';
 import { WorldBoardModal } from '@/ui/components/world-board-modal';
+import { NpcAlarm } from '@/ui/components/npc-alarm';
 import { KaelRescueDialogue, TutorialRewardSplash } from '@/ui/components/tutorial-dialogue-overlays';
+import { TutorialFirstHaulSplash } from '@/ui/components/tutorial-first-haul-splash';
+import { TutorialGraduationToast } from '@/ui/components/tutorial-graduation-toast';
 import { MissionNotification } from '@/ui/components/mission-notification';
 import { ActiveMissionsList } from '@/ui/panels/active-missions-list';
 import { CombatPrepPanel } from '@/ui/panels/combat-prep-panel';
@@ -36,6 +39,8 @@ import type { PanelId } from '@/ui/hud/panel-toggle';
 import { KeyboardShortcuts } from '@/ui/hud/keyboard-shortcuts';
 import { DrumTooltipArrow } from '@/ui/overlays/drum-tooltip-arrow';
 import { DEBUG_MODE } from '@/debug';
+import { TutorialCoachmark } from '@/ui/coachmark/tutorial-coachmark';
+import { getCurrentStep } from '@/game/systems/tutorial-manager';
 import { FacilitySlotDebugPanel } from '@/scene/facility/facility-slot-debug-panel';
 
 /** Home button — returns camera to guild hall; visible only when camera is in a facility room */
@@ -106,6 +111,12 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   const [alchemyPanelOpen, setAlchemyPanelOpen] = useState(false);
   const [workshopPanelOpen, setWorkshopPanelOpen] = useState(false);
   const [tavernPanelOpen, setTavernPanelOpen] = useState(false);
+  // Beat-2 sub-phase: the trimmed world-board lore page shows first, then the NPC
+  // alarm. Reset by leaving the 'arrival-alarm' step (so a re-entry replays from lore).
+  const [loreSeen, setLoreSeen] = useState(false);
+  // Graduation toast fires only on the live transition INTO 'complete', never when a
+  // finished save is reloaded (prevStepRef seeds to the loaded step on mount).
+  const [showGraduation, setShowGraduation] = useState(false);
   // Tracks whether user explicitly closed the panel while still in the room
   const alchemyUserClosedRef = useRef(false);
   const workshopUserClosedRef = useRef(false);
@@ -216,6 +227,24 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   const allMembers = founder ? [founder, ...roster] : roster;
   const isGameOver = allMembers.length > 0 && allMembers.every((m) => m.status === 'injured');
   const tutorialStep = useGameStore((s) => s.tutorialStep);
+  const setTutorialStep = useGameStore((s) => s.setTutorialStep);
+
+  // Current step's coachmark config (only guild-hall beats carry one).
+  const coachConfig = getCurrentStep(tutorialStep)?.coach;
+
+  // Reset the beat-2 lore sub-phase whenever we leave 'arrival-alarm'.
+  useEffect(() => {
+    if (tutorialStep !== 'arrival-alarm') setLoreSeen(false);
+  }, [tutorialStep]);
+
+  // Fire the graduation toast only on the live build-tavern → complete transition.
+  const prevStepRef = useRef(tutorialStep);
+  useEffect(() => {
+    if (prevStepRef.current !== 'complete' && tutorialStep === 'complete') {
+      setShowGraduation(true);
+    }
+    prevStepRef.current = tutorialStep;
+  }, [tutorialStep]);
 
   // Start game tick loop (missions, injuries, clock, tavern refresh)
   useGameTickLoop();
@@ -251,7 +280,9 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
               onReturnToTitle={onReturnToTitle}
             />
           )}
-          {tutorialStep === 'world-board' && <WorldBoardModal />}
+          {tutorialStep === 'arrival-alarm' && !loreSeen && (
+            <WorldBoardModal onBegin={() => setLoreSeen(true)} />
+          )}
           {alchemyPanelOpen && alchemyFacility && (
             <AlchemyCraftPanel
               facility={alchemyFacility}
@@ -276,9 +307,20 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
         </>
       )}
 
-      {/* Tutorial dialogue overlays — shown in any scene */}
-      {tutorialStep === 'tutorial-kael-rescue' && <KaelRescueDialogue />}
-      {tutorialStep === 'tutorial-reward' && <TutorialRewardSplash />}
+      {/* Tutorial overlays — step-keyed; shown over any scene. */}
+      {tutorialStep === 'arrival-alarm' && loreSeen && (
+        <NpcAlarm onComplete={() => setTutorialStep('open-quest-board')} />
+      )}
+      {tutorialStep === 'kael-rescue' && <KaelRescueDialogue />}
+      {tutorialStep === 'reward-splash' && <TutorialRewardSplash />}
+      {tutorialStep === 'first-haul-reward' && <TutorialFirstHaulSplash />}
+      {showGraduation && <TutorialGraduationToast onClose={() => setShowGraduation(false)} />}
+
+      {/* Step coachmark — only guild-hall beats define a coach config. Hides itself
+          when its DOM/world target is absent (e.g. panel closed), so it never traps. */}
+      {gameScene === 'guild-hall' && coachConfig && (
+        <TutorialCoachmark active {...coachConfig} />
+      )}
 
       {/* Always visible regardless of scene */}
       <ActiveMissionsList />

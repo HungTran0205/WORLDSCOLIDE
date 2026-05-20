@@ -2,7 +2,7 @@
 
 **Worlds Collide** — An HD-2D auto-RPG idle guild builder where civilizations collide. Build your guild hall, recruit members from different civilizations, dispatch quests, and watch your guild grow — even while you're away.
 
-**Last Updated**: 2026-05-19 (Title Screen Settings + Credits Phase 5 - v1.29)
+**Last Updated**: 2026-05-20 (Tutorial Quest Redesign Phase 06 - State Machine Integration - v1.28)
 
 ## Technology Stack
 

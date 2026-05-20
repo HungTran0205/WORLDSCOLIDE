@@ -47,7 +47,7 @@ export function CharCreation({ onComplete }: CharCreationProps) {
     const founder = createFounder(name.trim(), stats, selectedCiv);
     setFounder(founder);
     if (guildName.trim()) setGuildName(guildName.trim());
-    setTutorialStep('world-board');
+    setTutorialStep('arrival-alarm');
 
     initAudio();
     playBGM(AUDIO.BGM_GUILD);

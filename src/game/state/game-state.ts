@@ -150,6 +150,8 @@ export interface Member {
   rarity: 1 | 2 | 3 | 4 | 5;
   /** Personality traits — optional; default [] in v24 migration. */
   traits?: TraitId[];
+  /** Identity mask ID from MASK_POOL (optional; lazy hash-resolved if absent) */
+  maskSpriteId?: string;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -348,15 +350,25 @@ export interface GuildHall {
 
 export type GameScene = 'guild-hall' | 'combat-arena';
 
+/**
+ * Guided onboarding state machine (GDD §5 — "The First Tremor / Bear the Bear").
+ * 14 ordered beats; order in TUTORIAL_STEPS must match this list so getNextStep walks it.
+ * Legacy 8-id saves are remapped forward by save migration v25→v26.
+ */
 export type TutorialStep =
   | 'char-creation'
-  | 'world-board'
-  | 'tutorial-quest-dispatch'
-  | 'tutorial-quest-active'
-  | 'tutorial-kael-rescue'
-  | 'tutorial-reward'
+  | 'arrival-alarm'
+  | 'open-quest-board'
+  | 'accept-bear-quest'
+  | 'assign-and-dispatch'
+  | 'quest-travel'
+  | 'moonbear-combat'
+  | 'kael-rescue'
+  | 'reward-splash'
   | 'build-logging-site'
   | 'assign-kael'
+  | 'first-haul-reward'
+  | 'build-tavern'
   | 'complete';
 
 export interface InventoryState {

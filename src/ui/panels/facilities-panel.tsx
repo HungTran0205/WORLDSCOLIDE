@@ -179,6 +179,11 @@ export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
             ▶ Select the Logging Site and assign Kael.
           </div>
         )}
+        {tutorialStep === 'build-tavern' && (
+          <div style={{ padding: '6px 14px 0', fontSize: '0.7rem', color: 'var(--ink-gold)', fontFamily: 'var(--ink-font-mono)' }}>
+            ▶ Select an empty slot and build the Tavern (200 Wood).
+          </div>
+        )}
 
         {/* Bát Quái cross slot grid */}
         <div className="fp-grid-area">

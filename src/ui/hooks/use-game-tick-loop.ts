@@ -99,10 +99,13 @@ export function useGameTickLoop() {
     // Recover injured members whose timer expired
     processInjuryRecovery(store, now);
 
-    // Auto-advance tutorial steps with conditions
-    if (shouldAdvanceTutorial(store.tutorialStep, store)) {
-      const next = getNextStep(store.tutorialStep);
-      if (next) store.setTutorialStep(next);
+    // Auto-advance tutorial steps with conditions. Re-read fresh state: processMissionTick
+    // and mid-tick handlers (e.g. handleTutorialQuestComplete) may have mutated
+    // tutorialStep / activeMissions since the tick-start snapshot above.
+    const tutorialState = useGameStore.getState();
+    if (shouldAdvanceTutorial(tutorialState.tutorialStep, tutorialState)) {
+      const next = getNextStep(tutorialState.tutorialStep);
+      if (next) tutorialState.setTutorialStep(next);
     }
 
     // Tavern daily-tick (AD3 — inline, guarded by `lastDayProcessed` for idempotency).

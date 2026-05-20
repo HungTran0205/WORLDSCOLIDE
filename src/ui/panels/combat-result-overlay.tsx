@@ -3,6 +3,7 @@
 import { useGameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
 import { applyArenaResult } from '@/game/systems/arena-result-handler';
+import { TUTORIAL_BEAR_MISSION_ID } from '@/game/data/tutorial-data';
 import { useMemo } from 'react';
 
 export function CombatResultOverlay() {
@@ -63,7 +64,7 @@ export function CombatResultOverlay() {
               EXP: {mission.expReward}
             </div>
             {/* Tutorial-specific bonus reward */}
-            {arenaMissionId === 'tutorial-into-the-clearing' && (
+            {arenaMissionId === TUTORIAL_BEAR_MISSION_ID && (
               <div style={{ marginTop: 8, borderTop: '1px solid rgba(255,215,0,0.2)', paddingTop: 8 }}>
                 <div style={{ color: '#ffd700', fontSize: '0.85rem', fontWeight: 'bold' }}>
                   ★ Rescue Reward

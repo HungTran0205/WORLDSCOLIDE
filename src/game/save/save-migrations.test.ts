@@ -273,6 +273,62 @@ describe('migrateSave', () => {
     expect(tavern.workshopBlueprints).toBeUndefined();
   });
 
+  // v25→v26: tutorial redesign — legacy 8-id steps remap forward to the 14-beat flow,
+  // the deleted slime mission is stripped, and its members are freed.
+  function makeV25Envelope(gameStateOverrides: Record<string, unknown> = {}) {
+    return {
+      version: 25,
+      savedAt: Date.now(),
+      metadata: { slotId: 1, guildName: 'Test', guildLevel: 1, playTimeMs: 0, founderName: 'F', createdAt: 0, updatedAt: 0 },
+      gameState: {
+        gameTime: 0, realTimeLastTick: 0, guildName: 'Test', guildLevel: 1, gold: 100,
+        guildHall: { level: 1, floorTiles: [{ x: 0, z: 0, color: '#DAA520' }], furniture: [] },
+        settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high', shadowsEnabled: false, bloomEnabled: false, bloomThreshold: 0.85, atmosphericEnabled: true },
+        founder: null, roster: [], activeMissions: [], completedMissions: [],
+        tutorialStep: 'complete',
+        tavern: {
+          level: 1, keeperId: null, reputation: 0, currentRoster: [], rerolledToday: false,
+          factionBias: null, rumor: null, mercContracts: [], pendingPrompts: [],
+          lastDayProcessed: 0, reputationLastTickWeek: 0, globalNegotiationDebuffUntilDay: null, veteranPool: [],
+        },
+        inventory: { items: {} }, facilities: [],
+        ...gameStateOverrides,
+      },
+    };
+  }
+
+  it('migrates v25→v26: world-board → arrival-alarm', () => {
+    const result = migrateSave(makeV25Envelope({ tutorialStep: 'world-board' }) as any);
+    expect(result.version).toBe(SAVE_VERSION);
+    expect((result.gameState as any).tutorialStep).toBe('arrival-alarm');
+  });
+
+  it('migrates v25→v26: complete passes through', () => {
+    const result = migrateSave(makeV25Envelope({ tutorialStep: 'complete' }) as any);
+    expect((result.gameState as any).tutorialStep).toBe('complete');
+  });
+
+  it('migrates v25→v26: unknown legacy step falls back to complete', () => {
+    const result = migrateSave(makeV25Envelope({ tutorialStep: 'some-removed-step' }) as any);
+    expect((result.gameState as any).tutorialStep).toBe('complete');
+  });
+
+  it('migrates v25→v26: mid-combat slime state collapses to open-quest-board, dead mission stripped, member freed', () => {
+    const result = migrateSave(
+      makeV25Envelope({
+        tutorialStep: 'tutorial-quest-active',
+        founder: { id: 'f1', name: 'Founder', level: 1, exp: 0, stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 }, unallocatedPoints: 0, skill: null, status: 'on-mission', injuredUntil: null, civilization: 'LinhSon', isFounder: true, rank: 'COMMANDER', missionsCompleted: 0, rarity: 1, traits: [] },
+        activeMissions: [
+          { missionId: 'tutorial-into-the-clearing', memberIds: ['f1'], mercContractIds: [], startTime: 0, estimatedEndTime: 0, phase: 'in-combat', arrivalTime: 0, targetPriority: 'focus' },
+        ],
+      }) as any,
+    );
+    expect(result.version).toBe(SAVE_VERSION);
+    expect((result.gameState as any).tutorialStep).toBe('open-quest-board');
+    expect((result.gameState as any).activeMissions).toEqual([]);
+    expect((result.gameState as any).founder.status).toBe('idle');
+  });
+
   it('throws for version higher than SAVE_VERSION', () => {
     const futureEnvelope = { ...VALID_SAVE_ENVELOPE, version: 999 };
     expect(() => migrateSave(futureEnvelope)).toThrow(/newer than supported/);

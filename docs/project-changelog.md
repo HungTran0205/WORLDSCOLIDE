@@ -7,6 +7,103 @@ All notable changes to Worlds Collide are documented in this file. The format fo
 
 ---
 
+## [Unreleased] — 2026-05-20 (Tutorial Quest Redesign Phase 06 Complete)
+
+### feat(tutorial): full state-machine integration + coachmark wiring (Phase 06)
+
+Completed Phase 06 of tutorial-quest-redesign: expanded tutorial onboarding from legacy 8-step sandbox flow to a fully-wired 14-beat narrative chain (the GDD "Bear the Bear" / "First Tremor" story arc). Tutorial state machine now drives all key moments: char-creation → arrival-alarm (messenger scene) → open-quest-board (beat-the-drum) → accept-bear-quest → assign-and-dispatch → quest-travel → moonbear-combat (with HP-floor victory guarantee) → kael-rescue (narrative) → reward-splash → build-logging-site → assign-kael (grants +200 wood/gold) → first-haul-reward → build-tavern → complete.
+
+**Expanded TutorialStep Union** (`src/game/state/game-state.ts`):
+- Was 8 IDs (char-creation, world-board, quest-dispatch, quest-active, kael-rescue, reward, build-logging, assign-kael)
+- Now 14 beats (char-creation → arrival-alarm → open-quest-board → accept-bear-quest → assign-and-dispatch → quest-travel → moonbear-combat → kael-rescue → reward-splash → build-logging-site → assign-kael → first-haul-reward → build-tavern → complete)
+
+**Tutorial Manager Enhanced** (`src/game/systems/tutorial-manager.ts`):
+- `TUTORIAL_STEPS: TutorialStepConfig[]` carries optional `coach?: CoachConfig` per beat (GDD §6 coachmark guidance)
+- Beats advance via hybrid model:
+  - **Tick-loop predicates** (autoAdvance + advanceCondition): store-observable signals (cameraFocus, activeMissions, facility level)
+  - **UI callbacks**: Modals/handlers fire custom events advancing to next beat (quest-board selection, combat victory, first-haul handler completion)
+- `shouldAdvanceTutorial(currentStep, state)` checks predicates in tick loop; called from mission-tick.ts for state-driven advances
+- Order matters: TUTORIAL_STEPS list must match TutorialStep union so `getNextStep` walks linearly
+
+**Coachmark Wiring** (Phase 01 infrastructure + Phase 06 integration):
+- Reusable `<TutorialCoachmark>` component (Phase 01) mounted in game-screen.tsx, driven by `current step's coach config`
+- Coachmark mounts only if `tutorialStep` matches the active step AND step config has `coach` field (None for modals/dedicated overlays)
+- Example: 'accept-bear-quest' renders dom-target coachmark on `.quest-card` (spotlight, arrow, pulse, advanceOn='quest-selected' event)
+- Visibility gated by `isTutorialActive` check; zero overhead when tutorial complete
+
+**Save Format Bump** (SAVE_VERSION 25 → 26):
+- Migration `migrateV25toV26()` remaps legacy 8-step IDs forward to 14-beat flow via `STEP_REMAP` table:
+  - 'char-creation' → 'char-creation' (unchanged)
+  - 'world-board' → 'arrival-alarm' (prerequisites met: no blocking items)
+  - 'tutorial-quest-dispatch', 'tutorial-quest-active' → 'open-quest-board' (dead 'tutorial-into-the-clearing' mission strips below; player re-dispatches new 'tutorial-bear-the-bear')
+  - 'tutorial-kael-rescue' → 'kael-rescue' (Kael + permit already granted pre-rescue)
+  - 'tutorial-reward' → 'reward-splash' (permit already granted; no item gaps)
+  - 'build-logging-site' → 'build-logging-site', 'assign-kael' → 'assign-kael' (unchanged, new beats exist)
+  - Unknown legacy IDs → 'complete' (defensive fallback)
+- **Stranded Member Cleanup**: Removed 'tutorial-into-the-clearing' mission from `activeMissions[]`; any members stuck 'on-mission' for that mission reset to 'idle' (frees their status so they're available for new tutorial flow)
+- Transparent migration: auto-triggers on load, no player interaction needed
+
+**Verification**: `npm run typecheck` ✓ (tight TutorialStep → TUTORIAL_STEPS sync); `npm run lint` ✓; all 7 migration tests pass (remapping + stranded-member-cleanup coverage).
+
+**Plan Reference**: `plans/260520-1152-tutorial-quest-redesign/phase-06-state-machine-integration.md`
+
+---
+
+### feat(ui/narrative): RetroSpeechBubble reusable component + NpcAlarm beat-2 narrative binding (Phase 05)
+
+Introduced reusable JRPG-style speech bubble component for future NPC dialogue scenes (e.g., Kael rescue quest). RetroSpeechBubble features typewriter text reveal (configurable chars/sec), reveal-all-on-click, blinking continue caret, and prefers-reduced-motion support. Anchoring via world coordinates (reuses Phase 01 coachmark world→screen projection bridge) with fixed-bottom fallback. NpcAlarm implements beat-2 narrative beat (messenger alarm scene) driving the bubble; mounted DEBUG-gated in GameScreen.tsx, live step wiring deferred to Phase 06.
+
+**New files**:
+- `src/ui/components/retro-speech-bubble.tsx` — Reusable retro speech bubble (~120 LOC, typewriter crawl + click-through + caret animation)
+- `src/ui/components/retro-speech-bubble.css` — Speech bubble styling (retro borders, caret keyframes, reduced-motion safe)
+- `src/ui/components/npc-alarm.tsx` — Beat-2 narrative scene driver (~40 LOC, English copy, world-anchored)
+
+**Modified**:
+- `src/ui/screens/game-screen.tsx` — Added DEBUG-gated stub mount; live wiring deferred to Phase 06
+- `src/ui/components/world-board-modal.tsx` — Trimmed intro lore from 2 pages → 1 page, single "Begin" button
+
+**Notes**: Reusable for future NPC dialogue (no hardcoding to tutorial flow). Shares coachmark projection bridge; safe because alarm + coachmark steps never run simultaneously. English copy (project convention). Phase 06 owns live step machine wiring; Phase 05 establishes reusable infrastructure.
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; DEBUG-gated, no player-visible change until Phase 06 wiring.
+
+### feat(tutorial/combat): HP-floor guarantee for Moonbear fight + soft-retry UI (Phase 04)
+
+Tutorial-only mechanic to guarantee victory in the `tutorial-bear-the-bear` mission. Added `CombatEngine.hpFloorActive` boolean (default false) + `clampTutorialAllyFloor()` helper called after each of 4 ally-damage sites (effect-tick poison, ThienLu clone, auto-attack, skill), ensuring allies clamp to minimum 1 HP. Headless simulator (`runCombatLoop()`) gains optional `hpFloor` param, honored during Skip button and mid-fight reload for offline-resolved missions. Scoping via `TUTORIAL_BEAR_MISSION_ID` (exported from `tutorial-data.ts`); flag set true **only** for that mission in `combat-fight-controller.tsx`, `mission-tick.ts`, `offline-progression.ts`. Zero behavior change for all other combat.
+
+**Modified**:
+- `src/game/systems/combat-engine.ts` — `hpFloorActive` field + `clampTutorialAllyFloor()` private method (4 call sites)
+- `src/game/systems/combat-simulator.ts` — `runCombatLoop(entities, pickTarget, margin, hpFloor)` param + clamp logic inside loop
+- `src/scene/combat/combat-fight-controller.tsx` — Set `engine.hpFloorActive = missionId === TUTORIAL_BEAR_MISSION_ID` on init
+- `src/game/systems/mission-tick.ts` — Pass `hpFloor` when calling `runCombatLoop()` for offline mission resolution
+- `src/game/systems/offline-progression.ts` — Pass `hpFloor` for Skip button simulator call
+- `src/ui/panels/combat-panel-result.tsx` — Added tutorial-only "Try again" soft-retry button (re-enters battle at full HP) when outcome !== 'victory'
+- `src/ui/panels/combat-skill-hotbar.tsx` — Added `data-coach="skill-hotbar"` selector on primary skill button (Phase 06 coachmark mount point)
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; tutorial mission guaranteed win, outcome !== 'victory' shows retry button, offline Skip honors floor, normal combat unaffected.
+
+### feat(economy): Tavern now costs 200 Wood to build — global, applies post-tutorial (GDD §0.3 LOCKED)
+
+Building a Tavern now requires 200 Oak Wood in addition to the existing gold cost. This is a **locked design decision** (GDD §0.3) that affects all Tavern builds — including post-tutorial players who already have Kael. The economy model change is implemented via a new generic `FacilityDef.buildMaterialCost?: Partial<Record<ItemID, number>>` field; `buildFacility` checks and deducts material cost atomically with gold inside one Zustand `set()`. The facility build UI displays the wood cost and disables the build button with a "Need 200 Oak Wood" caption when inventory is insufficient.
+
+**Modified**:
+- `src/game/data/facility-defs.ts` — Added `buildMaterialCost: { WOOD: 200 }` to Tavern def
+- `src/game/systems/building-system.ts` (or equivalent) — `buildFacility` atomic material + gold deduction
+- `src/ui/panels/build-menu.tsx` (or equivalent) — Cost display + disabled state with caption
+
+**Plan reference**: `plans/260520-1152-tutorial-quest-redesign/phase-03-state-and-save.md`
+
+### feat(tutorial): scripted first-haul reward handler + splash (Phase 03 of tutorial-quest-redesign, wiring deferred to Phase 06)
+
+Incremental tutorial-chain piece: `handleFirstHaul` in `src/game/systems/tutorial-first-haul-handler.ts` grants +200 Wood +200 Gold (once) when Kael is assigned to the logging site at the `assign-kael` step. Presentational `src/ui/components/tutorial-first-haul-splash.tsx` built but not yet mounted — Phase 06 mounts and wires it. No player-visible change at this phase.
+
+**New files**:
+- `src/game/systems/tutorial-first-haul-handler.ts` — `handleFirstHaul` one-shot reward logic
+- `src/ui/components/tutorial-first-haul-splash.tsx` — Reward splash UI (unmounted until Phase 06)
+
+**Plan reference**: `plans/260520-1152-tutorial-quest-redesign/phase-03-state-and-save.md`
+
+---
+
 ## [Unreleased] — 2026-05-12 (Quest Board Diegetic Redesign + Tiles + Platformer + HD-2D Atmospheric)
 
 ### feat(ui): title screen Settings + Credits overlays (Phase 5 Title Screen 2000s A.C. Redesign)
@@ -37,6 +134,21 @@ Phase 6 completes title-screen-2000s-ac flow integration: splash → title → g
 **Verification**: `npm run typecheck` ✓; `npm run lint` ✓; splash → title → game flow audio transitions working; no BGM_TITLE asset errors (Howler graceful 404 handling).
 
 **Plan reference**: `plans/260519-0926-title-screen-2000s-ac/phase-06-app-integration-audio-crossfade.md`
+
+### feat(combat): per-ally identity mask overlay with animation-state tracking (Phase 3 Mask Overlay POC)
+
+Combat identity system Phase 3: per-character deterministic mask sprite overlay rendered on allies during battle, using established `mask-pool.ts` infrastructure (15-mask curated set, texture cache). `CombatMaskOverlay` component renders R3F plane inside Billboard (west.png, mirrored east via scale); tracks animation state via offset table (idle/walking/attacking/skill/hit/dead) with 0.25 lerp smoothing for smooth head-tracking during transitions. Mask selection deterministic per member id; enemies skip overlay (render via spriteId path). Preload on first combat scene mount via `preloadCombatMasks()`.
+
+**New files**:
+- `src/scene/combat/combat-mask-overlay.tsx` — R3F plane mesh (0.525u) with per-state offset table, animation tracking, directional mirroring
+
+**Modified**:
+- `src/scene/combat/combat-entity-sprite.tsx` — +maskId memo (allies only), +<CombatMaskOverlay/> conditional render inside Billboard after HpBar
+- `src/scene/combat/combat-scene.tsx` — +useEffect preloadCombatMasks on mount
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; mask renders on ally entities only, tracks idle/attacking/hit states, direction flip correct, no texture leaks (cache hit).
+
+**Plan reference**: `plans/260519-1641-mask-overlay-poc/phase-03-combat-overlay.md`
 
 ### feat(atmospheric): per-room theming foundation — context provider, preset registry, active-room detection (Phase 01)
 
