@@ -72,13 +72,6 @@ describe('migrateSave', () => {
     expect(newbie.missionsCompleted).toBe(4); // level 2 * 2
   });
 
-  it('migrates v7 → v8: tavern mercenaries also migrated', () => {
-    const result = migrateSave(makeV7Envelope() as any);
-    const tavMerc = (result.gameState as any).tavern.availableMercenaries[0];
-    expect(tavMerc.rank).toBe('MERCENARY');
-    expect(tavMerc.missionsCompleted).toBe(4); // level 2 * 2
-  });
-
   // v8→v9 civilization remap tests
   it('migrates v8→v9: remaps Viet to LinhSon', () => {
     const result = migrateSave(makeV7Envelope() as any);
@@ -97,10 +90,84 @@ describe('migrateSave', () => {
     expect(vet.civilization).toBe('ThienLu');
   });
 
-  it('migrates v8→v9: tavern mercenaries also remapped', () => {
+  // v23→v24: tavern rewrite — old availableMercenaries are wiped and replaced with the new
+  // recruitment-hub shape. Phase 02 will respawn currentRoster on next day-tick.
+  it('migrates v23→v24: tavern reshape — currentRoster empty, new fields initialized', () => {
     const result = migrateSave(makeV7Envelope() as any);
-    const tavMerc = (result.gameState as any).tavern.availableMercenaries[0];
-    expect(tavMerc.civilization).toBe('DeQuoc');
+    const tavern = (result.gameState as any).tavern;
+    expect(tavern.availableMercenaries).toBeUndefined();
+    expect(tavern.currentRoster).toEqual([]);
+    expect(tavern.mercContracts).toEqual([]);
+    expect(tavern.pendingPrompts).toEqual([]);
+    expect(tavern.level).toBe(1);
+    expect(tavern.keeperId).toBeNull();
+    expect(tavern.reputation).toBe(0);
+    expect(tavern.factionBias).toBeNull();
+    expect(tavern.globalNegotiationDebuffUntilDay).toBeNull();
+  });
+
+  it('migrates v23→v24: legacy members get rarity=1 and traits=[]', () => {
+    const result = migrateSave(makeV7Envelope() as any);
+    const founder = (result.gameState as any).founder;
+    expect(founder.rarity).toBe(1);
+    expect(founder.traits).toEqual([]);
+    const newbie = (result.gameState as any).roster.find((m: any) => m.id === 'r1');
+    expect(newbie.rarity).toBe(1);
+    expect(newbie.traits).toEqual([]);
+  });
+
+  // v24→v25: Phase 04 backfill — `tavern.veteranPool: []` for in-flight v24 saves
+  // that predate the field. Without this, day-tick crashes on `.length` of undefined.
+  it('migrates v24→v25: backfills tavern.veteranPool=[] when missing', () => {
+    const v24Envelope = {
+      version: 24,
+      savedAt: Date.now(),
+      metadata: { slotId: 1, guildName: 'Test', guildLevel: 1, playTimeMs: 0, founderName: 'F', createdAt: 0, updatedAt: 0 },
+      gameState: {
+        gameTime: 0, realTimeLastTick: 0, guildName: 'Test', guildLevel: 1, gold: 100,
+        guildHall: { level: 1, floorTiles: [{ x: 0, z: 0, color: '#DAA520' }], furniture: [] },
+        settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high', shadowsEnabled: false, bloomEnabled: false, bloomThreshold: 0.85 },
+        founder: null, roster: [], activeMissions: [], completedMissions: [],
+        tutorialStep: 'complete',
+        // veteranPool intentionally absent — pre-Phase-04 v24 shape.
+        tavern: {
+          level: 1, keeperId: null, reputation: 0, currentRoster: [], rerolledToday: false,
+          factionBias: null, rumor: null, mercContracts: [], pendingPrompts: [],
+          lastDayProcessed: 0, reputationLastTickWeek: 0, globalNegotiationDebuffUntilDay: null,
+        },
+        inventory: { items: {} }, facilities: [],
+      },
+    };
+    const result = migrateSave(v24Envelope as any);
+    expect(result.version).toBe(SAVE_VERSION);
+    expect((result.gameState as any).tavern.veteranPool).toEqual([]);
+  });
+
+  it('migrates v24→v25: preserves existing veteranPool entries', () => {
+    const existingPool = [
+      { contractId: 'merc-old-1', visitorSnapshot: { id: 'v1' }, relationshipPoints: 7, addedDay: 1 },
+    ];
+    const v24Envelope = {
+      version: 24,
+      savedAt: Date.now(),
+      metadata: { slotId: 1, guildName: 'Test', guildLevel: 1, playTimeMs: 0, founderName: 'F', createdAt: 0, updatedAt: 0 },
+      gameState: {
+        gameTime: 0, realTimeLastTick: 0, guildName: 'Test', guildLevel: 1, gold: 100,
+        guildHall: { level: 1, floorTiles: [{ x: 0, z: 0, color: '#DAA520' }], furniture: [] },
+        settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high', shadowsEnabled: false, bloomEnabled: false, bloomThreshold: 0.85 },
+        founder: null, roster: [], activeMissions: [], completedMissions: [],
+        tutorialStep: 'complete',
+        tavern: {
+          level: 1, keeperId: null, reputation: 0, currentRoster: [], rerolledToday: false,
+          factionBias: null, rumor: null, mercContracts: [], pendingPrompts: [],
+          lastDayProcessed: 0, reputationLastTickWeek: 0, globalNegotiationDebuffUntilDay: null,
+          veteranPool: existingPool,
+        },
+        inventory: { items: {} }, facilities: [],
+      },
+    };
+    const result = migrateSave(v24Envelope as any);
+    expect((result.gameState as any).tavern.veteranPool).toEqual(existingPool);
   });
 
   it('migrates v11→v12+: old tutorial steps remapped to complete', () => {
@@ -204,6 +271,62 @@ describe('migrateSave', () => {
     const tavern = (result.gameState as any).facilities.find((f: any) => f.type === 'tavern');
     expect(tavern.workshopQueue).toBeUndefined();
     expect(tavern.workshopBlueprints).toBeUndefined();
+  });
+
+  // v25→v26: tutorial redesign — legacy 8-id steps remap forward to the 14-beat flow,
+  // the deleted slime mission is stripped, and its members are freed.
+  function makeV25Envelope(gameStateOverrides: Record<string, unknown> = {}) {
+    return {
+      version: 25,
+      savedAt: Date.now(),
+      metadata: { slotId: 1, guildName: 'Test', guildLevel: 1, playTimeMs: 0, founderName: 'F', createdAt: 0, updatedAt: 0 },
+      gameState: {
+        gameTime: 0, realTimeLastTick: 0, guildName: 'Test', guildLevel: 1, gold: 100,
+        guildHall: { level: 1, floorTiles: [{ x: 0, z: 0, color: '#DAA520' }], furniture: [] },
+        settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high', shadowsEnabled: false, bloomEnabled: false, bloomThreshold: 0.85, atmosphericEnabled: true },
+        founder: null, roster: [], activeMissions: [], completedMissions: [],
+        tutorialStep: 'complete',
+        tavern: {
+          level: 1, keeperId: null, reputation: 0, currentRoster: [], rerolledToday: false,
+          factionBias: null, rumor: null, mercContracts: [], pendingPrompts: [],
+          lastDayProcessed: 0, reputationLastTickWeek: 0, globalNegotiationDebuffUntilDay: null, veteranPool: [],
+        },
+        inventory: { items: {} }, facilities: [],
+        ...gameStateOverrides,
+      },
+    };
+  }
+
+  it('migrates v25→v26: world-board → arrival-alarm', () => {
+    const result = migrateSave(makeV25Envelope({ tutorialStep: 'world-board' }) as any);
+    expect(result.version).toBe(SAVE_VERSION);
+    expect((result.gameState as any).tutorialStep).toBe('arrival-alarm');
+  });
+
+  it('migrates v25→v26: complete passes through', () => {
+    const result = migrateSave(makeV25Envelope({ tutorialStep: 'complete' }) as any);
+    expect((result.gameState as any).tutorialStep).toBe('complete');
+  });
+
+  it('migrates v25→v26: unknown legacy step falls back to complete', () => {
+    const result = migrateSave(makeV25Envelope({ tutorialStep: 'some-removed-step' }) as any);
+    expect((result.gameState as any).tutorialStep).toBe('complete');
+  });
+
+  it('migrates v25→v26: mid-combat slime state collapses to open-quest-board, dead mission stripped, member freed', () => {
+    const result = migrateSave(
+      makeV25Envelope({
+        tutorialStep: 'tutorial-quest-active',
+        founder: { id: 'f1', name: 'Founder', level: 1, exp: 0, stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 }, unallocatedPoints: 0, skill: null, status: 'on-mission', injuredUntil: null, civilization: 'LinhSon', isFounder: true, rank: 'COMMANDER', missionsCompleted: 0, rarity: 1, traits: [] },
+        activeMissions: [
+          { missionId: 'tutorial-into-the-clearing', memberIds: ['f1'], mercContractIds: [], startTime: 0, estimatedEndTime: 0, phase: 'in-combat', arrivalTime: 0, targetPriority: 'focus' },
+        ],
+      }) as any,
+    );
+    expect(result.version).toBe(SAVE_VERSION);
+    expect((result.gameState as any).tutorialStep).toBe('open-quest-board');
+    expect((result.gameState as any).activeMissions).toEqual([]);
+    expect((result.gameState as any).founder.status).toBe('idle');
   });
 
   it('throws for version higher than SAVE_VERSION', () => {

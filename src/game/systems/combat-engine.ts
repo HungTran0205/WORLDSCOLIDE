@@ -54,6 +54,11 @@ export class CombatEngine {
   /** Active stage spec — drives spawn anchors (and y per platform). null →
    *  fallback to legacy FORMATION_POSITIONS (y=0). Set during init(). */
   private stageSpec: CombatStageSpec | null = null;
+  /** Tutorial HP-floor (Phase 04). When true, ally entities are clamped to a
+   *  minimum of 1 HP at every ally-damage site → the tutorial Moonbear fight is
+   *  a guaranteed win. Set ONLY by CombatFightController for the tutorial
+   *  mission; default false keeps every other fight byte-for-byte unchanged. */
+  hpFloorActive = false;
 
   /** Initialize combat from formation + enemies */
   init(
@@ -327,6 +332,7 @@ export class CombatEngine {
     const effectResult = applyEffectTick(entity);
     if (effectResult.damage > 0) {
       entity.currentHp -= effectResult.damage;
+      this.clampTutorialAllyFloor(entity);
       this.eventQueue.push({ type: 'effect-tick', targetId: entity.id, effect: 'poison', damage: effectResult.damage });
       if (entity.currentHp <= 0) {
         entity.animState = 'dead';
@@ -376,6 +382,7 @@ export class CombatEngine {
         const cloneCrit = rollCrit(entity.stats.LCK);
         if (cloneCrit) cloneDmg = Math.floor(cloneDmg * entity.critDmg);
         cloneTarget.currentHp -= cloneDmg;
+        this.clampTutorialAllyFloor(cloneTarget);
         this.totalDamageDealt += entity.isAlly ? cloneDmg : 0;
         this.eventQueue.push({
           type: 'auto-attack',
@@ -397,6 +404,16 @@ export class CombatEngine {
    *  animation reverts to battle-idle. */
   private isActorDone(actor: ArenaEntity): boolean {
     return actor.animState !== 'attacking' && actor.animState !== 'skill';
+  }
+
+  /** Tutorial-only HP-floor (Phase 04). Clamp an ally to ≥1 HP when the floor
+   *  is active. No-op for enemies and for every non-tutorial fight (flag false).
+   *  Call immediately after any `currentHp -= damage` write that can hit an ally,
+   *  before the death (`<= 0`) check, so floored allies never die. */
+  private clampTutorialAllyFloor(target: ArenaEntity): void {
+    if (this.hpFloorActive && target.isAlly && target.currentHp < 1) {
+      target.currentHp = 1;
+    }
   }
 
   private tryAttack(entity: ArenaEntity, target: ArenaEntity): void {
@@ -444,6 +461,7 @@ export class CombatEngine {
     }
 
     target.currentHp -= damage;
+    this.clampTutorialAllyFloor(target);
     this.totalDamageDealt += entity.isAlly ? damage : 0;
     this.eventQueue.push({ type: 'auto-attack', attackerId: entity.id, targetId: target.id, damage, isCrit });
 
@@ -532,6 +550,7 @@ export class CombatEngine {
     }
 
     target.currentHp -= skillDmg;
+    this.clampTutorialAllyFloor(target);
     this.totalDamageDealt += entity.isAlly ? skillDmg : 0;
     this.eventQueue.push({ type: 'skill-use', attackerId: entity.id, targetId: target.id, damage: skillDmg, skillName: entity.skill.name, isCrit: isCrit2 });
     entity.skillCooldownUntil = this.time + entity.skill.cooldownMs;

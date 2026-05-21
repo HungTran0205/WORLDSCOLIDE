@@ -1,57 +1,372 @@
-/* Title screen — fullscreen with animated gradient background */
+/**
+ * Title screen styling — full-bleed R3F diorama with floating menu overlay.
+ *
+ * Phase 0 owns:  .splash-screen, .ts-logo*, .splash-loading*
+ * Phase 2 owns:  .title-scene-canvas (now full-bleed after Phase 4)
+ * Phase 4 owns:  .title-screen, .title-screen__panel, .title-menu*,
+ *                .title-save-picker*, .title-overwrite-confirm*
+ * Reused:        .save-slot-card* (Save slot card component, unchanged)
+ */
+
+/* ===== Phase 4: Title screen container (transparent — canvas is the bg) ===== */
 
 .title-screen {
   position: fixed;
   inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
   z-index: 200;
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  background: linear-gradient(135deg, #1a1a2e, #0f3460, #16213e, #1a1a2e);
-  background-size: 400% 400%;
-  animation: gradientShift 12s ease infinite;
-  color: #e0e0e0;
+  font-family: var(--ink-font-ui, 'Segoe UI', system-ui, sans-serif);
+  color: #c8c0b0;
+  /* Solid lacquer backdrop — prevents the index.html cave background from
+   * flashing through during the splash→title swap and while the R3F WebGPU
+   * device initialises. Same colour as splash bg so the swap is invisible. */
+  background: #0a0606;
 }
 
-@keyframes gradientShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+/* Canvas + menu panel fade-in independently so the lacquer backdrop never
+ * goes transparent (which would leak the cave bg through during the gap). */
+.title-scene-canvas {
+  animation: titleFadeIn 800ms ease-out;
+}
+
+.title-screen__panel {
+  animation: titlePanelFadeIn 700ms ease-out 200ms backwards;
+}
+
+@keyframes titleFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes titlePanelFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .title-screen { animation: none; }
+  .title-scene-canvas,
+  .title-screen__panel { animation: none; }
 }
 
-.title-logo {
-  font-size: 3rem;
-  font-weight: bold;
-  color: #ffd700;
-  text-shadow: 0 0 20px rgba(255, 215, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.5);
+/* ===== Phase 2 + Phase 4: Full-bleed R3F diorama canvas ===== */
+
+.title-scene-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.title-scene-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ===== Brand mark — standalone top-center wordmark =====
+ * Floats above the menu panel + diorama. Pointer-events disabled so it can
+ * never block clicks on the canvas / menu underneath. Centered horizontally
+ * via left:50% + translateX(-50%). Same fade-in timing as the panel. */
+.title-screen__brand {
+  position: absolute;
+  top: 6vh;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 11;
+  pointer-events: none;
+  animation: titlePanelFadeIn 700ms ease-out 200ms backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .title-screen__brand { animation: none; }
+}
+
+/* On narrow viewports the panel jumps to the bottom half — let the brand sit
+ * higher and shrink so it never crowds the diorama focal point. */
+@media (max-width: 1024px) {
+  .title-screen__brand {
+    top: 3vh;
+  }
+}
+
+/* ===== Phase 4: Floating menu panel (overlays the diorama) ===== */
+
+.title-screen__panel {
+  position: absolute;
+  /* Nudged inward (right: 4% → 11%) so the panel leans toward the drum
+   * centerpiece, away from the screen edge. Dropped further (top 62% → 72%)
+   * so it reads as a console set into the lower altar, not a floating mid-
+   * height popup. */
+  right: 11%;
+  top: 72%;
+  transform: translateY(-50%);
+  width: 32%;
+  max-width: 420px;
+  min-width: 320px;
+  /* Reduced top padding now that the brand mark is no longer inside. */
+  padding: 24px 40px 28px;
+  z-index: 10;
+  /* Lacquer board: deep oxblood-red base + faint vertical wood grain, edged
+   * with a double bronze border (outer frame line + inner hairline). The
+   * radial highlight at top reads as gilt firelight catching the lacquer. */
+  background:
+    radial-gradient(ellipse at 50% 0%,
+      rgba(120, 50, 20, 0.55) 0%,
+      rgba(40, 12, 8, 0.78) 55%,
+      rgba(20, 6, 4, 0.88) 100%),
+    repeating-linear-gradient(90deg,
+      rgba(0, 0, 0, 0) 0px,
+      rgba(0, 0, 0, 0) 7px,
+      rgba(0, 0, 0, 0.08) 7px,
+      rgba(0, 0, 0, 0.08) 8px);
+  backdrop-filter: blur(4px) saturate(1.2);
+  -webkit-backdrop-filter: blur(4px) saturate(1.2);
+  border: 2px solid #8c6418;
+  border-radius: 4px;
+  box-shadow:
+    /* Outer bronze halo */
+    0 0 0 1px rgba(212, 175, 55, 0.25),
+    /* Inner gold hairline (inset) — the "double frame" */
+    inset 0 0 0 1px rgba(212, 175, 55, 0.55),
+    inset 0 0 4px rgba(255, 170, 60, 0.18),
+    /* Warm firelight wash on top edge */
+    inset 0 24px 60px rgba(255, 130, 40, 0.10),
+    /* Deep shadow behind panel */
+    0 12px 80px rgba(0, 0, 0, 0.75);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  /* Serif fantasy for the menu body — overrides the global sans-serif so
+   * the menu reads as carved/printed ritual text instead of a web form. */
+  font-family: var(--ink-font-title, 'Cinzel', 'Trajan Pro', 'Times New Roman', serif);
+  transition: width 280ms ease, max-width 280ms ease, right 280ms ease, left 280ms ease, transform 280ms ease;
+}
+
+/* Decorative bronze corner brackets — purely cosmetic, drawn with CSS gradients
+ * so we don't need image assets. ::before = top-left, ::after = bottom-right. */
+.title-screen__panel::before,
+.title-screen__panel::after {
+  content: '';
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  pointer-events: none;
+  border: 2px solid #d4af37;
+  opacity: 0.85;
+}
+.title-screen__panel::before {
+  top: -2px;
+  left: -2px;
+  border-right: none;
+  border-bottom: none;
+}
+.title-screen__panel::after {
+  bottom: -2px;
+  right: -2px;
+  border-left: none;
+  border-top: none;
+}
+
+/* Save-picker / settings / credits expand to center for a wider workspace,
+ * but keep the same lacquer chrome + see-through diorama backdrop. */
+.title-screen__panel--wide {
+  right: auto;
+  left: 50%;
+  top: 58%;
+  width: 60%;
+  max-width: 720px;
+  transform: translate(-50%, -50%);
+}
+
+/* ===== Phase 4: Vertical menu list ===== */
+
+.title-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 16px;
+}
+
+.title-menu__item {
+  position: relative;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.18);
+  padding: 14px 0 14px 22px;
+  color: #d8c8a8;
+  font-family: inherit;
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+  transition: color 220ms ease, padding-left 220ms ease, border-color 220ms ease, letter-spacing 220ms ease;
+}
+
+/* Selected/hover state: bronze drum-disc emblem on the left + brighter gold
+ * text + a faint gold underline glow. The ::before is the drum emblem — an
+ * 8-ray sun pattern radial-gradient that reads as the Đông Sơn drum face. */
+.title-menu__item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%) scale(0.7);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center,
+      #ffe080 0%, #d4af37 40%, #8c6418 70%, transparent 72%),
+    conic-gradient(from 0deg,
+      #d4af37 0deg, transparent 12deg,
+      #d4af37 45deg, transparent 57deg,
+      #d4af37 90deg, transparent 102deg,
+      #d4af37 135deg, transparent 147deg,
+      #d4af37 180deg, transparent 192deg,
+      #d4af37 225deg, transparent 237deg,
+      #d4af37 270deg, transparent 282deg,
+      #d4af37 315deg, transparent 327deg,
+      #d4af37 360deg);
+  opacity: 0;
+  transition: opacity 220ms ease, transform 220ms ease;
+  filter: drop-shadow(0 0 4px rgba(255, 195, 80, 0.7));
+}
+
+.title-menu__item:hover:not(:disabled),
+.title-menu__item:focus-visible:not(:disabled) {
+  color: #f4d77a;
+  padding-left: 30px;
+  letter-spacing: 0.12em;
+  border-bottom-color: rgba(212, 175, 55, 0.75);
+  outline: none;
+}
+
+.title-menu__item:hover:not(:disabled)::before,
+.title-menu__item:focus-visible:not(:disabled)::before {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+.title-menu__item:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.title-menu__item--primary {
+  margin-top: 16px;
+  background: var(--ink-gold-bright, #d4af37);
+  color: #0a0606;
+  border: 1px solid var(--ink-gold-bright, #d4af37);
+  border-radius: var(--ink-radius-lg, 8px);
+  padding: 12px 20px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.title-menu__item--primary:hover:not(:disabled) {
+  background: #e0bc4a;
+  padding-left: 20px;
+}
+
+.title-menu__item--danger {
+  color: #e74c3c;
+  border-bottom-color: rgba(231, 76, 60, 0.3);
+}
+
+.title-menu__item--danger:hover:not(:disabled) {
+  color: #ff6b5a;
+  border-bottom-color: #e74c3c;
+}
+
+.title-menu__error {
+  margin: 0;
+  padding: 8px 12px;
+  color: #e74c3c;
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+/* ===== Phase 4: Save-slot picker submenu ===== */
+
+.title-save-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.title-save-picker__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 4px;
 }
 
-.title-subtitle {
+.title-save-picker__back {
+  background: transparent;
+  border: none;
+  color: var(--ink-gold-bright, #d4af37);
+  cursor: pointer;
+  font: inherit;
   font-size: 1rem;
-  color: #888;
-  margin-bottom: 32px;
+  padding: 4px 8px;
+  transition: opacity 200ms ease;
 }
 
-/* Save slot list */
-.save-slot-list {
+.title-save-picker__back:hover { opacity: 0.75; }
+
+.title-save-picker__heading {
+  margin: 0;
+  color: var(--ink-gold-bright, #d4af37);
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.title-save-picker__slots {
   display: flex;
-  gap: 16px;
-  margin-bottom: 32px;
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 50vh;
+  overflow-y: auto;
 }
 
-/* Individual save slot card */
+.title-overwrite-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(231, 76, 60, 0.08);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  border-radius: 6px;
+}
+
+.title-overwrite-confirm__msg {
+  margin: 0;
+  color: #e74c3c;
+  font-size: 0.95rem;
+}
+
+.title-overwrite-confirm__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.title-overwrite-confirm__actions .title-menu__item {
+  flex: 1;
+  text-align: center;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+/* ===== Save slot card (component reused — styles unchanged from legacy) ===== */
+
 .save-slot-card {
-  width: 220px;
-  padding: 16px;
+  padding: 12px 16px;
   background: rgba(20, 20, 30, 0.8);
   border: 2px solid rgba(255, 215, 0, 0.2);
   border-radius: 10px;
@@ -76,20 +391,20 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 120px;
+  min-height: 80px;
 }
 
 .save-slot-card__header {
   color: #ffd700;
   font-weight: bold;
   font-size: 0.95rem;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .save-slot-card__meta {
   font-size: 0.8rem;
   color: #aaa;
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 .save-slot-card__empty-text {
@@ -97,64 +412,290 @@
   font-size: 0.9rem;
 }
 
-/* Action buttons */
-.title-actions {
+/* ===== Mobile: panel drops to bottom half; canvas full-bleed underneath ===== */
+
+@media (max-width: 1024px) {
+  .title-screen__panel,
+  .title-screen__panel--wide {
+    right: 0;
+    left: auto;
+    bottom: 0;
+    top: auto;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    height: 50%;
+    transform: none;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    overflow-y: auto;
+  }
+}
+
+/* ===== Phase 0: Splash screen + "2000s A.C" logo (preserved verbatim) ===== */
+
+.splash-screen {
+  position: fixed;
+  inset: 0;
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  max-width: 500px;
+  gap: 3rem;
+  background: #0a0606;
+  z-index: 300;
+  transition: opacity 500ms ease-out;
 }
 
-.title-btn {
-  background: linear-gradient(135deg, #4a3f2f, #2a2520);
-  color: var(--ink-gold-bright);
-  border: 1px solid rgba(255, 215, 0, 0.4);
-  padding: 10px 24px;
-  border-radius: var(--ink-radius-lg);
+.splash-screen--fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ===== Worlds Collide Split logo =====
+ * Outer block stacks wordmark + tagline vertically. The wordmark itself is a
+ * 3-cell flex row: industrial mono on the left, Đông Sơn drum-sun divider in
+ * the middle, ritual serif on the right. Monochrome gold throughout. */
+.ts-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55em;
+  color: var(--ink-gold-bright, #d4af37);
+  text-shadow:
+    0 2px 16px rgba(255, 107, 26, 0.45),
+    0 0 32px rgba(255, 107, 26, 0.18);
+}
+
+.ts-logo__wordmark {
+  display: flex;
+  align-items: center;
+  gap: 0.32em;
+  line-height: 1;
+}
+
+/* Left cell — "2000s" — industrial stamped-metal feel.
+ * Share Tech Mono ships fixed-width glyphs so the numerals stack like
+ * counter-stops on a Republic Empire engine plate. */
+.ts-logo__year {
+  font-family: var(--ink-font-mono, 'Share Tech Mono', 'Consolas', monospace);
+  font-weight: 400;
+  font-size: 1em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Vertical bronze divider with the drum-sun medallion in the middle —
+ * a literal "collision line" between the two civilisations. Height scales
+ * with the wordmark's font-size; width is intrinsic to the SVG viewBox. */
+.ts-logo__divider {
+  width: 0.32em;
+  height: 1.35em;
+  flex-shrink: 0;
+  color: var(--ink-gold-bright, #d4af37);
+  filter: drop-shadow(0 0 6px rgba(255, 195, 80, 0.55));
+}
+
+/* Right cell — "A.C" — ritual serif. Cinzel + uppercase + open letter-
+ * spacing reads as a carved Roman inscription, the opposite tonal pole
+ * from the left side's mechanical mono. */
+.ts-logo__suffix {
+  font-family: var(--ink-font-title, 'Cinzel', 'Trajan Pro', serif);
+  font-weight: 600;
+  font-size: 0.92em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Tagline under the splash logo. Tiny, wide-tracked, dimmed gold — reads
+ * as a museum placard subtitle. Hidden in the menu variant via the
+ * size='menu' branch in the component. */
+.ts-logo__tagline {
+  font-family: var(--ink-font-title, 'Cinzel', 'Trajan Pro', serif);
+  font-weight: 400;
+  font-size: 0.18em;
+  letter-spacing: 0.45em;
+  text-transform: uppercase;
+  color: rgba(212, 175, 55, 0.7);
+  text-shadow: none;
+  padding-left: 0.45em; /* visually balance the trailing tracking */
+}
+
+.ts-logo--splash {
+  font-size: clamp(3.5rem, 8vw, 6rem);
+}
+
+/* Brand variant — sits at the screen's top-center, between splash size and the
+ * old in-panel size. Scales with viewport so it stays balanced on widescreen. */
+.ts-logo--brand {
+  font-size: clamp(2.6rem, 5.2vw, 4.4rem);
+}
+
+.ts-logo--menu {
+  font-size: 3.2rem;
+  margin: 4px 0 12px;
+}
+
+.ts-logo--animate {
+  animation: titleLogoFadeIn 1s ease-out;
+}
+
+@keyframes titleLogoFadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.splash-loading {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.splash-loading__dot {
+  width: 8px;
+  height: 8px;
+  background: var(--ink-gold-bright, #d4af37);
+  border-radius: 50%;
+  opacity: 0.3;
+  animation: splashDotPulse 1.4s ease-in-out infinite;
+}
+
+.splash-loading__dot:nth-child(2) { animation-delay: 0.2s; }
+.splash-loading__dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes splashDotPulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-screen { transition: none; }
+  .ts-logo--animate { animation: none; }
+  .splash-loading__dot { animation: none; opacity: 0.7; }
+  .title-menu__item { transition: none; }
+}
+
+/* ===== Phase 5: Settings + Credits overlays ===== */
+
+.title-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.title-settings__group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+}
+
+.title-settings__group:last-child {
+  border-bottom: none;
+}
+
+.title-settings__group label {
+  color: var(--ink-gold-bright, #d4af37);
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.title-settings__value {
+  color: #c8c0b0;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.title-settings__group input[type="range"] {
+  width: 100%;
+  accent-color: var(--ink-gold-bright, #d4af37);
   cursor: pointer;
-  font-family: var(--ink-font-ui);
-  font-size: 0.95rem;
-  transition: all var(--ink-dur-fast);
-  min-width: 120px;
 }
 
-.title-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #5a4f3f, #3a3530);
-  border-color: #ffd700;
+.title-settings__radio-group {
+  display: flex;
+  gap: 8px;
 }
 
-.title-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
+.title-settings__radio {
+  flex: 1;
+  background: transparent;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: #c8c0b0;
+  padding: 8px 10px;
+  cursor: pointer;
+  border-radius: var(--ink-radius-lg, 6px);
+  font-family: inherit;
+  font-size: 0.9rem;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-.title-btn--danger {
-  border-color: rgba(231, 76, 60, 0.5);
-  color: var(--ink-status-bad);
+.title-settings__radio:hover {
+  border-color: rgba(212, 175, 55, 0.6);
+  color: var(--ink-gold-bright, #d4af37);
 }
 
-.title-btn--danger:hover:not(:disabled) {
-  border-color: #e74c3c;
+.title-settings__radio--active {
+  background: var(--ink-gold-bright, #d4af37);
+  color: #0a0606;
+  border-color: var(--ink-gold-bright, #d4af37);
 }
 
-/* Error/status message */
-.title-message {
-  margin-top: 12px;
-  font-size: 0.85rem;
-  padding: 8px 16px;
-  border-radius: 6px;
-  max-width: 500px;
+.title-settings__radio--active:hover {
+  background: var(--ink-gold-bright, #d4af37);
+  color: #0a0606;
+}
+
+.title-settings__hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #888;
+  font-style: italic;
+}
+
+/* Credits */
+
+.title-credits {
+  display: flex;
+  flex-direction: column;
+}
+
+.title-credits__list {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.title-credits__entry {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  min-height: 4px;
+}
+
+.title-credits__role {
+  color: #888;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.title-credits__name {
+  color: #c8c0b0;
+  font-size: 1rem;
+  margin-top: 2px;
+}
+
+.title-credits__footer {
+  margin-top: 28px;
   text-align: center;
+  color: #666;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
 }
 
-.title-message--error {
-  color: #e74c3c;
-  background: rgba(231, 76, 60, 0.1);
-  border: 1px solid rgba(231, 76, 60, 0.3);
-}
-
-.title-message--info {
-  color: #3498db;
-  background: rgba(52, 152, 219, 0.1);
-}

@@ -554,6 +554,146 @@ function migrateV22toV23(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+/**
+ * v23→v24: Tavern Facility overhaul.
+ *  - Member: normalize `rarity` to required 1 (legacy default); ensure `traits: []`.
+ *  - TavernState: replace `{ lastRefreshTime, availableMercenaries }` with the new
+ *    recruitment-hub shape. `currentRoster` starts empty; next day-tick respawns it.
+ *  - ActiveMission: add parallel `mercContractIds: []` (AD1).
+ */
+// Game-day scale — gameTime is stored in game-milliseconds (see clock-slice).
+// Kept local to avoid cross-imports from state into save layer; value MUST match MS_PER_GAME_DAY.
+const MIGRATION_MS_PER_GAME_DAY = 86_400_000;
+
+function migrateV23toV24(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+
+  const normalizeMember = (m: AnyRecord): AnyRecord => ({
+    ...m,
+    rarity: typeof m.rarity === 'number' ? m.rarity : 1,
+    traits: Array.isArray(m.traits) ? m.traits : [],
+  });
+
+  const founder = gs.founder ? normalizeMember(gs.founder as AnyRecord) : null;
+  const roster = Array.isArray(gs.roster)
+    ? (gs.roster as AnyRecord[]).map(normalizeMember)
+    : [];
+
+  const currentDay = Math.floor(((gs.gameTime as number) ?? 0) / MIGRATION_MS_PER_GAME_DAY);
+
+  const tavern = {
+    level: 1 as const,
+    keeperId: null,
+    reputation: 0,
+    currentRoster: [],
+    rerolledToday: false,
+    factionBias: null,
+    rumor: null,
+    mercContracts: [],
+    pendingPrompts: [],
+    lastDayProcessed: currentDay,
+    reputationLastTickWeek: currentDay,
+    globalNegotiationDebuffUntilDay: null,
+    veteranPool: [],
+  };
+
+  const activeMissions = Array.isArray(gs.activeMissions)
+    ? (gs.activeMissions as AnyRecord[]).map((am) => ({
+        ...am,
+        mercContractIds: Array.isArray(am.mercContractIds) ? am.mercContractIds : [],
+      }))
+    : gs.activeMissions;
+
+  return {
+    ...envelope,
+    version: 24,
+    gameState: {
+      ...gs,
+      founder,
+      roster,
+      tavern,
+      activeMissions,
+    } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
+/**
+ * v24→v25: Phase 04 merc lifecycle adds `tavern.veteranPool: VeteranMercSummary[]`.
+ * In-flight v24 saves written before the field existed need backfill.
+ */
+function migrateV24toV25(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+  const tavern = (gs.tavern ?? {}) as AnyRecord;
+  const migratedTavern = {
+    ...tavern,
+    veteranPool: Array.isArray(tavern.veteranPool) ? tavern.veteranPool : [],
+  };
+  return {
+    ...envelope,
+    version: 25,
+    gameState: { ...gs, tavern: migratedTavern } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
+/**
+ * v25→v26: Tutorial redesign — 8-id sandbox flow → 14-beat "Bear the Bear" chain
+ * (see TutorialStep / TUTORIAL_STEPS). Remap legacy step ids forward to the nearest
+ * SAFE new beat (one whose prerequisites — Kael, permit, materials — already hold for
+ * that legacy state). Ambiguous combat-stage states collapse to 'open-quest-board' so
+ * the player simply re-dispatches the new quest. Unknown ids fall back to 'complete'
+ * (defensive, mirrors the v11→v12 OLD_STEPS rule). Also strips the deleted
+ * 'tutorial-into-the-clearing' mission and frees any members stuck on it.
+ */
+function migrateV25toV26(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+
+  // Legacy → new step remap. Targets verified against prerequisites (Phase 06 remap table).
+  const STEP_REMAP: Record<string, string> = {
+    'char-creation': 'char-creation',
+    'world-board': 'arrival-alarm',
+    'tutorial-quest-dispatch': 'open-quest-board',
+    'tutorial-quest-active': 'open-quest-board', // dead slime mission cleared below → re-dispatch
+    'tutorial-kael-rescue': 'kael-rescue',       // Kael + permit already granted pre-rescue
+    'tutorial-reward': 'reward-splash',          // permit already granted
+    'build-logging-site': 'build-logging-site',
+    'assign-kael': 'assign-kael',
+    'complete': 'complete',
+  };
+  const legacyStep = gs.tutorialStep as string;
+  const tutorialStep = STEP_REMAP[legacyStep] ?? 'complete';
+
+  // Drop the removed tutorial mission and reset its members to idle so they aren't
+  // stranded 'on-mission' forever (the mission no longer exists in MISSIONS).
+  const DEAD_MISSION = 'tutorial-into-the-clearing';
+  const activeMissions: AnyRecord[] = Array.isArray(gs.activeMissions) ? gs.activeMissions : [];
+  const strandedMemberIds = new Set<string>();
+  for (const am of activeMissions) {
+    if (am.missionId === DEAD_MISSION && Array.isArray(am.memberIds)) {
+      for (const id of am.memberIds) strandedMemberIds.add(id as string);
+    }
+  }
+  const cleanedMissions = activeMissions.filter((am) => am.missionId !== DEAD_MISSION);
+
+  const freeMember = (m: AnyRecord): AnyRecord =>
+    strandedMemberIds.has(m.id as string) && m.status === 'on-mission'
+      ? { ...m, status: 'idle' }
+      : m;
+  const founder = gs.founder ? freeMember(gs.founder as AnyRecord) : null;
+  const roster = Array.isArray(gs.roster) ? (gs.roster as AnyRecord[]).map(freeMember) : [];
+
+  return {
+    ...envelope,
+    version: 26,
+    gameState: {
+      ...gs,
+      tutorialStep,
+      activeMissions: cleanedMissions,
+      founder,
+      roster,
+    } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -572,6 +712,9 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   20: migrateV20toV21,
   21: migrateV21toV22,
   22: migrateV22toV23,
+  23: migrateV23toV24,
+  24: migrateV24toV25,
+  25: migrateV25toV26,
 };
 
 /**

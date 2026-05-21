@@ -1,0 +1,59 @@
+/* ─── Tutorial Coachmark styles ─────────────────────────────────────────────
+   Arrow bob, caption, and spotlight layers for the TutorialCoachmark system.
+
+   NOTE: .tutorialPulse keyframe is defined in src/ui/styles/hud.css (loaded
+   globally). Do NOT duplicate it here — just apply the class name directly.   */
+
+/* ── Arrow glyph ─────────────────────────────────────────────────────────── */
+.coachmark-arrow-glyph {
+  font-size: 32px;
+  line-height: 1;
+  color: var(--gold-burnished, #c8a050);
+  text-align: center;
+  display: block;
+}
+
+/* Continuous vertical bob — reduced-motion respected below */
+.coachmark-arrow-bob {
+  animation: coachmark-bob 1.6s ease-in-out infinite;
+}
+
+@keyframes coachmark-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-7px); }
+}
+
+/* ── Caption ─────────────────────────────────────────────────────────────── */
+.coachmark-caption {
+  display:         inline-block;
+  padding:         6px 14px;
+  background:      rgba(232, 217, 176, 0.96);
+  color:           var(--ink-dark, #1a1208);
+  font-family:     var(--font-body, serif);
+  font-size:       0.9rem;
+  line-height:     1.4;
+  border:          2px solid var(--gold-burnished, #c8a050);
+  border-radius:   var(--parchment-radius, 6px);
+  box-shadow:      var(--parchment-drop-shadow, 0 2px 8px rgba(0,0,0,0.35));
+  white-space:     nowrap;
+  pointer-events:  none;
+}
+
+/* ── Pulse ring (world-target point marker) ──────────────────────────────── */
+/* Applied via className="tutorialPulse" — keyframe lives in hud.css */
+.coachmark-pulse-ring {
+  position:        fixed;
+  width:           40px;
+  height:          40px;
+  border-radius:   50%;
+  border:          2px solid var(--gold-burnished, #c8a050);
+  transform:       translate(-50%, -50%);
+  pointer-events:  none;
+  z-index:         1102;
+  /* tutorialPulse class from hud.css drives the box-shadow animation */
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .coachmark-arrow-bob { animation: none; }
+}

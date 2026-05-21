@@ -20,8 +20,7 @@ export function OfflineFacilityPopup({ results, elapsedHours, onDismiss }: Offli
   // Only show facilities with actual production
   const activeResults = results.filter((r) =>
     Object.keys(r.expGains).length > 0 ||
-    Object.keys(r.itemGains).length > 0 ||
-    r.upkeepSaved > 0,
+    Object.keys(r.itemGains).length > 0,
   );
 
   if (activeResults.length === 0) return null;
@@ -55,13 +54,6 @@ export function OfflineFacilityPopup({ results, elapsedHours, onDismiss }: Offli
                 • +{qty} {itemId.replace('_', ' ')}
               </div>
             ))}
-
-            {/* Upkeep saved (Tavern) */}
-            {r.upkeepSaved > 0 && (
-              <div style={{ fontSize: '0.8rem', color: '#2ecc71', paddingLeft: 16 }}>
-                • Upkeep saved: {r.upkeepSaved}g
-              </div>
-            )}
           </div>
         ))}
 

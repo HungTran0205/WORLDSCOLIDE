@@ -33,6 +33,8 @@ export function createFounder(name: string, stats: Stats, civilization: Civiliza
     isFounder: true,
     rank: 'COMMANDER',
     missionsCompleted: 0,
+    rarity: 1,
+    traits: [],
     equipment: startingWeapon ? { weapon: startingWeapon } : null,
     medicineSlots: structuredClone(DEFAULT_MEDICINE_SLOTS),
   };
@@ -68,6 +70,8 @@ export function generateRecruit(guildLevel: number): Member {
     isFounder: false,
     rank: 'RECRUIT',
     missionsCompleted: 0,
+    rarity: 1,
+    traits: [],
     equipment: startingWeapon ? { weapon: startingWeapon } : null,
     medicineSlots: structuredClone(DEFAULT_MEDICINE_SLOTS),
   };

@@ -9,6 +9,7 @@ import { useMemo } from 'react';
 import { useGameStore } from '@/game/state/store';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { MISSIONS } from '@/game/data/missions';
+import { TUTORIAL_BEAR_MISSION_ID } from '@/game/data/tutorial-data';
 
 interface CombatPanelResultProps {
   onClose: () => void;
@@ -17,6 +18,7 @@ interface CombatPanelResultProps {
 export function CombatPanelResult({ onClose }: CombatPanelResultProps) {
   const result = useCombatPanelStore((s) => s.resultData);
   const missionId = useCombatPanelStore((s) => s.missionId);
+  const setPhase = useCombatPanelStore((s) => s.setPhase);
   const founder = useGameStore((s) => s.founder);
   const roster = useGameStore((s) => s.roster);
 
@@ -69,6 +71,20 @@ export function CombatPanelResult({ onClose }: CombatPanelResultProps) {
           <div>Gold: {result.goldEarned}</div>
           <div>EXP: {result.expPerMember} / member</div>
         </div>
+      )}
+
+      {/* Tutorial soft-retry (Phase 04): the HP-floor makes the Moonbear fight a
+          guaranteed win, so this is a safety net for the rare simulator/edge
+          loss. Re-entering 'battle' re-inits the engine with full-HP allies
+          (formation persists across the result phase). */}
+      {missionId === TUTORIAL_BEAR_MISSION_ID && result.outcome !== 'victory' && (
+        <button
+          type="button"
+          className="combat-panel-btn"
+          onClick={() => setPhase('battle')}
+        >
+          Try again
+        </button>
       )}
 
       <button type="button" className="combat-panel-btn combat-panel-btn--primary" onClick={onClose}>

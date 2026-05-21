@@ -13,6 +13,7 @@ import { AtmosphereProvider } from './atmospheric/atmosphere-context';
 import { AmbientVfxRoot, AmbientEmitterDriver } from './atmospheric/particles/particles-router';
 import { CombatScene } from './combat/combat-scene';
 import { CombatVfxRoot } from './combat/combat-vfx-root';
+import { CoachmarkWorldProjector } from '@/ui/coachmark/coachmark-world-projector';
 import {
   COMBAT_CAM_DIST,
   COMBAT_CAM_HEIGHT,
@@ -21,6 +22,7 @@ import {
 } from './combat/combat-camera-config';
 import { getStoredGraphicsQuality } from '@/game/state/guild-slice';
 import { useGameStore } from '@/game/state/store';
+import { useUiStore } from '@/game/state/ui-store';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { FACILITY_SLOTS } from '@/game/data/facility-slot-positions';
 
@@ -186,6 +188,11 @@ function WorldSceneContent({ onAssetsReady }: { onAssetsReady: () => void }) {
           combat open/close cycles. */}
       <CombatVfxRoot />
 
+      {/* Coachmark world projector — projects 3D targets to screen coords for
+          the DOM coachmark overlay. Cheap no-op when no world target is active;
+          keep mounted always so the drum hint works from first frame. */}
+      <CoachmarkWorldProjector />
+
       {/* Ambient particle VFX — persistent compute pipelines mounted once.
           Emission is driven by <AmbientEmitterDriver /> below which reads
           the active room and emits into its bounds. Sits at scene root so
@@ -226,7 +233,17 @@ export function World({ isActive = true }: WorldProps) {
   // Tracks whether initial WebGPU init + asset loading has completed.
   // Stays true after first load — assets are cached so no loading on scene switch.
   const [assetsReady, setAssetsReady] = useState(false);
-  const onAssetsReady = useCallback(() => setAssetsReady(true), []);
+  const setWorldReady = useUiStore((s) => s.setWorldReady);
+  // Mirror readiness to ui-store so DOM-layer tutorial modals (rendered outside the
+  // Canvas) can wait for the scene before showing — avoids the dead-button freeze.
+  useEffect(() => {
+    setWorldReady(false);
+    return () => setWorldReady(false);
+  }, [setWorldReady]);
+  const onAssetsReady = useCallback(() => {
+    setAssetsReady(true);
+    setWorldReady(true);
+  }, [setWorldReady]);
 
   return (
     <QualityContext.Provider value={quality}>
@@ -236,7 +253,7 @@ export function World({ isActive = true }: WorldProps) {
         frameloop={isActive ? 'always' : 'demand'}
         orthographic
         shadows={{ type: THREE.PCFShadowMap, enabled: true }}
-        camera={{ zoom: 65, position: [15, 10, 14], near: 0.1, far: 1000 }}
+        camera={{ zoom: 190, position: [13, 5.5, 12], near: 0.1, far: 1000 }}
         dpr={quality === 'low' ? [0.75, 1] : [1, 1.5]}
         gl={createWebGPURenderer}
         style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}

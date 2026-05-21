@@ -38,15 +38,15 @@ export const COMBAT_SPRITE_MANIFEST = {
   ]),
   /** Enemy IDs (e.g. 'slime-king') with `animations/idle/west/frame_0..7.png`. */
   enemiesWithIdleWest: new Set<string>([
-    'cave-bat', 'slime-king',
+    'cave-bat', 'slime-king', 'moonbear',
   ]),
   /** Enemy IDs with `animations/attack/west/frame_0..N.png`. */
   enemiesWithAttackWest: new Set<string>([
-    'cave-bat', 'forest-spider', 'slime', 'slime-king',
+    'cave-bat', 'forest-spider', 'slime', 'slime-king', 'moonbear',
   ]),
   /** Enemy IDs with `animations/death/west/frame_0..N.png`. */
   enemiesWithDeathWest: new Set<string>([
-    'cave-bat', 'forest-spider', 'slime', 'slime-king',
+    'cave-bat', 'forest-spider', 'slime', 'slime-king', 'moonbear',
   ]),
   /** Enemy IDs with `animations/walk/west/` (last-resort idle fallback when idle missing). */
   enemiesWithWalkWest: new Set<string>([

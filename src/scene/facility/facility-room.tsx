@@ -20,6 +20,7 @@ import { QuarryZoneCard } from '../quarry/facility-room-quarry-decor';
 import { AlchemyZoneCard } from '../alchemy/facility-room-alchemy-decor';
 import { AlchemyWalls } from '../alchemy/facility-room-alchemy-walls';
 import { WorkshopWalls } from '../workshop/workshop-walls';
+import { TavernWalls } from '../tavern/tavern-walls';
 import { TorchFireEffect } from '../vfx/torch-fire-particles';
 import { TiledFloor, type TileTextureSpec } from '@/scene/sprites/tiled-floor';
 import type { GuildFacility, FacilityType } from '@/game/state/game-state';
@@ -36,7 +37,7 @@ const WALL_THICKNESS = 0.2;
  * differentiation.
  */
 const FACILITY_TILE_PATH: Record<FacilityType, TileTextureSpec> = {
-  tavern: '/tiles/2d/32px/paving-stone-32_0001.png',
+  tavern: '/tiles/2d/32px/dirt-base_0001.png',
   'training-yard': '/tiles/2d/32px/paving-stone-32_0002.png',
   infirmary: '/tiles/2d/32px/paving-stone-32_0003.png',
   'logging-site': {
@@ -48,7 +49,7 @@ const FACILITY_TILE_PATH: Record<FacilityType, TileTextureSpec> = {
       '/tiles/2d/32px/forest-grass-32_0005.png',
     ],
   },
-  'stone-quarry': '/tiles/2d/32px/cave_0001.png',
+  'stone-quarry': '/tiles/2d/64px/stone-64_0002.png ',
   'alchemy-lab': {
     main: '/tiles/2d/64px/wood-guild-floor_0005.png',
     variants: [
@@ -172,6 +173,7 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
   const isQuarry = facility.type === 'stone-quarry';
   const isAlchemy = facility.type === 'alchemy-lab';
   const isWorkshop = facility.type === 'workshop';
+  const isTavern = facility.type === 'tavern';
 
   return (
     <group>
@@ -249,11 +251,13 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
         emissiveIntensity={FACILITY_EMISSIVE_INTENSITY[facility.type] ?? 0.7}
       />
 
-      {/* Walls — alchemy: GLB; workshop: textured stone; rest: flat color */}
+      {/* Walls — alchemy: GLB; workshop/tavern: textured stone; rest: flat color */}
       {isAlchemy ? (
         <AlchemyWalls cx={cx} cz={cz} />
       ) : isWorkshop ? (
         <WorkshopWalls cx={cx} cz={cz} />
+      ) : isTavern ? (
+        <TavernWalls cx={cx} cz={cz} />
       ) : (
         <>
           <mesh position={[cx, WALL_HEIGHT / 2, oz]}>

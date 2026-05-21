@@ -102,13 +102,19 @@ export function cloneCombatEntity(e: CombatEntity): CombatEntity {
   };
 }
 
-/** Run full combat simulation — pure function, returns CombatResult */
-export function simulateCombat(partyMembers: Member[], enemyTemplates: EnemyTemplate[]): CombatResult {
+/** Run full combat simulation — pure function, returns CombatResult.
+ *  `hpFloor` (Phase 04) clamps allies to ≥1 HP for the tutorial Moonbear fight;
+ *  default false → identical behaviour for every other mission. */
+export function simulateCombat(
+  partyMembers: Member[],
+  enemyTemplates: EnemyTemplate[],
+  hpFloor = false,
+): CombatResult {
   const entities: CombatEntity[] = [
     ...partyMembers.map(memberToEntity),
     ...enemyTemplates.map((t, i) => enemyToEntity(t, i)),
   ];
-  return runCombatLoop(entities, pickLowestHpTarget, 0);
+  return runCombatLoop(entities, pickLowestHpTarget, 0, hpFloor);
 }
 
 /**
@@ -128,9 +134,10 @@ export function simulateCombat(partyMembers: Member[], enemyTemplates: EnemyTemp
 export function simulateCombatFromSnapshot(
   snapshot: CombatEntity[],
   baseTime: number = 0,
+  hpFloor = false,
 ): CombatResult {
   const entities = snapshot.map(cloneCombatEntity).map((e) => rebaseEntityTimestamps(e, baseTime));
-  return runCombatLoop(entities, pickRandomTarget, 0);
+  return runCombatLoop(entities, pickRandomTarget, 0, hpFloor);
 }
 
 /** Subtract the engine's current absolute time from per-entity timers, preserving
@@ -148,15 +155,25 @@ function rebaseEntityTimestamps(entity: CombatEntity, baseTime: number): CombatE
 }
 
 /** Shared tick loop — used by simulateCombat (lowest-HP target) and
- *  simulateCombatFromSnapshot (random target) per D11. */
+ *  simulateCombatFromSnapshot (random target) per D11.
+ *  `hpFloor` (Phase 04, default false) mirrors CombatEngine.hpFloorActive so the
+ *  tutorial Moonbear fight stays a guaranteed win on every auto-resolve path. */
 function runCombatLoop(
   entities: CombatEntity[],
   pickTarget: TargetPicker,
   startTime: number,
+  hpFloor = false,
 ): CombatResult {
   const ticks: CombatTick[] = [];
   let totalDamageDealt = 0;
   let time = startTime;
+
+  // Clamp an ally to ≥1 HP when the tutorial floor is active. No-op for enemies
+  // and for every non-tutorial mission. Call right after each ally-damage write,
+  // before the death (`<= 0`) check, so floored allies never die.
+  const clampAllyFloor = (e: CombatEntity) => {
+    if (hpFloor && e.isAlly && e.currentHp < 1) e.currentHp = 1;
+  };
 
   for (let tickCount = 0; tickCount < MAX_TICKS; tickCount++) {
     time += TICK_MS;
@@ -182,6 +199,7 @@ function runCombatLoop(
       const effectResult = applyEffectTick(entity);
       if (effectResult.damage > 0) {
         entity.currentHp -= effectResult.damage;
+        clampAllyFloor(entity);
         events.push({ type: 'effect-tick', targetId: entity.id, effect: 'poison', damage: effectResult.damage });
         if (entity.currentHp <= 0) { events.push({ type: 'death', entityId: entity.id }); continue; }
       }
@@ -234,6 +252,7 @@ function runCombatLoop(
         }
 
         target.currentHp -= damage;
+        clampAllyFloor(target);
         totalDamageDealt += entity.isAlly ? damage : 0;
         events.push({ type: 'auto-attack', attackerId: entity.id, targetId: target.id, damage });
         entity.nextAttackAt = time + entity.attackIntervalMs;
@@ -263,6 +282,7 @@ function runCombatLoop(
           const cloneCrit = rollCrit(entity.stats.LCK);
           if (cloneCrit) cloneDmg = Math.floor(cloneDmg * entity.critDmg);
           target.currentHp -= cloneDmg;
+          clampAllyFloor(target);
           totalDamageDealt += entity.isAlly ? cloneDmg : 0;
           events.push({ type: 'auto-attack', attackerId: `${entity.id}-clone`, targetId: target.id, damage: cloneDmg, isCrit: cloneCrit });
           if (target.currentHp <= 0) events.push({ type: 'death', entityId: target.id });
@@ -283,6 +303,7 @@ function runCombatLoop(
           let skillDmg = calcSkillDamage(baseDmg, entity.skill.damageMultiplier, entity.stats.DEX);
           if (rollCrit(entity.stats.LCK)) skillDmg = Math.floor(skillDmg * entity.critDmg);
           target.currentHp -= skillDmg;
+          clampAllyFloor(target);
           totalDamageDealt += entity.isAlly ? skillDmg : 0;
           events.push({ type: 'skill-use', attackerId: entity.id, targetId: target.id, damage: skillDmg, skillName: entity.skill.name });
           entity.skillCooldownUntil = time + (entity.attackIntervalMs * 2);

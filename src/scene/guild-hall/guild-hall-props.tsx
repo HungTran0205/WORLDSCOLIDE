@@ -18,7 +18,6 @@ import { InteractiveDrum } from './interactive-drum';
 
 const GLB = {
   torch: '/arena/cave/3dprops/optimized/p_standing_torch.glb',
-  questBoard: '/models/furnitures/quest-board.glb',
   throne: '/GuildHall/LinhSon/optimized/p_ironthrone.glb',
   fairy: '/GuildHall/LinhSon/optimized/p_fairtymotherstatues.glb',
   dragon: '/GuildHall/LinhSon/optimized/p_dragonfatherstatues.glb',
@@ -71,17 +70,6 @@ function WallTorch({ position, rotationY = 0, label = 'Torch' }: {
 }
 
 // ─── Scene props ──────────────────────────────────────────────────────────────
-
-function QuestBoard() {
-  const { scene } = useGLTF(GLB.questBoard);
-  const model = useScaledModel(scene, 1.2);
-  // Raised to y=0.7 so it reads as wall-mounted, not lying on floor
-  return (
-    <group position={[1.5, 0.7, 0.08]}>
-      <primitive object={model} />
-    </group>
-  );
-}
 
 function IronThrone() {
   const { scene } = useGLTF(GLB.throne);
@@ -137,17 +125,13 @@ export function GuildHallProps() {
       {/* Back wall torch — left side only (right side moved to pillar top) */}
       <WallTorch position={[0.8, 1.8, 0.25]} rotationY={0} label="Torch BL" />
 
-      {/* Left wall torch — front section only (back section moved to pillar top) */}
-      <WallTorch position={[0.25, 1.8, 2]} rotationY={Math.PI / 2} label="Torch LL" />
+
 
       {/* Pillar-body torches — pushed out to outer face, facing into room */}
       {/* North pillar: shift +z to clear pillar radius, face into room (+z) */}
       <WallTorch position={[9.5, 1.8, 1.3]} rotationY={0} label="Torch North Pillar" />
       {/* West pillar: shift +x to clear pillar radius, face into room (+x) */}
       <WallTorch position={[1.3, 1.8, 6.5]} rotationY={Math.PI / 2} label="Torch West Pillar" />
-
-      {/* Quest board — wall-mounted on left section of back wall */}
-      <QuestBoard />
 
       {/* Hero props */}
       <IronThrone />

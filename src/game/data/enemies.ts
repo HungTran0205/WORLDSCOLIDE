@@ -66,6 +66,18 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     spriteId: 'cave-bat',
     flying: true,
   },
+  // Tutorial boss — "Bear the Bear" quest (chain-first-tremor). Stats kept low:
+  // STR capped so it can't one-shot a lv1 founder; modest END for a ~3-4 turn fight.
+  // `enrage` is the telegraphed "Lunar Roar" wind-up the coachmark cues (Phase 04).
+  // Final balance pass: Phase 07. Sprite: public/sprites/enemies/moonbear (idle/attack/death/block).
+  moonbear: {
+    id: 'moonbear', name: 'Moonbear', level: 2,
+    stats: { STR: 9, END: 12, INT: 1, DEX: 3, CHA: 0, LCK: 2, AGI: 3 },
+    skill: null, abilities: [{ type: 'enrage', chance: 0.20 }],
+    loot: [{ itemId: 'BOAR_PELT', chance: 0.8, min: 1, max: 1 }, { itemId: 'WOOD', chance: 0.3, min: 1, max: 2 }],
+    spriteId: 'moonbear',
+    isBoss: true,
+  },
 
   // --- Level 3 ---
   wolf: {

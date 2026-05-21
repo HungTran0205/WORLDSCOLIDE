@@ -35,13 +35,13 @@ interface FacilitiesPanelProps { onClose: () => void; }
 
 // ── Slot cards ──────────────────────────────────────────────────────────────
 
-function BuiltSlotCard({ slotIdx, facility, selected, onClick, instanceNumber }: {
-  slotIdx: number; facility: GuildFacility; selected: boolean; onClick: () => void; instanceNumber?: number | null;
+function BuiltSlotCard({ slotIdx, facility, selected, onClick, instanceNumber, highlight }: {
+  slotIdx: number; facility: GuildFacility; selected: boolean; onClick: () => void; instanceNumber?: number | null; highlight?: boolean;
 }) {
   const hasAssigned = facility.assignedMemberIds.length > 0;
   const defName = FACILITY_DEFINITIONS[facility.type]?.name ?? facility.type;
   return (
-    <div className={`fp-slot${selected ? ' selected' : ''}`} onClick={onClick}>
+    <div className={`fp-slot${selected ? ' selected' : ''}${highlight ? ' tutorial-highlight' : ''}`} onClick={onClick}>
       <span className="fp-slot-num">{slotIdx + 1}</span>
       {hasAssigned && <span className="fp-slot-dot" />}
       {instanceNumber != null && <span className="fp-instance-badge">#{instanceNumber}</span>}
@@ -52,11 +52,11 @@ function BuiltSlotCard({ slotIdx, facility, selected, onClick, instanceNumber }:
   );
 }
 
-function EmptySlotCard({ slotIdx, selected, onClick }: {
-  slotIdx: number; selected: boolean; onClick: () => void;
+function EmptySlotCard({ slotIdx, selected, onClick, highlight }: {
+  slotIdx: number; selected: boolean; onClick: () => void; highlight?: boolean;
 }) {
   return (
-    <div className={`fp-slot fp-slot-empty${selected ? ' selected' : ''}`} onClick={onClick}>
+    <div className={`fp-slot fp-slot-empty${selected ? ' selected' : ''}${highlight ? ' tutorial-highlight' : ''}`} onClick={onClick}>
       <span className="fp-slot-num">{slotIdx + 1}</span>
       <span className="fp-slot-empty-icon">＋</span>
       <span className="fp-slot-empty-label">Empty</span>
@@ -155,6 +155,12 @@ export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
 
   const slotsUsed = slotMap.size;
 
+  // Tutorial in-panel guidance: pulse the slot the player should click next.
+  // Build beats → pulse empty slots until one is picked (then the tray takes over).
+  // assign-kael → pulse the built Logging Site slot until it's selected.
+  const isBuildStep = tutorialStep === 'build-logging-site' || tutorialStep === 'build-tavern';
+  const highlightEmptySlots = isBuildStep && selectedSlot === null;
+
   return (
     <div className="fp-overlay">
       <div className="ink-panel fp-panel ink-enter">
@@ -179,6 +185,11 @@ export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
             ▶ Select the Logging Site and assign Kael.
           </div>
         )}
+        {tutorialStep === 'build-tavern' && (
+          <div style={{ padding: '6px 14px 0', fontSize: '0.7rem', color: 'var(--ink-gold)', fontFamily: 'var(--ink-font-mono)' }}>
+            ▶ Select an empty slot and build the Tavern (200 Wood).
+          </div>
+        )}
 
         {/* Bát Quái cross slot grid */}
         <div className="fp-grid-area">
@@ -196,6 +207,11 @@ export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
                     selected={selectedSlot === cell}
                     onClick={() => handleSlotClick(cell)}
                     instanceNumber={getInstanceNumber(facility, facilities)}
+                    highlight={
+                      tutorialStep === 'assign-kael' &&
+                      facility.type === 'logging-site' &&
+                      selectedSlot !== cell
+                    }
                   />
                 );
               }
@@ -205,6 +221,7 @@ export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
                   slotIdx={cell}
                   selected={selectedSlot === cell}
                   onClick={() => handleSlotClick(cell)}
+                  highlight={highlightEmptySlots}
                 />
               );
             })}

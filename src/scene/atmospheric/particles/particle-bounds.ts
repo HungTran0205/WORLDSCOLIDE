@@ -11,7 +11,9 @@ import * as THREE from 'three';
 import { FACILITY_SLOTS, FACILITY_DEFAULT_SLOTS } from '@/game/data/facility-slot-positions';
 import { GUILD_HALL_CAMERA_TARGET } from '@/game/state/camera-slice';
 import type { RoomId } from '../atmosphere-types';
-import type { Prng } from './particle-prng';
+
+/** Caller-supplied PRNG ( `() => number` in [0, 1) ) — keeps particle bounds pure. */
+type Prng = () => number;
 
 /** XZ half-extent of a facility room footprint (matches use-active-room-id). */
 const ROOM_HALF = 3.5;

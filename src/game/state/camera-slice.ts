@@ -2,7 +2,7 @@
 
 import type { StateCreator } from 'zustand';
 
-export const GUILD_HALL_CAMERA_TARGET: [number, number, number] = [5, 0, 3.5];
+export const GUILD_HALL_CAMERA_TARGET: [number, number, number] = [5, 1.5, 3.5];
 
 /** Camera framing modes. 'quest-board' zooms tighter on the drum for the
  *  diegetic quest panel; default uses standard isometric offset. */

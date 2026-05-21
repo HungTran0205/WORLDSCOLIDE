@@ -2,7 +2,7 @@
 
 import { useGameStore } from '@/game/state/store';
 
-/** Shown at step 'tutorial-kael-rescue' — rescue narrative + confirm */
+/** Shown at step 'kael-rescue' — rescue narrative + confirm */
 export function KaelRescueDialogue() {
   const setTutorialStep = useGameStore((s) => s.setTutorialStep);
 
@@ -19,17 +19,17 @@ export function KaelRescueDialogue() {
       }}>
         <h3 style={{ color: '#ffd700' }}>Kael Rescued!</h3>
         <p style={{ lineHeight: 1.6, fontSize: '0.9rem', margin: '16px 0' }}>
-          Among the slime remains, you find a young LinhSon warrior — battered but alive.
+          With the moonbear driven off, you pull a young LinhSon warrior from the wreckage — battered but alive.
         </p>
         <p style={{ lineHeight: 1.6, fontSize: '0.9rem', fontStyle: 'italic', color: '#c8b080' }}>
-          "You saved my life. I was tracking something through here when that thing ambushed me.
+          "You saved my life. I was tracking that tremor when the beast ambushed me.
           Let me repay you — I'll join your guild."
         </p>
         <p style={{ fontSize: '0.85rem', color: '#aaa', marginTop: 12 }}>
           Kael has joined your guild!
         </p>
         <button className="panel-btn" style={{ marginTop: 16 }}
-          onClick={() => setTutorialStep('tutorial-reward')}>
+          onClick={() => setTutorialStep('reward-splash')}>
           Welcome aboard
         </button>
       </div>
@@ -37,7 +37,7 @@ export function KaelRescueDialogue() {
   );
 }
 
-/** Shown at step 'tutorial-reward' — displays LOGGING_SITE_ACCESS reward */
+/** Shown at step 'reward-splash' — displays LOGGING_SITE_ACCESS reward */
 export function TutorialRewardSplash() {
   const setTutorialStep = useGameStore((s) => s.setTutorialStep);
 

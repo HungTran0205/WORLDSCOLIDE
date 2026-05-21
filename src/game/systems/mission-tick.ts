@@ -8,7 +8,10 @@ import { MISSIONS } from '@/game/data/missions';
 import { resolveMission, resolveMissionWithResult, type MissionResult } from './mission-resolver';
 import { simulateCombatFromSnapshot } from './combat-simulator';
 import { handleTutorialQuestComplete } from './tutorial-quest-handler';
+import { TUTORIAL_BEAR_MISSION_ID } from '@/game/data/tutorial-data';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
+import { memberFromMercContract } from './combat-entity-factory';
+import { applyMercResultsForMission } from './tavern-merc-result-router';
 import type { ItemID } from '@/game/data/items';
 import type { GameStore } from '@/game/state/store';
 
@@ -68,15 +71,28 @@ export function processMissionTick(store: GameStore, now: number): MissionTickEv
         // Mid-fight reload (D12): if a snapshot was autosaved before the
         // browser closed, continue from that state via simulateCombatFromSnapshot.
         // Otherwise fall through to the legacy resolveMission re-roll path.
+        // Phase 04: mercs join combat as virtual members (via memberFromMercContract);
+        // their ids equal contract.id so survivors[] partitions correctly downstream.
         const allMembers = store.founder ? [store.founder, ...store.roster] : store.roster;
-        const members = allMembers.filter((m) => active.memberIds.includes(m.id));
+        const realMembers = allMembers.filter((m) => active.memberIds.includes(m.id));
+        const mercMembers = store.tavern.mercContracts
+          .filter((c) => active.mercContractIds.includes(c.id))
+          .map(memberFromMercContract);
+        const partyMembers = [...realMembers, ...mercMembers];
+        // Tutorial Moonbear must never be lost, even on the offline/reload
+        // auto-resolve path (Phase 04). Floor allies for that mission only.
+        const tutorialFloor = active.missionId === TUTORIAL_BEAR_MISSION_ID;
         const result = active.combatSnapshot && active.combatSnapshot.length > 0
           ? resolveMissionWithResult(
               mission,
-              members,
-              simulateCombatFromSnapshot(active.combatSnapshot, active.combatSnapshotTime ?? 0),
+              partyMembers,
+              simulateCombatFromSnapshot(active.combatSnapshot, active.combatSnapshotTime ?? 0, tutorialFloor),
             )
-          : resolveMission(mission, members);
+          : resolveMission(mission, partyMembers, tutorialFloor);
+
+        const mercIdSet = new Set(active.mercContractIds);
+        const memberSurvivors = result.survivors.filter((id) => !mercIdSet.has(id));
+        const memberInjured = result.injured.filter((id) => !mercIdSet.has(id));
 
         if (result.outcome !== 'full-wipe') {
           store.addGold(result.goldEarned);
@@ -90,13 +106,13 @@ export function processMissionTick(store: GameStore, now: number): MissionTickEv
               store.addItem(drop.itemId, drop.quantity);
             }
           }
-          for (const memberId of result.survivors) {
+          for (const memberId of memberSurvivors) {
             store.addMemberExp(memberId, result.expPerMember);
             store.updateMemberStatus(memberId, 'idle');
           }
           store.completeMission(active.missionId);
-          // Only survivors get mission credit
-          store.incrementMissionsCompleted(result.survivors);
+          // Only real-member survivors get mission credit (mercs excluded per spec §7).
+          store.incrementMissionsCompleted(memberSurvivors);
         } else {
           for (const memberId of active.memberIds) {
             store.updateMemberStatus(memberId, 'idle');
@@ -104,11 +120,14 @@ export function processMissionTick(store: GameStore, now: number): MissionTickEv
           store.failMission(active.missionId);
         }
 
-        // Injury duration scales with mission difficulty
+        // Injury duration scales with mission difficulty (members only).
         const injuryDuration = mission.durationMs * 0.5;
-        for (const memberId of result.injured) {
+        for (const memberId of memberInjured) {
           store.setMemberInjuredUntil(memberId, now + injuryDuration);
         }
+
+        // Phase 04: route merc outcomes (survival/defeat) to tavern lifecycle.
+        applyMercResultsForMission(active, result);
 
         store.pushMissionResult(result);
         handleTutorialQuestComplete(active.missionId);
