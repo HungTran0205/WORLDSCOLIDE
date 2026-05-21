@@ -6,7 +6,7 @@
  * Phase 3 of Quest Board Diegetic Redesign.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore } from '@/game/state/store';
@@ -14,6 +14,7 @@ import { useUiStore } from '@/game/state/ui-store';
 import { applyLitMaterial } from './apply-lit-material';
 import { DrumFireVfx } from '../vfx/drum-fire-vfx';
 import { DrumSparkleHint } from './drum-sparkle-hint';
+import { useRegisterObstacle } from './use-register-obstacle';
 
 const DRUM_GLB = '/GuildHall/LinhSon/optimized/p_cooperdrumfireholder.glb';
 const DRUM_HEIGHT = 1.0;
@@ -40,6 +41,10 @@ export function InteractiveDrum() {
   const tutorialSeen = useUiStore((s) => s.questBoardTutorialSeen);
   const markTutorialSeen = useUiStore((s) => s.markQuestTutorialSeen);
   const [hovered, setHovered] = useState(false);
+  // Footprint measured from the hitbox + model only (excludes DrumFireVfx,
+  // whose animated particles would inflate the bounding box non-deterministically).
+  const collisionRef = useRef<THREE.Group>(null);
+  useRegisterObstacle('drum', collisionRef);
 
   // Reset cursor on unmount — pointerOut won't fire on scene swap/HMR/reload,
   // which would leave a 'pointer' cursor stuck on the rest of the UI.
@@ -65,19 +70,25 @@ export function InteractiveDrum() {
 
   return (
     <group position={[5, 0, 3.5]}>
-      {/* Invisible hitbox — wider than the drum so touch targets stay generous.
-          Sits centred on the drum body (y=0.9 ≈ half of HITBOX_SIZE.y). */}
-      <mesh
-        position={[0, HITBOX_SIZE[1] / 2, 0]}
-        onClick={handleClick}
-        onPointerOver={handleOver}
-        onPointerOut={handleOut}
-      >
-        <boxGeometry args={HITBOX_SIZE} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-      </mesh>
+      {/* Collision footprint group — only the hitbox + drum model are measured. */}
+      <group ref={collisionRef}>
+        {/* Invisible hitbox — wider than the drum so touch targets stay generous.
+            Sits centred on the drum body (y=0.9 ≈ half of HITBOX_SIZE.y).
+            NOTE: this touch hitbox now also defines the drum's walk-collision
+            footprint (measured via collisionRef) — retuning HITBOX_SIZE moves
+            both the click target and the wall members route around. */}
+        <mesh
+          position={[0, HITBOX_SIZE[1] / 2, 0]}
+          onClick={handleClick}
+          onPointerOver={handleOver}
+          onPointerOut={handleOut}
+        >
+          <boxGeometry args={HITBOX_SIZE} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
 
-      <primitive object={model} />
+        <primitive object={model} />
+      </group>
 
       {/* First-visit discoverability — particle ring fades out once dismissed. */}
       {!tutorialSeen && <DrumSparkleHint />}

@@ -8,25 +8,22 @@ import { Billboard, Html } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGameStore } from '@/game/state/store';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
-import { useRef, useMemo, useEffect } from 'react';
+import { useRef, useMemo, useEffect, useLayoutEffect } from 'react';
 import type { Group } from 'three';
 import type { Member } from '@/game/state/game-state';
 import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
-import { SpriteAnimator } from './sprites/sprite-animator';
-import { getSpritePath, getDirectionFromMovement } from './sprites/sprite-path-resolver';
-import type { SpriteDirection } from './sprites/sprite-path-resolver';
+import { GuildHallSpriteAnimator } from './sprites/guild-hall-sprite-animator';
+import { getSpritePath, getHorizontalDirectionFromMovement } from './sprites/sprite-path-resolver';
+import type { HorizontalDirection } from './sprites/sprite-path-resolver';
+import { isGuildHallPointBlocked } from './guild-hall/guild-hall-collision';
+import {
+  getAllCellCenters,
+  nearestWalkableCell,
+  pickWalkableTarget,
+  BLOCKED_RETARGET_FRAMES,
+} from './guild-hall/guild-hall-movement';
 import { useGraphicsQuality } from './world';
-
-/** Collect all cell centers from floor tiles as walkable positions */
-function getAllCellCenters(tiles: { x: number; z: number }[]): { x: number; z: number }[] {
-  return tiles.map((t) => ({ x: t.x + 0.5, z: t.z + 0.5 }));
-}
-
-/** Deterministic pseudo-random from seed */
-function seededIndex(seed: number, max: number): number {
-  return Math.abs(Math.floor(Math.sin(seed * 9301 + 49297) * 233280)) % max;
-}
 
 function MemberSprite({ member, index }: { member: Member; index: number }) {
   const quality = useGraphicsQuality();
@@ -37,8 +34,12 @@ function MemberSprite({ member, index }: { member: Member; index: number }) {
   const ref = useRef<Group>(null);
   const targetRef = useRef<{ x: number; z: number } | null>(null);
   const waitRef = useRef(0);
-  const directionRef = useRef<SpriteDirection>('south');
+  const directionRef = useRef<HorizontalDirection>('east');
   const isMovingRef = useRef(false);
+  // Movement guard state: counts frames wedged against a prop, and whether the
+  // one-time spawn-inside-a-prop relocation has run.
+  const blockedFramesRef = useRef(0);
+  const didSpawnSnapRef = useRef(false);
   const floorTiles = useGameStore((s) => s.guildHall.floorTiles);
   const cells = useMemo(() => getAllCellCenters(floorTiles), [floorTiles]);
 
@@ -47,10 +48,24 @@ function MemberSprite({ member, index }: { member: Member; index: number }) {
     const delta = Math.min(rawDelta, 0.1);
     const pos = ref.current.position;
 
+    // One-time spawn guard — relocate if spawned inside a prop footprint.
+    if (!didSpawnSnapRef.current) {
+      didSpawnSnapRef.current = true;
+      if (isGuildHallPointBlocked(pos.x, pos.z)) {
+        const safe = nearestWalkableCell(cells, pos.x, pos.z);
+        if (safe) {
+          pos.x = safe.x;
+          pos.z = safe.z;
+        }
+      }
+    }
+
+    // Pick a fresh walkable target when none set, the idle wait elapsed, or the
+    // member has been wedged against a prop for too long.
     if (!targetRef.current || waitRef.current <= 0) {
-      const idx = seededIndex(clock.elapsedTime * 100 + index * 37, cells.length);
-      targetRef.current = cells[idx];
+      targetRef.current = pickWalkableTarget(cells, clock.elapsedTime * 100 + index * 37);
       waitRef.current = 2 + index * 0.5;
+      blockedFramesRef.current = 0;
     }
 
     const target = targetRef.current;
@@ -61,16 +76,62 @@ function MemberSprite({ member, index }: { member: Member; index: number }) {
     if (dist < 0.15) {
       isMovingRef.current = false;
       waitRef.current -= delta;
+      return;
+    }
+
+    isMovingRef.current = true;
+    directionRef.current = getHorizontalDirectionFromMovement(dx, dz, directionRef.current);
+    const speed = 0.9;
+    const prevDistSq = dist * dist;
+    const nextX = pos.x + (dx / dist) * speed * delta;
+    const nextZ = pos.z + (dz / dist) * speed * delta;
+
+    // Collision guard: commit full step, else slide on a single axis, else stall.
+    let fullStep = false;
+    if (!isGuildHallPointBlocked(nextX, nextZ)) {
+      pos.x = nextX;
+      pos.z = nextZ;
+      fullStep = true;
+    } else if (!isGuildHallPointBlocked(nextX, pos.z)) {
+      pos.x = nextX;
+    } else if (!isGuildHallPointBlocked(pos.x, nextZ)) {
+      pos.z = nextZ;
+    }
+
+    // Reset the wedged counter ONLY on a clean step that also got closer to the
+    // target. A frame that's blocked head-on, only sliding along an obstacle
+    // face, or oscillating in a pocket all count as wedged — so a member whose
+    // target sits behind a prop turns away after BLOCKED_RETARGET_FRAMES instead
+    // of grinding into the wall forever (sliding the whole wall face also counts
+    // even though distance keeps shrinking).
+    const ndx = target.x - pos.x;
+    const ndz = target.z - pos.z;
+    const progressed = ndx * ndx + ndz * ndz < prevDistSq - 1e-4;
+    if (fullStep && progressed) {
+      blockedFramesRef.current = 0;
     } else {
-      isMovingRef.current = true;
-      directionRef.current = getDirectionFromMovement(dx, dz);
-      const speed = 0.9;
-      pos.x += (dx / dist) * speed * delta;
-      pos.z += (dz / dist) * speed * delta;
+      blockedFramesRef.current++;
+    }
+
+    // Hit a wall too long → turn away (pick a fresh wander target).
+    if (blockedFramesRef.current > BLOCKED_RETARGET_FRAMES) {
+      targetRef.current = null;
+      blockedFramesRef.current = 0;
     }
   });
 
   const startPos = cells.length > 0 ? cells[index % cells.length] : { x: 3, z: 3 };
+
+  // Seed the transform once, imperatively. A live `position` prop would be
+  // re-applied by R3F on every re-render (combat-panel toggle, floor edits,
+  // roster changes), teleporting the member back to spawn and discarding both
+  // its wandered position and the spawn-snap relocation. useLayoutEffect runs
+  // before the first canvas draw, so there's no origin flash.
+  useLayoutEffect(() => {
+    ref.current?.position.set(startPos.x, 1.05, startPos.z);
+    // Run once on mount; subsequent movement is driven imperatively in useFrame.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const civConfig = CIV_CONFIG[member.civilization as Civilization];
   const archetype = member.archetype ?? civConfig?.archetypes[0] ?? 'warrior';
@@ -78,7 +139,7 @@ function MemberSprite({ member, index }: { member: Member; index: number }) {
   const basePath = getSpritePath(member.civilization, archetype, gender);
 
   return (
-    <group ref={ref} position={[startPos.x, 1.05, startPos.z]}>
+    <group ref={ref}>
       {/* Blob shadow — flat circle on floor, outside Billboard so it doesn't face camera */}
       {quality === 'high' && (
         <mesh position={[0, -1.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -88,7 +149,7 @@ function MemberSprite({ member, index }: { member: Member; index: number }) {
       )}
       {/* Single Billboard — sprite + name indicator */}
       <Billboard>
-        <SpriteAnimator
+        <GuildHallSpriteAnimator
           basePath={basePath}
           directionRef={directionRef}
           isMovingRef={isMovingRef}

@@ -7,6 +7,9 @@ import type { Civilization } from '@/game/data/civilization-config';
 
 export type SpriteDirection = 'north' | 'south' | 'east' | 'west';
 
+/** Guild hall members walk in east/west only (idle faces south separately). */
+export type HorizontalDirection = 'east' | 'west';
+
 /** Sprite folder prefix per civilization — matches CIV_CONFIG.shortName. */
 const CIV_SPRITE_PREFIX: Record<Civilization, string> = {
   LinhSon: 'LS',
@@ -92,4 +95,26 @@ export function getDirectionFromMovement(dx: number, dz: number): SpriteDirectio
     return screenRight > 0 ? 'east' : 'west';
   }
   return screenDown > 0 ? 'south' : 'north';
+}
+
+/** Idle frame for guild hall members — south frame_000 from their own folder. */
+export function getGuildHallIdleFramePath(basePath: string): string {
+  return getWalkingFramePath(basePath, 'south', 0);
+}
+
+/** Horizontal facing from movement on the tilted (~45°) iso floor.
+ *  Facing comes from the screen-horizontal projection `screenRight = dx - dz`:
+ *  moving toward -Z reads as moving right (east), toward +Z as left (west).
+ *  Only hold the previous facing when movement is almost purely screen-vertical
+ *  (dx ≈ dz, so screenRight ≈ 0), where east/west is genuinely ambiguous —
+ *  otherwise the sprite "moonwalks" (faces opposite its travel) on Z-dominant
+ *  paths, because |screenRight| ties |screenDown| there. */
+export function getHorizontalDirectionFromMovement(
+  dx: number,
+  dz: number,
+  previous: HorizontalDirection,
+): HorizontalDirection {
+  const screenRight = dx - dz;
+  if (Math.abs(screenRight) < 1e-3) return previous;
+  return screenRight > 0 ? 'east' : 'west';
 }
