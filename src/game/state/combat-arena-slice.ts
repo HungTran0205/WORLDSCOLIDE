@@ -27,6 +27,8 @@ export interface ArenaEntitySnapshot {
   archetype?: string;
   civilization?: string;
   gender?: 'M' | 'F';
+  /** Ally identity mask id used by the R3F combat overlay */
+  maskSpriteId?: string;
   spriteId?: string;
   /** Flying enemy — sprite renders elevated above ground */
   flying?: boolean;

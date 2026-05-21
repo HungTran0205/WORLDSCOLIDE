@@ -341,24 +341,56 @@ img[src*="sprites/icons"] {
 }
 .char-create-nav-btn { width: auto; flex: 1; margin-top: 0; }
 
-/* ── Live character preview frame ── */
+/* ── Live character preview — TCG-style hero card ── */
 .char-preview-frame {
+  position: relative;
   width: 100%;
   max-width: 340px;
   border: 3px solid #D4A017;
-  border-radius: 12px;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.35);
+  border-radius: 14px;
+  padding: 10px;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.2)),
+    rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
+/* Top-corner badges (weapon left, mask right) overlapping the art */
+.char-preview-badge {
+  position: absolute;
+  top: 16px;
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(212, 160, 23, 0.6);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.65);
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.55);
+  z-index: 2;
+}
+.char-preview-badge--weapon { left: 16px; }
+.char-preview-badge--mask { right: 16px; }
+.char-preview-badge img {
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+.char-preview-badge-empty { font-size: 1.25rem; opacity: 0.4; color: #fff; }
 .char-preview-stage {
   position: relative;
   width: 100%;
-  aspect-ratio: 3 / 4;
-  border-radius: 8px;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .char-preview-avatar {
   width: 100%;
@@ -377,7 +409,7 @@ img[src*="sprites/icons"] {
 /* Mask overlay — ~25% avatar width, positioned over the face (mask POC ratio) */
 .char-preview-mask {
   position: absolute;
-  top: 26%;
+  top: 28%;
   left: 50%;
   transform: translateX(-50%);
   width: 25%;
@@ -389,6 +421,44 @@ img[src*="sprites/icons"] {
   pointer-events: none;
   z-index: 1;
 }
+/* Name plate between art and stats */
+.char-preview-nameplate {
+  text-align: center;
+  font-family: var(--ink-font-title, 'Segoe UI'), serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 4px 0;
+  border-top: 1px solid rgba(212, 160, 23, 0.35);
+  border-bottom: 1px solid rgba(212, 160, 23, 0.35);
+}
+.char-preview-nameplate--empty {
+  opacity: 0.4;
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: 1px;
+  font-weight: 400;
+}
+/* Chosen-stats footer — compact label/value chips */
+.char-preview-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+  gap: 4px 6px;
+}
+.char-preview-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.8rem;
+}
+.char-preview-stat[data-zero='true'] { opacity: 0.4; }
+.char-preview-stat-key { color: #cfd3da; letter-spacing: 0.5px; }
+.char-preview-stat-val { font-weight: 700; color: #ffd700; }
 
 /* ── Civilization cards (with locked styling) ── */
 .civ-selector-grid {
