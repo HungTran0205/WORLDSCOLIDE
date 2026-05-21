@@ -9,7 +9,7 @@ export type Civilization = 'LinhSon' | 'DeQuoc' | 'ThienLu';
 
 /** Civ-specific archetype identifiers matching sprite folder names */
 export type CivArchetype =
-  | 'warrior' | 'scout'         // LinhSon
+  | 'warrior' | 'scout' | 'sword' // LinhSon ('sword' = founder-only Templar; NOT in LinhSon.archetypes)
   | 'engineer' | 'scholar'      // DeQuoc
   | 'dualblade' | 'philosopher'; // ThienLu
 

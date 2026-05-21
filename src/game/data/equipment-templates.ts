@@ -8,6 +8,7 @@ export type EquipmentTemplateId =
   // Weapons — by material tier
   | 'WOODEN_AXE'
   | 'WOODEN_CROSSBOW'
+  | 'WOODEN_SWORD'
   | 'STONE_SWORD'
   | 'IRON_SWORD'
   | 'IRON_SPEAR'
@@ -41,6 +42,7 @@ export const EQUIPMENT_DATABASE: Record<EquipmentTemplateId, EquipmentTemplate> 
   // --- Weapons ---
   WOODEN_AXE:      { id: 'WOODEN_AXE',      name: 'Wooden Axe',      slot: 'weapon',   rarity: 'COMMON',   damage: 10, maxDurability: 50,  craftMaterial: 'WOOD',     craftCost: 20 },
   WOODEN_CROSSBOW: { id: 'WOODEN_CROSSBOW', name: 'Wooden Crossbow', slot: 'weapon',   rarity: 'COMMON',   damage: 10, maxDurability: 50,  craftMaterial: 'WOOD',     craftCost: 20 },
+  WOODEN_SWORD:    { id: 'WOODEN_SWORD',    name: 'Wooden Sword',    slot: 'weapon',   rarity: 'COMMON',   damage: 10, maxDurability: 50,  craftMaterial: 'WOOD',     craftCost: 20 },
   STONE_SWORD:     { id: 'STONE_SWORD',     name: 'Stone Sword',     slot: 'weapon',   rarity: 'UNCOMMON', damage: 18, maxDurability: 80,  craftMaterial: 'STONE',    craftCost: 15 },
   IRON_SWORD:      { id: 'IRON_SWORD',      name: 'Iron Sword',      slot: 'weapon',   rarity: 'RARE',     damage: 30, maxDurability: 120, craftMaterial: 'IRON_ORE', craftCost: 10 },
   IRON_SPEAR:      { id: 'IRON_SPEAR',      name: 'Iron Spear',      slot: 'weapon',   rarity: 'RARE',     damage: 28, maxDurability: 100, craftMaterial: 'IRON_ORE', craftCost: 10 },
