@@ -59,12 +59,17 @@ describe('Stat Allocation', () => {
 describe('Character Creation', () => {
   it('should create founder with correct stats', () => {
     const stats = { STR: 10, END: 10, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 10 };
-    const founder = createFounder('TestHero', stats, 'LinhSon');
+    const founder = createFounder('TestHero', stats, 'LinhSon', 'sword', 'M', 'mask-01');
     expect(founder.name).toBe('TestHero');
     expect(founder.isFounder).toBe(true);
     expect(founder.level).toBe(1);
     expect(founder.civilization).toBe('LinhSon');
+    // Player-chosen identity is honored (new 6-arg contract).
+    expect(founder.archetype).toBe('sword');
+    expect(founder.gender).toBe('M');
+    expect(founder.maskSpriteId).toBe('mask-01');
     expect(founder.skill).not.toBeNull();
+    expect(founder.equipment?.weapon).toBeTruthy(); // starting weapon resolved from archetype
     // Civ bonuses apply: END*1.2=12, DEX*1.1=5, STR*1.1=11 → total > 50
     expect(totalAllocated(founder.stats)).toBeGreaterThanOrEqual(50);
   });

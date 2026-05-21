@@ -26,15 +26,15 @@ export const COMBAT_DEATH_FRAME_COUNT = 8;
 export const COMBAT_SPRITE_MANIFEST = {
   /** Char IDs (e.g. 'LS-WARRIOR-M') with `animations/battle-idle/east/frame_0..7.png`. */
   charsWithBattleIdleEast: new Set<string>([
-    'LS-SCOUT-F', 'LS-SCOUT-M', 'LS-WARRIOR-F', 'LS-WARRIOR-M',
+    'LS-SCOUT-F', 'LS-SCOUT-M', 'LS-WARRIOR-F', 'LS-WARRIOR-M', 'LS-SWORD-M',
   ]),
   /** Char IDs with `animations/attack/east/frame_0..7.png`. */
   charsWithAttackEast: new Set<string>([
-    'LS-SCOUT-F', 'LS-SCOUT-M', 'LS-WARRIOR-F', 'LS-WARRIOR-M',
+    'LS-SCOUT-F', 'LS-SCOUT-M', 'LS-WARRIOR-F', 'LS-WARRIOR-M', 'LS-SWORD-M',
   ]),
   /** Char IDs with `animations/death/east/frame_0..7.png`. */
   charsWithDeathEast: new Set<string>([
-    'LS-SCOUT-F', 'LS-SCOUT-M', 'LS-WARRIOR-F', 'LS-WARRIOR-M',
+    'LS-SCOUT-F', 'LS-SCOUT-M', 'LS-WARRIOR-F', 'LS-WARRIOR-M', 'LS-SWORD-M',
   ]),
   /** Enemy IDs (e.g. 'slime-king') with `animations/idle/west/frame_0..7.png`. */
   enemiesWithIdleWest: new Set<string>([

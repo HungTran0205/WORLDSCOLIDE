@@ -42,6 +42,7 @@ export const SKILLS_BY_ARCHETYPE: Record<string, Skill[]> = {
   warrior: [SKILL_DANH_MANH, SKILL_KIEM_GIA, SKILL_CHEM_MANH],
   scout: [SKILL_BAN_TEN_NHANH, SKILL_DAM_LUOT],
   scholar: [SKILL_HOA_CAU, SKILL_SUNG_SAC],
+  sword: [SKILL_DANH_MANH, SKILL_KIEM_GIA, SKILL_CHEM_MANH], // Linh Sơn Templar — sword melee, reuses warrior kit for MVP
   // Civ-specific archetypes reuse closest base skills until dedicated skills are added
   engineer: [SKILL_HOA_CAU, SKILL_SUNG_SAC],       // DeQuoc — tech-based, maps to scholar
   dualblade: [SKILL_DAM_LUOT, SKILL_BAN_TEN_NHANH], // ThienLu — swift melee, maps to scout

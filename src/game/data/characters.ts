@@ -22,6 +22,7 @@ export const CIV_ARCHETYPE_PROFILES: Record<CivArchetype, ArchetypeProfile> = {
   // LinhSon
   warrior:     { name: 'warrior',     weights: { STR: 3, END: 2, INT: 0.5, DEX: 1, CHA: 0.5, LCK: 0.5, AGI: 1 } },
   scout:       { name: 'scout',       weights: { STR: 1, END: 1, INT: 0.5, DEX: 3, CHA: 0.5, LCK: 1, AGI: 2 } },
+  sword:       { name: 'sword',       weights: { STR: 2.5, END: 1.5, INT: 0.5, DEX: 2, CHA: 1, LCK: 0.5, AGI: 1.5 } }, // founder-only Templar — balanced blade fighter
   // DeQuoc
   engineer:    { name: 'engineer',    weights: { STR: 1, END: 1.5, INT: 2, DEX: 2, CHA: 1, LCK: 0.5, AGI: 0.5 } },
   scholar:     { name: 'scholar',     weights: { STR: 0.5, END: 1, INT: 3, DEX: 1, CHA: 1.5, LCK: 1, AGI: 0.5 } },

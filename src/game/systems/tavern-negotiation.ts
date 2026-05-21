@@ -54,13 +54,14 @@ export const TIER_THRESHOLDS = {
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Archetype role mapping (6 civ archetypes → 4 generic combat roles)
+// Archetype role mapping (civ archetypes → 4 generic combat roles)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type ArchetypeRole = 'fighter' | 'mage' | 'scout' | 'support';
 
 export const ARCHETYPE_ROLE_MAP: Record<CivArchetype, ArchetypeRole> = {
   warrior: 'fighter',
+  sword: 'fighter',
   dualblade: 'fighter',
   scholar: 'mage',
   philosopher: 'mage',
