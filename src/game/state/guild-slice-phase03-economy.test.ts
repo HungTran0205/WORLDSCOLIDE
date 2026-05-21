@@ -33,14 +33,10 @@ function makeKael(): Member {
     injuredUntil: null,
     civilization: 'LinhSon',
     isFounder: false,
-    rank: 'NOVICE',
+    rank: 'RECRUIT',
     missionsCompleted: 0,
     rarity: 1,
   };
-}
-
-function makeOtherMember(): Member {
-  return { ...makeKael(), id: 'other-001', name: 'Morgana' };
 }
 
 /** Set up state with given inventory items and gold. guildLevel=2 to pass gold+level guard. */
