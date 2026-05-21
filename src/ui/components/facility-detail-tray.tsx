@@ -1,6 +1,7 @@
 /** Slide-up detail tray — shows built-room info or empty-slot build options. */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import type { GuildFacility, Member, FacilityType } from '@/game/state/game-state';
 import type { ItemID } from '@/game/data/items';
@@ -84,6 +85,7 @@ export function getInstanceNumber(facility: GuildFacility, allFacilities: GuildF
 
 // ── Built room tray ─────────────────────────────────────────────────────────
 function BuiltRoomTray({ facility, onClose }: { facility: GuildFacility; onClose: () => void }) {
+  const { t } = useTranslation();
   const [upgradeConfirm, setUpgradeConfirm] = useState(false);
   const facilities     = useGameStore(s => s.facilities);
   const founder        = useGameStore(s => s.founder);
@@ -122,12 +124,12 @@ function BuiltRoomTray({ facility, onClose }: { facility: GuildFacility; onClose
         <div className="fp-tray-head">
           <div>
             <div className="fp-tray-name">{displayName}</div>
-            <div className="fp-tray-stat">{def.primaryStats} · {assigned.length}/{maxSlots}</div>
+            <div className="fp-tray-stat">{t('facilityTray.stat', { stats: def.primaryStats, assigned: assigned.length, max: maxSlots })}</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span className="fp-tray-level">Lv.{facility.level}</span>
+            <span className="fp-tray-level">{t('facilityTray.level', { level: facility.level })}</span>
             {canUpgrade && (
-              <button className="fp-upgrade-badge" onClick={() => setUpgradeConfirm(true)}>↑ {upgradeCost}g</button>
+              <button className="fp-upgrade-badge" onClick={() => setUpgradeConfirm(true)}>{t('facilityTray.upgradeBtn', { cost: upgradeCost })}</button>
             )}
           </div>
         </div>
@@ -139,7 +141,7 @@ function BuiltRoomTray({ facility, onClose }: { facility: GuildFacility; onClose
           {Array.from({ length: emptyCount }).map((_, i) => (
             <div key={i} className={`fp-assign-card${highlightAssign ? ' tutorial-highlight' : ''}`}>
               <span className="fp-assign-plus">＋</span>
-              <span className="fp-assign-label">Assign</span>
+              <span className="fp-assign-label">{t('facilityTray.assign')}</span>
               {eligible.length > 0 && (
                 <select value="" onChange={e => {
                   if (!e.target.value) return;
@@ -155,16 +157,16 @@ function BuiltRoomTray({ facility, onClose }: { facility: GuildFacility; onClose
         </div>
         <div className="fp-tray-bottom">
           <span className={`fp-tray-bonus${bonus ? '' : ' fp-tray-bonus--inactive'}`}>
-            {bonus || 'Assign a member to activate'}
+            {bonus || t('facilityTray.bonus')}
           </span>
-          <button className="fp-btn-enter" onClick={handleEnterRoom}>Enter Room →</button>
+          <button className="fp-btn-enter" onClick={handleEnterRoom}>{t('facilityTray.enterRoom')}</button>
         </div>
       </div>
       {upgradeConfirm && (
         <InkConfirmDialog
-          title={`Upgrade ${def.name}`}
-          body={`Upgrade to Level ${facility.level + 1}? Cost: ${upgradeCost}g.`}
-          confirmLabel="Upgrade"
+          title={t('facilityTray.upgradeTitleFacility', { name: def.name })}
+          body={t('facilityTray.upgradeBodyFacility', { level: facility.level + 1, cost: upgradeCost })}
+          confirmLabel={t('facilityTray.upgradeConfirm')}
           onConfirm={() => { upgradeFacility(facility.id); setUpgradeConfirm(false); }}
           onCancel={() => setUpgradeConfirm(false)}
         />
@@ -175,6 +177,7 @@ function BuiltRoomTray({ facility, onClose }: { facility: GuildFacility; onClose
 
 // ── Empty slot tray ─────────────────────────────────────────────────────────
 function EmptySlotTray({ slotIdx, onBuildComplete }: { slotIdx: number; onBuildComplete: () => void }) {
+  const { t } = useTranslation();
   const [selectedBp,  setSelectedBp]  = useState<FacilityType | null>(null);
   const [buildConfirm, setBuildConfirm] = useState(false);
   const facilities    = useGameStore(s => s.facilities);
@@ -204,11 +207,11 @@ function EmptySlotTray({ slotIdx, onBuildComplete }: { slotIdx: number; onBuildC
   }
 
   function costLabel(def: FacilityDefVal): string {
-    if (def.type === 'logging-site') return 'Permit';
+    if (def.type === 'logging-site') return t('facilityTray.costPermit');
     // Material cost takes the label; assumes no facility charges both gold AND materials
     // (tavern's gold buildCost is 0). Revisit if a mixed-cost facility is ever added.
     if (def.buildMaterialCost) return materialCostLabel(def.buildMaterialCost);
-    return def.buildCost === 0 ? 'Free' : `${def.buildCost}g`;
+    return def.buildCost === 0 ? t('facilityTray.costFree') : `${def.buildCost}g`;
   }
 
   function handleConfirmBuild() {
@@ -224,9 +227,9 @@ function EmptySlotTray({ slotIdx, onBuildComplete }: { slotIdx: number; onBuildC
   return (
     <>
       <div className="fp-tray-content">
-        <div className="fp-slot-label">Slot {slotIdx + 1} — Choose a room to build</div>
+        <div className="fp-slot-label">{t('facilityTray.slotLabel', { number: slotIdx + 1 })}</div>
         <div className="fp-blueprint-list">
-          {buildable.length === 0 && <div className="fp-blueprint-empty">All available rooms are already built.</div>}
+          {buildable.length === 0 && <div className="fp-blueprint-empty">{t('facilityTray.allBuilt')}</div>}
           {buildable.map(def => {
             const affordable = canAfford(def);
             return (
@@ -243,7 +246,7 @@ function EmptySlotTray({ slotIdx, onBuildComplete }: { slotIdx: number; onBuildC
                 <span className="fp-bp-cost">{costLabel(def)}</span>
                 {def.buildMaterialCost && !affordable && (
                   <span style={{ fontSize: '0.65rem', color: '#d9534f', marginLeft: 6 }}>
-                    Need {materialCostLabel(def.buildMaterialCost)}
+                    {t('facilityTray.needMaterials', { materials: materialCostLabel(def.buildMaterialCost) })}
                   </span>
                 )}
               </div>
@@ -255,14 +258,14 @@ function EmptySlotTray({ slotIdx, onBuildComplete }: { slotIdx: number; onBuildC
           disabled={!selectedBp}
           onClick={() => setBuildConfirm(true)}
         >
-          {selDef ? `Build ${selDef.name} — ${costLabel(selDef)}` : 'Select a blueprint'}
+          {selDef ? t('facilityTray.buildBtnWithName', { name: selDef.name, cost: costLabel(selDef) }) : t('facilityTray.buildBtn')}
         </button>
       </div>
       {buildConfirm && selDef && (
         <InkConfirmDialog
-          title={`Build ${selDef.name}`}
-          body={`Build in Slot ${slotIdx + 1}? Cost: ${costLabel(selDef)}. Construction is permanent.`}
-          confirmLabel="Build"
+          title={t('facilityTray.buildConfirmTitle', { name: selDef.name })}
+          body={t('facilityTray.buildConfirmBody', { number: slotIdx + 1, cost: costLabel(selDef) })}
+          confirmLabel={t('facilityTray.buildConfirmBtn')}
           onConfirm={handleConfirmBuild}
           onCancel={() => setBuildConfirm(false)}
         />

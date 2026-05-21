@@ -5,6 +5,7 @@
 
 import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
+import { civName } from '@/i18n/content-wrappers';
 import { GameIcon } from './game-icon';
 
 interface CivBadgeProps {
@@ -27,7 +28,7 @@ export function CivBadge({ civilization, size = 'sm' }: CivBadgeProps) {
         size={iconSize}
         fallbackText={config.shortName}
         fallbackColor={config.colors.text}
-        alt={config.displayName}
+        alt={civName(civilization as Civilization)}
       />
       {size === 'md' && (
         <span style={{ fontSize: '0.8rem', color: config.colors.text, fontWeight: 'bold' }}>

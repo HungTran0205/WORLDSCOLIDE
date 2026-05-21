@@ -3,6 +3,8 @@
  * Scrollable when content exceeds viewport height.
  */
 
+import { useTranslation } from 'react-i18next';
+
 interface CreditEntry {
   role: string;
   name: string;
@@ -27,17 +29,19 @@ interface TitleScreenCreditsProps {
 }
 
 export function TitleScreenCredits({ onBack }: TitleScreenCreditsProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="title-save-picker title-credits">
       <header className="title-save-picker__header">
         <button
           className="title-save-picker__back"
           onClick={onBack}
-          aria-label="Back to main menu"
+          aria-label={t('credits.backAria')}
         >
-          ‹ Back
+          {t('credits.back')}
         </button>
-        <h2 className="title-save-picker__heading">Credits</h2>
+        <h2 className="title-save-picker__heading">{t('credits.heading')}</h2>
       </header>
 
       <div className="title-credits__list">
@@ -49,7 +53,7 @@ export function TitleScreenCredits({ onBack }: TitleScreenCreditsProps) {
         ))}
 
         <p className="title-credits__footer">
-          2000s A.C — © 2026 HungTran — All rights reserved
+          {t('credits.footer')}
         </p>
       </div>
     </div>

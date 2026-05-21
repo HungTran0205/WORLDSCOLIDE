@@ -1,0 +1,45 @@
+{
+  "skills": {
+    "danh-manh": {
+      "name": "Heavy Strike"
+    },
+    "kiem-gia": {
+      "name": "Sword Parry"
+    },
+    "chem-manh": {
+      "name": "Power Slash"
+    },
+    "ban-ten-nhanh": {
+      "name": "Rapid Shot"
+    },
+    "dam-luot": {
+      "name": "Gliding Thrust"
+    },
+    "hoa-cau": {
+      "name": "Fireball"
+    },
+    "sung-sac": {
+      "name": "Spirit Bolt"
+    }
+  },
+  "civ": {
+    "LinhSon": {
+      "name": "The LinhSon",
+      "description": "Ancient warriors rooted in mountain and forest, unyielding as stone, loyal to their ancestors.",
+      "passiveName": "Spirit Form",
+      "passiveDescription": "HP < 30%: END +30%, knockback resist"
+    },
+    "DeQuoc": {
+      "name": "The Republic Empire",
+      "description": "A modern civilisation reborn as an electro-steam-steel empire.",
+      "passiveName": "Override",
+      "passiveDescription": "3 stacks → Shock debuff + team 5% crit/dmg 5s"
+    },
+    "ThienLu": {
+      "name": "The Astopia",
+      "description": "Mysterious nomads who live by the stars, carrying the sky in every footstep.",
+      "passiveName": "Celestial Way",
+      "passiveDescription": "5 hits → +15% crit 5s, 15 hits → clone 5s"
+    }
+  }
+}

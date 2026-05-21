@@ -13,6 +13,7 @@
  * HUD "Quests" button and Q shortcut.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useUiStore } from '@/game/state/ui-store';
 import { useGameStore } from '@/game/state/store';
 import type { PanelId } from '@/ui/hud/panel-toggle';
@@ -26,6 +27,7 @@ interface DrumTooltipArrowProps {
 }
 
 export function DrumTooltipArrow({ activePanel }: DrumTooltipArrowProps) {
+  const { t } = useTranslation();
   const seen = useUiStore((s) => s.questBoardTutorialSeen);
   const tutorialStep = useGameStore((s) => s.tutorialStep);
   // Drum coachmark shows:
@@ -44,7 +46,7 @@ export function DrumTooltipArrow({ activePanel }: DrumTooltipArrowProps) {
         active={active}
         targetType="world"
         target={DRUM_WORLD_TARGET}
-        caption="Beat the drum to view quests"
+        caption={t('coachmark.drum')}
         arrow
         pulse
       />

@@ -5,6 +5,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { QuestTier, Mission } from '@/game/state/game-state';
 import { useGameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
@@ -28,6 +29,7 @@ interface QuestBoardProps {
 }
 
 export function QuestBoard({ onClose }: QuestBoardProps) {
+  const { t } = useTranslation();
   const founder = useGameStore((s) => s.founder);
   const roster = useGameStore((s) => s.roster);
   const guildHall = useGameStore((s) => s.guildHall);
@@ -158,22 +160,22 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
       <div
         className="quest-board parchment-surface parchment-frame parchment-rivets parchment-anim-unroll"
         role="dialog"
-        aria-label="Quest Board"
+        aria-label={t('questBoard.ariaLabel')}
         aria-modal="true"
         data-mobile-view={isMobile ? mobileView : undefined}
         onClick={(e) => e.stopPropagation()}
       >
         <header className="quest-board__header">
-          <h2 className="quest-board__title parchment-title">Quest Board</h2>
+          <h2 className="quest-board__title parchment-title">{t('questBoard.title')}</h2>
           {showTierFilter && (
-            <div className="quest-board__filter" role="toolbar" aria-label="Filter by tier">
+            <div className="quest-board__filter" role="toolbar" aria-label={t('questBoard.filter.ariaLabel')}>
               <button
                 type="button"
                 className={`tier-pill${filterTier === 'all' ? ' tier-pill--active' : ''}`}
                 onClick={() => setFilterTier('all')}
                 aria-pressed={filterTier === 'all'}
               >
-                All
+                {t('questBoard.filter.all')}
               </button>
               {unlockedTiers.map((tier) => (
                 <button
@@ -182,7 +184,7 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
                   className={`tier-pill${filterTier === tier ? ' tier-pill--active' : ''}`}
                   onClick={() => setFilterTier(tier)}
                   aria-pressed={filterTier === tier}
-                  aria-label={`Tier ${tier}`}
+                  aria-label={t('questBoard.filter.tierAria', { tier })}
                 >
                   <GameIcon category="badge" id={tier} size={24} fallbackText={tier} />
                 </button>
@@ -195,10 +197,10 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
           <div
             ref={listPaneRef}
             className="quest-list-pane"
-            aria-label="Available quests"
+            aria-label={t('questBoard.listAria')}
           >
             {filteredMissions.length === 0 ? (
-              <div className="quest-list-pane__empty">No quests available.</div>
+              <div className="quest-list-pane__empty">{t('questBoard.empty')}</div>
             ) : (
               filteredMissions.map((m) => (
                 <QuestCard
@@ -226,10 +228,10 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
           type="button"
           className="quest-board__return"
           onClick={onClose}
-          aria-label="Return to Guild"
+          aria-label={t('questBoard.returnAria')}
         >
           <span className="quest-board__return-icon" aria-hidden="true">⮌</span>
-          Return to Guild
+          {t('questBoard.return')}
         </button>
       </div>
     </div>

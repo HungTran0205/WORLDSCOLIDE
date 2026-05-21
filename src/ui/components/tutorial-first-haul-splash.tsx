@@ -4,11 +4,14 @@
  * Built in Phase 03; Phase 06 mounts it in game-screen keyed off the first-haul step.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
+import { tContent } from '@/i18n/content-localization';
 import { getNextStep } from '@/game/systems/tutorial-manager';
 import { FIRST_HAUL_WOOD, FIRST_HAUL_GOLD } from '@/game/systems/tutorial-first-haul-handler';
 
 export function TutorialFirstHaulSplash() {
+  const { t } = useTranslation();
   const tutorialStep = useGameStore((s) => s.tutorialStep);
   const setTutorialStep = useGameStore((s) => s.setTutorialStep);
 
@@ -16,6 +19,10 @@ export function TutorialFirstHaulSplash() {
     const next = getNextStep(tutorialStep);
     if (next) setTutorialStep(next);
   }
+
+  const title = tContent('tutorial', 'first-haul', 'title', 'First Haul!');
+  const body  = tContent('tutorial', 'first-haul', 'body',
+    'Kael shoulders his axe and brings in the first load from the forest.');
 
   return (
     <div style={{
@@ -28,9 +35,9 @@ export function TutorialFirstHaulSplash() {
         border: '2px solid rgba(255,215,0,0.3)', borderRadius: 12,
         color: '#e8d5b0', textAlign: 'center',
       }}>
-        <h3 style={{ color: '#ffd700' }}>First Haul!</h3>
+        <h3 style={{ color: '#ffd700' }}>{title}</h3>
         <p style={{ lineHeight: 1.6, fontSize: '0.9rem', margin: '16px 0' }}>
-          Kael shoulders his axe and brings in the first load from the forest.
+          {body}
         </p>
         <div style={{
           padding: 12, background: 'rgba(255,215,0,0.08)',
@@ -41,7 +48,7 @@ export function TutorialFirstHaulSplash() {
           <strong style={{ color: '#ffd700' }}>+{FIRST_HAUL_GOLD} Gold</strong>
         </div>
         <button className="panel-btn" style={{ marginTop: 12 }} onClick={handleContinue}>
-          Continue
+          {t('charCreation.continue')}
         </button>
       </div>
     </div>

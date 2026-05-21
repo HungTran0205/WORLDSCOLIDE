@@ -1,13 +1,10 @@
+import { useTranslation } from 'react-i18next';
 import '@/ui/styles/hud.css';
 
 export type PanelId = 'quests' | 'roster' | 'combat' | 'settings' | 'facilities' | null;
 
-const PANELS = [
-  { id: 'quests' as const, label: 'Quests' },
-  { id: 'roster' as const, label: 'Roster' },
-  { id: 'facilities' as const, label: 'Facilities' },
-  { id: 'settings' as const, label: 'Settings' },
-];
+const PANEL_IDS = ['quests', 'roster', 'facilities', 'settings'] as const;
+type KnownPanelId = typeof PANEL_IDS[number];
 
 interface PanelToggleProps {
   activePanel: PanelId;
@@ -17,21 +14,22 @@ interface PanelToggleProps {
 }
 
 export function PanelToggle({ activePanel, setActivePanel, highlightPanel }: PanelToggleProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="panel-toggle-bar">
-      {PANELS
-        .map((p) => (
-          <button
-            key={p.id}
-            className={[
-              activePanel === p.id ? 'active' : '',
-              highlightPanel === p.id ? 'tutorial-highlight' : '',
-            ].join(' ').trim()}
-            onClick={() => setActivePanel(activePanel === p.id ? null : p.id)}
-          >
-            {p.label}
-          </button>
-        ))}
+      {PANEL_IDS.map((id: KnownPanelId) => (
+        <button
+          key={id}
+          className={[
+            activePanel === id ? 'active' : '',
+            highlightPanel === id ? 'tutorial-highlight' : '',
+          ].join(' ').trim()}
+          onClick={() => setActivePanel(activePanel === id ? null : id)}
+        >
+          {t(`panelToggle.${id}`)}
+        </button>
+      ))}
     </div>
   );
 }

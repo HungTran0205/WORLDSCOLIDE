@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TitleScreenLogo } from './title-screen-logo';
 import { useTitlePreloader } from '@/ui/hooks/use-title-preloader';
 import '@/ui/styles/title-screen.css';
@@ -18,6 +19,7 @@ interface SplashScreenProps {
 const FADE_OUT_MS = 500;
 
 export function SplashScreen({ onReady, minDurationMs = 2000 }: SplashScreenProps) {
+  const { t } = useTranslation();
   const { ready, progress } = useTitlePreloader();
   const [minElapsed, setMinElapsed] = useState(false);
   const [fadingOut, setFadingOut] = useState(false);
@@ -53,7 +55,7 @@ export function SplashScreen({ onReady, minDurationMs = 2000 }: SplashScreenProp
   return (
     <div className={`splash-screen ${fadingOut ? 'splash-screen--fade-out' : ''}`}>
       <TitleScreenLogo size="splash" animate />
-      <div className="splash-loading" aria-label="Loading">
+      <div className="splash-loading" aria-label={t('splashScreen.loadingAria')}>
         <span className="splash-loading__dot" />
         <span className="splash-loading__dot" />
         <span className="splash-loading__dot" />

@@ -12,6 +12,7 @@
  * only interaction it points to, reachable without the hint once known.
  */
 
+import { useTranslation } from 'react-i18next';
 import { useUiStore, type FacilityHintType } from '@/game/state/ui-store';
 import { TutorialCoachmark } from '@/ui/coachmark/tutorial-coachmark';
 
@@ -24,10 +25,11 @@ const OBJECT_OFFSET: Record<FacilityHintType, [number, number, number]> = {
   tavern: [-2.8, 1.6, 1.2],       // apothecary counter
 };
 
-const CAPTION: Record<FacilityHintType, string> = {
-  workshop: 'Click the anvil to craft',
-  'alchemy-lab': 'Click the reactor to brew',
-  tavern: 'Click the counter to recruit',
+// i18n key per facility type (resolved at render time via t())
+const CAPTION_KEY: Record<FacilityHintType, string> = {
+  workshop: 'coachmark.workshop',
+  'alchemy-lab': 'coachmark.alchemyLab',
+  tavern: 'coachmark.tavern',
 };
 
 interface FacilityHintCoachmarkProps {
@@ -47,6 +49,7 @@ export function FacilityHintCoachmark({
   settled,
   panelOpen,
 }: FacilityHintCoachmarkProps) {
+  const { t } = useTranslation();
   const seen = useUiStore((s) => s.facilityHintSeen);
 
   // Show only when settled in a room, no panel open, and the hint is unseen.
@@ -69,7 +72,7 @@ export function FacilityHintCoachmark({
         active={active}
         targetType="world"
         target={target}
-        caption={activeType ? CAPTION[activeType] : ''}
+        caption={activeType ? t(CAPTION_KEY[activeType]) : ''}
         arrow
         pulse
       />

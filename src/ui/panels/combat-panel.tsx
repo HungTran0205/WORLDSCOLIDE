@@ -8,9 +8,11 @@
  */
 
 import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { useGameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
+import { tContent } from '@/i18n/content-localization';
 import { CombatPanelHeader } from '@/ui/panels/combat-panel-header';
 import { CombatPanelFormation } from '@/ui/panels/combat-panel-formation';
 import { CombatPanelBattle } from '@/ui/panels/combat-panel-battle';
@@ -18,6 +20,7 @@ import { CombatPanelResult } from '@/ui/panels/combat-panel-result';
 import '@/ui/styles/combat-panel.css';
 
 export function CombatPanel() {
+  const { t } = useTranslation();
   const isOpen = useCombatPanelStore((s) => s.isOpen);
   const phase = useCombatPanelStore((s) => s.phase);
   const missionId = useCombatPanelStore((s) => s.missionId);
@@ -42,8 +45,8 @@ export function CombatPanel() {
     <div className={overlayClass} role="dialog" aria-modal="true">
       <div className={panelClass}>
         <CombatPanelHeader
-          missionName={missionData?.name ?? 'Combat'}
-          zone={missionData?.zone}
+          missionName={missionData ? tContent('missions', missionData.id, 'name', missionData.name) : t('combatPanel.fallbackName')}
+          zone={missionData ? tContent('missions', missionData.id, 'zone', missionData.zone ?? '') : undefined}
           onClose={handleClose}
         />
         <div className="combat-panel-body">

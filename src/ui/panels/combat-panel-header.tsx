@@ -5,6 +5,8 @@
  * (instant resolve vs. abandon — see Phase 6).
  */
 
+import { useTranslation } from 'react-i18next';
+
 interface CombatPanelHeaderProps {
   missionName: string;
   zone?: string;
@@ -12,6 +14,7 @@ interface CombatPanelHeaderProps {
 }
 
 export function CombatPanelHeader({ missionName, zone, onClose }: CombatPanelHeaderProps) {
+  const { t } = useTranslation();
   return (
     <div className="combat-panel-header">
       <h2 className="combat-panel-header__title">
@@ -22,7 +25,7 @@ export function CombatPanelHeader({ missionName, zone, onClose }: CombatPanelHea
         type="button"
         className="combat-panel-header__close"
         onClick={onClose}
-        aria-label="Close combat panel"
+        aria-label={t('combatPanel.header.closeAria')}
       >
         ✕
       </button>

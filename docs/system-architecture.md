@@ -2365,11 +2365,29 @@ getRoomBounds(room: Room):
 |------|---------|
 | `use-game-tick-loop.ts` | Initialize Web Worker, handle ticks, process missions/injuries, offline catch-up |
 
-### `/i18n/` — Localization
+### `/i18n/` — Bilingual Localization (EN + VI)
+
+i18next + react-i18next with device-level language preference. **Two-namespace architecture**: `ui` (interface chrome, 708 keys each language) and `content` (game-data display + narrative, with asymmetric source-language resolution).
+
+**Key concepts**:
+- **Source-language asymmetry**: EN-authored data (missions, items, enemies) has EN inline + VI overlay; VN-authored data (civ, skills) has VN inline + EN overlay.
+- **`fallbackLng: false` for content namespace**: Critical for correct fallback behavior when resolving VN-authored entities.
+- **`useLanguage()` hook**: Centralizes device-level preference (localStorage), one language across all save slots.
+- **Typed wrappers** (`missionName`, `itemName`, `civName`, etc.): Never call data fields directly; use wrappers for automatic localization.
+- **Coverage + parity guards**: `ui-parity.test.ts` (708 keys each), `content-coverage.test.ts` (entity field completeness).
+
+**See** `docs/i18n.md` for full architecture, contributor guide, and testing details.
+
 | File | Purpose |
 |------|---------|
-| `vi.json` | Vietnamese translations (default locale), includes Milestone 2 strings (civilizations, passives, new missions) |
-| `index.ts` | i18next setup |
+| `index.ts` | i18next init, lang storage, dev helpers (saveMissing for ui namespace) |
+| `content-localization.ts` | `tContent(category, id, field, fallback)` resolver with `fallbackLng: false` |
+| `content-wrappers.ts` | Typed per-category helpers: `missionName()`, `itemName()`, `civName()`, `skillName()`, etc. |
+| `use-language.ts` | `useLanguage()` hook for device-level preference (localStorage + i18n) |
+| `ui.en.json`, `ui.vi.json` | UI namespace (708 keys each, parity enforced) |
+| `content.en.json`, `content.vi.json` | Content namespace (overlays per source-language direction) |
+| `ui-parity.test.ts` | Guard: ensures ui.en.json ↔ ui.vi.json key alignment (708 keys each) |
+| `content-coverage.test.ts` | Guard: ensures all entity fields have required overlay entries |
 
 ### `/audio/` — Audio Management
 | File | Purpose |

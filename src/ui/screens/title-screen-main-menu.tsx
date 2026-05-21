@@ -7,6 +7,8 @@
  * hidden on web (no native API to close a tab cleanly).
  */
 
+import { useTranslation } from 'react-i18next';
+
 interface TitleScreenMainMenuProps {
   hasContinue: boolean;
   onContinue: () => void;
@@ -29,36 +31,37 @@ export function TitleScreenMainMenu({
   onSettings,
   onCredits,
 }: TitleScreenMainMenuProps) {
+  const { t } = useTranslation();
   const showQuit = !isWebBuild();
 
   return (
-    <nav className="title-menu" aria-label="Main menu">
+    <nav className="title-menu" aria-label={t('titleScreen.menuAria')}>
       <button
         className="title-menu__item"
         disabled={!hasContinue}
         onClick={onContinue}
       >
-        Continue
+        {t('titleScreen.continue')}
       </button>
       <button className="title-menu__item" onClick={onNewGame}>
-        New Game
+        {t('titleScreen.newGame')}
       </button>
       <button
         className="title-menu__item"
         disabled={!hasContinue}
         onClick={onLoadGame}
       >
-        Load Game
+        {t('titleScreen.loadGame')}
       </button>
       <button className="title-menu__item" onClick={onSettings}>
-        Settings
+        {t('titleScreen.settings')}
       </button>
       <button className="title-menu__item" onClick={onCredits}>
-        Credits
+        {t('titleScreen.credits')}
       </button>
       {showQuit && (
         <button className="title-menu__item" onClick={() => window.close()}>
-          Quit
+          {t('titleScreen.quit')}
         </button>
       )}
     </nav>

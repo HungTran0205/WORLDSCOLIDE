@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import type { TavernVisitor } from '@/game/state/game-state';
 import { totalCombatPower, ARCHETYPE_ROLE_MAP, hireMercCost } from '@/game/systems/tavern-negotiation';
 import { getSpritePath, getBattleIdleFramePath } from '@/scene/sprites/sprite-path-resolver';
+import { getTraitDef } from '@/game/data/traits';
 
 interface VisitorCardProps {
   visitor: TavernVisitor;
@@ -91,7 +92,9 @@ export function TavernVisitorCard({
           {visitor.traits.length > 0 && (
             <div className="tv-card-meta">
               {visitor.traits.map((tr) => (
-                <span key={tr} className="tv-trait-chip">{tr}</span>
+                <span key={tr} className="tv-trait-chip" title={t(getTraitDef(tr)?.descKey ?? tr)}>
+                  {t(getTraitDef(tr)?.displayKey ?? tr)}
+                </span>
               ))}
             </div>
           )}

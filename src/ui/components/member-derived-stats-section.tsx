@@ -1,5 +1,6 @@
 /** Combat Stats + Guild Stats derived display sections for member book right page. */
 
+import { useTranslation } from 'react-i18next';
 import type { Member } from '@/game/state/game-state';
 import { selectMemberCombatStats, selectMemberGuildStats } from '@/game/state/selectors';
 import { formatRate, formatHitsPerSecond, formatHpRegen } from '@/game/systems/member-derived-stats';
@@ -34,6 +35,7 @@ function GuildStatBar({ label, value, max, suffix = '' }: { label: string; value
 }
 
 export function MemberDerivedStatsSection({ member }: Props) {
+  const { t } = useTranslation();
   const combat = selectMemberCombatStats(member);
   const guild = selectMemberGuildStats(member);
 
@@ -41,35 +43,35 @@ export function MemberDerivedStatsSection({ member }: Props) {
     <>
       {/* Combat Stats — 2-col grid */}
       <div className="panel-section">
-        <div style={{ color: '#ffd700', fontSize: '0.82rem', marginBottom: 6 }}>Combat Stats</div>
+        <div style={{ color: '#ffd700', fontSize: '0.82rem', marginBottom: 6 }}>{t('derivedStats.combatStats')}</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
-          <StatRow label="Max HP" value={String(combat.maxHp)} />
-          <StatRow label="HP/s" value={formatHpRegen(combat.hpRegen)} />
-          <StatRow label="Atk Spd" value={formatHitsPerSecond(combat.hitsPerSecond)} />
-          <StatRow label="Crit Rate" value={formatRate(combat.critRate)} />
-          <StatRow label="Crit DMG" value={`×${combat.critDmg.toFixed(2)}`} />
-          <StatRow label="Defense" value={formatRate(combat.defenseRating)} />
-          <StatRow label="Dodge" value={formatRate(combat.dodgeRate)} />
-          <StatRow label="Block" value={formatRate(combat.blockRate)} />
-          <StatRow label="Skill DMG" value={`+${formatRate(combat.skillDmgBonus)}`} />
-          <StatRow label="Haste" value={formatRate(combat.skillHaste)} />
-          <StatRow label="Resist" value={formatRate(combat.statusResist)} />
-          <StatRow label="Morale" value={`+${formatRate(combat.moraleAura)}`} />
+          <StatRow label={t('derivedStats.maxHp')} value={String(combat.maxHp)} />
+          <StatRow label={t('derivedStats.hpRegen')} value={formatHpRegen(combat.hpRegen)} />
+          <StatRow label={t('derivedStats.atkSpd')} value={formatHitsPerSecond(combat.hitsPerSecond)} />
+          <StatRow label={t('derivedStats.critRate')} value={formatRate(combat.critRate)} />
+          <StatRow label={t('derivedStats.critDmg')} value={t('derivedStats.critDmgValue', { value: combat.critDmg.toFixed(2) })} />
+          <StatRow label={t('derivedStats.defense')} value={formatRate(combat.defenseRating)} />
+          <StatRow label={t('derivedStats.dodge')} value={formatRate(combat.dodgeRate)} />
+          <StatRow label={t('derivedStats.block')} value={formatRate(combat.blockRate)} />
+          <StatRow label={t('derivedStats.skillDmg')} value={t('derivedStats.skillDmgValue', { value: formatRate(combat.skillDmgBonus) })} />
+          <StatRow label={t('derivedStats.haste')} value={formatRate(combat.skillHaste)} />
+          <StatRow label={t('derivedStats.resist')} value={formatRate(combat.statusResist)} />
+          <StatRow label={t('derivedStats.morale')} value={t('derivedStats.moraleValue', { value: formatRate(combat.moraleAura) })} />
         </div>
       </div>
 
       {/* Guild Stats — labeled progress bars */}
       <div className="panel-section">
-        <div style={{ color: '#ffd700', fontSize: '0.82rem', marginBottom: 6 }}>Guild Stats</div>
+        <div style={{ color: '#ffd700', fontSize: '0.82rem', marginBottom: 6 }}>{t('derivedStats.guildStats')}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <GuildStatBar label="Influence" value={guild.influence} max={200} />
-          <GuildStatBar label="Stamina" value={guild.stamina} max={300} />
-          <GuildStatBar label="Craft" value={guild.craftSkill} max={200} />
-          <GuildStatBar label="Leadership" value={guild.leadership} max={200} />
-          <GuildStatBar label="Fortune" value={guild.fortune} max={300} />
-          <GuildStatBar label="Exploration" value={guild.exploration} max={200} />
-          <GuildStatBar label="Negotiation" value={guild.negotiation} max={200} />
-          <GuildStatBar label="Recovery Bonus" value={Math.round((1 - guild.recovery) * 100)} max={80} suffix="%" />
+          <GuildStatBar label={t('derivedStats.influence')} value={guild.influence} max={200} />
+          <GuildStatBar label={t('derivedStats.stamina')} value={guild.stamina} max={300} />
+          <GuildStatBar label={t('derivedStats.craft')} value={guild.craftSkill} max={200} />
+          <GuildStatBar label={t('derivedStats.leadership')} value={guild.leadership} max={200} />
+          <GuildStatBar label={t('derivedStats.fortune')} value={guild.fortune} max={300} />
+          <GuildStatBar label={t('derivedStats.exploration')} value={guild.exploration} max={200} />
+          <GuildStatBar label={t('derivedStats.negotiation')} value={guild.negotiation} max={200} />
+          <GuildStatBar label={t('derivedStats.recoveryBonus')} value={Math.round((1 - guild.recovery) * 100)} max={80} suffix="%" />
         </div>
       </div>
     </>

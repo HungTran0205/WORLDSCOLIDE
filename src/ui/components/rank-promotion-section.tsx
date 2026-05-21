@@ -1,7 +1,9 @@
 /** Rank info + promotion button for character detail panel */
 
+import { useTranslation } from 'react-i18next';
 import type { Member, GuildRank } from '@/game/state/game-state';
 import { GUILD_RANKS, meetsPromotionRequirements, getNextRank } from '@/game/data/ranks';
+import { rankLabel } from '@/i18n/content-wrappers';
 
 interface RankPromotionSectionProps {
   member: Member;
@@ -10,6 +12,7 @@ interface RankPromotionSectionProps {
 }
 
 export function RankPromotionSection({ member, onPromote, canAffordPromote }: RankPromotionSectionProps) {
+  const { t } = useTranslation();
   const currentRank = member.rank as GuildRank;
   const def = GUILD_RANKS[currentRank];
   const perks = def?.perks;
@@ -17,26 +20,36 @@ export function RankPromotionSection({ member, onPromote, canAffordPromote }: Ra
   const promotion = def?.promotion;
   const meetsReqs = meetsPromotionRequirements(member);
 
+  const upkeepSuffix = perks
+    ? perks.upkeepModifier < 1
+      ? t('rankPromotion.upkeepLess', { pct: Math.round((1 - perks.upkeepModifier) * 100) })
+      : perks.upkeepModifier > 1
+        ? t('rankPromotion.upkeepMore', { pct: Math.round((perks.upkeepModifier - 1) * 100) })
+        : t('rankPromotion.upkeepNormal')
+    : '';
+
   return (
     <div className="panel-section">
       <div style={{ color: '#ffd700', fontSize: '0.85rem', marginBottom: 6 }}>
-        Rank & Progression
+        {t('rankPromotion.title')}
       </div>
       <div style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: 4 }}>
-        Missions Completed: {member.missionsCompleted}
+        {t('rankPromotion.missions', { count: member.missionsCompleted })}
       </div>
       {perks && (
         <div style={{ fontSize: '0.7rem', color: '#888', marginBottom: 8 }}>
-          Perks: +{perks.expBonusPct}% EXP
-          {perks.upkeepModifier < 1 ? `, ${Math.round((1 - perks.upkeepModifier) * 100)}% less upkeep` :
-           perks.upkeepModifier > 1 ? `, +${Math.round((perks.upkeepModifier - 1) * 100)}% upkeep` :
-           ', normal upkeep'}
+          {t('rankPromotion.perks', { expBonus: perks.expBonusPct })}{upkeepSuffix}
         </div>
       )}
       {nextRank && promotion && (
         <div>
           <div style={{ fontSize: '0.7rem', color: '#aaa', marginBottom: 4 }}>
-            Next: {nextRank} — Lv.{promotion.minLevel}+ | {promotion.minMissionsCompleted}+ missions | {promotion.goldCost}g
+            {t('rankPromotion.next', {
+              rank: rankLabel(nextRank),
+              level: promotion.minLevel,
+              missions: promotion.minMissionsCompleted,
+              gold: promotion.goldCost,
+            })}
           </div>
           <button
             className="panel-btn"
@@ -44,7 +57,7 @@ export function RankPromotionSection({ member, onPromote, canAffordPromote }: Ra
             onClick={onPromote}
             style={{ marginTop: 4 }}
           >
-            Promote to {GUILD_RANKS[nextRank].label} ({promotion.goldCost}g)
+            {t('rankPromotion.promote', { rank: rankLabel(nextRank), gold: promotion.goldCost })}
           </button>
         </div>
       )}
