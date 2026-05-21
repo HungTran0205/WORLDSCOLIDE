@@ -1623,6 +1623,7 @@ calcGearBonuses(equipment): GearBonuses
 ### Starting Equipment
 
 LinhSon civilization archetype members receive starting weapons at character creation:
+- **Sword** (founder-only Templar) → WOODEN_SWORD (10 damage)
 - **Warrior** → WOODEN_AXE (10 damage)
 - **Scout** → WOODEN_CROSSBOW (10 damage)
 - **Other archetypes/civilizations** → No starting gear
@@ -1984,8 +1985,9 @@ Character.civId = civId (founder or new member)
 CIV_CONFIG[civId] lookup:
   - name: "Linh Sơn" | "Đế Quốc" | "Thiên Lữ"
   - statBonuses: { STR: +X, ... }
-  - archetypes: ['Warrior', 'Mage', 'Rogue']
-  - heroes: { 'Warrior': [...], 'Mage': [...], 'Rogue': [...] }
+  - archetypes: 2 recruitable per civ (e.g. LinhSon ['warrior','scout'])
+    NOTE: founder-only 'sword' (Templar) is excluded here so recruits/tavern never roll it
+  - heroes: { archetype: [...] }
     ↓
 applyCivBonuses(character, civId):
   1. Get CIV_CONFIG[civId].statBonuses
@@ -2271,7 +2273,7 @@ getRoomBounds(room: Room):
 | `character-detail-panel.tsx` | Left-side detail panel (avatar, equipment, auto-cast toggle, stats, civ info, passives) — NEW v1.6, ENHANCED v1.9 |
 | `build-menu.tsx` | Room selection UI (enter placement mode instead of direct placement) |
 | `combat-view.tsx` | Combat log + tick-by-tick simulation details |
-| `char-creation.tsx` | Stat allocation (50 points), civilization selector — ENHANCED v1.9 |
+| `char-creation.tsx` | Split-hero new-game wizard orchestrator (Civilization → Class → Mask → Identity → Begin); pinned live preview + per-step rail — REBUILT (New Game Flow, 2026-05-21) |
 | `settings-panel.tsx` | Audio/lang toggle, import/export, return to title |
 
 ### `/ui/components/roster/` — Roster Components (NEW - v1.6, v1.8)

@@ -2,7 +2,7 @@
 
 **Worlds Collide** — An HD-2D auto-RPG idle guild builder where civilizations collide. Build your guild hall, recruit members from different civilizations, dispatch quests, and watch your guild grow — even while you're away.
 
-**Last Updated**: 2026-05-20 (Tutorial Quest Redesign Phase 06 - State Machine Integration - v1.28)
+**Last Updated**: 2026-05-21 (New Game Flow — Split-Hero Character-Creation Wizard)
 
 ## Technology Stack
 
@@ -97,10 +97,12 @@
 - **Notification Slice**: Ephemeral mission results (not persisted)
 
 ### Character System
-- **Founder**: Player-named guild leader with 7 stats
+- **Founder**: Player-named guild leader with 7 stats, created via the split-hero new-game wizard (Civilization → Class → Mask → Identity → Begin)
+- **Founder Classes** (founder-only): Templar (`sword`), Forester (`warrior`), Ranger (`scout`) — Linh Sơn MVP, defined in `founder-archetypes.ts`. `sword` is NOT recruitable (excluded from `CIV_CONFIG.LinhSon.archetypes`, still `['warrior','scout']`)
+- **`createFounder(name, stats, civilization, archetype, gender, maskSpriteId)`**: honors player class/gender/mask choice; founder skill is archetype-matched (sword/warrior→warrior kit, scout→scout kit). No SAVE_VERSION bump (fields already optional)
 - **Members**: Recruit from 3 civilizations, 80+ unique heroes
-- **Progression**: EXP curves (1.35x scaling), stat allocation, 100 levels
-- **Classes**: 3 archetypes per civilization
+- **Progression**: EXP curves (1.35x scaling), stat allocation (50 Talent Points), 100 levels
+- **Classes**: 2 recruitable archetypes per civilization (see `civilization-config.ts`)
 
 ### Guild Rank System (NEW - v1.8)
 - **5-Tier Hierarchy**: RECRUIT → MEMBER → VETERAN → OFFICER → COMMANDER (promotable)
@@ -186,7 +188,7 @@
 
 ### UI Architecture (Screen-Based Routing)
 - **Title Screen**: Save slot selection (continue/new/delete)
-- **Character Creation**: Stat allocation (50 points across 7 attributes)
+- **Character Creation**: Split-hero wizard — large live `CharacterPreview` (avatar + live mask overlay) pinned left; right panel steps through Civilization → Class → Mask → Identity. Components: `civ-selector` (locked civs dimmed), `archetype-selector`, `mask-selector`, `stat-allocator` (50 Talent Points). See `docs/feature/new-game-flow.md`
 - **Game Screen**: World scene + HUD + panels + mission tick loop + notification stack
 - **Panels**: Quest board (with progress bars), roster, build menu, combat log, settings
 - **Settings**: Audio/language toggle, import/export, return to title

@@ -7,6 +7,57 @@ All notable changes to Worlds Collide are documented in this file. The format fo
 
 ---
 
+## [Unreleased] — 2026-05-21 (New Game Flow — Split-Hero Character-Creation Wizard)
+
+### feat(char-creation): split-hero new-game wizard + founder-only `sword` archetype
+
+Replaced the old single-form new-game screen with a game-style **split-hero wizard**: a large live character preview pinned on the left, a per-step choice panel on the right. Step flow: **Civilization → Class → Mask → Identity → Begin**. The preview swaps its avatar as the player picks a class and overlays the chosen mask on the face, updating live. Branch `feature/WC-NewGameFlow`.
+
+**New founder-only class** — `sword` (Templar): added to `CivArchetype` + `CIV_ARCHETYPE_PROFILES` + skill kit (reuses warrior kit for MVP) + `WOODEN_SWORD` weapon template. `sword` is **FOUNDER-ONLY** — deliberately NOT added to `CIV_CONFIG.LinhSon.archetypes` (still `['warrior','scout']`), so recruits/tavern never roll it (recruit-safety regression test guards this).
+
+**3 founder presets** (Linh Sơn MVP, in new `src/game/data/founder-archetypes.ts`):
+- Templar — sword, M, `LS-SWORD-M`, Wooden Sword
+- Forester — warrior, M, `LS-WARRIOR-M`, Wooden Axe
+- Ranger — scout, F, `LS-SCOUT-F`, Wooden Crossbow
+
+**`createFounder` new signature**: `(name, stats, civilization, archetype, gender, maskSpriteId)` — was auto-picking `archetypes[0]` + random gender + always-warrior skill; now honors player choice. Founder skill is archetype-matched (sword/warrior→warrior kit, scout→scout kit). **No SAVE_VERSION bump** — fields were already optional on `Member`.
+
+**Faction lock (MVP-temporary)**: only Linh Sơn selectable; Đế Quốc + Thiên Lữ shown dimmed with lock glyph + "Coming Soon" (non-clickable, non-focusable). **Follow-up**: unlock the two locked civs once their founder presets/sprites ship.
+
+**Mask identity step**: `FOUNDER_MASK_CHOICES = MASK_POOL.slice(0, 10)` (10 curated tiles) + English narrative; selection persisted to `Member.maskSpriteId`, overlaid live on the preview face.
+
+**New files**:
+- `src/game/data/founder-archetypes.ts` — `FounderArchetypeChoice` + `LINH_SON_FOUNDER_CHOICES` + `FOUNDER_CHOICES_BY_CIV`
+- `src/ui/components/character-preview.tsx` — large live avatar + mask overlay
+- `src/ui/components/archetype-selector.tsx` — class tiles (weapon icon + tagline)
+- `src/ui/components/stat-allocator.tsx` — "Talent Points" allocator (50 pts across 7 stats)
+- `src/ui/components/mask-selector.tsx` — 10 mask tiles
+- `public/ui/icons/founder/{sword,axe,crossbow}.png` — 3 monochrome weapon icons
+
+**Modified**:
+- `src/ui/panels/char-creation.tsx` — rebuilt as split-hero orchestrator (step rail civ→class→mask→identity)
+- `src/ui/components/civ-selector.tsx` — locked-civ rendering (dim + lock + Coming Soon)
+- `src/game/systems/character-creation.ts` — new `createFounder` signature
+- `src/game/data/{civilization-config,characters,skills,equipment-templates}.ts` — `sword` archetype + `WOODEN_SWORD`
+- `src/game/systems/equipment-bonuses.ts` — `sword → WOODEN_SWORD` starting weapon
+- `src/game/systems/tavern-negotiation.ts` — `sword → fighter` portrait class map
+- `src/scene/sprites/mask-pool.ts` — `FOUNDER_MASK_CHOICES`
+- `src/ui/styles/panels.css` — split-hero layout styles
+
+**All new player-facing copy is English** (project convention).
+
+**Verification**:
+- Build green (`tsc -b && vite build`); lint clean on all feature files.
+- Tests: 55 new unit tests pass (founder-archetypes, createFounder per class, mask-pool/FOUNDER_MASK_CHOICES, recruit-safety regression) + full suite 633 pass, 0 feature regressions.
+- Code review: zero critical/important issues; recruit-safety + exhaustive `Record<CivArchetype>` maps verified.
+- chrome-devtools playthrough: New Game → slot → split-hero wizard; preview swaps to `LS-SWORD-M`/`LS-WARRIOR-M`/`LS-SCOUT-F` per class; mask overlay swaps live; 2 civs locked; Begin creates founder + enters guild hall; zero console/page errors.
+
+**Docs**: `docs/feature/new-game-flow.md` (new); `codebase-summary.md`, `system-architecture.md`, `development-roadmap.md` updated.
+
+**Plan Reference**: `plans/260520-2124-new-game-archetype-flow/` (phases 01–06)
+
+---
+
 ## [Unreleased] — 2026-05-20 (Tutorial Quest Redesign Phase 07 — Playthrough Fixes & Cleanup)
 
 ### fix(tutorial): 6 playthrough fixes from first live test + Phase 07 cleanup
