@@ -128,6 +128,10 @@ export function CharCreation({ onComplete }: CharCreationProps) {
             archetype={selectedChoice?.archetype}
             gender={selectedChoice?.gender}
             maskId={selectedMaskId}
+            weaponIconPath={selectedChoice?.iconPath}
+            weaponLabel={selectedChoice?.weaponLabel}
+            stats={stats}
+            name={trimmedName || undefined}
           />
         </aside>
 
