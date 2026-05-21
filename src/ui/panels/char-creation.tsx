@@ -18,9 +18,11 @@ import { ArchetypeSelector } from '@/ui/components/archetype-selector';
 import { MaskSelector } from '@/ui/components/mask-selector';
 import { CharacterPreview } from '@/ui/components/character-preview';
 import { StatAllocator } from '@/ui/components/stat-allocator';
+import { TitleScreenLogo } from '@/ui/screens/title-screen-logo';
 import type { FounderArchetypeChoice } from '@/game/data/founder-archetypes';
 import type { Civilization } from '@/game/data/civilization-config';
 import type { Stats, StatKey } from '@/game/state/game-state';
+import '@/ui/styles/title-screen.css';
 import '@/ui/styles/panels.css';
 
 interface CharCreationProps {
@@ -47,8 +49,8 @@ export function CharCreation({ onComplete }: CharCreationProps) {
   const [step, setStep] = useState<Step>('civ');
   const [selectedCiv, setSelectedCiv] = useState<Civilization | null>(null);
   const [selectedChoice, setSelectedChoice] = useState<FounderArchetypeChoice | null>(null);
-  // Preselect the first mask so the preview never shows a bare face; player can change.
-  const [selectedMaskId, setSelectedMaskId] = useState<string>(FOUNDER_MASK_CHOICES[0]);
+  // No mask until the player picks one at the Mask step (overlay only appears on selection).
+  const [selectedMaskId, setSelectedMaskId] = useState<string>('');
   const [name, setName] = useState('');
   const [guildName, setGuildNameLocal] = useState('');
   const [stats, setStats] = useState<Stats>(createEmptyStats());
@@ -115,7 +117,7 @@ export function CharCreation({ onComplete }: CharCreationProps) {
 
   return (
     <div className="char-creation-overlay">
-      <h1>Worlds Collide</h1>
+      <TitleScreenLogo size="brand" animate={false} />
 
       <StepRail current={step} onJump={goToStep} />
 
