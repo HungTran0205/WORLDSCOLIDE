@@ -384,7 +384,7 @@ img[src*="sprites/icons"] {
 .char-preview-stage {
   position: relative;
   width: 100%;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 1 / 1;
   border-radius: 10px;
   overflow: hidden;
   display: flex;
@@ -409,7 +409,7 @@ img[src*="sprites/icons"] {
 /* Mask overlay — ~25% avatar width, positioned over the face (mask POC ratio) */
 .char-preview-mask {
   position: absolute;
-  top: 26%;
+  top: 28%;
   left: 50%;
   transform: translateX(-50%);
   width: 25%;

@@ -54,6 +54,8 @@ export interface CombatEntity {
   facingRight?: boolean;
   archetype?: string;
   gender?: 'M' | 'F';
+  /** Ally identity mask propagated from Member for combat overlay rendering */
+  maskSpriteId?: string;
   /** Enemy sprite folder name (e.g. 'slime') */
   spriteId?: string;
   /** Flying enemy — elevated above ground in arena */

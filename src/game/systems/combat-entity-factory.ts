@@ -44,6 +44,7 @@ export function memberToArenaEntity(
     civilization: member.civilization,
     archetype: member.archetype,
     gender: member.gender,
+    maskSpriteId: member.maskSpriteId,
     gearFlatDamage: gear.flatDamage,
     gearFlatDefense: gear.flatDefense,
     baseStats: snapshotBaseStats(member.stats),
