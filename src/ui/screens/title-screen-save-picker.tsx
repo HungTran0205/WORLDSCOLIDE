@@ -10,6 +10,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SaveSlotCard } from './save-slot-card';
 import type { SaveSlotMetadata } from '@/game/save/save-types';
 
@@ -32,6 +33,7 @@ export function TitleScreenSavePicker({
   onDelete,
   onBack,
 }: TitleScreenSavePickerProps) {
+  const { t } = useTranslation();
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
 
@@ -66,12 +68,12 @@ export function TitleScreenSavePicker({
         <button
           className="title-save-picker__back"
           onClick={onBack}
-          aria-label="Back to main menu"
+          aria-label={t('savePicker.backAria')}
         >
-          ‹ Back
+          {t('savePicker.back')}
         </button>
         <h2 className="title-save-picker__heading">
-          {mode === 'new' ? 'New Game' : 'Load Game'}
+          {mode === 'new' ? t('savePicker.headingNew') : t('savePicker.headingLoad')}
         </h2>
       </header>
 
@@ -94,20 +96,20 @@ export function TitleScreenSavePicker({
       {showOverwriteConfirm ? (
         <div className="title-overwrite-confirm" role="alert">
           <p className="title-overwrite-confirm__msg">
-            This slot has an existing save. Overwrite?
+            {t('savePicker.overwriteMsg')}
           </p>
           <div className="title-overwrite-confirm__actions">
             <button
               className="title-menu__item title-menu__item--danger"
               onClick={confirmOverwrite}
             >
-              Yes, overwrite
+              {t('savePicker.yesOverwrite')}
             </button>
             <button
               className="title-menu__item"
               onClick={() => setShowOverwriteConfirm(false)}
             >
-              Cancel
+              {t('savePicker.cancel')}
             </button>
           </div>
         </div>
@@ -117,7 +119,7 @@ export function TitleScreenSavePicker({
           disabled={isLoadDisabled}
           onClick={handleConfirm}
         >
-          {mode === 'new' ? 'Start New Game' : 'Load'}
+          {mode === 'new' ? t('savePicker.startNew') : t('savePicker.load')}
         </button>
       )}
     </div>

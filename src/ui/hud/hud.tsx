@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import { useUiStore } from '@/game/state/ui-store';
 import { GoldDisplay } from '@/ui/components/gold-display';
@@ -10,6 +11,7 @@ import { InventoryPanel } from '@/ui/panels/inventory-panel';
 import { formatGameTime } from '@/game/utils/format-game-time';
 import { calcTotalUpkeep } from '@/game/systems/upkeep-system';
 import { getCurrentStep } from '@/game/systems/tutorial-manager';
+import { tContent } from '@/i18n/content-localization';
 import '@/ui/styles/hud.css';
 
 /** Compute upkeep inside selector to return primitive (avoids new array ref → infinite re-render) */
@@ -24,6 +26,7 @@ interface HUDProps {
 }
 
 export function HUD({ activePanel, setActivePanel }: HUDProps) {
+  const { t } = useTranslation();
   const gold = useGameStore((s) => s.gold);
   const gameTime = useGameStore((s) => s.gameTime);
   const rosterCount = useGameStore((s) => s.roster.length);
@@ -41,7 +44,12 @@ export function HUD({ activePanel, setActivePanel }: HUDProps) {
   }, [inventoryMode]);
 
   const stepConfig = getCurrentStep(tutorialStep);
-  const hintMessage = stepConfig?.message ?? '';
+  // Resolve the hint message through the content namespace so VN players see a
+  // translated hint. The EN inline string is the defaultValue fallback.
+  const rawMessage = stepConfig?.message ?? '';
+  const hintMessage = rawMessage
+    ? tContent('tutorial', tutorialStep, 'message', rawMessage)
+    : '';
   const highlightPanel = stepConfig?.highlightPanel ?? null;
 
   return (
@@ -49,11 +57,11 @@ export function HUD({ activePanel, setActivePanel }: HUDProps) {
       <div className="hud-top-bar">
         <span className="hud-clock">{formatGameTime(gameTime)}</span>
         <GoldDisplay amount={gold} />
-        <span className="hud-upkeep">Upkeep: {dailyUpkeep}g/day</span>
+        <span className="hud-upkeep">{t('hud.upkeep', { amount: dailyUpkeep })}</span>
         <ResourceBar />
-        <button className="hud-inventory-btn" onClick={() => setInventoryOpen(true)}>Inventory</button>
-        <span>Members: {memberCount}</span>
-        <span>Missions: {missionCount}</span>
+        <button className="hud-inventory-btn" onClick={() => setInventoryOpen(true)}>{t('hud.inventory')}</button>
+        <span>{t('hud.members', { count: memberCount })}</span>
+        <span>{t('hud.missions', { count: missionCount })}</span>
         <SaveStatusBadge />
       </div>
       {/* Tutorial hint bar — shown when current step has a non-empty message */}

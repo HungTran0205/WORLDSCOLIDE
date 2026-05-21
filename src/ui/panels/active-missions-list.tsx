@@ -1,6 +1,7 @@
 /** Floating active-missions widget — always visible below HUD top bar */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { MissionPhase } from '@/game/state/game-state';
 import { useGameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
@@ -9,10 +10,11 @@ import { GameIcon } from '@/ui/components/game-icon';
 import { ArrivalModal } from '@/ui/panels/arrival-modal';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 
-const PHASE_BADGE: Partial<Record<MissionPhase, string>> = {
-  traveling: 'Traveling...',
-  arrived: 'Arrived!',
-  'in-combat': 'In Combat',
+/** Phase badge i18n keys — resolved via t() at render time */
+const PHASE_BADGE_KEY: Partial<Record<MissionPhase, string>> = {
+  traveling: 'activeMissions.traveling',
+  arrived: 'activeMissions.arrived',
+  'in-combat': 'activeMissions.inCombat',
 };
 
 /** Floating container style — positioned top-right below HUD */
@@ -47,6 +49,7 @@ const CARD_STYLE: React.CSSProperties = {
 };
 
 export function ActiveMissionsList() {
+  const { t } = useTranslation();
   const activeMissions = useGameStore((s) => s.activeMissions);
   const [now, setNow] = useState(() => Date.now());
   const [arrivalModalFor, setArrivalModalFor] = useState<string | null>(null);
@@ -76,10 +79,11 @@ export function ActiveMissionsList() {
 
   return (
     <div style={CONTAINER_STYLE}>
-      <div style={HEADER_STYLE}>Active Missions</div>
+      <div style={HEADER_STYLE}>{t('activeMissions.header')}</div>
       {activeMissions.map((am) => {
         const missionData = MISSIONS.find((m) => m.id === am.missionId);
-        const badge = PHASE_BADGE[am.phase];
+        const badgeKey = PHASE_BADGE_KEY[am.phase];
+        const badge = badgeKey ? t(badgeKey) : undefined;
         const isArrived = am.phase === 'arrived';
 
         return (
@@ -109,11 +113,11 @@ export function ActiveMissionsList() {
             )}
             {isArrived && (
               <div style={{ fontSize: '0.8rem', color: '#f39c12', marginTop: 4 }}>
-                ⚔️ Click to start combat
+                {t('activeMissions.clickToCombat')}
               </div>
             )}
             {am.phase === 'in-combat' && (
-              <div style={{ fontSize: '0.8rem', color: '#aaa', marginTop: 4 }}>Resolving...</div>
+              <div style={{ fontSize: '0.8rem', color: '#aaa', marginTop: 4 }}>{t('activeMissions.resolving')}</div>
             )}
           </div>
         );

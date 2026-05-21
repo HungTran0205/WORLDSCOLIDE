@@ -3,6 +3,7 @@
  * Used on the title screen for slot selection.
  */
 
+import { useTranslation } from 'react-i18next';
 import type { SaveSlotMetadata } from '@/game/save/save-types';
 import { formatPlayTime } from '@/game/save/format-play-time';
 
@@ -24,6 +25,7 @@ function formatDate(ts: number): string {
 }
 
 export function SaveSlotCard({ slotIndex, metadata, selected, onClick }: SaveSlotCardProps) {
+  const { t } = useTranslation();
   const baseClass = 'save-slot-card';
   const classes = [
     baseClass,
@@ -37,8 +39,8 @@ export function SaveSlotCard({ slotIndex, metadata, selected, onClick }: SaveSlo
     return (
       <div className={classes} onClick={onClick} role="button" tabIndex={0}
         onKeyDown={(e) => e.key === 'Enter' && onClick()}>
-        <div className="save-slot-card__empty-text">Slot {slotIndex + 1}</div>
-        <div className="save-slot-card__empty-text">Empty</div>
+        <div className="save-slot-card__empty-text">{t('saveSlot.slot', { number: slotIndex + 1 })}</div>
+        <div className="save-slot-card__empty-text">{t('saveSlot.empty')}</div>
       </div>
     );
   }
@@ -48,10 +50,10 @@ export function SaveSlotCard({ slotIndex, metadata, selected, onClick }: SaveSlo
       onKeyDown={(e) => e.key === 'Enter' && onClick()}>
       <div className="save-slot-card__header">{metadata.guildName}</div>
       <div className="save-slot-card__meta">
-        <div>Founder: {metadata.founderName}</div>
-        <div>Level: {metadata.guildLevel}</div>
-        <div>Play time: {formatPlayTime(metadata.playTimeMs)}</div>
-        <div>Saved: {formatDate(metadata.updatedAt)}</div>
+        <div>{t('saveSlot.founder', { name: metadata.founderName })}</div>
+        <div>{t('saveSlot.level', { level: metadata.guildLevel })}</div>
+        <div>{t('saveSlot.playTime', { time: formatPlayTime(metadata.playTimeMs) })}</div>
+        <div>{t('saveSlot.saved', { date: formatDate(metadata.updatedAt) })}</div>
       </div>
     </div>
   );

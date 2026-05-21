@@ -43,6 +43,7 @@ import { FacilityHintCoachmark } from '@/ui/overlays/facility-hint-coachmark';
 import { DEBUG_MODE } from '@/debug';
 import { TutorialCoachmark } from '@/ui/coachmark/tutorial-coachmark';
 import { getCurrentStep } from '@/game/systems/tutorial-manager';
+import { tContent } from '@/i18n/content-localization';
 import { FacilitySlotDebugPanel } from '@/scene/facility/facility-slot-debug-panel';
 
 /** Home button — returns camera to guild hall; visible only when camera is in a facility room */
@@ -244,8 +245,13 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   // first-load freeze leaves the Begin button unclickable behind a black scene).
   const worldReady = useUiStore((s) => s.worldReady);
 
-  // Current step's coachmark config (only guild-hall beats carry one).
+  // Current step's coachmark config (only guild-hall beats carry one). Caption is
+  // resolved against the active language here (step known); the config's English
+  // caption is the fallback, so EN players are unaffected.
   const coachConfig = getCurrentStep(tutorialStep)?.coach;
+  const localizedCoachConfig = coachConfig
+    ? { ...coachConfig, caption: tContent('tutorial', tutorialStep, 'coachCaption', coachConfig.caption) }
+    : undefined;
 
   // Fire the graduation toast only on the live build-tavern → complete transition.
   const prevStepRef = useRef(tutorialStep);
@@ -346,8 +352,8 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
 
       {/* Step coachmark — only guild-hall beats define a coach config. Hides itself
           when its DOM/world target is absent (e.g. panel closed), so it never traps. */}
-      {gameScene === 'guild-hall' && coachConfig && (
-        <TutorialCoachmark active {...coachConfig} />
+      {gameScene === 'guild-hall' && localizedCoachConfig && (
+        <TutorialCoachmark active {...localizedCoachConfig} />
       )}
 
       {/* Always visible regardless of scene */}

@@ -4,6 +4,7 @@
  */
 
 import type { Stats, StatKey } from '@/game/state/game-state';
+import { tContent } from '@/i18n/content-localization';
 
 export type Civilization = 'LinhSon' | 'DeQuoc' | 'ThienLu';
 
@@ -148,8 +149,14 @@ export function getCivColor(civilization: string): string {
   return config?.colors.secondary ?? '#666';
 }
 
-/** Safe display name lookup with fallback */
+/**
+ * Safe display name lookup — routes through the i18n content resolver so
+ * EN players see the canon English name (e.g. "The LinhSon") rather than
+ * the VN-source inline value (e.g. "Linh Sơn").
+ * The inline displayName is VN (source); EN is overlaid from content.en.json.
+ */
 export function getCivDisplayName(civilization: string): string {
   const config = CIV_CONFIG[civilization as Civilization];
-  return config?.displayName ?? civilization;
+  if (!config) return civilization;
+  return tContent('civ', civilization, 'name', config.displayName);
 }

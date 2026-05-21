@@ -5,6 +5,7 @@ import { getSpritePath } from '@/scene/sprites/sprite-path-resolver';
 import { resolveMemberMaskId, getMaskAssetPath } from '@/scene/sprites/mask-pool';
 import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
+import { civName } from '@/i18n/content-wrappers';
 import { GameIcon } from './game-icon';
 
 const STATUS_COLOR: Record<string, string> = {
@@ -77,7 +78,7 @@ export function MemberCard({ member, onClick }: MemberCardProps) {
         <div className="card-name">{member.name || '???'}</div>
         <div className="card-meta">
           <span className="card-rank">{member.rank}</span>
-          {civConfig && <span className="card-civ">{civConfig.displayName}</span>}
+          {civConfig && <span className="card-civ">{civName(member.civilization as Civilization)}</span>}
         </div>
         <div className="card-stats">
           {top2.map(([key, val]) => (

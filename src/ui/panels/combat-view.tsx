@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
 import type { CombatEvent, CombatTick } from '@/game/systems/combat-types';
@@ -14,6 +15,7 @@ interface CombatViewProps {
 }
 
 export function CombatView({ onClose }: CombatViewProps) {
+  const { t } = useTranslation();
   const notifications = useGameStore((s) => s.notifications);
   const currentCombatReplay = useGameStore((s) => s.currentCombatReplay);
   const dismissResult = useGameStore((s) => s.dismissResult);
@@ -30,16 +32,16 @@ export function CombatView({ onClose }: CombatViewProps) {
     return (
       <div className="panel-overlay">
         <h2>
-          Combat Replay
-          <button className="panel-close-btn" onClick={() => { dismissResult(); onClose(); }}>Close</button>
+          {t('combatView.replayTitle')}
+          <button className="panel-close-btn" onClick={() => { dismissResult(); onClose(); }}>{t('combatView.close')}</button>
         </h2>
         <div className="panel-section">
           <div className="combat-summary">
-            <div><span style={{ color: '#aaa' }}>Damage: </span>{combat.totalDamageDealt}</div>
-            <div><span style={{ color: '#aaa' }}>Duration: </span>{Math.round(combat.durationMs / 1000)}s</div>
+            <div><span style={{ color: '#aaa' }}>{t('combatView.damage')}</span>{combat.totalDamageDealt}</div>
+            <div><span style={{ color: '#aaa' }}>{t('combatView.duration')}</span>{Math.round(combat.durationMs / 1000)}s</div>
           </div>
         </div>
-        <h3 style={{ color: '#ffd700', margin: '12px 0 8px' }}>Combat Log</h3>
+        <h3 style={{ color: '#ffd700', margin: '12px 0 8px' }}>{t('combatView.combatLog')}</h3>
         <div className="combat-log">
           {combat.ticks.map((tick, i) => (
             <CombatTickEntry key={i} tick={tick} tickNum={i + 1} getName={getName} />
@@ -58,9 +60,9 @@ export function CombatView({ onClose }: CombatViewProps) {
   if (combatNotifications.length === 0) {
     return (
       <div className="panel-overlay">
-        <h2>Combat<button className="panel-close-btn" onClick={onClose}>Close</button></h2>
+        <h2>{t('combatView.title')}<button className="panel-close-btn" onClick={onClose}>{t('combatView.close')}</button></h2>
         <div className="panel-section">
-          <p style={{ color: '#aaa' }}>No combat results yet. Dispatch a quest to see combat results.</p>
+          <p style={{ color: '#aaa' }}>{t('combatView.noResults')}</p>
         </div>
       </div>
     );
@@ -75,7 +77,7 @@ export function CombatView({ onClose }: CombatViewProps) {
 
   return (
     <div className="panel-overlay">
-      <h2>Combat<button className="panel-close-btn" onClick={onClose}>Close</button></h2>
+      <h2>{t('combatView.title')}<button className="panel-close-btn" onClick={onClose}>{t('combatView.close')}</button></h2>
 
       {/* Mission selector */}
       {combatNotifications.length > 1 && (
@@ -99,25 +101,25 @@ export function CombatView({ onClose }: CombatViewProps) {
           <OutcomeBadge outcome={result.outcome} />
         </div>
         <div className="combat-summary">
-          <div><span style={{ color: '#aaa' }}>Damage: </span>{combat.totalDamageDealt}</div>
-          <div><span style={{ color: '#aaa' }}>Duration: </span>{Math.round(combat.durationMs / 1000)}s</div>
-          <div><span style={{ color: '#aaa' }}>Gold: </span><span style={{ color: '#ffd700' }}>+{result.goldEarned}</span></div>
-          <div><span style={{ color: '#aaa' }}>EXP: </span><span style={{ color: '#67b8e3' }}>+{result.expPerMember}</span></div>
+          <div><span style={{ color: '#aaa' }}>{t('combatView.damage')}</span>{combat.totalDamageDealt}</div>
+          <div><span style={{ color: '#aaa' }}>{t('combatView.duration')}</span>{Math.round(combat.durationMs / 1000)}s</div>
+          <div><span style={{ color: '#aaa' }}>{t('combatView.gold')}</span><span style={{ color: '#ffd700' }}>+{result.goldEarned}</span></div>
+          <div><span style={{ color: '#aaa' }}>{t('combatView.exp')}</span><span style={{ color: '#67b8e3' }}>+{result.expPerMember}</span></div>
         </div>
         {result.survivors.length > 0 && (
           <div style={{ fontSize: '0.8rem', color: '#2ecc71' }}>
-            Survivors: {result.survivors.map(getName).join(', ')}
+            {t('combatResultOverlay.survivors', { names: result.survivors.map(getName).join(', ') })}
           </div>
         )}
         {result.injured.length > 0 && (
           <div style={{ fontSize: '0.8rem', color: '#e74c3c' }}>
-            Injured: {result.injured.map(getName).join(', ')}
+            {t('combatResultOverlay.injured', { names: result.injured.map(getName).join(', ') })}
           </div>
         )}
       </div>
 
       {/* Combat log */}
-      <h3 style={{ color: '#ffd700', margin: '12px 0 8px' }}>Combat Log</h3>
+      <h3 style={{ color: '#ffd700', margin: '12px 0 8px' }}>{t('combatView.combatLog')}</h3>
       <div className="combat-log">
         {combat.ticks.map((tick, i) => (
           <CombatTickEntry key={i} tick={tick} tickNum={i + 1} getName={getName} />
@@ -128,24 +130,23 @@ export function CombatView({ onClose }: CombatViewProps) {
 }
 
 function OutcomeBadge({ outcome }: { outcome: string }) {
+  const { t } = useTranslation();
   const colors: Record<string, string> = {
     victory: '#2ecc71', 'partial-victory': '#f39c12', 'full-wipe': '#e74c3c',
   };
-  const labels: Record<string, string> = {
-    victory: 'Victory', 'partial-victory': 'Partial Victory', 'full-wipe': 'Wiped',
-  };
   return (
     <span className="member-status-badge" style={{ color: colors[outcome], background: `${colors[outcome]}22`, border: `1px solid ${colors[outcome]}55` }}>
-      {labels[outcome] ?? outcome}
+      {t(`combatView.outcome.${outcome}`, { defaultValue: outcome })}
     </span>
   );
 }
 
 function CombatTickEntry({ tick, tickNum, getName }: { tick: CombatTick; tickNum: number; getName: (id: string) => string }) {
+  const { t } = useTranslation();
   if (tick.events.length === 0) return null;
   return (
     <div className="combat-log__tick">
-      <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: 2 }}>Tick {tickNum}</div>
+      <div style={{ fontSize: '0.7rem', color: '#666', marginBottom: 2 }}>{t('combatView.tick', { number: tickNum })}</div>
       {tick.events.map((event, i) => (
         <div key={i} className={`combat-log__event ${getEventClass(event)}`}>
           {formatEvent(event, getName)}

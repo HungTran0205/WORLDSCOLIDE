@@ -14,6 +14,7 @@ import { getAffinity, isMaterialEnabled } from '@/game/data/workshop-material-af
 import { WORKSHOP_CONFIG } from '@/game/data/workshop-config';
 import { GameIcon } from '@/ui/components/game-icon';
 import { WorkshopBlueprintList } from './workshop-blueprint-list';
+import { itemName } from '@/i18n/content-wrappers';
 
 const BASE_MATERIALS: ItemID[] = ['WOOD', 'STONE'];
 const MONSTER_MATERIALS: ItemID[] = ['SLIME_GEL'];
@@ -34,13 +35,13 @@ export function WorkshopCraftTab({ facility }: Props) {
   const [bpQty, setBpQty] = useState(1);
 
   const eligibleTemplates = useMemo(
-    () => Object.values(EQUIPMENT_DATABASE).filter((t) => t.craftMaterial === baseMat),
+    () => Object.values(EQUIPMENT_DATABASE).filter((tpl) => tpl.craftMaterial === baseMat),
     [baseMat],
   );
 
   // Auto-pick a valid template when base material switches; avoids setState-in-render
   const effectiveTemplateId: EquipmentTemplateId =
-    eligibleTemplates.some((t) => t.id === templateId)
+    eligibleTemplates.some((tpl) => tpl.id === templateId)
       ? templateId
       : (eligibleTemplates[0]?.id ?? templateId);
 
@@ -77,7 +78,7 @@ export function WorkshopCraftTab({ facility }: Props) {
     <div className="ws-tab-body ws-craft">
       {/* Base material picker */}
       <div className="ws-section">
-        <div className="ws-section-title">Base Material</div>
+        <div className="ws-section-title">{t('workshop.craft.baseMaterial')}</div>
         <div className="ws-mat-row">
           {BASE_MATERIALS.map((id) => {
             const owned = Math.floor(items[id] ?? 0);
@@ -86,7 +87,7 @@ export function WorkshopCraftTab({ facility }: Props) {
                 key={id}
                 className={`ws-mat-cell ${baseMat === id ? 'is-selected' : ''}`}
                 onClick={() => setBaseMat(id)}
-                title={`${ITEM_DATABASE[id].name} ×${owned}`}
+                title={`${itemName(id)} ×${owned}`}
               >
                 <GameIcon category="item" id={id} size={28} fallbackText={ITEM_DATABASE[id].name.slice(0, 2)} />
                 <span className="ws-mat-count">×{owned}</span>
@@ -98,12 +99,12 @@ export function WorkshopCraftTab({ facility }: Props) {
 
       {/* Optional monster material (Path B) */}
       <div className="ws-section">
-        <div className="ws-section-title">Monster Material (optional — Path B)</div>
+        <div className="ws-section-title">{t('workshop.craft.monsterMaterialTitle')}</div>
         <div className="ws-mat-row">
           <button
             className={`ws-mat-cell ${monsterMat === null ? 'is-selected' : ''}`}
             onClick={() => setMonsterMat(null)}
-            title="None — Path A"
+            title={t('workshop.craft.nonePathA')}
           >
             <span className="ws-mat-none">∅</span>
           </button>
@@ -116,7 +117,7 @@ export function WorkshopCraftTab({ facility }: Props) {
                 className={`ws-mat-cell ${monsterMat === id ? 'is-selected' : ''} ${enabled ? '' : 'is-disabled'}`}
                 onClick={() => enabled && setMonsterMat(id)}
                 disabled={!enabled}
-                title={enabled ? `${ITEM_DATABASE[id].name} ×${owned}` : `${ITEM_DATABASE[id].name} (locked)`}
+                title={enabled ? `${itemName(id)} ×${owned}` : `${itemName(id)} (locked)`}
               >
                 <GameIcon category="item" id={id} size={28} fallbackText={ITEM_DATABASE[id].name.slice(0, 2)} />
                 <span className="ws-mat-count">×{owned}</span>
@@ -128,26 +129,32 @@ export function WorkshopCraftTab({ facility }: Props) {
 
       {/* Template selector */}
       <div className="ws-section">
-        <div className="ws-section-title">Template</div>
+        <div className="ws-section-title">{t('workshop.craft.template')}</div>
         <select className="ws-select" value={effectiveTemplateId} onChange={(e) => setTemplateId(e.target.value as EquipmentTemplateId)}>
-          {eligibleTemplates.map((t) => (
-            <option key={t.id} value={t.id}>{t.name}</option>
+          {eligibleTemplates.map((tpl) => (
+            <option key={tpl.id} value={tpl.id}>{tpl.name}</option>
           ))}
         </select>
       </div>
 
       {/* Path indicator + range */}
       <div className="ws-path-card">
-        <div className="ws-path-label">Path {path}</div>
+        <div className="ws-path-label">{t('workshop.craft.pathLabel', { path })}</div>
         <div className="ws-path-detail">
           {path === 'A'
-            ? `${Math.round(WORKSHOP_CONFIG.pathASlotChance * 100)}% chance for generic slot (HP 40-150)`
+            ? t('workshop.craft.pathADetail', { chance: Math.round(WORKSHOP_CONFIG.pathASlotChance * 100) })
             : aff
-              ? `Guaranteed ${aff.statKey} slot — range ${aff.range[0]}-${aff.range[1]}`
-              : 'Material affinity unavailable'}
+              ? t('workshop.craft.pathBDetail', { statKey: aff.statKey, min: aff.range[0], max: aff.range[1] })
+              : t('workshop.craft.pathBUnavailable')}
         </div>
         <div className="ws-cost-line">
-          Cost: {baseCost}× {ITEM_DATABASE[baseMat].name}{monsterMat ? ` + 1× ${ITEM_DATABASE[monsterMat].name}` : ''}
+          {monsterMat
+            ? t('workshop.craft.costLineWithMonster', {
+                baseCost,
+                baseName: itemName(baseMat),
+                monsterName: itemName(monsterMat),
+              })
+            : t('workshop.craft.costLine', { baseCost, baseName: itemName(baseMat) })}
         </div>
       </div>
 

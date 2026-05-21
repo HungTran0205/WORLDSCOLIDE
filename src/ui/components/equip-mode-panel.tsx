@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import { DEFAULT_MEDICINE_SLOTS } from '@/game/state/guild-slice';
 import { getSpritePath } from '@/scene/sprites/sprite-path-resolver';
@@ -7,12 +8,18 @@ import type { EquipmentSlot } from '@/game/data/equipment-templates';
 import { ITEM_DATABASE } from '@/game/data/items';
 import type { ItemID } from '@/game/data/items';
 import type { MedicineCondition } from '@/game/state/game-state';
+import { itemName, equipmentName } from '@/i18n/content-wrappers';
 import '@/ui/styles/equip-mode.css';
 
-const COND_LABELS: Record<MedicineCondition, string> = {
-  start: 'Combat Start', '80': 'Below 80%', '50': 'Below 50%', '30': 'Below 30%', never: 'Never',
+// Condition keys mapped to i18n keys — values resolved at render time via t()
+const COND_I18N_KEYS: Record<MedicineCondition, string> = {
+  start: 'equipMode.condStart',
+  '80': 'equipMode.cond80',
+  '50': 'equipMode.cond50',
+  '30': 'equipMode.cond30',
+  never: 'equipMode.condNever',
 };
-const COND_OPTIONS = Object.entries(COND_LABELS) as [MedicineCondition, string][];
+const COND_OPTIONS = Object.keys(COND_I18N_KEYS) as MedicineCondition[];
 const GEAR_SLOTS = ['weapon', 'armor', 'headgear'] as const;
 
 interface EquipModePanelProps {
@@ -30,6 +37,8 @@ export function EquipModePanel({ memberId, onClose }: EquipModePanelProps) {
   const setMedicineSlot   = useGameStore(s => s.setMedicineSlot);
   const clearMedicineSlot = useGameStore(s => s.clearMedicineSlot);
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { t } = useTranslation();
   const member = (founder?.id === memberId ? founder : roster.find(m => m.id === memberId)) ?? null;
   if (!member) return null;
 
@@ -82,14 +91,14 @@ export function EquipModePanel({ memberId, onClose }: EquipModePanelProps) {
           <div className="equip-header-name">{member.name}</div>
           <div className="equip-header-sub">{member.rank} · Lv.{member.level}</div>
         </div>
-        <button className="char-btn" onClick={onClose} type="button" style={{ marginLeft: 'auto' }}>Done</button>
+        <button className="char-btn" onClick={onClose} type="button" style={{ marginLeft: 'auto' }}>{t('equipMode.done')}</button>
       </div>
 
       {/* ── Body: split ── */}
       <div className="equip-split">
         {/* Left — slots */}
         <div className="equip-left">
-          <div className="equip-section-title">Equipment</div>
+          <div className="equip-section-title">{t('equipMode.equipment')}</div>
           <div className="equip-gear-grid">
             {GEAR_SLOTS.map(slot => {
               const equipped = member.equipment?.[slot] ?? null;
@@ -107,45 +116,45 @@ export function EquipModePanel({ memberId, onClose }: EquipModePanelProps) {
                   <span className="equip-slot-label">{slot}</span>
                   {tpl ? (
                     <>
-                      <span className="equip-slot-item-name">{tpl.name}</span>
+                      <span className="equip-slot-item-name">{equipmentName(equipped!.templateId)}</span>
                       <span className="equip-slot-stat">
                         {tpl.damage ? `⚔${tpl.damage}` : ''}{tpl.defense ? ` 🛡${tpl.defense}` : ''}{tpl.hp ? ` ❤+${tpl.hp}` : ''}
                       </span>
                     </>
                   ) : (
-                    <span className="equip-slot-empty">Drop here</span>
+                    <span className="equip-slot-empty">{t('equipMode.dropHere')}</span>
                   )}
                 </div>
               );
             })}
           </div>
 
-          <div className="equip-section-title" style={{ marginTop: 8 }}>Medicine</div>
+          <div className="equip-section-title" style={{ marginTop: 8 }}>{t('equipMode.medicine')}</div>
           {([0, 1] as const).map(idx => {
             const ms = medSlots[idx];
-            const itemName = ms.itemId ? (ITEM_DATABASE[ms.itemId as ItemID]?.name ?? ms.itemId) : null;
+            const hasMedItem = !!ms.itemId;
             return (
               <div
                 key={idx}
-                className={`med-slot-box${ms.itemId ? ' filled' : ''}${dropOver === `med${idx}` ? ' drop-target' : ''}`}
+                className={`med-slot-box${hasMedItem ? ' filled' : ''}${dropOver === `med${idx}` ? ' drop-target' : ''}`}
                 onDragOver={e => { e.preventDefault(); setDropOver(`med${idx}`); }}
                 onDragLeave={() => setDropOver(null)}
                 onDrop={() => dropOnMedSlot(idx)}
               >
                 <span className="med-slot-num">{idx + 1}</span>
-                {itemName
-                  ? <span className="med-slot-name">{itemName}</span>
-                  : <span className="med-slot-empty" onClick={() => dropOnMedSlot(idx)}>Drop consumable</span>
+                {hasMedItem
+                  ? <span className="med-slot-name">{itemName(ms.itemId as ItemID)}</span>
+                  : <span className="med-slot-empty" onClick={() => dropOnMedSlot(idx)}>{t('equipMode.dropConsumable')}</span>
                 }
-                {itemName && (
-                  <button className="med-slot-clear" onClick={() => clearMedicineSlot(memberId, idx)} title="Clear slot">✕</button>
+                {hasMedItem && (
+                  <button className="med-slot-clear" onClick={() => clearMedicineSlot(memberId, idx)} title={t('equipMode.clearSlotAria')}>✕</button>
                 )}
                 <select
                   className="med-condition-select"
                   value={ms.condition}
                   onChange={e => setMedicineSlot(memberId, idx, { ...ms, condition: e.target.value as MedicineCondition })}
                 >
-                  {COND_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  {COND_OPTIONS.map((v) => <option key={v} value={v}>{t(COND_I18N_KEYS[v])}</option>)}
                 </select>
               </div>
             );
@@ -156,7 +165,7 @@ export function EquipModePanel({ memberId, onClose }: EquipModePanelProps) {
         <div className="equip-right">
           {equipInv.length > 0 && (
             <>
-              <div className="equip-section-title">Equipment in Stash</div>
+              <div className="equip-section-title">{t('equipMode.equipmentInStash')}</div>
               <div className="equip-inv-grid">
                 {equipInv.map(item => {
                   const tpl = getEquipmentTemplate(item.templateId);
@@ -171,7 +180,7 @@ export function EquipModePanel({ memberId, onClose }: EquipModePanelProps) {
                       onDragEnd={() => setDragging(null)}
                       onClick={() => handleItemClick(item.id, 'eq')}
                     >
-                      <span className="equip-inv-item-name">{tpl.name}</span>
+                      <span className="equip-inv-item-name">{equipmentName(item.templateId)}</span>
                       <span>{tpl.damage ? `⚔${tpl.damage}` : ''}{tpl.defense ? ` 🛡${tpl.defense}` : ''}{tpl.hp ? ` ❤+${tpl.hp}` : ''}</span>
                     </div>
                   );
@@ -182,10 +191,9 @@ export function EquipModePanel({ memberId, onClose }: EquipModePanelProps) {
 
           {consumables.length > 0 && (
             <>
-              <div className="equip-section-title">Consumables</div>
+              <div className="equip-section-title">{t('equipMode.consumables')}</div>
               <div className="equip-inv-grid">
                 {consumables.map(id => {
-                  const def = ITEM_DATABASE[id];
                   const isDragging = dragging?.id === id;
                   const isSel = selected?.id === id;
                   return (
@@ -197,7 +205,7 @@ export function EquipModePanel({ memberId, onClose }: EquipModePanelProps) {
                       onDragEnd={() => setDragging(null)}
                       onClick={() => handleItemClick(id, 'con')}
                     >
-                      <span className="equip-inv-item-name">{def.name}</span>
+                      <span className="equip-inv-item-name">{itemName(id)}</span>
                       <span>×{Math.floor(items[id] ?? 0)}</span>
                     </div>
                   );
@@ -207,7 +215,7 @@ export function EquipModePanel({ memberId, onClose }: EquipModePanelProps) {
           )}
 
           {equipInv.length === 0 && consumables.length === 0 && (
-            <p className="equip-empty-hint">No equipment in stash.</p>
+            <p className="equip-empty-hint">{t('equipMode.noStash')}</p>
           )}
         </div>
       </div>

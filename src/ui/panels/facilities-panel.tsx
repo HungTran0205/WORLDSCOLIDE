@@ -1,7 +1,9 @@
 /** FacilitiesPanel — Bát Quái 5×5 cross grid with slide-up detail tray (HD-2D Ink UI). */
 
 import { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
+import { tContent } from '@/i18n/content-localization';
 import type { GuildFacility, FacilityType } from '@/game/state/game-state';
 import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
 import { FACILITY_SLOTS, getSlotCameraOffset } from '@/game/data/facility-slot-positions';
@@ -55,20 +57,22 @@ function BuiltSlotCard({ slotIdx, facility, selected, onClick, instanceNumber, h
 function EmptySlotCard({ slotIdx, selected, onClick, highlight }: {
   slotIdx: number; selected: boolean; onClick: () => void; highlight?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <div className={`fp-slot fp-slot-empty${selected ? ' selected' : ''}${highlight ? ' tutorial-highlight' : ''}`} onClick={onClick}>
       <span className="fp-slot-num">{slotIdx + 1}</span>
       <span className="fp-slot-empty-icon">＋</span>
-      <span className="fp-slot-empty-label">Empty</span>
+      <span className="fp-slot-empty-label">{t('facilitiesPanel.slotEmpty')}</span>
     </div>
   );
 }
 
 function HallCenterCard({ onClick }: { onClick: () => void }) {
+  const { t } = useTranslation();
   return (
     <div className="fp-slot fp-slot-hall" onClick={onClick}>
       <span className="fp-slot-icon">⬡</span>
-      <span className="fp-slot-name">Hall</span>
+      <span className="fp-slot-name">{t('facilitiesPanel.hallLabel')}</span>
     </div>
   );
 }
@@ -76,6 +80,7 @@ function HallCenterCard({ onClick }: { onClick: () => void }) {
 // ── Guild upgrade footer card ────────────────────────────────────────────────
 
 function GuildUpgradeCard() {
+  const { t } = useTranslation();
   const [showConfirm, setShowConfirm] = useState(false);
   const guildLevel  = useGameStore(s => s.guildLevel);
   const gold        = useGameStore(s => s.gold);
@@ -88,20 +93,20 @@ function GuildUpgradeCard() {
   return (
     <>
       <div className="fp-guild-upgrade">
-        <span className="fp-guild-label">Guild Hall — Lv.{guildLevel}</span>
+        <span className="fp-guild-label">{t('guildUpgrade.label', { level: guildLevel })}</span>
         <button
           className="fp-btn-guild-upgrade"
           disabled={gold < upgradeCost}
           onClick={() => setShowConfirm(true)}
         >
-          Upgrade — {upgradeCost.toLocaleString()}g
+          {t('guildUpgrade.btn', { cost: upgradeCost.toLocaleString() })}
         </button>
       </div>
       {showConfirm && (
         <InkConfirmDialog
-          title="Upgrade Guild Hall"
-          body={`Upgrade to Level ${guildLevel + 1}? Cost: ${upgradeCost.toLocaleString()}g. Unlocks new slots and blueprints.`}
-          confirmLabel="Upgrade"
+          title={t('guildUpgrade.title')}
+          body={t('guildUpgrade.body', { level: guildLevel + 1, cost: upgradeCost.toLocaleString() })}
+          confirmLabel={t('guildUpgrade.confirm')}
           onConfirm={() => { if (spendGold(upgradeCost)) upgradeGuild(); setShowConfirm(false); }}
           onCancel={() => setShowConfirm(false)}
         />
@@ -113,6 +118,7 @@ function GuildUpgradeCard() {
 // ── Main panel ───────────────────────────────────────────────────────────────
 
 export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
+  const { t } = useTranslation();
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
 
   const facilities          = useGameStore(s => s.facilities);
@@ -167,27 +173,27 @@ export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
 
         {/* Header */}
         <div className="fp-header">
-          <span className="fp-title">FACILITIES</span>
-          <span className="fp-badge">Guild Lv.{guildLevel}</span>
+          <span className="fp-title">{t('facilitiesPanel.title')}</span>
+          <span className="fp-badge">{t('facilitiesPanel.guildLevel', { level: guildLevel })}</span>
           <span className="fp-header-gold">⬡ {gold.toLocaleString()}g</span>
-          <span className="fp-badge">{slotsUsed}/12 slots</span>
-          <button className="fp-close" onClick={onClose}>Close</button>
+          <span className="fp-badge">{t('facilitiesPanel.slotsUsed', { used: slotsUsed })}</span>
+          <button className="fp-close" onClick={onClose}>{t('facilitiesPanel.close')}</button>
         </div>
 
-        {/* Tutorial hints */}
+        {/* Tutorial hints — inline guidance for the facilities build/assign beats */}
         {tutorialStep === 'build-logging-site' && (
           <div style={{ padding: '6px 14px 0', fontSize: '0.7rem', color: 'var(--ink-gold)', fontFamily: 'var(--ink-font-mono)' }}>
-            ▶ Select an empty slot to build a Logging Site.
+            {tContent('tutorial', 'build-logging-site', 'hint', '▶ Select an empty slot to build a Logging Site.')}
           </div>
         )}
         {tutorialStep === 'assign-kael' && (
           <div style={{ padding: '6px 14px 0', fontSize: '0.7rem', color: 'var(--ink-gold)', fontFamily: 'var(--ink-font-mono)' }}>
-            ▶ Select the Logging Site and assign Kael.
+            {tContent('tutorial', 'assign-kael', 'hint', '▶ Select the Logging Site and assign Kael.')}
           </div>
         )}
         {tutorialStep === 'build-tavern' && (
           <div style={{ padding: '6px 14px 0', fontSize: '0.7rem', color: 'var(--ink-gold)', fontFamily: 'var(--ink-font-mono)' }}>
-            ▶ Select an empty slot and build the Tavern (200 Wood).
+            {tContent('tutorial', 'build-tavern', 'hint', '▶ Select an empty slot and build the Tavern (200 Wood).')}
           </div>
         )}
 

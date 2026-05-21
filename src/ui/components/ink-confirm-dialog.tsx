@@ -1,6 +1,7 @@
 /** Reusable ink-themed confirmation dialog with overlay. */
 
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import '@/ui/styles/facilities-panel.css';
 
 interface InkConfirmDialogProps {
@@ -12,6 +13,7 @@ interface InkConfirmDialogProps {
 }
 
 export function InkConfirmDialog({ title, body, confirmLabel, onConfirm, onCancel }: InkConfirmDialogProps) {
+  const { t } = useTranslation();
   // Close on Escape key
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel(); };
@@ -25,7 +27,7 @@ export function InkConfirmDialog({ title, body, confirmLabel, onConfirm, onCance
         <div className="fp-dialog-title">{title}</div>
         <div className="fp-dialog-body">{body}</div>
         <div className="fp-dialog-actions">
-          <button className="fp-btn-cancel" onClick={onCancel}>Cancel</button>
+          <button className="fp-btn-cancel" onClick={onCancel}>{t('inkConfirmDialog.cancel')}</button>
           <button className="fp-btn-confirm" onClick={onConfirm}>{confirmLabel}</button>
         </div>
       </div>

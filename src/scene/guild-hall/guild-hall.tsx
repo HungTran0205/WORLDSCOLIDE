@@ -4,11 +4,13 @@ import { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { useGameStore } from '@/game/state/store';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
+import { DEBUG_MODE } from '@/debug';
 import { BuildOverlay } from './build-overlay';
 import { FurnitureModel } from './furniture-model';
 import { GuildHallWall } from './guild-hall-wall';
 import { GuildHallFront } from './guild-hall-front';
 import { GuildHallProps } from './guild-hall-props';
+import { GuildHallCollisionOverlay } from './guild-hall-collision-overlay';
 import { LinhSonFloor } from './linh-son-floor';
 
 /** Directional shadow light owned by the guild hall room.
@@ -69,6 +71,7 @@ export function GuildHall() {
       {!isCombatOpen && <GuildHallWall gridWidth={10} gridDepth={7} />}
       <LinhSonFloor gridWidth={10} gridDepth={7} />
       <GuildHallProps />
+      {DEBUG_MODE && <GuildHallCollisionOverlay />}
       {furniture.map((f) => (
         <FurnitureModel key={f.id} furniture={f} />
       ))}

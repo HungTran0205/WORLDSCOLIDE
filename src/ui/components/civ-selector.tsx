@@ -4,8 +4,10 @@
  * and a "Coming Soon" tag, are not clickable or focusable, but remain visible.
  */
 
+import { useTranslation } from 'react-i18next';
 import { CIVILIZATIONS, CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
+import { civName, civRole, civDescription } from '@/i18n/content-wrappers';
 
 /** Civs the player can actually pick in the MVP. */
 const MVP_AVAILABLE: Civilization[] = ['LinhSon'];
@@ -16,6 +18,7 @@ interface CivSelectorProps {
 }
 
 export function CivSelector({ selectedCiv, onSelect }: CivSelectorProps) {
+  const { t } = useTranslation();
   return (
     <div className="civ-selector-grid">
       {CIVILIZATIONS.map((civ) => {
@@ -43,10 +46,10 @@ export function CivSelector({ selectedCiv, onSelect }: CivSelectorProps) {
               <span className="civ-card-lock" aria-hidden>🔒</span>
             )}
             <div className="civ-card-name" style={{ color: config.colors.accent }}>
-              {config.displayName}
+              {civName(civ)}
             </div>
-            <div className="civ-card-role">{config.role}</div>
-            <div className="civ-card-desc">{config.description}</div>
+            <div className="civ-card-role">{civRole(civ)}</div>
+            <div className="civ-card-desc">{civDescription(civ)}</div>
             <div className="civ-card-bonuses">
               {config.statBonuses.map((b) => (
                 <span
@@ -58,7 +61,7 @@ export function CivSelector({ selectedCiv, onSelect }: CivSelectorProps) {
                 </span>
               ))}
             </div>
-            {!available && <span className="civ-card-coming-soon">Coming Soon</span>}
+            {!available && <span className="civ-card-coming-soon">{t('common.comingSoon')}</span>}
           </button>
         );
       })}

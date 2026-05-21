@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { listSlots } from '@/game/save/save-storage';
 import { TitleScene } from '@/scene/title/title-scene';
 import { TitleScreenLogo } from './title-screen-logo';
@@ -31,6 +32,7 @@ interface TitleScreenProps {
 }
 
 export function TitleScreen({ onContinue, onNewGame, onDeleteSlot }: TitleScreenProps) {
+  const { t } = useTranslation();
   const [slots, setSlots] = useState<(SaveSlotMetadata | null)[]>([null, null, null]);
   const [mode, setMode] = useState<MenuMode>('main');
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +43,7 @@ export function TitleScreen({ onContinue, onNewGame, onDeleteSlot }: TitleScreen
       setSlots(result);
       setError(null);
     } else {
-      setError('Failed to load save slots');
+      setError(t('titleScreen.loadFailed'));
     }
   }, []);
 
@@ -94,7 +96,7 @@ export function TitleScreen({ onContinue, onNewGame, onDeleteSlot }: TitleScreen
       </div>
 
       {/* Floating menu panel — overlays the diorama */}
-      <aside className={panelClass} aria-label="Title menu">
+      <aside className={panelClass} aria-label={t('titleScreen.panelAria')}>
         {mode === 'main' && (
           <TitleScreenMainMenu
             hasContinue={hasAnySave}
