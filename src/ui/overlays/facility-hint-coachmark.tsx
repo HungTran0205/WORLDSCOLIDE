@@ -1,0 +1,78 @@
+/**
+ * Facility hint coachmark — one-time discoverability nudge for the room's iconic
+ * object (anvil / reactor / counter). Since arriving in a room no longer auto-opens
+ * its function panel, this teaches the click on first visit.
+ *
+ * Shows on EVERY visit to a room until the player clicks its object once
+ * (markFacilityHintSeen fires on click, not on first show), then is suppressed
+ * forever via the persisted facilityHintSeen flag.
+ *
+ * Thin wrapper over TutorialCoachmark targetType="world" — same world-projection
+ * bridge as the drum hint. aria-hidden: purely visual; the object click is the
+ * only interaction it points to, reachable without the hint once known.
+ */
+
+import { useUiStore, type FacilityHintType } from '@/game/state/ui-store';
+import { TutorialCoachmark } from '@/ui/coachmark/tutorial-coachmark';
+
+// Per-facility object position offset from room center (cx,cz), mirroring the
+// InteractiveFacilityObject placements in the furniture files. Y raised so the
+// arrow points at the object's upper body rather than its base.
+const OBJECT_OFFSET: Record<FacilityHintType, [number, number, number]> = {
+  workshop: [0.8, 1.0, -0.5],     // anvil
+  'alchemy-lab': [0, 2.0, -0.2],  // reactor (tall)
+  tavern: [-2.8, 1.6, 1.2],       // apothecary counter
+};
+
+const CAPTION: Record<FacilityHintType, string> = {
+  workshop: 'Click the anvil to craft',
+  'alchemy-lab': 'Click the reactor to brew',
+  tavern: 'Click the counter to recruit',
+};
+
+interface FacilityHintCoachmarkProps {
+  /** The facility room the camera is currently in, or null when in none of the 3. */
+  activeType: FacilityHintType | null;
+  /** Room center [cx, _, cz] of the active facility (FACILITY_SLOTS[placedSlot]). */
+  roomCenter: [number, number, number] | null;
+  /** True once the camera has finished lerping (don't point mid-navigation). */
+  settled: boolean;
+  /** True if any facility function panel is open (hide the hint while in-panel). */
+  panelOpen: boolean;
+}
+
+export function FacilityHintCoachmark({
+  activeType,
+  roomCenter,
+  settled,
+  panelOpen,
+}: FacilityHintCoachmarkProps) {
+  const seen = useUiStore((s) => s.facilityHintSeen);
+
+  // Show only when settled in a room, no panel open, and the hint is unseen.
+  const active =
+    activeType !== null && roomCenter !== null && settled && !panelOpen && !seen[activeType];
+
+  // World target = room center + the object's local offset.
+  const target: [number, number, number] =
+    activeType && roomCenter
+      ? [
+          roomCenter[0] + OBJECT_OFFSET[activeType][0],
+          OBJECT_OFFSET[activeType][1],
+          roomCenter[2] + OBJECT_OFFSET[activeType][2],
+        ]
+      : [0, 0, 0];
+
+  return (
+    <div aria-hidden="true">
+      <TutorialCoachmark
+        active={active}
+        targetType="world"
+        target={target}
+        caption={activeType ? CAPTION[activeType] : ''}
+        arrow
+        pulse
+      />
+    </div>
+  );
+}

@@ -2,10 +2,12 @@
  * Isometric camera controller — zoom/pan only, no rotation.
  * Animates smoothly toward `cameraTarget` from Zustand store on each frame.
  *
- * Two framing modes (driven by `cameraFocus`):
- *  - 'default'     : standard isometric offset for room navigation
- *  - 'quest-board' : tight offset zoomed onto the drum at the guild hall centre
- *                    (drives the diegetic quest board cinematic, Phase 3).
+ * Framing modes (driven by `cameraFocus`):
+ *  - 'default'        : standard isometric offset for room navigation
+ *  - 'quest-board'    : tight offset zoomed onto the drum at the guild hall centre
+ *                       (drives the diegetic quest board cinematic).
+ *  - 'facility-focus' : moderate zoom framing a room's iconic object while its
+ *                       function panel is open.
  */
 
 import { useRef, useEffect } from 'react';
@@ -20,6 +22,11 @@ const CAM_OFFSET_DEFAULT: [number, number, number] = [8, 5.5, 8.5];
 // Quest-board focus: pulls the camera in to the drum and lowers eye-line for a
 // cinematic close-up. Y kept above ground to avoid clipping the drum mesh.
 const CAM_OFFSET_QUEST: [number, number, number] = [4, 5, 4.5];
+
+// Facility-focus: frames a room's iconic object when its function panel opens.
+// Sits between default and quest-board — a moderate zoom that keeps surrounding
+// room context visible. Sensible default; fine to tune by feel.
+const CAM_OFFSET_FACILITY: [number, number, number] = [6, 5.25, 6.5];
 
 const ARRIVE_THRESHOLD = 0.01;
 
@@ -39,7 +46,12 @@ export function CameraController() {
   // Sync goal vectors and kick first invalidation when target or focus changes
   useEffect(() => {
     const [tx, ty, tz] = cameraTarget;
-    const [ox, oy, oz] = cameraFocus === 'quest-board' ? CAM_OFFSET_QUEST : CAM_OFFSET_DEFAULT;
+    const [ox, oy, oz] =
+      cameraFocus === 'quest-board'
+        ? CAM_OFFSET_QUEST
+        : cameraFocus === 'facility-focus'
+          ? CAM_OFFSET_FACILITY
+          : CAM_OFFSET_DEFAULT;
     goalTarget.current.set(tx, ty, tz);
     goalPosition.current.set(tx + ox, oy, tz + oz);
     invalidate();
