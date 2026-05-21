@@ -21,5 +21,16 @@ export function tContent(
   field: string,
   fallback: string,
 ): string {
-  return i18n.t(`${category}.${id}.${field}`, { ns: 'content', defaultValue: fallback });
+  // fallbackLng:false is load-bearing. VN-authored categories (civ, skills) keep
+  // their VN value inline and overlay EN in content.en.json. With the global
+  // fallbackLng:'en', a vi lookup that misses the (absent) vi key would fall back
+  // to the EN overlay and return English to a Vietnamese player. Disabling the
+  // language fallback for content lookups makes resolution go active-language →
+  // defaultValue (the inline source string), which is the correct value in both
+  // directions. The UI namespace keeps the global EN fallback as a safety net.
+  return i18n.t(`${category}.${id}.${field}`, {
+    ns: 'content',
+    defaultValue: fallback,
+    fallbackLng: false,
+  });
 }

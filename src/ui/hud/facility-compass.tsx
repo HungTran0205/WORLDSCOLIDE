@@ -6,6 +6,7 @@
  */
 
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import type { GuildFacility, FacilityType } from '@/game/state/game-state';
 import { FACILITY_SLOTS, getSlotCameraOffset } from '@/game/data/facility-slot-positions';
@@ -50,6 +51,7 @@ function camMatch(a: [number, number, number], b: [number, number, number]) {
 }
 
 export function FacilityCompass() {
+  const { t } = useTranslation();
   const facilities    = useGameStore(s => s.facilities);
   const cameraTarget  = useGameStore(s => s.cameraTarget);
   const setCameraTarget = useGameStore(s => s.setCameraTarget);
@@ -93,7 +95,7 @@ export function FacilityCompass() {
           return (
             <div
               key={idx}
-              title="Guild Hall"
+              title={t('facilityCompass.guildHall')}
               onClick={() => setCameraTarget(GUILD_HALL_CAMERA_TARGET)}
               style={{
                 ...BASE_STYLE,

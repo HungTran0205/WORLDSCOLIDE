@@ -7,6 +7,47 @@ All notable changes to Worlds Collide are documented in this file. The format fo
 
 ---
 
+## [Unreleased] — 2026-05-21 (Bilingual i18n EN+VI Support & New Game Flow)
+
+### feat(i18n): complete bilingual architecture — two-namespace EN/VI localization
+
+**i18next + react-i18next** bilingual support with device-level language preference (localStorage, one language across all save slots). Branch `feature/WC-BiLangSupport`.
+
+**Two-namespace strategy**:
+- `ui` (interface chrome): 708 keys each language (EN source of truth; VI overlay); parity enforced by `ui-parity.test.ts`
+- `content` (game-data display + narrative): asymmetric source-language resolution — EN-authored entities (missions, items, enemies, equipment, furniture, facilities, recipes, archetypes, ranks) have EN inline + VI overlay; VN-authored entities (civ display/description/passive, skills) have VN inline + EN overlay (sourced from lore glossary)
+
+**Architecture details**:
+- `src/i18n/index.ts` — i18next init with namespaced strategy, dev-only `saveMissing` for ui namespace
+- `src/i18n/content-localization.ts` — `tContent(cat, id, field, fallback)` resolver with **`fallbackLng: false`** (critical for correct VN-authored entity fallback to inline VN value)
+- `src/i18n/content-wrappers.ts` — Typed per-category helpers: `missionName()`, `itemName()`, `civName()`, `skillName()`, `equipmentName()`, `recipeName()`, `archetypeDisplayName()`, `enemyName()`, `furnitureName()`, `facilityName()`, `rankLabel()`, `civRole()`, `civPassiveName()`, `civPassiveDescription()`
+- `src/i18n/use-language.ts` — `useLanguage()` centralized device-level pref hook (localStorage + i18n reactivity)
+- `src/i18n/ui.{en,vi}.json` — UI namespace (708 keys each, exact parity)
+- `src/i18n/content.{en,vi}.json` — Content namespace (per-source-language overlay)
+- `src/i18n/ui-parity.test.ts` — Guard: exact key count alignment
+- `src/i18n/content-coverage.test.ts` — Guard: all entity fields have required overlay entries
+
+**Lore fidelity**: Faction/proper-noun names follow `docs/LORE.md` canon (The LinhSon/Linh Sơn, The Republic Empire/Đế Quốc, The Astopia/Thiên Lữ); character proper names never translated. See `plans/260521-1101-bilingual-i18n-vn-en-support/lore-glossary.md`.
+
+**Number formatting**: Intentionally left as browser locale / en-US (pixel-art HUD consistency); `.toLocaleString()` unchanged. Language-aware formatting is a known consideration (user decision pending).
+
+**UI integration**: Settings panel language toggle (EN ↔ VI) via `useLanguage()` — changes persist in localStorage, all components re-render on `languageChanged` event with zero flash.
+
+**Docs**: New `docs/i18n.md` (comprehensive architecture + contributor guide); `docs/system-architecture.md` updated with i18n details.
+
+**Test results**: `ui-parity.test.ts` (708 keys each), `content-coverage.test.ts` (all entities covered); full test suite green.
+
+**Verification**:
+- Build clean: `tsc -b && vite build`
+- All tests pass: `npm run test`
+- Settings toggle EN ↔ VI: all UI labels + game-data displays update live (no flash, no stale text)
+- Playthrough: quest board, roster, build, combat, settings in both languages
+- Dev console: zero `[i18n] missing ui key` warnings
+
+**Plan Reference**: `plans/260521-1101-bilingual-i18n-vn-en-support/` (phases 01–06 complete)
+
+---
+
 ## [Unreleased] — 2026-05-21 (New Game Flow — Split-Hero Character-Creation Wizard)
 
 ### feat(char-creation): split-hero new-game wizard + founder-only `sword` archetype

@@ -12,6 +12,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
+import { getTraitDef } from '@/game/data/traits';
 import type { Member, TavernVisitor, AttemptRecord } from '@/game/state/game-state';
 import {
   buildModifierBundle,
@@ -132,7 +133,12 @@ export function TavernNegotiateModal({ visitor, keeper, visibilityScore, onClose
                 <div>{visitor.civilization} · Lv{visitor.level} · {'★'.repeat(visitor.rarity)}</div>
                 {visibilityScore >= 22 && visitor.traits.length > 0 && (
                   <div style={{ marginTop: 4 }}>
-                    {visitor.traits.map((tr) => <span key={tr} className="tv-trait-chip" style={{ marginRight: 4 }}>{tr}</span>)}
+                    {visitor.traits.map((tr) => (
+                      <span key={tr} className="tv-trait-chip" style={{ marginRight: 4 }}
+                        title={t(getTraitDef(tr)?.descKey ?? tr)}>
+                        {t(getTraitDef(tr)?.displayKey ?? tr)}
+                      </span>
+                    ))}
                   </div>
                 )}
               </div>

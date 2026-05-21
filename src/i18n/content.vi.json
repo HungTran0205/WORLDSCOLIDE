@@ -1,1 +1,408 @@
-{}
+{
+  "missions": {
+    "tutorial-bear-the-bear": {
+      "name": "Đuổi gấu",
+      "description": "Một con Gấu Trăng bị một cơn địa chấn kỳ lạ xua khỏi hang, đang lồng lộn phá phách ngôi làng dưới chân núi. Hãy đuổi nó đi trước khi có ai bị thương.",
+      "zone": "Ngoại Ô Làng"
+    },
+    "slime-extermination": {
+      "name": "Diệt Slime",
+      "description": "Khu vực rừng ngoại ô bị slime tràn ngập. Hãy dọn sạch chúng.",
+      "zone": "Rừng Ngoại Ô"
+    },
+    "spider-nest": {
+      "name": "Tổ Nhện",
+      "description": "Nhện độc xâm chiếm một khu rừng nhỏ gần đây. Tiêu diệt tổ nhện.",
+      "zone": "Rừng Ngoại Ô"
+    },
+    "cave-patrol": {
+      "name": "Tuần Tra Hang Động",
+      "description": "Dơi và slime đã chiếm đóng một hang động trên tuyến đường buôn bán.",
+      "zone": "Hang Pha Lê"
+    },
+    "bandit-ambush": {
+      "name": "Phục Kích Cướp Đường",
+      "description": "Cướp đường phục kích lữ khách trên con đường rừng.",
+      "zone": "Rừng Ngoại Ô"
+    },
+    "slime-king-lair": {
+      "name": "Hang Ổ Slime Vương",
+      "description": "Một con slime khổng lồ thống trị đáy hang. Hãy đánh bại Slime Vương.",
+      "zone": "Hang Pha Lê"
+    },
+    "forest-guardian": {
+      "name": "Thủ Hộ Rừng Sâu",
+      "description": "Nhện chúa canh giữ lối vào vùng đất sâu hơn.",
+      "zone": "Rừng Sâu"
+    },
+    "broken-cliff-skirmish": {
+      "name": "Giao Tranh Vách Đá Vỡ",
+      "description": "Cướp chiếm giữ vách đá cao nhìn xuống con đường buôn bán. Hãy tấn công và chiếm lại.",
+      "zone": "Vách Đá Vỡ"
+    },
+    "goblin-camp-raid": {
+      "name": "Đột Kích Trại Goblin",
+      "description": "Một trại goblin đe dọa các tuyến đường buôn bán gần đây.",
+      "zone": "Đồng Bằng Bụi"
+    },
+    "wolf-pack-hunt": {
+      "name": "Săn Bầy Sói",
+      "description": "Một bầy sói hoang hung dữ rình rập trên những con đường cao nguyên.",
+      "zone": "Đường Mòn Cao Nguyên"
+    },
+    "boar-stampede": {
+      "name": "Lợn Rừng Điên Cuồng",
+      "description": "Lợn rừng điên cuồng tàn phá các vùng đất nông nghiệp.",
+      "zone": "Đường Mòn Cao Nguyên"
+    },
+    "goblin-ritual": {
+      "name": "Nghi Lễ Goblin",
+      "description": "Một pháp sư goblin dẫn đầu nghi lễ ma quái trong đống đổ nát.",
+      "zone": "Đồng Bằng Bụi"
+    },
+    "highland-wolves": {
+      "name": "Sói Cao Nguyên",
+      "description": "Một con sói hung dữ dẫn đầu bầy đàn trên những sườn đồi cao nguyên.",
+      "zone": "Đường Mòn Cao Nguyên"
+    },
+    "bandit-hideout": {
+      "name": "Sào Huyệt Cướp Đường",
+      "description": "Cướp và goblin liên minh trong một trại ẩn bí.",
+      "zone": "Đồng Bằng Bụi"
+    },
+    "warlord-challenge": {
+      "name": "Thách Thức Của Lãnh Chúa",
+      "description": "Lãnh Chúa Grok đòi cống nạp. Từ chối và chiến đấu.",
+      "zone": "Hẻm Sắt"
+    },
+    "orc-stronghold": {
+      "name": "Thành Lũy Orc",
+      "description": "Orc đã củng cố một đèo núi. Tấn công phá vỡ thành lũy của chúng.",
+      "zone": "Hẻm Sắt"
+    },
+    "mountain-pass": {
+      "name": "Đèo Núi",
+      "description": "Chiến binh điên và lợn rừng chặn đường núi.",
+      "zone": "Hẻm Sắt"
+    },
+    "golem-cavern": {
+      "name": "Hang Golem",
+      "description": "Một golem cổ đại canh giữ hang động chứa đầy châu báu.",
+      "zone": "Hang Động Sâu"
+    },
+    "orc-war-camp": {
+      "name": "Trại Chiến Tranh Orc",
+      "description": "Một trại chiến tranh orc đầy đủ với pháp sư chữa lành.",
+      "zone": "Hẻm Sắt"
+    },
+    "ancient-ruins": {
+      "name": "Phế Tích Cổ Đại",
+      "description": "Golem và sói hung dữ canh giữ những tàn tích bị lãng quên.",
+      "zone": "Hang Động Sâu"
+    },
+    "chain-rumor": {
+      "name": "Rung Chấn Kỳ Lạ",
+      "description": "Những rung chấn kỳ lạ rung chuyển Rừng Ngoại Ô. Điều tra.",
+      "zone": "Rừng Ngoại Ô"
+    },
+    "chain-source": {
+      "name": "Hang Động Sụp Đổ",
+      "description": "Những rung chấn dẫn đến một hang động sụp đổ. Dọn sạch các sinh vật.",
+      "zone": "Hang Pha Lê"
+    },
+    "chain-depths": {
+      "name": "Lối Đi Cổ Đại",
+      "description": "Một lối đi cổ đại được lộ ra sâu trong hang động.",
+      "zone": "Hang Động Sâu"
+    },
+    "chain-seal": {
+      "name": "Ấn Triện Bị Lãng Quên",
+      "description": "Một ấn triện bị lãng quên đang suy yếu. Ngăn chặn thứ đang cố phá vỡ nó.",
+      "zone": "Hang Động Sâu"
+    }
+  },
+  "items": {
+    "WOOD": {
+      "name": "Gỗ Sồi",
+      "description": "Gỗ dùng để xây dựng."
+    },
+    "STONE": {
+      "name": "Đá Thô",
+      "description": "Đá vững chắc dùng làm nền móng."
+    },
+    "IRON_ORE": {
+      "name": "Quặng Sắt",
+      "description": "Quặng thô dùng để luyện kim."
+    },
+    "SLIME_GEL": {
+      "name": "Chất Nhầy Slime",
+      "description": "Dính và dễ bắt lửa."
+    },
+    "BOAR_PELT": {
+      "name": "Da Lợn Rừng",
+      "description": "Da dày từ lợn rừng trong rừng."
+    },
+    "WOLF_FANG": {
+      "name": "Nanh Sói",
+      "description": "Răng nanh sắc bén."
+    },
+    "GOBLIN_EAR": {
+      "name": "Tai Goblin",
+      "description": "Bằng chứng về việc đã khuất phục goblin."
+    },
+    "ORC_TUSK": {
+      "name": "Ngà Orc",
+      "description": "Ngà ngà khổng lồ."
+    },
+    "GEM": {
+      "name": "Đá Quý",
+      "description": "Một viên đá quý thô được tìm thấy sâu trong mỏ đá."
+    },
+    "LOGGING_SITE_ACCESS": {
+      "name": "Giấy Phép Khai Thác Gỗ",
+      "description": "Giấy phép từ Kiểm Lâm rừng để thiết lập khu khai thác gỗ. Tiêu thụ khi xây dựng."
+    },
+    "HEALING_SYRINGE": {
+      "name": "Ống Tiêm Hồi Máu",
+      "description": "Ống tiêm giả kim thuật phục hồi 30% HP tối đa. Tự dùng khi HP giảm xuống dưới ngưỡng đã đặt."
+    },
+    "HEALING_SYRINGE_2": {
+      "name": "Ống Tiêm Hồi Máu II",
+      "description": "Ống tiêm cải tiến phục hồi 50% HP tối đa. Tự dùng khi HP giảm xuống dưới ngưỡng đã đặt."
+    },
+    "HEALING_SYRINGE_3": {
+      "name": "Ống Tiêm Hồi Máu III",
+      "description": "Ống tiêm bậc thầy phục hồi 80% HP tối đa. Tự dùng khi HP giảm xuống dưới ngưỡng đã đặt."
+    },
+    "BAT_WING": {
+      "name": "Cánh Dơi",
+      "description": "Màng cánh da dơi."
+    },
+    "SPIDER_LEGS": {
+      "name": "Chân Nhện",
+      "description": "Phần phụ nhện làm từ kitin."
+    },
+    "METAL_PLATE": {
+      "name": "Tấm Kim Loại",
+      "description": "Tấm kim loại gia cố."
+    },
+    "DRONE_SENSOR": {
+      "name": "Cảm Biến Drone",
+      "description": "Mảng cảm biến độ chính xác được tân trang lại."
+    },
+    "SLIME_KING_CORE": {
+      "name": "Lõi Slime Vương",
+      "description": "Lõi đập nhịp từ Slime Vương."
+    }
+  },
+  "enemies": {
+    "slime": { "name": "Slime" },
+    "forest-spider": { "name": "Nhện Rừng" },
+    "goblin": { "name": "Goblin" },
+    "bandit": { "name": "Tên Cướp" },
+    "cave-bat": { "name": "Dơi Hang" },
+    "moonbear": { "name": "Gấu Trăng" },
+    "wolf": { "name": "Sói" },
+    "wild-boar": { "name": "Lợn Rừng" },
+    "slime-king": { "name": "Slime Vương" },
+    "goblin-shaman": { "name": "Pháp Sư Goblin" },
+    "queen-spider": { "name": "Nhện Chúa" },
+    "orc-warrior": { "name": "Chiến Binh Orc" },
+    "dire-wolf": { "name": "Sói Hung Dữ" },
+    "orc-berserker": { "name": "Orc Điên Cuồng" },
+    "stone-golem": { "name": "Golem Đá" },
+    "warlord-grok": { "name": "Lãnh Chúa Grok" }
+  },
+  "ranks": {
+    "RECRUIT": { "label": "Tân Binh" },
+    "MEMBER": { "label": "Hội Viên" },
+    "VETERAN": { "label": "Lão Luyện" },
+    "OFFICER": { "label": "Sĩ Quan" },
+    "COMMANDER": { "label": "Chỉ Huy" }
+  },
+  "furniture": {
+    "quest-board": {
+      "name": "Bảng Nhiệm Vụ",
+      "description": "Hiển thị các nhiệm vụ có sẵn"
+    },
+    "bar-counter": {
+      "name": "Quầy Bar",
+      "description": "Phục vụ đồ uống để giảm chi phí vận hành"
+    },
+    "alchemy-table": {
+      "name": "Bàn Giả Kim",
+      "description": "Chế tạo thuốc hồi máu"
+    },
+    "workbench": {
+      "name": "Bàn Thợ",
+      "description": "Trạm chế tạo (tương lai)"
+    },
+    "training-dummy": {
+      "name": "Hình Nộm Luyện Tập",
+      "description": "Cung cấp EXP thụ động"
+    },
+    "reception-desk": {
+      "name": "Bàn Tiếp Tân",
+      "description": "+1 khách thăm bonus"
+    },
+    "wine-barrel": {
+      "name": "Thùng Rượu",
+      "description": "Giảm thêm 2% chi phí vận hành"
+    },
+    "medical-bed": {
+      "name": "Giường Y Tế",
+      "description": "+0,5 giảm thời gian hồi phục"
+    },
+    "storage-chest": {
+      "name": "Rương Chứa Đồ",
+      "description": "Thêm 20 ô chứa đồ vào kho hội đoàn."
+    }
+  },
+  "facilities": {
+    "tavern": {
+      "name": "Tửu Quán",
+      "description": "Thành viên CHA cao thu hút lính đánh thuê tốt hơn và giảm chi phí vận hành."
+    },
+    "training-yard": {
+      "name": "Sân Tập",
+      "description": "Thành viên nhận EXP thụ động mỗi ngày. DEX + AGI tăng tốc độ nhận EXP."
+    },
+    "infirmary": {
+      "name": "Trạm Xá",
+      "description": "Tăng tốc hồi phục thương tích. END + INT cải thiện chất lượng điều trị."
+    },
+    "workshop": {
+      "name": "Xưởng",
+      "description": "Sản xuất vật liệu mỗi ngày. STR tăng tốc độ, DEX tăng chất lượng."
+    },
+    "logging-site": {
+      "name": "Khu Khai Thác Gỗ",
+      "description": "Dùng Giấy Phép Khai Thác để thiết lập khu khai thác. Trữ lượng gỗ giảm dần theo thời gian; STR + kỹ năng WC tăng sản lượng."
+    },
+    "stone-quarry": {
+      "name": "Mỏ Đá",
+      "description": "Khai thác đá liên tục. STR kiểm soát sản lượng. LCK mở khóa khả năng gặp mạch đặc biệt (Quặng Sắt, Đá Quý). Kỹ năng MC khuếch đại cả hai."
+    },
+    "alchemy-lab": {
+      "name": "Phòng Giả Kim",
+      "description": "Nhà giả kim chế tạo Ống Tiêm Hồi Máu từ Chất Nhầy Slime. Kỹ năng giả kim càng cao → nhiều gel mỗi mẻ → nhiều ống tiêm được tạo ra hơn."
+    }
+  },
+  "equipment": {
+    "WOODEN_AXE": { "name": "Rìu Gỗ" },
+    "WOODEN_CROSSBOW": { "name": "Nỏ Gỗ" },
+    "WOODEN_SWORD": { "name": "Kiếm Gỗ" },
+    "STONE_SWORD": { "name": "Kiếm Đá" },
+    "IRON_SWORD": { "name": "Kiếm Sắt" },
+    "IRON_SPEAR": { "name": "Giáo Sắt" },
+    "CLOTH_VEST": { "name": "Áo Vải" },
+    "LEATHER_ARMOR": { "name": "Giáp Da" },
+    "IRON_ARMOR": { "name": "Giáp Sắt" },
+    "CLOTH_HOOD": { "name": "Mũ Trùm Vải" },
+    "LEATHER_HELMET": { "name": "Mũ Da" },
+    "IRON_HELMET": { "name": "Mũ Sắt" }
+  },
+  "recipes": {
+    "healing-syringe": {
+      "name": "Ống Tiêm Hồi Máu"
+    }
+  },
+  "archetypes": {
+    "templar": {
+      "name": "Hộ Linh",
+      "tagline": "Kiếm Tiên Phong ",
+      "description": "Người cầm kiếm kỷ luật, cân bằng giữa sức mạnh và bước chân."
+    },
+    "forester": {
+      "name": "Lâm Binh",
+      "tagline": "Lá Chắn Rìu",
+      "description": "Một chiến binh núi rừng dày dạn, hạ gục kẻ thù như chặt cây."
+    },
+    "ranger": {
+      "name": "Trinh sát",
+      "tagline": "Xạ thủ Nỏ",
+      "description": "Một nữ xạ thủ nhanh nhẹn tấn công từ hàng cây."
+    }
+  },
+  "civ": {
+    "LinhSon": {
+      "role": "Bền bỉ, thực dụng"
+    },
+    "DeQuoc": {
+      "role": "Chiến Thuật, công nghệ"
+    },
+    "ThienLu": {
+      "role": "Linh xảo, bí ẩn"
+    }
+  },
+  "tutorial": {
+    "char-creation": {
+      "message": "Tạo nhân vật của bạn. Phân bổ 50 điểm chỉ số."
+    },
+    "open-quest-board": {
+      "message": "Đánh trống hiệu triệu trong đại sảnh để mở Bảng Nhiệm Vụ."
+    },
+    "accept-bear-quest": {
+      "message": "Chọn nhiệm vụ 'Đuổi gấu'.",
+      "coachCaption": "Chọn 'Đuổi gấu'"
+    },
+    "assign-and-dispatch": {
+      "message": "Thêm thành viên vào đội chinh phục, rồi Xuất Phát.",
+      "coachCaption": "Thêm thành viên vào đội chinh phục, rồi Xuất Phát."
+    },
+    "quest-travel": {
+      "message": "Đội của bạn đang trên đường làm nhiệm vụ."
+    },
+    "moonbear-combat": {
+      "message": "Mở nhiệm vụ và đánh bại Gấu Trăng!"
+    },
+    "build-logging-site": {
+      "message": "Mở bảng Cơ Sở và xây Khu Khai Thác Gỗ (dùng giấy phép của bạn).",
+      "hint": "▶ Chọn một ô trống để xây Khu Khai Thác Gỗ."
+    },
+    "assign-kael": {
+      "message": "Giao Kael cho Khu Khai Thác Gỗ để bắt đầu khai thác gỗ.",
+      "hint": "▶ Chọn Khu Khai Thác Gỗ và giao việc cho Kael."
+    },
+    "build-tavern": {
+      "message": "Dùng 200 Gỗ để xây Tửu Quán.",
+      "hint": "▶ Chọn một ô trống và xây Tửu Quán(200 Gỗ)."
+    },
+    "complete": {
+      "message": "Hướng dẫn hoàn thành! Cuộc phiêu lưu hội đoàn của bạn bắt đầu."
+    },
+    "first-haul": {
+      "title": "Chuyến Hàng Đầu Tiên!",
+      "body": "Kael vác rìu lên vai và mang về mẻ gỗ đầu tiên từ rừng sâu."
+    },
+    "graduation-toast": {
+      "headline": "Bạn đã sẵn sàng dẫn dắt.",
+      "sub": "Bảng Nhiệm Vụ đã mở — hãy theo đuổi bất kỳ manh mối nào gọi bạn."
+    }
+  },
+  "dialog": {
+    "world-board": {
+      "title": "Thế Giới Chia Cắt",
+      "body": "Các nền văn minh khắc tạc mảnh đất này trong im lặng bất ổn — những chiến binh núi cao của Linh Sơn, đế chế sắt và hơi nước Đế Quốc, và những du mục đọc sao của Thiên Lữ, thánh quốc Eliza cai trị bằng đức tin qua nhiều thế hệ. Họ không tin tưởng ai ngoài đồng tộc mình.\n\nBạn nắm trong tay một hiến chương để lập hội đoàn trên vùng đất trung lập, mở cửa cho chiến binh của mọi chiến tuyến. Phải có ai đó bắc nhịp cầu. Và điều đó bắt đầu từ bạn.",
+      "begin": "Bắt Đầu"
+    },
+    "npc-alarm": {
+      "text": "Một con Gấu Trăng khổng lồ đang tàn phá ngôi làng dưới kia —\nvẫn còn người bị mắc kẹt ở đó!",
+      "speaker": "Sứ Giả"
+    },
+    "kael-rescue": {
+      "title": "Đã Giải Cứu Kael!",
+      "body": "Sau khi đuổi Gấu Trăng đi, bạn kéo một chiến binh Linh Sơn trẻ tuổi ra khỏi đống đổ nát — bầm dập nhưng còn sống.",
+      "quote": "\"Thật kỳ lạ gấu trăng không bao giờ tấn công làng, có chuyện gì đó đã kích động bọn thú rừng, cảm ơn đã cứu mạng tôi. Hãy để tôi đền ơn — hãy cho tôi đi cùng anh.\"",
+      "joined": "Kael đã gia nhập hội của bạn!",
+      "cta": "Chào mừng bạn"
+    },
+    "reward-splash": {
+      "title": "Nhận Phần Thưởng",
+      "body": "Kael đưa cho bạn một tài liệu cũ kỹ.",
+      "itemName": "Giấy Phép Khu Khai Thác Gỗ",
+      "itemDesc": "Giấy phép cũ từ Kiểm Lâm. Xây Khu Khai Thác Gỗ miễn phí.",
+      "cta": "Tiếp Tục"
+    }
+  }
+}

@@ -38,7 +38,7 @@
 │   │   ├── utils/           # Utility functions (icon-paths for convention-based icon resolution)
 │   │   └── styles/          # CSS for panels, HUD, and screens
 │   ├── audio/               # Howler.js audio manager + sound key enums (6 new keys)
-│   ├── i18n/                # i18next localization (Vietnamese default)
+│   ├── i18n/                # i18next bilingual (EN+VI) — See `docs/i18n.md` for full architecture
 │   └── main.tsx             # Application entry point
 │
 └── tools/                   # Companion development tools

@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import { useUiStore } from '@/game/state/ui-store';
 import { graphicsTierFlags } from '@/game/state/guild-slice';
@@ -20,6 +21,7 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) {
+  const { t } = useTranslation();
   const settings = useGameStore((s) => s.settings);
   const updateSettings = useGameStore((s) => s.updateSettings);
   const { language, setLanguage } = useLanguage();
@@ -97,13 +99,13 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
   return (
     <div className="panel-overlay">
       <h2>
-        Settings
-        <button className="panel-close-btn" onClick={onClose}>Close</button>
+        {t('settings.title')}
+        <button className="panel-close-btn" onClick={onClose}>{t('settings.close')}</button>
       </h2>
 
       <div className="panel-section">
         <label style={{ display: 'block', marginBottom: 8 }}>
-          Music: {Math.round(settings.musicVolume * 100)}%
+          {t('settings.music', { pct: Math.round(settings.musicVolume * 100) })}
           <input
             type="range" min="0" max="1" step="0.05"
             value={settings.musicVolume}
@@ -111,7 +113,7 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
           />
         </label>
         <label style={{ display: 'block' }}>
-          SFX: {Math.round(settings.sfxVolume * 100)}%
+          {t('settings.sfx', { pct: Math.round(settings.sfxVolume * 100) })}
           <input
             type="range" min="0" max="1" step="0.05"
             value={settings.sfxVolume}
@@ -119,12 +121,12 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
           />
         </label>
         <button className="panel-btn" onClick={() => setMute(true)} style={{ marginTop: 8 }}>
-          Mute All
+          {t('settings.muteAll')}
         </button>
       </div>
 
       <div className="panel-section">
-        <div style={{ marginBottom: 6 }}>Graphics Quality</div>
+        <div style={{ marginBottom: 6 }}>{t('settings.graphicsQuality')}</div>
         <div style={{ display: 'flex', gap: 8 }}>
           {(['high', 'low'] as const).map((q) => (
             <button
@@ -136,7 +138,7 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
               }}
               onClick={() => handleQuality(q)}
             >
-              {q === 'high' ? 'High' : 'Low'}
+              {q === 'high' ? t('settings.qualityHigh') : t('settings.qualityLow')}
             </button>
           ))}
         </div>
@@ -147,9 +149,7 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
       </div>
 
       <div className="panel-section">
-        {/* Label text is migrated to i18n in the UI-strings phase; the control
-            itself binds to the device-level language preference now. */}
-        <div style={{ marginBottom: 6 }}>Language</div>
+        <div style={{ marginBottom: 6 }}>{t('settings.language')}</div>
         <div style={{ display: 'flex', gap: 8 }}>
           {(['en', 'vi'] as const).map((lng) => (
             <button
@@ -161,21 +161,21 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
               }}
               onClick={() => setLanguage(lng)}
             >
-              {lng === 'en' ? 'English' : 'Tiếng Việt'}
+              {lng === 'en' ? t('settings.langEn') : t('settings.langVi')}
             </button>
           ))}
         </div>
       </div>
 
       <div className="panel-section">
-        <button className="panel-btn" onClick={handleSave}>Save Game</button>
-        <button className="panel-btn" onClick={handleExport}>Export Save</button>
-        <button className="panel-btn" onClick={handleImport}>Import Save</button>
+        <button className="panel-btn" onClick={handleSave}>{t('settings.saveGame')}</button>
+        <button className="panel-btn" onClick={handleExport}>{t('settings.exportSave')}</button>
+        <button className="panel-btn" onClick={handleImport}>{t('settings.importSave')}</button>
         {importError && (
           <div style={{ color: '#e74c3c', fontSize: '0.8rem', marginTop: 6 }}>{importError}</div>
         )}
         {importSuccess && (
-          <div style={{ color: '#4caf50', fontSize: '0.8rem', marginTop: 6 }}>Import successful</div>
+          <div style={{ color: '#4caf50', fontSize: '0.8rem', marginTop: 6 }}>{t('settings.importSuccess')}</div>
         )}
       </div>
 
@@ -184,23 +184,23 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
           className="panel-btn"
           onClick={() => { resetTutorials(); setTutorialsReset(true); }}
         >
-          Reset Tutorials
+          {t('settings.resetTutorials')}
         </button>
         {tutorialsReset && (
           <div style={{ color: '#4caf50', fontSize: '0.8rem', marginTop: 6 }}>
-            Tutorial hints will reappear on next visit.
+            {t('settings.tutorialsResetHint')}
           </div>
         )}
       </div>
 
       <div className="panel-section">
-        <button className="panel-btn" onClick={onReturnToTitle}>Return to Title</button>
+        <button className="panel-btn" onClick={onReturnToTitle}>{t('settings.returnToTitle')}</button>
         <button
           className="panel-btn"
           style={{ borderColor: confirmReset ? '#e74c3c' : undefined }}
           onClick={handleReset}
         >
-          {confirmReset ? 'Confirm Reset?' : 'Reset Game'}
+          {confirmReset ? t('settings.confirmReset') : t('settings.resetGame')}
         </button>
       </div>
     </div>

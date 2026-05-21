@@ -7,6 +7,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import { createFounder } from '@/game/systems/character-creation';
 import { STAT_KEYS, INITIAL_STAT_POINTS, createEmptyStats } from '@/game/systems/stat-allocation';
@@ -32,16 +33,11 @@ interface CharCreationProps {
 
 type Step = 'civ' | 'class' | 'mask' | 'identity';
 const STEP_ORDER: Step[] = ['civ', 'class', 'mask', 'identity'];
-const STEP_LABELS: Record<Step, string> = {
-  civ: 'Civilization',
-  class: 'Class',
-  mask: 'Mask',
-  identity: 'Identity',
-};
 const NAME_MAX = 20;
 const GUILD_MAX = 24;
 
 export function CharCreation({ onComplete }: CharCreationProps) {
+  const { t } = useTranslation();
   const setFounder = useGameStore((s) => s.setFounder);
   const setTutorialStep = useGameStore((s) => s.setTutorialStep);
   const setGuildName = useGameStore((s) => s.setGuildName);
@@ -137,13 +133,13 @@ export function CharCreation({ onComplete }: CharCreationProps) {
 
         <section className="char-create-panel">
           {step === 'civ' && (
-            <StepBody title="Choose your civilization">
+            <StepBody title={t('charCreation.chooseCiv')}>
               <CivSelector selectedCiv={selectedCiv} onSelect={handleSelectCiv} />
             </StepBody>
           )}
 
           {step === 'class' && selectedCiv && (
-            <StepBody title="Choose your class">
+            <StepBody title={t('charCreation.chooseClass')}>
               <ArchetypeSelector
                 civ={selectedCiv}
                 selectedId={selectedChoice?.id}
@@ -154,7 +150,7 @@ export function CharCreation({ onComplete }: CharCreationProps) {
           )}
 
           {step === 'mask' && (
-            <StepBody title="Choose your mask">
+            <StepBody title={t('charCreation.chooseMask')}>
               <MaskSelector
                 choices={FOUNDER_MASK_CHOICES}
                 selectedId={selectedMaskId}
@@ -164,14 +160,14 @@ export function CharCreation({ onComplete }: CharCreationProps) {
           )}
 
           {step === 'identity' && (
-            <StepBody title="Forge your identity">
+            <StepBody title={t('charCreation.forgeIdentity')}>
               <div className="char-create-fields">
                 <input
-                  type="text" placeholder="Character name"
+                  type="text" placeholder={t('charCreation.namePlaceholder')}
                   value={name} onChange={(e) => setName(e.target.value)} maxLength={NAME_MAX}
                 />
                 <input
-                  type="text" placeholder="Guild name (optional)"
+                  type="text" placeholder={t('charCreation.guildNamePlaceholder')}
                   value={guildName} onChange={(e) => setGuildNameLocal(e.target.value)} maxLength={GUILD_MAX}
                 />
               </div>
@@ -182,7 +178,7 @@ export function CharCreation({ onComplete }: CharCreationProps) {
           <div className="char-create-nav">
             {step !== 'civ' && (
               <button type="button" className="panel-btn char-create-nav-btn" onClick={handleBack}>
-                Back
+                {t('charCreation.back')}
               </button>
             )}
             {step !== 'identity' ? (
@@ -192,7 +188,7 @@ export function CharCreation({ onComplete }: CharCreationProps) {
                 disabled={isContinueDisabled(step, selectedCiv, selectedChoice, selectedMaskId)}
                 onClick={handleContinue}
               >
-                Continue
+                {t('charCreation.continue')}
               </button>
             ) : (
               <button
@@ -201,7 +197,7 @@ export function CharCreation({ onComplete }: CharCreationProps) {
                 disabled={!canBegin}
                 onClick={handleConfirm}
               >
-                Begin
+                {t('charCreation.begin')}
               </button>
             )}
           </div>
@@ -226,9 +222,10 @@ function isContinueDisabled(
 
 /** Visual breadcrumb of the wizard steps; completed steps are clickable to go back. */
 function StepRail({ current, onJump }: { current: Step; onJump: (step: Step) => void }) {
+  const { t } = useTranslation();
   const currentIdx = STEP_ORDER.indexOf(current);
   return (
-    <nav className="char-step-rail" aria-label="Creation steps">
+    <nav className="char-step-rail" aria-label={t('charCreation.stepRailAria')}>
       {STEP_ORDER.map((s, idx) => {
         const state = idx < currentIdx ? 'done' : idx === currentIdx ? 'active' : 'upcoming';
         const clickable = idx <= currentIdx;
@@ -241,7 +238,7 @@ function StepRail({ current, onJump }: { current: Step; onJump: (step: Step) => 
               disabled={!clickable}
               onClick={clickable ? () => onJump(s) : undefined}
             >
-              {STEP_LABELS[s]}
+              {t(`charCreation.step.${s}`)}
             </button>
           </div>
         );

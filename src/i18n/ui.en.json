@@ -1,4 +1,5 @@
 {
+  "_convention": "ui-namespace key shape: <feature>.<section>.<element> (e.g. questBoard.title, roster.status.on-quest, combatPanel.formation.start). Enum/union labels are keyed off the raw data value so they stay in sync (status 'on-quest' -> roster.status.on-quest). Keep {{interpolation}} slots verbatim across languages. Numbers stay en-US formatted globally.",
   "workshop": {
     "title": "Workshop",
     "tabs": {
@@ -10,14 +11,68 @@
     "craft": {
       "pathA": "Path A — 20% chance for slot",
       "pathB": "Path B — Guaranteed slot from material",
+      "baseMaterial": "Base Material",
+      "monsterMaterialTitle": "Monster Material (optional — Path B)",
+      "nonePathA": "None — Path A",
+      "template": "Template",
+      "pathLabel": "Path {{path}}",
+      "pathADetail": "{{chance}}% chance for generic slot (HP 40-150)",
+      "pathBDetail": "Guaranteed {{statKey}} slot — range {{min}}-{{max}}",
+      "pathBUnavailable": "Material affinity unavailable",
+      "costLine": "Cost: {{baseCost}}× {{baseName}}",
+      "costLineWithMonster": "Cost: {{baseCost}}× {{baseName}} + 1× {{monsterName}}",
       "action": {
         "craft": "Craft",
         "saveBlueprint": "Save Blueprint ({{used}}/{{limit}})"
       }
     },
+    "enhance": {
+      "addSlot": "Add Slot",
+      "reroll": "Reroll",
+      "equipWithFreeSlot": "Equipment with free slot",
+      "equipWithSlot": "Equipment with existing slot",
+      "noEligible": "No eligible equipment.",
+      "slotsLabel": "{{used}}/{{max}} slots",
+      "slotToReroll": "Slot to reroll",
+      "monsterMaterial": "Monster Material",
+      "rangePreview": "Range Preview",
+      "rangeDetail": "{{statKey}} +{{min}} to +{{max}} ({{category}})",
+      "confirmTitle": "Confirm Reroll",
+      "confirmLabel": "Reroll",
+      "confirmBody": "Reroll {{statKey}} {{current}} → range {{min}}-{{max}}? New value can be lower than current."
+    },
+    "repair": {
+      "damagedTitle": "Damaged Equipment",
+      "repairEmpty": "All equipment in good repair.",
+      "repairBtn": "Repair",
+      "equippedBy": "{{name}} (equipped by {{owner}})",
+      "durMeta": "{{cur}}/{{max}} dur · {{pct}}% damaged"
+    },
+    "dismantle": {
+      "inventoryTitle": "Equipment Inventory",
+      "inventoryEmpty": "Inventory empty.",
+      "dismantleBtn": "Dismantle",
+      "title": "Dismantle Equipment",
+      "confirmLabel": "Dismantle",
+      "slot_one": "{{count}} slot",
+      "slot_other": "{{count}} slots",
+      "matPlaceholder": "—",
+      "bodyCrafted": "Dismantle {{name}}? Recovery: ~{{min}}-{{max}}× {{mat}} + {{pct}}% chance 1× monster material.",
+      "bodyPlain": "Dismantle {{name}}? Recovery: ~{{min}}-{{max}}× {{mat}}."
+    },
     "queue": {
       "empty": "Queue is empty",
-      "workers": "{{active}}/{{capacity}} workers active"
+      "workers": "{{active}}/{{capacity}} workers active",
+      "noTasksQueued": "No tasks queued",
+      "queueTitle": "Queue ({{count}})",
+      "cancelTitle": "Cancel (no material refund)",
+      "queuedLabel": "queued",
+      "typeLabel": {
+        "CRAFT": "Craft",
+        "ENHANCE_ADD": "Add Slot",
+        "ENHANCE_REROLL": "Reroll",
+        "REPAIR": "Repair"
+      }
     },
     "confirm": {
       "reroll": "Reroll {{stat}} {{current}} → new value in {{min}}-{{max}}? May be lower than current.",
@@ -63,7 +118,8 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "ok": "OK",
-    "close": "Close"
+    "close": "Close",
+    "comingSoon": "Coming Soon"
   },
   "tavern": {
     "title": "Tavern",
@@ -239,16 +295,6 @@
     "confirm": "Confirm",
     "mute_all": "Mute All"
   },
-  "notification": {
-    "mission_complete": "Mission complete!",
-    "mission_failed": "Mission failed!",
-    "gold_earned": "+{{amount}} Gold",
-    "exp_earned": "+{{amount}} EXP",
-    "members_injured": "{{count}} members injured",
-    "victory": "Victory",
-    "partial_victory": "Partial Victory",
-    "full_wipe": "Full Wipe"
-  },
   "status": {
     "idle": "Idle",
     "on_mission": "On Mission",
@@ -275,5 +321,612 @@
     "survivors": "Survivors",
     "injured": "Injured",
     "select_mission": "Select a mission"
+  },
+  "archetype": {
+    "warrior": "Warrior",
+    "scout": "Scout",
+    "sword": "Templar",
+    "engineer": "Engineer",
+    "scholar": "Scholar",
+    "dualblade": "Dualblade",
+    "philosopher": "Philosopher"
+  },
+  "member": {
+    "unnamed": "{{archetype}} #{{id}}"
+  },
+  "questBoard": {
+    "title": "Quest Board",
+    "ariaLabel": "Quest Board",
+    "return": "Return to Guild",
+    "returnAria": "Return to Guild",
+    "empty": "No quests available.",
+    "listAria": "Available quests",
+    "filter": {
+      "ariaLabel": "Filter by tier",
+      "all": "All",
+      "tierAria": "Tier {{tier}}"
+    },
+    "card": {
+      "gate": "GATE",
+      "chain": "Chain",
+      "duration": "{{mins}}min",
+      "gold": "{{min}}-{{max}}",
+      "exp": "{{exp}} XP",
+      "party": "{{members}}+ Lv.{{level}}+",
+      "tierAlt": "Tier {{tier}}",
+      "drops": "Drops:",
+      "dropsMore": "+{{count}}"
+    },
+    "detail": {
+      "emptyText": "Select a quest scroll to begin...",
+      "back": "← Back",
+      "tierAlt": "Tier {{tier}}",
+      "enemies": "Enemies",
+      "enemyLevel": "Lv.{{level}}",
+      "enemyCount": "×{{count}}",
+      "rewardGold": "Gold",
+      "rewardExp": "EXP",
+      "rewardDuration": "Duration",
+      "rewardRequired": "Required",
+      "durationValue": "{{mins}}min",
+      "requiredValue": "{{members}}+ Lv.{{level}}+",
+      "party": "Party",
+      "partyCount": "({{selected}}/{{required}}+)",
+      "mercFee": "Mercenary fee: {{fee}}g",
+      "mercFeeInsufficient": "Mercenary fee: {{fee}}g (insufficient gold)",
+      "autoAssign": "Auto Assign",
+      "dispatch": "Dispatch ({{selected}}/{{required}}+)"
+    }
+  },
+  "roster": {
+    "title": "MEMBERS",
+    "close": "Close",
+    "searchPlaceholder": "Search by name…",
+    "filterAll": "All",
+    "filterAllStatus": "All Status",
+    "empty": "No members match filters.",
+    "release": "Release",
+    "releaseConfirm": "Release {{name}}? This cannot be undone.",
+    "releaseConfirmFallback": "this member",
+    "status": {
+      "idle": "Available",
+      "on-mission": "On Quest",
+      "injured": "Injured",
+      "training": "Training",
+      "assigned": "Assigned"
+    },
+    "listItem": {
+      "statusReady": "Ready",
+      "statusOnMission": "On Mission",
+      "statusInjured": "Injured",
+      "statusTraining": "Training",
+      "injuredCountdown": "Injured ({{mins}}m)",
+      "pointsHint": "{{count}} points to allocate"
+    }
+  },
+  "combatPanel": {
+    "fallbackName": "Combat",
+    "header": {
+      "closeAria": "Close combat panel"
+    },
+    "formation": {
+      "party": "Party",
+      "allPlaced": "All placed",
+      "back": "Back",
+      "front": "Front",
+      "enemies": "Enemies",
+      "slot": "{{side}} {{index}}",
+      "memberMeta": "Lv.{{level}} {{archetype}}",
+      "slotMeta": "Lv.{{level}}",
+      "enemyMeta": "Lv.{{level}}",
+      "focus": "Focus",
+      "balance": "Balance",
+      "autoPlace": "Auto-Place",
+      "start": "Start Battle"
+    },
+    "battle": {
+      "modeFocus": "FOCUS",
+      "modeBalance": "BALANCE",
+      "modeLabel": "{{mode}} MODE",
+      "priorityTitle": "Target priority: {{mode}}",
+      "elapsed": "ELAPSED {{time}}",
+      "wave": "WAVE {{current}}/{{total}}",
+      "resume": "Resume (Space)",
+      "pause": "Pause (Space)",
+      "speed": "{{mult}}× speed",
+      "skip": "SKIP → RESOLVE",
+      "skipTitle": "Skip remaining battle and resolve via simulator"
+    },
+    "skillBar": {
+      "label": "SKILLS",
+      "skillTitle": "{{name}} ({{slot}})"
+    },
+    "result": {
+      "victory": "VICTORY",
+      "defeat": "DEFEAT",
+      "duration": "Duration: {{secs}}s",
+      "damage": "Damage: {{amount}}",
+      "survivors": "Survivors: {{names}}",
+      "injured": "Injured: {{names}}",
+      "rewards": "Rewards",
+      "gold": "Gold: {{amount}}",
+      "expPerMember": "EXP: {{amount}} / member",
+      "tryAgain": "Try again",
+      "continue": "Continue"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "close": "Close",
+    "music": "Music: {{pct}}%",
+    "sfx": "SFX: {{pct}}%",
+    "muteAll": "Mute All",
+    "graphicsQuality": "Graphics Quality",
+    "qualityHigh": "High",
+    "qualityLow": "Low",
+    "language": "Language",
+    "langEn": "English",
+    "langVi": "Tiếng Việt",
+    "saveGame": "Save Game",
+    "exportSave": "Export Save",
+    "importSave": "Import Save",
+    "importSuccess": "Import successful",
+    "resetTutorials": "Reset Tutorials",
+    "tutorialsResetHint": "Tutorial hints will reappear on next visit.",
+    "returnToTitle": "Return to Title",
+    "resetGame": "Reset Game",
+    "confirmReset": "Confirm Reset?"
+  },
+  "characterDetail": {
+    "back": "← Back",
+    "unknownName": "???",
+    "subline": "{{rank}} · Lv.{{level}} · {{civ}}",
+    "barHp": "HP",
+    "barExp": "EXP",
+    "tab": {
+      "stats": "Stats",
+      "equipment": "Equipment",
+      "skills": "Skills",
+      "bio": "Bio"
+    },
+    "gear": "Gear",
+    "slot": {
+      "weapon": "Weapon",
+      "armor": "Armor",
+      "headgear": "Headgear",
+      "empty": "—"
+    },
+    "medSlot": "Med {{index}}",
+    "medCondition": {
+      "start": "at start",
+      "80": "below 80%",
+      "50": "below 50%",
+      "30": "below 30%",
+      "never": "never"
+    },
+    "equip": "Equip",
+    "remove": "Remove",
+    "healingSyringe": "Healing Syringe",
+    "unequip": "Unequip",
+    "skillMeta": "{{mult}}× damage · {{cooldown}}s cooldown",
+    "autoCast": "Auto Cast",
+    "skillLocked": "Skill unlocks at Lv.5",
+    "biography": "Biography",
+    "biographyEmpty": "This warrior's tale is yet unwritten.",
+    "inviteToGuild": "Invite to Guild ({{cost}}g)"
+  },
+  "statsTab": {
+    "unspentPoints_one": "{{count}} unspent point",
+    "unspentPoints_other": "{{count}} unspent points",
+    "combat": "Combat",
+    "maxHp": "Max HP",
+    "atkDmg": "Atk DMG",
+    "atkSpeed": "Atk Speed",
+    "atkSpeedValue": "{{value}}/s",
+    "skillDmg": "Skill DMG",
+    "skillDmgValue": "+{{value}}%",
+    "critRate": "Crit Rate",
+    "critRateValue": "{{value}}%",
+    "defense": "Defense",
+    "defenseValue": "-{{value}}% dmg",
+    "guild": "Guild",
+    "influence": "Influence",
+    "stamina": "Stamina",
+    "craftSkill": "Craft Skill",
+    "negotiation": "Negotiation",
+    "exploration": "Exploration",
+    "leadership": "Leadership",
+    "fortune": "Fortune",
+    "trainingEff": "Training Eff",
+    "trainingEffValue": "+{{value}}%",
+    "gatherSpd": "Gather Spd",
+    "gatherSpdValue": "+{{value}}%",
+    "recovery": "Recovery",
+    "recoveryValue": "{{value}}×",
+    "craft": "Craft",
+    "craftLevel": "Lv.{{level}}",
+    "craftXp": "({{xp}}xp)",
+    "skill": {
+      "woodcutting": "Woodcutting",
+      "mining": "Mining",
+      "alchemy": "Alchemy"
+    }
+  },
+  "derivedStats": {
+    "combatStats": "Combat Stats",
+    "guildStats": "Guild Stats",
+    "maxHp": "Max HP",
+    "hpRegen": "HP/s",
+    "atkSpd": "Atk Spd",
+    "critRate": "Crit Rate",
+    "critDmg": "Crit DMG",
+    "critDmgValue": "×{{value}}",
+    "defense": "Defense",
+    "dodge": "Dodge",
+    "block": "Block",
+    "skillDmg": "Skill DMG",
+    "skillDmgValue": "+{{value}}",
+    "haste": "Haste",
+    "resist": "Resist",
+    "morale": "Morale",
+    "moraleValue": "+{{value}}",
+    "influence": "Influence",
+    "stamina": "Stamina",
+    "craft": "Craft",
+    "leadership": "Leadership",
+    "fortune": "Fortune",
+    "exploration": "Exploration",
+    "negotiation": "Negotiation",
+    "recoveryBonus": "Recovery Bonus"
+  },
+  "trait": {
+    "silverTongue": {
+      "name": "Silver Tongue",
+      "desc": "Keeper's smooth words add +5% negotiation with every visitor."
+    },
+    "recruiter": {
+      "name": "Recruiter",
+      "desc": "Keeper's network grants +5% negotiation against rare and above prospects."
+    },
+    "storyteller": {
+      "name": "Storyteller",
+      "desc": "Keeper's tales earn +5% negotiation when the visitor has a distinct personality."
+    },
+    "hotHeaded": {
+      "name": "Hot-Headed",
+      "desc": "Quick to anger — lower margin before an insult becomes unavoidable."
+    },
+    "cautious": {
+      "name": "Cautious",
+      "desc": "Prefers to hire as mercenary first before committing to the guild."
+    },
+    "loyal": {
+      "name": "Loyal",
+      "desc": "+10 reputation on acceptance — this visitor keeps their word."
+    }
+  },
+  "titleScreen": {
+    "continue": "Continue",
+    "newGame": "New Game",
+    "loadGame": "Load Game",
+    "settings": "Settings",
+    "credits": "Credits",
+    "quit": "Quit",
+    "menuAria": "Main menu",
+    "panelAria": "Title menu",
+    "loadFailed": "Failed to load save slots"
+  },
+  "savePicker": {
+    "backAria": "Back to main menu",
+    "back": "‹ Back",
+    "headingNew": "New Game",
+    "headingLoad": "Load Game",
+    "overwriteMsg": "This slot has an existing save. Overwrite?",
+    "yesOverwrite": "Yes, overwrite",
+    "cancel": "Cancel",
+    "startNew": "Start New Game",
+    "load": "Load"
+  },
+  "saveSlot": {
+    "slot": "Slot {{number}}",
+    "empty": "Empty",
+    "founder": "Founder: {{name}}",
+    "level": "Level: {{level}}",
+    "playTime": "Play time: {{time}}",
+    "saved": "Saved: {{date}}"
+  },
+  "credits": {
+    "heading": "Credits",
+    "backAria": "Back to main menu",
+    "back": "‹ Back",
+    "footer": "2000s A.C — © 2026 HungTran — All rights reserved"
+  },
+  "titleSettings": {
+    "heading": "Settings",
+    "backAria": "Back to main menu",
+    "back": "‹ Back",
+    "musicVolumeLabel": "Music Volume",
+    "sfxVolumeLabel": "SFX Volume",
+    "languageLabel": "Language",
+    "languageAria": "Language",
+    "graphicsLabel": "Graphics Quality",
+    "graphicsAria": "Graphics quality",
+    "graphicsHigh": "High",
+    "graphicsLow": "Low",
+    "graphicsHint": "Low disables shadows, bloom & atmospheric effects. Applied on next game load.",
+    "langEn": "English",
+    "langVi": "Tiếng Việt"
+  },
+  "splashScreen": {
+    "loadingAria": "Loading"
+  },
+  "hud": {
+    "upkeep": "Upkeep: {{amount}}g/day",
+    "inventory": "Inventory",
+    "members": "Members: {{count}}",
+    "missions": "Missions: {{count}}"
+  },
+  "panelToggle": {
+    "quests": "Quests",
+    "roster": "Roster",
+    "facilities": "Facilities",
+    "settings": "Settings"
+  },
+  "saveStatus": {
+    "saving": "Saving...",
+    "saved": "Saved",
+    "failed": "Save failed"
+  },
+  "facilityCompass": {
+    "guildHall": "Guild Hall"
+  },
+  "coachmark": {
+    "workshop": "Click the anvil to craft",
+    "alchemyLab": "Click the reactor to brew",
+    "tavern": "Click the counter to recruit",
+    "drum": "Beat the drum to view quests"
+  },
+  "inventory": {
+    "title": "Guild Inventory",
+    "close": "✕",
+    "tabs": {
+      "all": "All",
+      "weapon": "Weapons",
+      "armor": "Armor",
+      "material": "Materials",
+      "consumable": "Consumables"
+    },
+    "sort": {
+      "rarity": "Rarity ↓",
+      "name": "Name A–Z",
+      "qty": "Qty ↓"
+    },
+    "searchPlaceholder": "Search items...",
+    "rarityAll": "All",
+    "footer": {
+      "hints": "[I] Close · [↑↓←→] Navigate · [Enter] Select",
+      "totalItems": "{{count}} items total",
+      "slots": "{{used}} / {{max}} slots"
+    },
+    "equippedBadge": "EQ"
+  },
+  "inventoryDetail": {
+    "empty": "Select an item\nto see details",
+    "quantity": "Quantity",
+    "sellValue": "Sell value",
+    "sellPer": "{{price}}g each",
+    "use": "Use",
+    "drop1": "Drop 1",
+    "equip": "Equip",
+    "drop": "Drop",
+    "equippedBy": "Equipped by: {{name}}",
+    "damage": "Damage",
+    "defense": "Defense",
+    "hp": "HP",
+    "durability": "Durability"
+  },
+  "inventoryExpansion": {
+    "expandSlots": "+{{count}} slots",
+    "expandTitle": "Expand +{{count}} slots",
+    "notEnoughResources": "Not enough resources",
+    "maxCapacity": "Max capacity reached"
+  },
+  "equipMode": {
+    "done": "Done",
+    "equipment": "Equipment",
+    "medicine": "Medicine",
+    "equipmentInStash": "Equipment in Stash",
+    "consumables": "Consumables",
+    "dropHere": "Drop here",
+    "dropConsumable": "Drop consumable",
+    "clearSlotAria": "Clear slot",
+    "noStash": "No equipment in stash.",
+    "condStart": "Combat Start",
+    "cond80": "Below 80%",
+    "cond50": "Below 50%",
+    "cond30": "Below 30%",
+    "condNever": "Never"
+  },
+  "alchemy": {
+    "title": "Alchemy",
+    "inventoryTitle": "Inventory",
+    "inventoryEmpty": "Inventory empty",
+    "ingredients": "Ingredients",
+    "output": "Output",
+    "quantity": "Quantity:",
+    "craft": "Craft",
+    "cancel": "Cancel",
+    "levelSlots": "Alchemy Lv.{{level}} — {{visible}}/4 ingredient slots",
+    "dragHere": "drop",
+    "unlocksAt": "Lv.{{level}}",
+    "removeHint": "{{name}} — click to remove",
+    "dropHint": "Drag ingredient here",
+    "lockedHint": "Unlocks at Alchemy Lv.{{level}}"
+  },
+  "facilitiesPanel": {
+    "title": "FACILITIES",
+    "guildLevel": "Guild Lv.{{level}}",
+    "gold": "⬡ {{amount}}g",
+    "slotsUsed": "{{used}}/12 slots",
+    "close": "Close",
+    "tutorialBuildLogging": "▶ Select an empty slot to build a Logging Site.",
+    "tutorialAssignKael": "▶ Select the Logging Site and assign Kael.",
+    "tutorialBuildTavern": "▶ Select an empty slot and build the Tavern (200 Wood).",
+    "slotEmpty": "Empty",
+    "hallLabel": "Hall"
+  },
+  "facilityTray": {
+    "stat": "{{stats}} · {{assigned}}/{{max}}",
+    "level": "Lv.{{level}}",
+    "upgradeBtn": "↑ {{cost}}g",
+    "assign": "Assign",
+    "bonus": "Assign a member to activate",
+    "enterRoom": "Enter Room →",
+    "upgradeTitleFacility": "Upgrade {{name}}",
+    "upgradeBodyFacility": "Upgrade to Level {{level}}? Cost: {{cost}}g.",
+    "upgradeConfirm": "Upgrade",
+    "slotLabel": "Slot {{number}} — Choose a room to build",
+    "allBuilt": "All available rooms are already built.",
+    "buildBtn": "Select a blueprint",
+    "buildBtnWithName": "Build {{name}} — {{cost}}",
+    "buildConfirmTitle": "Build {{name}}",
+    "buildConfirmBody": "Build in Slot {{number}}? Cost: {{cost}}. Construction is permanent.",
+    "buildConfirmBtn": "Build",
+    "costFree": "Free",
+    "costPermit": "Permit",
+    "needMaterials": "Need {{materials}}"
+  },
+  "guildUpgrade": {
+    "label": "Guild Hall — Lv.{{level}}",
+    "btn": "Upgrade — {{cost}}g",
+    "title": "Upgrade Guild Hall",
+    "body": "Upgrade to Level {{level}}? Cost: {{cost}}g. Unlocks new slots and blueprints.",
+    "confirm": "Upgrade"
+  },
+  "activeMissions": {
+    "header": "Active Missions",
+    "traveling": "Traveling...",
+    "arrived": "Arrived!",
+    "inCombat": "In Combat",
+    "clickToCombat": "⚔️ Click to start combat",
+    "resolving": "Resolving..."
+  },
+  "arrivalModal": {
+    "title": "⚔️ Party Arrived!",
+    "enemiesLabel": "Enemies encountered:",
+    "enemyLevel": "(Lv.{{level}})",
+    "enterBattle": "⚔️ Enter Battle"
+  },
+  "combatView": {
+    "title": "Combat",
+    "close": "Close",
+    "replayTitle": "Combat Replay",
+    "noResults": "No combat results yet. Dispatch a quest to see combat results.",
+    "damage": "Damage: ",
+    "duration": "Duration: ",
+    "gold": "Gold: ",
+    "exp": "EXP: ",
+    "combatLog": "Combat Log",
+    "tick": "Tick {{number}}",
+    "outcome": {
+      "victory": "Victory",
+      "partial-victory": "Partial Victory",
+      "full-wipe": "Wiped"
+    }
+  },
+  "combatPrepPanel": {
+    "title": "Battle Preparation",
+    "retreat": "Retreat",
+    "party": "Party",
+    "allPlaced": "All placed",
+    "back": "Back",
+    "front": "Front",
+    "enemies": "Enemies",
+    "autoPlace": "Auto-Place",
+    "startBattle": "Start Battle",
+    "frontSlot": "Front {{n}}",
+    "backSlot": "Back {{n}}"
+  },
+  "combatSkillHotbar": {
+    "ready": "READY"
+  },
+  "combatResultOverlay": {
+    "victory": "VICTORY",
+    "defeat": "DEFEAT",
+    "duration": "Duration: {{secs}}s",
+    "damage": "Damage: {{amount}}",
+    "survivors": "Survivors: {{names}}",
+    "injured": "Injured: {{names}}",
+    "rewards": "Rewards",
+    "gold": "Gold: {{min}}–{{max}}",
+    "exp": "EXP: {{amount}}",
+    "rescueReward": "★ Rescue Reward",
+    "kaelJoins": "Kael joins your guild!",
+    "loggingPermit": "+ Logging Site Access (permit)",
+    "continue": "Continue"
+  },
+  "gameOver": {
+    "title": "Guild Wiped!",
+    "body": "All guild members have been defeated. Your guild lies in ruins...",
+    "injured": "Injured",
+    "recoveryIn": "First member recovers in {{secs}}s",
+    "returnToTitle": "Return to Title"
+  },
+  "charCreation": {
+    "step": {
+      "civ": "Civilization",
+      "class": "Class",
+      "mask": "Mask",
+      "identity": "Identity"
+    },
+    "stepRailAria": "Creation steps",
+    "chooseCiv": "Choose your civilization",
+    "chooseClass": "Choose your class",
+    "chooseMask": "Choose your mask",
+    "forgeIdentity": "Forge your identity",
+    "namePlaceholder": "Character name",
+    "guildNamePlaceholder": "Guild name (optional)",
+    "back": "Back",
+    "continue": "Continue",
+    "begin": "Begin"
+  },
+  "statAllocator": {
+    "title": "Talent Points",
+    "remaining": "{{count}} remaining"
+  },
+  "partySelect": {
+    "empty": "No idle members available",
+    "underleveled": "Underleveled"
+  },
+  "confirmDialog": {
+    "cancel": "Cancel"
+  },
+  "inkConfirmDialog": {
+    "cancel": "Cancel"
+  },
+  "offlinePopup": {
+    "title": "Facilities produced while away",
+    "offline": "Offline {{hours}} hours",
+    "memberExp": "• Member +{{exp}} EXP",
+    "itemGain": "• +{{qty}} {{item}}",
+    "collect": "Collect"
+  },
+  "rankPromotion": {
+    "title": "Rank & Progression",
+    "missions": "Missions Completed: {{count}}",
+    "perks": "Perks: +{{expBonus}}% EXP",
+    "upkeepLess": ", {{pct}}% less upkeep",
+    "upkeepMore": ", +{{pct}}% upkeep",
+    "upkeepNormal": ", normal upkeep",
+    "next": "Next: {{rank}} — Lv.{{level}}+ | {{missions}}+ missions | {{gold}}g",
+    "promote": "Promote to {{rank}} ({{gold}}g)"
+  },
+  "notification": {
+    "arrivalBody": "📍 Party arrived! Choose combat mode.",
+    "victory": "Victory!",
+    "partialVictory": "Partial Victory",
+    "wiped": "Wiped!",
+    "goldExpSurvivors": "+{{gold}} Gold | +{{exp}} EXP | {{survivors}} survived",
+    "injured": " | {{count}} injured"
   }
 }

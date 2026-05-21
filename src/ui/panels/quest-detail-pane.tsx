@@ -5,9 +5,11 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Member, Mission } from '@/game/state/game-state';
 import { ENEMIES } from '@/game/data/enemies';
 import { autoAssignMembers } from '@/game/utils/auto-assign-members';
+import { tContent } from '@/i18n/content-localization';
 import { GameIcon } from '@/ui/components/game-icon';
 import { PartySelectList } from './party-select-list';
 
@@ -28,7 +30,7 @@ function getEnemyPreview(enemyIds: string[]) {
   enemyIds.forEach((id) => counts.set(id, (counts.get(id) ?? 0) + 1));
   return Array.from(counts.entries()).map(([id, count]) => {
     const enemy = ENEMIES[id];
-    return { name: enemy?.name ?? id, level: enemy?.level ?? 0, count };
+    return { id, name: enemy?.name ?? id, level: enemy?.level ?? 0, count };
   });
 }
 
@@ -40,6 +42,7 @@ export function QuestDetailPane({
   onMemberToggle,
   onBack,
 }: QuestDetailPaneProps) {
+  const { t } = useTranslation();
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
 
   // Reset selection when switching missions
@@ -76,7 +79,7 @@ export function QuestDetailPane({
     return (
       <div className="quest-detail-pane quest-detail-pane--empty">
         <div className="quest-detail-pane__empty-art" aria-hidden="true">📜</div>
-        <p className="quest-detail-pane__empty-text">Select a quest scroll to begin...</p>
+        <p className="quest-detail-pane__empty-text">{t('questBoard.detail.emptyText')}</p>
       </div>
     );
   }
@@ -88,48 +91,48 @@ export function QuestDetailPane({
     <div className="quest-detail-pane">
       {onBack && (
         <button type="button" className="quest-detail-pane__back" onClick={onBack}>
-          ← Back
+          {t('questBoard.detail.back')}
         </button>
       )}
 
       <header className="quest-detail-pane__header">
-        <h3 className="quest-detail-pane__title">{mission.name}</h3>
+        <h3 className="quest-detail-pane__title">{tContent('missions', mission.id, 'name', mission.name)}</h3>
         <GameIcon
           category="badge"
           id={mission.tier}
           size={40}
           fallbackText={mission.tier}
-          alt={`Tier ${mission.tier}`}
+          alt={t('questBoard.detail.tierAlt', { tier: mission.tier })}
         />
       </header>
 
-      {mission.zone && <div className="quest-detail-pane__zone">{mission.zone}</div>}
+      {mission.zone && <div className="quest-detail-pane__zone">{tContent('missions', mission.id, 'zone', mission.zone)}</div>}
       {mission.description && (
-        <p className="quest-detail-pane__desc">{mission.description}</p>
+        <p className="quest-detail-pane__desc">{tContent('missions', mission.id, 'description', mission.description)}</p>
       )}
 
       <section className="quest-detail-pane__section">
-        <h4 className="quest-detail-pane__section-title">Enemies</h4>
+        <h4 className="quest-detail-pane__section-title">{t('questBoard.detail.enemies')}</h4>
         <ul className="quest-detail-pane__enemies">
           {enemies.map((e) => (
-            <li key={e.name} className="quest-detail-pane__enemy">
-              {e.name} <span className="quest-detail-pane__enemy-lv">Lv.{e.level}</span>
-              {e.count > 1 && <span className="quest-detail-pane__enemy-count">×{e.count}</span>}
+            <li key={e.id} className="quest-detail-pane__enemy">
+              {tContent('enemies', e.id, 'name', e.name)} <span className="quest-detail-pane__enemy-lv">{t('questBoard.detail.enemyLevel', { level: e.level })}</span>
+              {e.count > 1 && <span className="quest-detail-pane__enemy-count">{t('questBoard.detail.enemyCount', { count: e.count })}</span>}
             </li>
           ))}
         </ul>
       </section>
 
       <section className="quest-detail-pane__rewards">
-        <div><span className="quest-detail-pane__reward-label">Gold</span> <span className="quest-detail-pane__reward-value quest-detail-pane__reward-value--gold">{mission.goldRewardMin}–{mission.goldRewardMax}</span></div>
-        <div><span className="quest-detail-pane__reward-label">EXP</span> <span className="quest-detail-pane__reward-value quest-detail-pane__reward-value--exp">{mission.expReward}</span></div>
-        <div><span className="quest-detail-pane__reward-label">Duration</span> <span className="quest-detail-pane__reward-value">{durationMin}min</span></div>
-        <div><span className="quest-detail-pane__reward-label">Required</span> <span className="quest-detail-pane__reward-value">{mission.requiredMembers}+ Lv.{mission.requiredLevel}+</span></div>
+        <div><span className="quest-detail-pane__reward-label">{t('questBoard.detail.rewardGold')}</span> <span className="quest-detail-pane__reward-value quest-detail-pane__reward-value--gold">{mission.goldRewardMin}–{mission.goldRewardMax}</span></div>
+        <div><span className="quest-detail-pane__reward-label">{t('questBoard.detail.rewardExp')}</span> <span className="quest-detail-pane__reward-value quest-detail-pane__reward-value--exp">{mission.expReward}</span></div>
+        <div><span className="quest-detail-pane__reward-label">{t('questBoard.detail.rewardDuration')}</span> <span className="quest-detail-pane__reward-value">{t('questBoard.detail.durationValue', { mins: durationMin })}</span></div>
+        <div><span className="quest-detail-pane__reward-label">{t('questBoard.detail.rewardRequired')}</span> <span className="quest-detail-pane__reward-value">{t('questBoard.detail.requiredValue', { members: mission.requiredMembers, level: mission.requiredLevel })}</span></div>
       </section>
 
       <section className="quest-detail-pane__section">
         <h4 className="quest-detail-pane__section-title">
-          Party <span className="quest-detail-pane__party-count">({selectedMemberIds.length}/{mission.requiredMembers}+)</span>
+          {t('questBoard.detail.party')} <span className="quest-detail-pane__party-count">{t('questBoard.detail.partyCount', { selected: selectedMemberIds.length, required: mission.requiredMembers })}</span>
         </h4>
         <PartySelectList
           availableMembers={availableMembers}
@@ -139,7 +142,9 @@ export function QuestDetailPane({
         />
         {mercFee > 0 && (
           <div className={`quest-detail-pane__merc-fee${canAffordFee ? '' : ' quest-detail-pane__merc-fee--insufficient'}`}>
-            Mercenary fee: {mercFee}g {!canAffordFee && '(insufficient gold)'}
+            {canAffordFee
+              ? t('questBoard.detail.mercFee', { fee: mercFee })
+              : t('questBoard.detail.mercFeeInsufficient', { fee: mercFee })}
           </div>
         )}
       </section>
@@ -150,7 +155,7 @@ export function QuestDetailPane({
           className="parchment-btn parchment-btn--ghost"
           onClick={handleAutoAssign}
         >
-          Auto Assign
+          {t('questBoard.detail.autoAssign')}
         </button>
         <button
           type="button"
@@ -159,7 +164,7 @@ export function QuestDetailPane({
           onClick={() => onDispatch(selectedMemberIds)}
         >
           <span className="dispatch-button__seal" aria-hidden="true" />
-          Dispatch ({selectedMemberIds.length}/{mission.requiredMembers}+)
+          {t('questBoard.detail.dispatch', { selected: selectedMemberIds.length, required: mission.requiredMembers })}
         </button>
       </div>
     </div>

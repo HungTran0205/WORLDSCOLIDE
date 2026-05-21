@@ -1,5 +1,6 @@
 /** Popup shown on login when facilities produced resources while the player was away. */
 
+import { useTranslation } from 'react-i18next';
 import type { FacilityProductionResult } from '@/game/systems/facility-production-system';
 import '@/ui/styles/panels.css';
 
@@ -17,6 +18,7 @@ const FACILITY_ICONS: Record<string, string> = {
 };
 
 export function OfflineFacilityPopup({ results, elapsedHours, onDismiss }: OfflineFacilityPopupProps) {
+  const { t } = useTranslation();
   // Only show facilities with actual production
   const activeResults = results.filter((r) =>
     Object.keys(r.expGains).length > 0 ||
@@ -29,10 +31,10 @@ export function OfflineFacilityPopup({ results, elapsedHours, onDismiss }: Offli
     <div className="confirm-dialog-overlay">
       <div className="confirm-dialog" style={{ maxWidth: 420, textAlign: 'left' }}>
         <h3 style={{ color: '#ffd700', margin: '0 0 4px', fontSize: '1rem' }}>
-          Facilities produced while away
+          {t('offlinePopup.title')}
         </h3>
         <p style={{ color: '#aaa', fontSize: '0.8rem', margin: '0 0 16px' }}>
-          Offline {elapsedHours.toFixed(1)} hours
+          {t('offlinePopup.offline', { hours: elapsedHours.toFixed(1) })}
         </p>
 
         {activeResults.map((r) => (
@@ -44,21 +46,21 @@ export function OfflineFacilityPopup({ results, elapsedHours, onDismiss }: Offli
             {/* EXP gains (Training Yard) */}
             {Object.entries(r.expGains).map(([memberId, exp]) => (
               <div key={memberId} style={{ fontSize: '0.8rem', color: '#ccc', paddingLeft: 16 }}>
-                • Member +{exp} EXP
+                {t('offlinePopup.memberExp', { exp })}
               </div>
             ))}
 
-            {/* Item gains (Workshop) */}
+            {/* Item gains (Workshop / Logging / Quarry) */}
             {Object.entries(r.itemGains).map(([itemId, qty]) => (
               <div key={itemId} style={{ fontSize: '0.8rem', color: '#ccc', paddingLeft: 16 }}>
-                • +{qty} {itemId.replace('_', ' ')}
+                {t('offlinePopup.itemGain', { qty, item: itemId.replace('_', ' ') })}
               </div>
             ))}
           </div>
         ))}
 
         <button className="panel-btn" onClick={onDismiss} style={{ marginTop: 8 }}>
-          Collect
+          {t('offlinePopup.collect')}
         </button>
       </div>
     </div>

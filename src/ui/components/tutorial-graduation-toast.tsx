@@ -9,6 +9,7 @@
  */
 
 import { useEffect } from 'react';
+import { tContent } from '@/i18n/content-localization';
 
 const AUTO_DISMISS_MS = 6000;
 
@@ -22,6 +23,10 @@ export function TutorialGraduationToast({ onClose }: TutorialGraduationToastProp
     return () => window.clearTimeout(id);
   }, [onClose]);
 
+  const headline = tContent('tutorial', 'graduation-toast', 'headline', "You're ready to lead.");
+  const sub      = tContent('tutorial', 'graduation-toast', 'sub',
+    'The Quest Board is open — chase any thread that calls to you.');
+
   return (
     <div
       role="status"
@@ -34,9 +39,9 @@ export function TutorialGraduationToast({ onClose }: TutorialGraduationToastProp
         boxShadow: '0 6px 24px rgba(0,0,0,0.5)',
       }}
     >
-      <strong style={{ color: '#ffd700' }}>You're ready to lead.</strong>
+      <strong style={{ color: '#ffd700' }}>{headline}</strong>
       <div style={{ fontSize: '0.85rem', color: '#c8b080', marginTop: 4 }}>
-        The Quest Board is open — chase any thread that calls to you.
+        {sub}
       </div>
     </div>
   );

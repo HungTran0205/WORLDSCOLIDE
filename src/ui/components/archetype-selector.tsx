@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { FOUNDER_CHOICES_BY_CIV } from '@/game/data/founder-archetypes';
 import type { FounderArchetypeChoice } from '@/game/data/founder-archetypes';
 import type { Civilization } from '@/game/data/civilization-config';
+import { archetypeDisplayName, archetypeTagline } from '@/i18n/content-wrappers';
 
 interface ArchetypeSelectorProps {
   civ: Civilization;
@@ -54,8 +55,8 @@ function ArchetypeTile({ choice, selected, onSelect }: {
           <span className="archetype-tile-icon-fallback">{choice.weaponLabel.slice(0, 1)}</span>
         )}
       </div>
-      <div className="archetype-tile-name">{choice.displayName}</div>
-      <div className="archetype-tile-tagline">{choice.tagline}</div>
+      <div className="archetype-tile-name">{archetypeDisplayName(choice.id)}</div>
+      <div className="archetype-tile-tagline">{archetypeTagline(choice.id)}</div>
       <div className="archetype-tile-weapon">{choice.weaponLabel}</div>
     </button>
   );

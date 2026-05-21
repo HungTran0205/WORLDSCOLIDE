@@ -3,6 +3,7 @@
  * Underleveled members are visually flagged but selectable input is disabled.
  */
 
+import { useTranslation } from 'react-i18next';
 import type { Member, Mission } from '@/game/state/game-state';
 import { RankBadge } from '@/ui/components/rank-badge';
 
@@ -19,8 +20,10 @@ export function PartySelectList({
   mission,
   onToggleMember,
 }: PartySelectListProps) {
+  const { t } = useTranslation();
+
   if (availableMembers.length === 0) {
-    return <div className="party-select__empty">No idle members available</div>;
+    return <div className="party-select__empty">{t('partySelect.empty')}</div>;
   }
 
   return (
@@ -41,7 +44,7 @@ export function PartySelectList({
                 {m.name} <span className="party-select__lv">Lv.{m.level}</span>
               </span>
               <RankBadge rank={m.rank} />
-              {underleveled && <span className="party-select__warn">Underleveled</span>}
+              {underleveled && <span className="party-select__warn">{t('partySelect.underleveled')}</span>}
             </label>
           </li>
         );

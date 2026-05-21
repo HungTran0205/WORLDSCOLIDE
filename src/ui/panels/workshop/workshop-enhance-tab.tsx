@@ -5,6 +5,7 @@
  */
 
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import { ITEM_DATABASE, type ItemID } from '@/game/data/items';
 import { EQUIPMENT_DATABASE } from '@/game/data/equipment-templates';
@@ -13,6 +14,7 @@ import { WORKSHOP_CONFIG } from '@/game/data/workshop-config';
 import type { GuildFacility, EquipmentItem } from '@/game/state/game-state';
 import { InkConfirmDialog } from '@/ui/components/ink-confirm-dialog';
 import { GameIcon } from '@/ui/components/game-icon';
+import { itemName } from '@/i18n/content-wrappers';
 
 const MONSTER_MATERIALS: ItemID[] = ['SLIME_GEL'];
 type Mode = 'add' | 'reroll';
@@ -20,6 +22,7 @@ type Mode = 'add' | 'reroll';
 interface Props { facility: GuildFacility; }
 
 export function WorkshopEnhanceTab({ facility }: Props) {
+  const { t } = useTranslation();
   const items = useGameStore((s) => s.inventory.items);
   const equipmentInventory = useGameStore((s) => s.inventory.equipmentInventory ?? []);
   const addWorkshopTask = useGameStore((s) => s.addWorkshopTask);
@@ -88,17 +91,23 @@ export function WorkshopEnhanceTab({ facility }: Props) {
     <div className="ws-tab-body">
       {/* Mode toggle */}
       <div className="ws-toggle-row">
-        <button className={`ws-toggle ${mode === 'add' ? 'is-active' : ''}`} onClick={() => switchMode('add')}>Add Slot</button>
-        <button className={`ws-toggle ${mode === 'reroll' ? 'is-active' : ''}`} onClick={() => switchMode('reroll')}>Reroll</button>
+        <button className={`ws-toggle ${mode === 'add' ? 'is-active' : ''}`} onClick={() => switchMode('add')}>
+          {t('workshop.enhance.addSlot')}
+        </button>
+        <button className={`ws-toggle ${mode === 'reroll' ? 'is-active' : ''}`} onClick={() => switchMode('reroll')}>
+          {t('workshop.enhance.reroll')}
+        </button>
       </div>
 
       {/* Equipment picker */}
       <div className="ws-section">
         <div className="ws-section-title">
-          {mode === 'add' ? 'Equipment with free slot' : 'Equipment with existing slot'}
+          {mode === 'add' ? t('workshop.enhance.equipWithFreeSlot') : t('workshop.enhance.equipWithSlot')}
         </div>
         <div className="ws-eq-list">
-          {eligible.length === 0 && <div className="ws-empty">No eligible equipment.</div>}
+          {eligible.length === 0 && (
+            <div className="ws-empty">{t('workshop.enhance.noEligible')}</div>
+          )}
           {eligible.map((e) => {
             const tpl = EQUIPMENT_DATABASE[e.templateId];
             const slots = e.slots ?? [];
@@ -110,7 +119,7 @@ export function WorkshopEnhanceTab({ facility }: Props) {
               >
                 <span className="ws-eq-name">{tpl.name}</span>
                 <span className="ws-eq-slots">
-                  {slots.length}/{maxSlots} slots
+                  {t('workshop.enhance.slotsLabel', { used: slots.length, max: maxSlots })}
                   {slots.map((s, i) => (
                     <span key={i} className="ws-slot-chip">{s.statKey}+{s.value}</span>
                   ))}
@@ -124,7 +133,7 @@ export function WorkshopEnhanceTab({ facility }: Props) {
       {/* Slot selector for reroll */}
       {mode === 'reroll' && selEq && (selEq.slots?.length ?? 0) > 1 && (
         <div className="ws-section">
-          <div className="ws-section-title">Slot to reroll</div>
+          <div className="ws-section-title">{t('workshop.enhance.slotToReroll')}</div>
           <div className="ws-mat-row">
             {(selEq.slots ?? []).map((s, i) => (
               <button
@@ -141,7 +150,7 @@ export function WorkshopEnhanceTab({ facility }: Props) {
 
       {/* Material picker */}
       <div className="ws-section">
-        <div className="ws-section-title">Monster Material</div>
+        <div className="ws-section-title">{t('workshop.enhance.monsterMaterial')}</div>
         <div className="ws-mat-row">
           {MONSTER_MATERIALS.map((id) => {
             const owned = Math.floor(items[id] ?? 0);
@@ -152,7 +161,7 @@ export function WorkshopEnhanceTab({ facility }: Props) {
                 className={`ws-mat-cell ${monsterMat === id ? 'is-selected' : ''} ${enabled ? '' : 'is-disabled'}`}
                 onClick={() => enabled && setMonsterMat(id)}
                 disabled={!enabled}
-                title={`${ITEM_DATABASE[id].name} ×${owned}`}
+                title={`${itemName(id)} ×${owned}`}
               >
                 <GameIcon category="item" id={id} size={28} fallbackText={ITEM_DATABASE[id].name.slice(0, 2)} />
                 <span className="ws-mat-count">×{owned}</span>
@@ -162,12 +171,17 @@ export function WorkshopEnhanceTab({ facility }: Props) {
         </div>
       </div>
 
-      {/* Preview */}
+      {/* Range preview */}
       {aff && matEnabled && (
         <div className="ws-path-card">
-          <div className="ws-path-label">Range Preview</div>
+          <div className="ws-path-label">{t('workshop.enhance.rangePreview')}</div>
           <div className="ws-path-detail">
-            {aff.statKey} +{aff.range[0]} to +{aff.range[1]} ({aff.category})
+            {t('workshop.enhance.rangeDetail', {
+              statKey: aff.statKey,
+              min: aff.range[0],
+              max: aff.range[1],
+              category: aff.category,
+            })}
           </div>
         </div>
       )}
@@ -175,16 +189,21 @@ export function WorkshopEnhanceTab({ facility }: Props) {
       {/* Action */}
       <div className="ws-actions">
         <button className="ws-btn ws-btn-primary" disabled={!canAct} onClick={handleEnhance}>
-          {mode === 'add' ? 'Add Slot' : 'Reroll'}
+          {mode === 'add' ? t('workshop.enhance.addSlot') : t('workshop.enhance.reroll')}
         </button>
       </div>
 
       {/* Reroll confirm modal */}
       {confirmOpen && selEq && aff && (
         <InkConfirmDialog
-          title="Confirm Reroll"
-          body={`Reroll ${selEq.slots?.[safeSlotIdx]?.statKey} ${selEq.slots?.[safeSlotIdx]?.value} → range ${aff.range[0]}-${aff.range[1]}? New value can be lower than current.`}
-          confirmLabel="Reroll"
+          title={t('workshop.enhance.confirmTitle')}
+          body={t('workshop.enhance.confirmBody', {
+            statKey: selEq.slots?.[safeSlotIdx]?.statKey ?? '',
+            current: selEq.slots?.[safeSlotIdx]?.value ?? 0,
+            min: aff.range[0],
+            max: aff.range[1],
+          })}
+          confirmLabel={t('workshop.enhance.confirmLabel')}
           onConfirm={handleConfirmReroll}
           onCancel={() => setConfirmOpen(false)}
         />

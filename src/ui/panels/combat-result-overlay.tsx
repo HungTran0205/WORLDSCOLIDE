@@ -1,5 +1,6 @@
 /** Victory/defeat result screen — shows combat stats, survivors, rewards, continue button */
 
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
 import { applyArenaResult } from '@/game/systems/arena-result-handler';
@@ -7,6 +8,7 @@ import { TUTORIAL_BEAR_MISSION_ID } from '@/game/data/tutorial-data';
 import { useMemo } from 'react';
 
 export function CombatResultOverlay() {
+  const { t } = useTranslation();
   const arenaResult = useGameStore(s => s.arenaResult);
   const arenaMissionId = useGameStore(s => s.arenaMissionId);
   const founder = useGameStore(s => s.founder);
@@ -28,52 +30,52 @@ export function CombatResultOverlay() {
     <div style={OVERLAY}>
       <div style={BANNER}>
         <h1 style={{ color: isVictory ? '#ffd700' : '#e74c3c', margin: 0, fontSize: '2rem' }}>
-          {isVictory ? 'VICTORY' : 'DEFEAT'}
+          {isVictory ? t('combatResultOverlay.victory') : t('combatResultOverlay.defeat')}
         </h1>
       </div>
 
       <div style={CONTENT}>
         {/* Combat stats */}
         <div style={{ display: 'flex', gap: 24, justifyContent: 'center', marginBottom: 12, color: '#aaa', fontSize: '0.85rem' }}>
-          <span>Duration: {Math.round(arenaResult.durationMs / 1000)}s</span>
-          <span>Damage: {arenaResult.totalDamageDealt}</span>
+          <span>{t('combatResultOverlay.duration', { secs: Math.round(arenaResult.durationMs / 1000) })}</span>
+          <span>{t('combatResultOverlay.damage', { amount: arenaResult.totalDamageDealt })}</span>
         </div>
 
         {/* Survivors */}
         {arenaResult.survivors.length > 0 && (
           <div style={{ color: '#2ecc71', marginBottom: 8, fontSize: '0.9rem' }}>
-            Survivors: {arenaResult.survivors.map(getName).join(', ')}
+            {t('combatResultOverlay.survivors', { names: arenaResult.survivors.map(getName).join(', ') })}
           </div>
         )}
 
         {/* Injured */}
         {arenaResult.injured.length > 0 && (
           <div style={{ color: '#e74c3c', marginBottom: 8, fontSize: '0.9rem' }}>
-            Injured: {arenaResult.injured.map(getName).join(', ')}
+            {t('combatResultOverlay.injured', { names: arenaResult.injured.map(getName).join(', ') })}
           </div>
         )}
 
         {/* Rewards */}
         {isVictory && mission && (
           <div style={{ marginTop: 8, padding: '8px 16px', background: 'rgba(255,215,0,0.1)', borderRadius: 6 }}>
-            <div style={{ color: '#ffd700', fontWeight: 'bold', marginBottom: 4 }}>Rewards</div>
+            <div style={{ color: '#ffd700', fontWeight: 'bold', marginBottom: 4 }}>{t('combatResultOverlay.rewards')}</div>
             <div style={{ color: '#e0e0e0', fontSize: '0.85rem' }}>
-              Gold: {mission.goldRewardMin}–{mission.goldRewardMax}
+              {t('combatResultOverlay.gold', { min: mission.goldRewardMin, max: mission.goldRewardMax })}
             </div>
             <div style={{ color: '#e0e0e0', fontSize: '0.85rem' }}>
-              EXP: {mission.expReward}
+              {t('combatResultOverlay.exp', { amount: mission.expReward })}
             </div>
             {/* Tutorial-specific bonus reward */}
             {arenaMissionId === TUTORIAL_BEAR_MISSION_ID && (
               <div style={{ marginTop: 8, borderTop: '1px solid rgba(255,215,0,0.2)', paddingTop: 8 }}>
                 <div style={{ color: '#ffd700', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                  ★ Rescue Reward
+                  {t('combatResultOverlay.rescueReward')}
                 </div>
                 <div style={{ color: '#2ecc71', fontSize: '0.85rem' }}>
-                  Kael joins your guild!
+                  {t('combatResultOverlay.kaelJoins')}
                 </div>
                 <div style={{ color: '#a8d8ea', fontSize: '0.85rem' }}>
-                  + Logging Site Access (permit)
+                  {t('combatResultOverlay.loggingPermit')}
                 </div>
               </div>
             )}
@@ -81,7 +83,7 @@ export function CombatResultOverlay() {
         )}
 
         <button onClick={handleContinue} style={CONTINUE_BTN}>
-          Continue
+          {t('combatResultOverlay.continue')}
         </button>
       </div>
     </div>

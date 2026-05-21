@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Member } from '@/game/state/game-state';
 import { expToNextLevel } from '@/game/systems/leveling-system';
 import { getCivColor } from '@/game/data/civilization-config';
@@ -19,15 +20,17 @@ const STATUS_COLORS: Record<string, string> = {
   training: '#9b59b6',
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  idle: 'Ready',
-  'on-mission': 'On Mission',
-  injured: 'Injured',
-  training: 'Training',
+// Compact-row status labels, keyed off the MemberStatus value so they stay in sync.
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  idle: 'roster.listItem.statusReady',
+  'on-mission': 'roster.listItem.statusOnMission',
+  injured: 'roster.listItem.statusInjured',
+  training: 'roster.listItem.statusTraining',
 };
 
 /** Compact roster row — shows avatar, name, level, EXP bar, status badge */
 export function RosterListItem({ member, isSelected, activeMissionName, onClick }: RosterListItemProps) {
+  const { t } = useTranslation();
   const expNeeded = expToNextLevel(member.level);
   const expPct = Math.min(100, Math.floor((member.exp / expNeeded) * 100));
   const statusColor = STATUS_COLORS[member.status] ?? '#aaa';
@@ -41,12 +44,13 @@ export function RosterListItem({ member, isSelected, activeMissionName, onClick 
     return () => clearInterval(timer);
   }, [member.status]);
 
-  let statusLabel = STATUS_LABELS[member.status] ?? member.status;
+  const labelKey = STATUS_LABEL_KEYS[member.status];
+  let statusLabel = labelKey ? t(labelKey) : member.status;
   if (member.status === 'on-mission' && activeMissionName) {
     statusLabel = activeMissionName;
   } else if (member.status === 'injured' && member.injuredUntil) {
     const mins = Math.max(1, Math.ceil((member.injuredUntil - now) / 60000));
-    statusLabel = `Injured (${mins}m)`;
+    statusLabel = t('roster.listItem.injuredCountdown', { mins });
   }
 
   return (
@@ -122,7 +126,7 @@ export function RosterListItem({ member, isSelected, activeMissionName, onClick 
           <span style={{
             color: '#2ecc71', fontSize: '0.9rem', fontWeight: 'bold',
             animation: 'pulse 1.5s infinite',
-          }} title={`${member.unallocatedPoints} points to allocate`}>
+          }} title={t('roster.listItem.pointsHint', { count: member.unallocatedPoints })}>
             ▲
           </span>
         )}

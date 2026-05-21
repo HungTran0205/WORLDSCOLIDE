@@ -5,6 +5,7 @@
  * parent owns the stats/remaining state and applies deltas via onAllocate.
  */
 
+import { useTranslation } from 'react-i18next';
 import { STAT_KEYS } from '@/game/systems/stat-allocation';
 import type { Stats, StatKey } from '@/game/state/game-state';
 
@@ -15,12 +16,13 @@ interface StatAllocatorProps {
 }
 
 export function StatAllocator({ stats, remaining, onAllocate }: StatAllocatorProps) {
+  const { t } = useTranslation();
   return (
     <div className="stat-allocator">
       <div className="stat-allocator-header">
-        <span className="stat-allocator-title">Talent Points</span>
+        <span className="stat-allocator-title">{t('statAllocator.title')}</span>
         <span className={`stat-allocator-remaining${remaining > 0 ? ' stat-allocator-remaining--pending' : ''}`}>
-          {remaining} remaining
+          {t('statAllocator.remaining', { count: remaining })}
         </span>
       </div>
       <div className="stat-allocation-grid">

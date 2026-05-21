@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { Member, StatKey } from '@/game/state/game-state';
 import { STAT_KEYS } from '@/game/systems/stat-allocation';
 import { RankPromotionSection } from '@/ui/components/rank-promotion-section';
@@ -22,6 +23,7 @@ function DerivedRow({ label, value }: { label: string; value: string | number })
 }
 
 export function StatsTab({ member, isMerc, onAllocateStat, onPromote, canAffordPromote }: StatsTabProps) {
+  const { t } = useTranslation();
   const { STR, END, DEX, LCK, AGI } = member.stats;
   const maxHp       = calcMaxHp(END, member.level);
   const atkIntervalMs = calcAttackInterval(AGI);
@@ -36,7 +38,7 @@ export function StatsTab({ member, isMerc, onAllocateStat, onPromote, canAffordP
       <div className="stats-col-talents">
         {member.unallocatedPoints > 0 && (
           <div className="stats-unspent">
-            {member.unallocatedPoints} unspent point{member.unallocatedPoints !== 1 ? 's' : ''}
+            {t('statsTab.unspentPoints', { count: member.unallocatedPoints })}
           </div>
         )}
         {STAT_KEYS.map(stat => (
@@ -64,38 +66,38 @@ export function StatsTab({ member, isMerc, onAllocateStat, onPromote, canAffordP
       {/* ── Right: Derived stats ── */}
       <div className="stats-col-derived">
 
-        <p className="char-section-title">Combat</p>
-        <DerivedRow label="Max HP"    value={maxHp} />
-        <DerivedRow label="Atk DMG"   value={STR} />
-        <DerivedRow label="Atk Speed" value={`${(1000 / atkIntervalMs).toFixed(2)}/s`} />
-        <DerivedRow label="Skill DMG" value={`+${Math.round(DEX * 0.5)}%`} />
-        <DerivedRow label="Crit Rate" value={`${critPct}%`} />
-        <DerivedRow label="Defense"   value={`-${defPct}% dmg`} />
+        <p className="char-section-title">{t('statsTab.combat')}</p>
+        <DerivedRow label={t('statsTab.maxHp')}    value={maxHp} />
+        <DerivedRow label={t('statsTab.atkDmg')}   value={STR} />
+        <DerivedRow label={t('statsTab.atkSpeed')} value={t('statsTab.atkSpeedValue', { value: (1000 / atkIntervalMs).toFixed(2) })} />
+        <DerivedRow label={t('statsTab.skillDmg')} value={t('statsTab.skillDmgValue', { value: Math.round(DEX * 0.5) })} />
+        <DerivedRow label={t('statsTab.critRate')} value={t('statsTab.critRateValue', { value: critPct })} />
+        <DerivedRow label={t('statsTab.defense')}   value={t('statsTab.defenseValue', { value: defPct })} />
 
-        <p className="char-section-title" style={{ marginTop: 10 }}>Guild</p>
-        <DerivedRow label="Influence"    value={guild.influence} />
-        <DerivedRow label="Stamina"      value={guild.stamina} />
-        <DerivedRow label="Craft Skill"  value={guild.craftSkill} />
-        <DerivedRow label="Negotiation"  value={guild.negotiation} />
-        <DerivedRow label="Exploration"  value={guild.exploration} />
-        <DerivedRow label="Leadership"   value={guild.leadership} />
-        <DerivedRow label="Fortune"      value={guild.fortune} />
-        <DerivedRow label="Training Eff" value={`+${Math.round(guild.trainingEff * 100)}%`} />
-        <DerivedRow label="Gather Spd"   value={`+${Math.round(guild.gatherSpeed * 100)}%`} />
-        <DerivedRow label="Recovery"     value={`${guild.recovery.toFixed(2)}×`} />
+        <p className="char-section-title" style={{ marginTop: 10 }}>{t('statsTab.guild')}</p>
+        <DerivedRow label={t('statsTab.influence')}    value={guild.influence} />
+        <DerivedRow label={t('statsTab.stamina')}      value={guild.stamina} />
+        <DerivedRow label={t('statsTab.craftSkill')}  value={guild.craftSkill} />
+        <DerivedRow label={t('statsTab.negotiation')}  value={guild.negotiation} />
+        <DerivedRow label={t('statsTab.exploration')}  value={guild.exploration} />
+        <DerivedRow label={t('statsTab.leadership')}   value={guild.leadership} />
+        <DerivedRow label={t('statsTab.fortune')}      value={guild.fortune} />
+        <DerivedRow label={t('statsTab.trainingEff')} value={t('statsTab.trainingEffValue', { value: Math.round(guild.trainingEff * 100) })} />
+        <DerivedRow label={t('statsTab.gatherSpd')}   value={t('statsTab.gatherSpdValue', { value: Math.round(guild.gatherSpeed * 100) })} />
+        <DerivedRow label={t('statsTab.recovery')}     value={t('statsTab.recoveryValue', { value: guild.recovery.toFixed(2) })} />
 
         {member.craftSkills && (
           <>
-            <p className="char-section-title" style={{ marginTop: 10 }}>Craft</p>
+            <p className="char-section-title" style={{ marginTop: 10 }}>{t('statsTab.craft')}</p>
             {(['woodcutting', 'mining', 'alchemy'] as const).map(skill => {
               const s = member.craftSkills?.[skill];
               if (!s) return null;
               return (
                 <div key={skill} className="derived-row">
-                  <span className="derived-label">{skill}</span>
+                  <span className="derived-label">{t(`statsTab.skill.${skill}`)}</span>
                   <span className="derived-val">
-                    Lv.{s.level}
-                    <span className="derived-xp">({Math.floor(s.xpAccumulated)}xp)</span>
+                    {t('statsTab.craftLevel', { level: s.level })}
+                    <span className="derived-xp">{t('statsTab.craftXp', { xp: Math.floor(s.xpAccumulated) })}</span>
                   </span>
                 </div>
               );

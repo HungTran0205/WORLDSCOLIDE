@@ -1,4 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Share+Tech+Mono&family=IM+Fell+English:ital@0;1&display=swap');
+/* Vietnamese-capable fonts: Cinzel / IM Fell English / Share Tech Mono ship no
+   vietnamese subset, so stacked diacritics (ấ, ợ, ữ…) broke into base+floating
+   tone marks. Cormorant SC (display, small-caps to match the prior caps look),
+   EB Garamond (body), and IBM Plex Mono (numerals/labels) all include the
+   vietnamese unicode-range while keeping the parchment/manuscript aesthetic. */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+SC:wght@400;500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap');
 
 /* ─── HD-2D Ink Design Tokens ─────────────────────────────────────────────── */
 :root {
@@ -36,9 +41,9 @@
   --ink-faction-merc:    rgba(200, 120, 100, 0.18);
 
   /* Typography */
-  --ink-font-title: 'Cinzel', 'Times New Roman', serif;
-  --ink-font-mono:  'Share Tech Mono', 'Consolas', monospace;
-  --ink-font-body:  'IM Fell English', 'Georgia', serif;
+  --ink-font-title: 'Cormorant SC', 'Times New Roman', serif;
+  --ink-font-mono:  'IBM Plex Mono', 'Consolas', monospace;
+  --ink-font-body:  'EB Garamond', 'Georgia', serif;
 
   /* Radii / Spacing */
   --ink-radius-sm:    2px;

@@ -4,6 +4,7 @@
  */
 
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import { getItemInfo, type ItemID } from '@/game/data/items';
 import '@/ui/styles/hud.css';
@@ -49,6 +50,7 @@ interface ToastProps {
 }
 
 function NotificationToast({ id, missionName, notificationType, outcome, gold, exp, loot, survivors, injured, onDismiss }: ToastProps) {
+  const { t } = useTranslation();
   // Use id as dep instead of onDismiss to prevent timer reset on parent re-render
   useEffect(() => {
     const timer = setTimeout(onDismiss, 5000);
@@ -60,13 +62,17 @@ function NotificationToast({ id, missionName, notificationType, outcome, gold, e
     return (
       <div className="notification-toast notification-toast--victory" onClick={onDismiss}>
         <div style={{ fontWeight: 'bold', marginBottom: 4, color: '#ffd700' }}>{missionName}</div>
-        <div style={{ fontSize: '0.85rem', color: '#67b8e3' }}>📍 Party arrived! Choose combat mode.</div>
+        <div style={{ fontSize: '0.85rem', color: '#67b8e3' }}>{t('notification.arrivalBody')}</div>
       </div>
     );
   }
 
   const isWipe = outcome === 'full-wipe';
-  const outcomeLabel = outcome === 'victory' ? 'Victory!' : outcome === 'partial-victory' ? 'Partial Victory' : 'Wiped!';
+  const outcomeLabel = outcome === 'victory'
+    ? t('notification.victory')
+    : outcome === 'partial-victory'
+      ? t('notification.partialVictory')
+      : t('notification.wiped');
   const outcomeClass = isWipe ? 'notification-toast--wipe' : 'notification-toast--victory';
 
   return (
@@ -75,8 +81,8 @@ function NotificationToast({ id, missionName, notificationType, outcome, gold, e
       <div style={{ fontSize: '0.85rem', color: isWipe ? '#e74c3c' : '#2ecc71' }}>{outcomeLabel}</div>
       {!isWipe && (
         <div style={{ fontSize: '0.8rem', color: '#ccc', marginTop: 4 }}>
-          +{gold} Gold | +{exp} EXP | {survivors} survived
-          {injured > 0 && <span style={{ color: '#e74c3c' }}> | {injured} injured</span>}
+          {t('notification.goldExpSurvivors', { gold, exp, survivors })}
+          {injured > 0 && <span style={{ color: '#e74c3c' }}>{t('notification.injured', { count: injured })}</span>}
           {Object.keys(loot).length > 0 && (
             <div style={{ color: '#a8d8ea', marginTop: 2 }}>
               {Object.entries(loot)

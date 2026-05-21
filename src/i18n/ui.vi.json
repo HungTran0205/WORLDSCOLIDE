@@ -1,6 +1,7 @@
 {
+  "_convention": "ui-namespace key shape: <feature>.<section>.<element> (e.g. questBoard.title, roster.status.on-quest, combatPanel.formation.start). Enum/union labels are keyed off the raw data value so they stay in sync (status 'on-quest' -> roster.status.on-quest). Keep {{interpolation}} slots verbatim across languages. Numbers stay en-US formatted globally.",
   "workshop": {
-    "title": "Workshop",
+    "title": "Xưởng",
     "tabs": {
       "craft": "Chế Tác",
       "enhance": "Cường Hóa",
@@ -10,14 +11,68 @@
     "craft": {
       "pathA": "Đường A — 20% cơ hội có slot",
       "pathB": "Đường B — Đảm bảo có slot từ nguyên liệu",
+      "baseMaterial": "Nguyên Liệu Cơ Bản",
+      "monsterMaterialTitle": "Nguyên Liệu Quái (không bắt buộc — Đường B)",
+      "nonePathA": "Không dùng — Đường A",
+      "template": "Mẫu Trang Bị",
+      "pathLabel": "Đường {{path}}",
+      "pathADetail": "{{chance}}% cơ hội có slot tổng quát (HP 40-150)",
+      "pathBDetail": "Đảm bảo slot {{statKey}} — khoảng {{min}}-{{max}}",
+      "pathBUnavailable": "Không có thông tin ái lực nguyên liệu",
+      "costLine": "Chi phí: {{baseCost}}× {{baseName}}",
+      "costLineWithMonster": "Chi phí: {{baseCost}}× {{baseName}} + 1× {{monsterName}}",
       "action": {
         "craft": "Chế Tác",
         "saveBlueprint": "Lưu Bản Vẽ ({{used}}/{{limit}})"
       }
     },
+    "enhance": {
+      "addSlot": "Thêm Slot",
+      "reroll": "Đúc Lại",
+      "equipWithFreeSlot": "Trang bị còn slot trống",
+      "equipWithSlot": "Trang bị đã có slot",
+      "noEligible": "Không có trang bị phù hợp.",
+      "slotsLabel": "{{used}}/{{max}} slot",
+      "slotToReroll": "Slot cần đúc lại",
+      "monsterMaterial": "Nguyên Liệu Quái",
+      "rangePreview": "Xem Trước Khoảng",
+      "rangeDetail": "{{statKey}} +{{min}} đến +{{max}} ({{category}})",
+      "confirmTitle": "Xác Nhận Đúc Lại",
+      "confirmLabel": "Đúc Lại",
+      "confirmBody": "Đúc lại {{statKey}} {{current}} → khoảng {{min}}-{{max}}? Giá trị mới có thể thấp hơn hiện tại."
+    },
+    "repair": {
+      "damagedTitle": "Trang Bị Bị Hỏng",
+      "repairEmpty": "Tất cả trang bị đều trong tình trạng tốt.",
+      "repairBtn": "Sửa Chữa",
+      "equippedBy": "{{name}} (đang dùng bởi {{owner}})",
+      "durMeta": "{{cur}}/{{max}} độ bền · {{pct}}% hư hỏng"
+    },
+    "dismantle": {
+      "inventoryTitle": "Kho Trang Bị",
+      "inventoryEmpty": "Kho trống.",
+      "dismantleBtn": "Tháo Dỡ",
+      "title": "Tháo Dỡ Trang Bị",
+      "confirmLabel": "Tháo Dỡ",
+      "slot_one": "{{count}} slot",
+      "slot_other": "{{count}} slot",
+      "matPlaceholder": "—",
+      "bodyCrafted": "Tháo dỡ {{name}}? Hồi phục: ~{{min}}-{{max}}× {{mat}} + {{pct}}% cơ hội 1× nguyên liệu quái.",
+      "bodyPlain": "Tháo dỡ {{name}}? Hồi phục: ~{{min}}-{{max}}× {{mat}}."
+    },
     "queue": {
-      "empty": "Hàng đợi trống",
-      "workers": "{{active}}/{{capacity}} thợ đang hoạt động"
+      "empty": "Hàng đợi đang trống",
+      "workers": "{{active}}/{{capacity}} đang hoạt động",
+      "noTasksQueued": "Không có nhiệm vụ nào trong hàng đợi",
+      "queueTitle": "Hàng Đợi ({{count}})",
+      "cancelTitle": "Huỷ (không hoàn lại nguyên liệu)",
+      "queuedLabel": "đang chờ",
+      "typeLabel": {
+        "CRAFT": "Chế Tác",
+        "ENHANCE_ADD": "Thêm Slot",
+        "ENHANCE_REROLL": "Đúc Lại",
+        "REPAIR": "Sửa Chữa"
+      }
     },
     "confirm": {
       "reroll": "Reroll {{stat}} {{current}} → giá trị mới trong {{min}}-{{max}}? Có thể thấp hơn current.",
@@ -63,11 +118,12 @@
     "cancel": "Hủy",
     "delete": "Xóa",
     "ok": "OK",
-    "close": "Đóng"
+    "close": "Đóng",
+    "comingSoon": "Sắp Ra Mắt"
   },
   "tavern": {
-    "title": "Quán Trọ",
-    "visitorsTooltip": "{{count}} vị khách hôm nay · tối đa {{cap}}",
+    "title": "Tửu Quán",
+    "visitorsTooltip": "Có {{count}} vị khách hôm nay · tối đa {{cap}}",
     "keeper": {
       "assign": "Chỉ định quản gia",
       "assignHint": "Chỉ định quản gia để thu hút khách",
@@ -95,7 +151,7 @@
       "needGold": "Cần {{cost}}g"
     },
     "empty": {
-      "noKeeper": "Chỉ định quản gia để bắt đầu thu hút khách.",
+      "noKeeper": "Chỉ định chủ quản để bắt đầu thu hút khách.",
       "noVisitors": "Tin đồn đang lan… khách sẽ đến vào ngày mai."
     },
     "card": {
@@ -206,7 +262,7 @@
     "subtitle": "RPG Idle Guild Builder",
     "continue": "Tiếp Tục",
     "new_game": "Trò Chơi Mới",
-    "delete_save": "Xóa Lưu",
+    "delete_save": "Xóa Save",
     "confirm_delete": "Xác Nhận Xóa?",
     "settings": "Cài Đặt",
     "export": "Xuất",
@@ -227,8 +283,8 @@
     "saved": "Đã Lưu",
     "save_error": "Lưu Thất Bại",
     "save_game": "Lưu Trò Chơi",
-    "export_save": "Xuất Lưu",
-    "import_save": "Nhập Lưu",
+    "export_save": "Xuất File Lưu",
+    "import_save": "Nhập FIle Lưu",
     "import_error": "File không hợp lệ",
     "import_success": "Nhập thành công",
     "confirm_overwrite": "Ô này đã có dữ liệu. Ghi đè?",
@@ -238,16 +294,6 @@
     "confirm_reset": "Xác Nhận Đặt Lại?",
     "confirm": "Xác Nhận",
     "mute_all": "Tắt Âm Thanh"
-  },
-  "notification": {
-    "mission_complete": "Nhiệm vụ hoàn thành!",
-    "mission_failed": "Nhiệm vụ thất bại!",
-    "gold_earned": "+{{amount}} Vàng",
-    "exp_earned": "+{{amount}} EXP",
-    "members_injured": "{{count}} thành viên bị thương",
-    "victory": "Chiến thắng",
-    "partial_victory": "Chiến thắng một phần",
-    "full_wipe": "Toàn diệt"
   },
   "status": {
     "idle": "Sẵn Sàng",
@@ -275,5 +321,612 @@
     "survivors": "Sống Sót",
     "injured": "Bị Thương",
     "select_mission": "Chọn nhiệm vụ"
+  },
+  "archetype": {
+    "warrior": "Chiến Binh",
+    "scout": "Trinh Sát",
+    "sword": "Thánh Kiếm",
+    "engineer": "Kỹ Sư",
+    "scholar": "Học Giả",
+    "dualblade": "Song Kiếm",
+    "philosopher": "Triết Gia"
+  },
+  "member": {
+    "unnamed": "{{archetype}} #{{id}}"
+  },
+  "questBoard": {
+    "title": "Bảng Nhiệm Vụ",
+    "ariaLabel": "Bảng Nhiệm Vụ",
+    "return": "Về Hội Quán",
+    "returnAria": "Về Hội Quán",
+    "empty": "Không có nhiệm vụ nào.",
+    "listAria": "Nhiệm vụ khả dụng",
+    "filter": {
+      "ariaLabel": "Lọc theo bậc",
+      "all": "Tất Cả",
+      "tierAria": "Bậc {{tier}}"
+    },
+    "card": {
+      "gate": "CỬA ẢI",
+      "chain": "Chuỗi",
+      "duration": "{{mins}} phút",
+      "gold": "{{min}}-{{max}}",
+      "exp": "{{exp}} XP",
+      "party": "{{members}}+ Cấp {{level}}+",
+      "tierAlt": "Bậc {{tier}}",
+      "drops": "Rơi đồ:",
+      "dropsMore": "+{{count}}"
+    },
+    "detail": {
+      "emptyText": "Chọn một cuộn nhiệm vụ để bắt đầu...",
+      "back": "← Quay Lại",
+      "tierAlt": "Bậc {{tier}}",
+      "enemies": "Kẻ Địch",
+      "enemyLevel": "Cấp {{level}}",
+      "enemyCount": "×{{count}}",
+      "rewardGold": "Vàng",
+      "rewardExp": "EXP",
+      "rewardDuration": "Thời Gian",
+      "rewardRequired": "Yêu Cầu",
+      "durationValue": "{{mins}} phút",
+      "requiredValue": "{{members}}+ Cấp {{level}}+",
+      "party": "Đội Hình",
+      "partyCount": "({{selected}}/{{required}}+)",
+      "mercFee": "Phí lính đánh thuê: {{fee}}g",
+      "mercFeeInsufficient": "Phí lính đánh thuê: {{fee}}g (không đủ vàng)",
+      "autoAssign": "Tự Chọn",
+      "dispatch": "Xuất Phát ({{selected}}/{{required}}+)"
+    }
+  },
+  "roster": {
+    "title": "THÀNH VIÊN",
+    "close": "Đóng",
+    "searchPlaceholder": "Tìm theo tên…",
+    "filterAll": "Tất Cả",
+    "filterAllStatus": "Mọi Trạng Thái",
+    "empty": "Không có thành viên nào khớp bộ lọc.",
+    "release": "Giải Tán",
+    "releaseConfirm": "Giải tán {{name}}? Hành động này không thể hoàn tác.",
+    "releaseConfirmFallback": "thành viên này",
+    "status": {
+      "idle": "Sẵn Sàng",
+      "on-mission": "Đang Đi Nhiệm Vụ",
+      "injured": "Bị Thương",
+      "training": "Đang Luyện Tập",
+      "assigned": "Đã Phân Công"
+    },
+    "listItem": {
+      "statusReady": "Sẵn Sàng",
+      "statusOnMission": "Đang Làm Nhiệm Vụ",
+      "statusInjured": "Bị Thương",
+      "statusTraining": "Đang Luyện Tập",
+      "injuredCountdown": "Bị thương ({{mins}}p)",
+      "pointsHint": "{{count}} điểm cần phân bổ"
+    }
+  },
+  "combatPanel": {
+    "fallbackName": "Chiến Đấu",
+    "header": {
+      "closeAria": "Đóng bảng chiến đấu"
+    },
+    "formation": {
+      "party": "Đội Hình",
+      "allPlaced": "Đã xếp hết",
+      "back": "Sau",
+      "front": "Trước",
+      "enemies": "Kẻ Địch",
+      "slot": "{{side}} {{index}}",
+      "memberMeta": "Cấp {{level}} {{archetype}}",
+      "slotMeta": "Cấp {{level}}",
+      "enemyMeta": "Cấp {{level}}",
+      "focus": "Tập Trung",
+      "balance": "Cân Bằng",
+      "autoPlace": "Tự Xếp",
+      "start": "Bắt Đầu"
+    },
+    "battle": {
+      "modeFocus": "TẬP TRUNG",
+      "modeBalance": "CÂN BẰNG",
+      "modeLabel": "CHẾ ĐỘ {{mode}}",
+      "priorityTitle": "Ưu tiên mục tiêu: {{mode}}",
+      "elapsed": "ĐÃ QUA {{time}}",
+      "wave": "ĐỢT {{current}}/{{total}}",
+      "resume": "Tiếp Tục (Space)",
+      "pause": "Tạm Dừng (Space)",
+      "speed": "Tốc độ {{mult}}×",
+      "skip": "BỎ QUA → GIẢI QUYẾT",
+      "skipTitle": "Bỏ qua phần còn lại và giải quyết bằng trình mô phỏng"
+    },
+    "skillBar": {
+      "label": "KỸ NĂNG",
+      "skillTitle": "{{name}} ({{slot}})"
+    },
+    "result": {
+      "victory": "CHIẾN THẮNG",
+      "defeat": "THẤT BẠI",
+      "duration": "Thời gian: {{secs}}s",
+      "damage": "Sát thương: {{amount}}",
+      "survivors": "Sống sót: {{names}}",
+      "injured": "Bị thương: {{names}}",
+      "rewards": "Phần Thưởng",
+      "gold": "Vàng: {{amount}}",
+      "expPerMember": "EXP: {{amount}} / thành viên",
+      "tryAgain": "Thử Lại",
+      "continue": "Tiếp Tục"
+    }
+  },
+  "settings": {
+    "title": "Cài Đặt",
+    "close": "Đóng",
+    "music": "Nhạc: {{pct}}%",
+    "sfx": "Hiệu Ứng: {{pct}}%",
+    "muteAll": "Tắt Tất Cả",
+    "graphicsQuality": "Chất Lượng Đồ Họa",
+    "qualityHigh": "Cao",
+    "qualityLow": "Thấp",
+    "language": "Ngôn Ngữ",
+    "langEn": "English",
+    "langVi": "Tiếng Việt",
+    "saveGame": "Lưu Trò Chơi",
+    "exportSave": "Xuất File Lưu",
+    "importSave": "Nhập File Lưu",
+    "importSuccess": "Nhập thành công",
+    "resetTutorials": "Đặt Lại Hướng Dẫn",
+    "tutorialsResetHint": "Gợi ý hướng dẫn sẽ xuất hiện lại trong lần ghé tiếp theo.",
+    "returnToTitle": "Về Màn Hình Chính",
+    "resetGame": "Đặt Lại Trò Chơi",
+    "confirmReset": "Xác Nhận Đặt Lại?"
+  },
+  "characterDetail": {
+    "back": "← Quay Lại",
+    "unknownName": "???",
+    "subline": "{{rank}} · Cấp {{level}} · {{civ}}",
+    "barHp": "HP",
+    "barExp": "EXP",
+    "tab": {
+      "stats": "Chỉ Số",
+      "equipment": "Trang Bị",
+      "skills": "Kỹ Năng",
+      "bio": "Tiểu Sử"
+    },
+    "gear": "Trang Bị",
+    "slot": {
+      "weapon": "Vũ Khí",
+      "armor": "Giáp",
+      "headgear": "Mũ",
+      "empty": "—"
+    },
+    "medSlot": "Thuốc {{index}}",
+    "medCondition": {
+      "start": "khi bắt đầu",
+      "80": "dưới 80%",
+      "50": "dưới 50%",
+      "30": "dưới 30%",
+      "never": "không bao giờ"
+    },
+    "equip": "Trang Bị",
+    "remove": "Tháo",
+    "healingSyringe": "Ống Thuốc Hồi Phục",
+    "unequip": "Tháo Ra",
+    "skillMeta": "{{mult}}× sát thương · hồi {{cooldown}}s",
+    "autoCast": "Tự Động Thi Triển",
+    "skillLocked": "Kỹ năng mở khóa ở Cấp 5",
+    "biography": "Tiểu Sử",
+    "biographyEmpty": "Câu chuyện của chiến binh này vẫn chưa được viết.",
+    "inviteToGuild": "Mời Vào Hội ({{cost}}g)"
+  },
+  "statsTab": {
+    "unspentPoints_one": "{{count}} điểm chưa dùng",
+    "unspentPoints_other": "{{count}} điểm chưa dùng",
+    "combat": "Chiến Đấu",
+    "maxHp": "HP Tối Đa",
+    "atkDmg": "Sát Thương",
+    "atkSpeed": "Tốc Đánh",
+    "atkSpeedValue": "{{value}}/s",
+    "skillDmg": "ST Kỹ Năng",
+    "skillDmgValue": "+{{value}}%",
+    "critRate": "Tỉ Lệ Bạo",
+    "critRateValue": "{{value}}%",
+    "defense": "Phòng Thủ",
+    "defenseValue": "-{{value}}% ST",
+    "guild": "Hội",
+    "influence": "Tầm Ảnh Hưởng",
+    "stamina": "Thể Lực",
+    "craftSkill": "Kỹ Năng Chế Tác",
+    "negotiation": "Đàm Phán",
+    "exploration": "Thám Hiểm",
+    "leadership": "Lãnh Đạo",
+    "fortune": "Tài Vận",
+    "trainingEff": "Hiệu Suất Luyện",
+    "trainingEffValue": "+{{value}}%",
+    "gatherSpd": "Tốc Thu Thập",
+    "gatherSpdValue": "+{{value}}%",
+    "recovery": "Hồi Phục",
+    "recoveryValue": "{{value}}×",
+    "craft": "Chế Tác",
+    "craftLevel": "Cấp {{level}}",
+    "craftXp": "({{xp}}xp)",
+    "skill": {
+      "woodcutting": "Đốn Gỗ",
+      "mining": "Khai Mỏ",
+      "alchemy": "Giả Kim"
+    }
+  },
+  "derivedStats": {
+    "combatStats": "Chỉ Số Chiến Đấu",
+    "guildStats": "Chỉ Số Hội",
+    "maxHp": "HP Tối Đa",
+    "hpRegen": "HP/s",
+    "atkSpd": "Tốc Đánh",
+    "critRate": "Tỉ Lệ Bạo",
+    "critDmg": "ST Bạo",
+    "critDmgValue": "×{{value}}",
+    "defense": "Phòng Thủ",
+    "dodge": "Né Tránh",
+    "block": "Đỡ Đòn",
+    "skillDmg": "ST Kỹ Năng",
+    "skillDmgValue": "+{{value}}",
+    "haste": "Tăng Tốc",
+    "resist": "Kháng",
+    "morale": "Sĩ Khí",
+    "moraleValue": "+{{value}}",
+    "influence": "Tầm Ảnh Hưởng",
+    "stamina": "Thể Lực",
+    "craft": "Chế Tác",
+    "leadership": "Lãnh Đạo",
+    "fortune": "Tài Vận",
+    "exploration": "Thám Hiểm",
+    "negotiation": "Đàm Phán",
+    "recoveryBonus": "Thưởng Hồi Phục"
+  },
+  "trait": {
+    "silverTongue": {
+      "name": "Miệng Lưỡi",
+      "desc": "Người quản lý có lời nói khéo léo, tăng +5% đàm phán với mọi khách."
+    },
+    "recruiter": {
+      "name": "Tuyển Dụng Viên",
+      "desc": "Mạng lưới quan hệ tăng +5% đàm phán với những người hiếm trở lên."
+    },
+    "storyteller": {
+      "name": "Kể Chuyện",
+      "desc": "Những câu chuyện hấp dẫn tăng +5% đàm phán khi khách có cá tính đặc biệt."
+    },
+    "hotHeaded": {
+      "name": "Nóng Tính",
+      "desc": "Dễ nổi giận — ngưỡng xúc phạm thấp hơn bình thường."
+    },
+    "cautious": {
+      "name": "Thận Trọng",
+      "desc": "Muốn thử làm lính đánh thuê trước khi gia nhập Hội."
+    },
+    "loyal": {
+      "name": "Trung Thành",
+      "desc": "+10 danh tiếng khi chấp nhận — người này giữ lời hứa."
+    }
+  },
+  "titleScreen": {
+    "continue": "Tiếp Tục",
+    "newGame": "Chơi Mới",
+    "loadGame": "Tải Game",
+    "settings": "Cài Đặt",
+    "credits": "Tác Giả",
+    "quit": "Thoát",
+    "menuAria": "Menu chính",
+    "panelAria": "Menu tiêu đề",
+    "loadFailed": "Không thể tải dữ liệu lưu"
+  },
+  "savePicker": {
+    "backAria": "Quay về menu chính",
+    "back": "‹ Quay Lại",
+    "headingNew": "Chơi Mới",
+    "headingLoad": "Tải Game",
+    "overwriteMsg": "Ô này đã có dữ liệu. Ghi đè?",
+    "yesOverwrite": "Có, ghi đè",
+    "cancel": "Hủy",
+    "startNew": "Bắt Đầu Game Mới",
+    "load": "Tải"
+  },
+  "saveSlot": {
+    "slot": "Ô {{number}}",
+    "empty": "Trống",
+    "founder": "Người Sáng Lập: {{name}}",
+    "level": "Cấp Độ: {{level}}",
+    "playTime": "Thời Gian Chơi: {{time}}",
+    "saved": "Đã Lưu: {{date}}"
+  },
+  "credits": {
+    "heading": "Tác Giả",
+    "backAria": "Quay về menu chính",
+    "back": "‹ Quay Lại",
+    "footer": "2000s A.C — © 2026 HungTran — Bản quyền được bảo lưu"
+  },
+  "titleSettings": {
+    "heading": "Cài Đặt",
+    "backAria": "Quay về menu chính",
+    "back": "‹ Quay Lại",
+    "musicVolumeLabel": "Âm Lượng Nhạc",
+    "sfxVolumeLabel": "Âm Lượng Hiệu Ứng",
+    "languageLabel": "Ngôn Ngữ",
+    "languageAria": "Ngôn ngữ",
+    "graphicsLabel": "Chất Lượng Đồ Họa",
+    "graphicsAria": "Chất lượng đồ họa",
+    "graphicsHigh": "Cao",
+    "graphicsLow": "Thấp",
+    "graphicsHint": "Thấp tắt bóng đổ, bloom & hiệu ứng khí quyển. Áp dụng khi tải game.",
+    "langEn": "English",
+    "langVi": "Tiếng Việt"
+  },
+  "splashScreen": {
+    "loadingAria": "Đang tải"
+  },
+  "hud": {
+    "upkeep": "Chi Phí: {{amount}}v/ngày",
+    "inventory": "Kho Đồ",
+    "members": "Thành Viên: {{count}}",
+    "missions": "Nhiệm Vụ: {{count}}"
+  },
+  "panelToggle": {
+    "quests": "Nhiệm Vụ",
+    "roster": "Danh Sách",
+    "facilities": "Cơ Sở",
+    "settings": "Cài Đặt"
+  },
+  "saveStatus": {
+    "saving": "Đang lưu...",
+    "saved": "Đã lưu",
+    "failed": "Lưu thất bại"
+  },
+  "facilityCompass": {
+    "guildHall": "Đại Sảnh Hội"
+  },
+  "coachmark": {
+    "workshop": "Nhấn vào đe để chế tác",
+    "alchemyLab": "Nhấn vào lò phản ứng để pha chế",
+    "tavern": "Nhấn vào quầy để tuyển dụng",
+    "drum": "Đánh trống để xem nhiệm vụ"
+  },
+  "inventory": {
+    "title": "Kho Đồ Hội",
+    "close": "✕",
+    "tabs": {
+      "all": "Tất Cả",
+      "weapon": "Vũ Khí",
+      "armor": "Giáp",
+      "material": "Vật Liệu",
+      "consumable": "Tiêu Hao"
+    },
+    "sort": {
+      "rarity": "Độ Hiếm ↓",
+      "name": "Tên A–Z",
+      "qty": "Số Lượng ↓"
+    },
+    "searchPlaceholder": "Tìm kiếm vật phẩm...",
+    "rarityAll": "Tất Cả",
+    "footer": {
+      "hints": "[I] Đóng · [↑↓←→] Di Chuyển · [Enter] Chọn",
+      "totalItems": "{{count}} vật phẩm",
+      "slots": "{{used}} / {{max}} ô"
+    },
+    "equippedBadge": "ĐB"
+  },
+  "inventoryDetail": {
+    "empty": "Chọn một vật phẩm\nđể xem chi tiết",
+    "quantity": "Số Lượng",
+    "sellValue": "Giá Bán",
+    "sellPer": "{{price}}v mỗi cái",
+    "use": "Dùng",
+    "drop1": "Bỏ 1",
+    "equip": "Trang Bị",
+    "drop": "Bỏ",
+    "equippedBy": "Được trang bị bởi: {{name}}",
+    "damage": "Sát Thương",
+    "defense": "Phòng Thủ",
+    "hp": "HP",
+    "durability": "Độ Bền"
+  },
+  "inventoryExpansion": {
+    "expandSlots": "+{{count}} ô",
+    "expandTitle": "Mở Rộng +{{count}} ô",
+    "notEnoughResources": "Không đủ tài nguyên",
+    "maxCapacity": "Đã đạt giới hạn tối đa"
+  },
+  "equipMode": {
+    "done": "Xong",
+    "equipment": "Trang Bị",
+    "medicine": "Y Tế",
+    "equipmentInStash": "Trang Bị Trong Kho",
+    "consumables": "Tiêu Hao",
+    "dropHere": "Thả vào đây",
+    "dropConsumable": "Thả vật tiêu hao",
+    "clearSlotAria": "Xóa ô",
+    "noStash": "Không có trang bị trong kho.",
+    "condStart": "Khi Bắt Đầu",
+    "cond80": "Dưới 80%",
+    "cond50": "Dưới 50%",
+    "cond30": "Dưới 30%",
+    "condNever": "Không Bao Giờ"
+  },
+  "alchemy": {
+    "title": "Giả Kim",
+    "inventoryTitle": "Kho Đồ",
+    "inventoryEmpty": "Kho trống",
+    "ingredients": "Nguyên Liệu",
+    "output": "Kết Quả",
+    "quantity": "Số Lượng:",
+    "craft": "Pha Chế",
+    "cancel": "Hủy",
+    "levelSlots": "Giả Kim Lv.{{level}} — {{visible}}/4 ô nguyên liệu",
+    "dragHere": "thả",
+    "unlocksAt": "Lv.{{level}}",
+    "removeHint": "{{name}} — nhấn để xóa",
+    "dropHint": "Kéo nguyên liệu vào đây",
+    "lockedHint": "Mở khóa ở Giả Kim Lv.{{level}}"
+  },
+  "facilitiesPanel": {
+    "title": "CƠ SỞ",
+    "guildLevel": "Hội Lv.{{level}}",
+    "gold": "⬡ {{amount}}v",
+    "slotsUsed": "{{used}}/12 ô",
+    "close": "Đóng",
+    "tutorialBuildLogging": "▶ Chọn một ô trống để xây Trại Khai Thác.",
+    "tutorialAssignKael": "▶ Chọn Trại Khai Thác và phân công Kael.",
+    "tutorialBuildTavern": "▶ Chọn ô trống và xây Quán Rượu (200 Gỗ).",
+    "slotEmpty": "Trống",
+    "hallLabel": "Đại Sảnh"
+  },
+  "facilityTray": {
+    "stat": "{{stats}} · {{assigned}}/{{max}}",
+    "level": "Lv.{{level}}",
+    "upgradeBtn": "↑ {{cost}}v",
+    "assign": "Phân Công",
+    "bonus": "Phân công thành viên để kích hoạt",
+    "enterRoom": "Vào Phòng →",
+    "upgradeTitleFacility": "Nâng Cấp {{name}}",
+    "upgradeBodyFacility": "Nâng lên Cấp {{level}}? Chi phí: {{cost}}v.",
+    "upgradeConfirm": "Nâng Cấp",
+    "slotLabel": "Ô {{number}} — Chọn phòng để xây",
+    "allBuilt": "Tất cả phòng có sẵn đã được xây.",
+    "buildBtn": "Chọn bản thiết kế",
+    "buildBtnWithName": "Xây {{name}} — {{cost}}",
+    "buildConfirmTitle": "Xây {{name}}",
+    "buildConfirmBody": "Xây tại Ô {{number}}? Chi phí: {{cost}}. Công trình là vĩnh viễn.",
+    "buildConfirmBtn": "Xây",
+    "costFree": "Miễn Phí",
+    "costPermit": "Giấy Phép",
+    "needMaterials": "Cần {{materials}}"
+  },
+  "guildUpgrade": {
+    "label": "Đại Sảnh — Lv.{{level}}",
+    "btn": "Nâng Cấp — {{cost}}v",
+    "title": "Nâng Cấp Đại Sảnh Hội",
+    "body": "Nâng lên Cấp {{level}}? Chi phí: {{cost}}v. Mở khóa ô và bản thiết kế mới.",
+    "confirm": "Nâng Cấp"
+  },
+  "activeMissions": {
+    "header": "Nhiệm Vụ Đang Thực Hiện",
+    "traveling": "Đang Di Chuyển...",
+    "arrived": "Đã Đến!",
+    "inCombat": "Đang Chiến Đấu",
+    "clickToCombat": "⚔️ Nhấn để bắt đầu chiến đấu",
+    "resolving": "Đang giải quyết..."
+  },
+  "arrivalModal": {
+    "title": "⚔️ Đội Đã Đến!",
+    "enemiesLabel": "Kẻ địch gặp phải:",
+    "enemyLevel": "(Lv.{{level}})",
+    "enterBattle": "⚔️ Vào Trận"
+  },
+  "combatView": {
+    "title": "Chiến Đấu",
+    "close": "Đóng",
+    "replayTitle": "Xem Lại Trận Đấu",
+    "noResults": "Chưa có kết quả. Phái đoàn đi nhiệm vụ để xem kết quả.",
+    "damage": "Sát thương: ",
+    "duration": "Thời gian: ",
+    "gold": "Vàng: ",
+    "exp": "EXP: ",
+    "combatLog": "Nhật Ký Chiến Đấu",
+    "tick": "Lượt {{number}}",
+    "outcome": {
+      "victory": "Chiến Thắng",
+      "partial-victory": "Chiến Thắng Một Phần",
+      "full-wipe": "Toàn Diệt"
+    }
+  },
+  "combatPrepPanel": {
+    "title": "Chuẩn Bị Trận",
+    "retreat": "Rút Lui",
+    "party": "Đội Hình",
+    "allPlaced": "Đã xếp xong",
+    "back": "Hậu",
+    "front": "Tiền",
+    "enemies": "Kẻ Địch",
+    "autoPlace": "Xếp Tự Động",
+    "startBattle": "Bắt Đầu Trận",
+    "frontSlot": "Tiền {{n}}",
+    "backSlot": "Hậu {{n}}"
+  },
+  "combatSkillHotbar": {
+    "ready": "SẴN SÀNG"
+  },
+  "combatResultOverlay": {
+    "victory": "CHIẾN THẮNG",
+    "defeat": "THẤT BẠI",
+    "duration": "Thời gian: {{secs}}s",
+    "damage": "Sát thương: {{amount}}",
+    "survivors": "Sống sót: {{names}}",
+    "injured": "Bị thương: {{names}}",
+    "rewards": "Phần Thưởng",
+    "gold": "Vàng: {{min}}–{{max}}",
+    "exp": "EXP: {{amount}}",
+    "rescueReward": "★ Phần Thưởng Giải Cứu",
+    "kaelJoins": "Kael gia nhập Hội của bạn!",
+    "loggingPermit": "+ Giấy Phép Trại Khai Thác",
+    "continue": "Tiếp Tục"
+  },
+  "gameOver": {
+    "title": "Hội Quán Sụp Đổ!",
+    "body": "Tất cả thành viên đã bị đánh bại. Hội quán của bạn chìm trong đổ nát...",
+    "injured": "Bị Thương",
+    "recoveryIn": "Thành viên đầu tiên hồi phục sau {{secs}}s",
+    "returnToTitle": "Về Màn Hình Tiêu Đề"
+  },
+  "charCreation": {
+    "step": {
+      "civ": "Nền Văn Minh",
+      "class": "Lớp",
+      "mask": "Mặt Nạ",
+      "identity": "Danh Tính"
+    },
+    "stepRailAria": "Các bước tạo nhân vật",
+    "chooseCiv": "Chọn nền văn minh của bạn",
+    "chooseClass": "Chọn lớp của bạn",
+    "chooseMask": "Chọn mặt nạ của bạn",
+    "forgeIdentity": "Rèn luyện danh tính",
+    "namePlaceholder": "Tên nhân vật",
+    "guildNamePlaceholder": "Tên hội (tùy chọn)",
+    "back": "Quay Lại",
+    "continue": "Tiếp Tục",
+    "begin": "Bắt Đầu"
+  },
+  "statAllocator": {
+    "title": "Điểm Tài Năng",
+    "remaining": "còn {{count}}"
+  },
+  "partySelect": {
+    "empty": "Không có thành viên rảnh",
+    "underleveled": "Cấp Thấp"
+  },
+  "confirmDialog": {
+    "cancel": "Hủy"
+  },
+  "inkConfirmDialog": {
+    "cancel": "Hủy"
+  },
+  "offlinePopup": {
+    "title": "Cơ sở sản xuất khi vắng mặt",
+    "offline": "Offline {{hours}} giờ",
+    "memberExp": "• Thành Viên +{{exp}} EXP",
+    "itemGain": "• +{{qty}} {{item}}",
+    "collect": "Thu Thập"
+  },
+  "rankPromotion": {
+    "title": "Hạng & Tiến Độ",
+    "missions": "Nhiệm Vụ Hoàn Thành: {{count}}",
+    "perks": "Đặc Quyền: +{{expBonus}}% EXP",
+    "upkeepLess": ", giảm {{pct}}% chi phí",
+    "upkeepMore": ", +{{pct}}% chi phí",
+    "upkeepNormal": ", chi phí bình thường",
+    "next": "Tiếp Theo: {{rank}} — Lv.{{level}}+ | {{missions}}+ nhiệm vụ | {{gold}}v",
+    "promote": "Thăng Chức lên {{rank}} ({{gold}}v)"
+  },
+  "notification": {
+    "arrivalBody": "📍 Đội đã đến nơi! Chọn chế độ chiến đấu.",
+    "victory": "Chiến Thắng!",
+    "partialVictory": "Chiến Thắng Một Phần",
+    "wiped": "Toàn Diệt!",
+    "goldExpSurvivors": "+{{gold}} Vàng | +{{exp}} EXP | {{survivors}} sống sót",
+    "injured": " | {{count}} bị thương"
   }
 }
