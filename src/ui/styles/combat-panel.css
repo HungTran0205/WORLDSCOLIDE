@@ -12,8 +12,12 @@
 }
 
 .combat-panel {
-  width: min(900px, 95vw);
-  height: min(640px, 90vh);
+  /* Shared size for ALL phases (formation/result/battle) so switching phases
+     doesn't jump size. ~80% screen, framed; aspect ~1.74 ≈ 16:9. Battle relies
+     on this width too — see the camera-zoom coverage note in
+     .combat-panel--phase-battle. */
+  width: min(1536px, 90vw);
+  height: min(880px, 88vh);
   background: var(--ink-bg-panel);
   border: var(--ink-border-w) solid var(--ink-gold);
   border-radius: var(--ink-radius-md);
@@ -284,8 +288,12 @@
      the canvas underneath has full-frustum bg planes that would otherwise
      show through any noticeable transparency. */
   box-shadow: 0 0 0 9999px rgba(6, 4, 3, 0.98);
-  width: min(960px, 96vw);
-  height: min(620px, 92vh);
+  /* Size inherited from .combat-panel (~80% screen, framed) so all phases match.
+     Camera zoom (COMBAT_CAM_ZOOM) is paired with that width so fighters fill the
+     rect instead of leaving empty arena. Coverage constraint: panel-visible
+     world width = panel_px / zoom must stay ≤ far-bg width (25.5u). At
+     1536px / 64 = 24u ✓. Box-shadow + full-window canvas mean the bigger rect
+     just unmasks more of the already-rendered scene — bg/camera unaffected. */
 }
 
 .combat-panel--phase-battle .combat-panel-header {

@@ -26,9 +26,14 @@ export const COMBAT_CAM_ELEV_MULT = 1.55;
 /** Camera Y position — DIST * tan(TILT) * ELEV_MULT. */
 export const COMBAT_CAM_HEIGHT = COMBAT_CAM_DIST * Math.tan(COMBAT_CAM_TILT_RAD) * COMBAT_CAM_ELEV_MULT;
 
-// Zoom 42 — wider frustum reveals room for far/mid background layers either
-// side of the battlefield, supporting the HD-2D depth scene.
-export const COMBAT_CAM_ZOOM = 42;
+// Zoom 64 — paired with the enlarged battle panel (~80% screen, see
+// `.combat-panel--phase-battle` in combat-panel.css). Bumped from 42 so the
+// fighters fill the larger rect instead of sitting small in empty arena.
+// Coverage constraint: panel-visible world width = panel_px / zoom must stay
+// ≤ far-bg width (25.5u) or the bg edge shows. At 1536px / 64 = 24u ≤ 25.5u ✓.
+// Keep zoom ≥ ~63 at this panel width; if lowered, widen far/mid bg planes.
+// Live-tune via leva `Combat / Camera`, then bake the final value here.
+export const COMBAT_CAM_ZOOM = 64;
 
 /** Look-at point — Y=3.0 pushes ground (y=0) toward bottom of viewport so
  *  foreground ground is visible under sprites instead of dominating
