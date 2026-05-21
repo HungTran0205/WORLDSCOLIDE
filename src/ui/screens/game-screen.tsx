@@ -39,6 +39,7 @@ import { AUDIO } from '@/audio/audio-keys';
 import type { PanelId } from '@/ui/hud/panel-toggle';
 import { KeyboardShortcuts } from '@/ui/hud/keyboard-shortcuts';
 import { DrumTooltipArrow } from '@/ui/overlays/drum-tooltip-arrow';
+import { FacilityHintCoachmark } from '@/ui/overlays/facility-hint-coachmark';
 import { DEBUG_MODE } from '@/debug';
 import { TutorialCoachmark } from '@/ui/coachmark/tutorial-coachmark';
 import { getCurrentStep } from '@/game/systems/tutorial-manager';
@@ -118,10 +119,6 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   // Graduation toast fires only on the live transition INTO 'complete', never when a
   // finished save is reloaded (prevStepRef seeds to the loaded step on mount).
   const [showGraduation, setShowGraduation] = useState(false);
-  // Tracks whether user explicitly closed the panel while still in the room
-  const alchemyUserClosedRef = useRef(false);
-  const workshopUserClosedRef = useRef(false);
-  const tavernUserClosedRef = useRef(false);
 
   // Detect when camera is settled inside an alchemy lab room
   const cameraTarget = useGameStore((s) => s.cameraTarget);
@@ -145,34 +142,6 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
     const [fx, , fz] = FACILITY_SLOTS[f.placedSlot];
     return Math.abs(cameraTarget[0] - fx) <= 3.5 && Math.abs(cameraTarget[2] - fz) <= 3.5;
   }), [allFacilities, cameraTarget]);
-
-  useEffect(() => {
-    if (alchemyFacility && cameraSettled) {
-      // Only auto-open if user hasn't manually closed it this visit
-      if (!alchemyUserClosedRef.current) setAlchemyPanelOpen(true);
-    } else {
-      setAlchemyPanelOpen(false);
-      alchemyUserClosedRef.current = false; // reset when camera leaves room
-    }
-  }, [alchemyFacility, cameraSettled]);
-
-  useEffect(() => {
-    if (workshopFacility && cameraSettled) {
-      if (!workshopUserClosedRef.current) setWorkshopPanelOpen(true);
-    } else {
-      setWorkshopPanelOpen(false);
-      workshopUserClosedRef.current = false;
-    }
-  }, [workshopFacility, cameraSettled]);
-
-  useEffect(() => {
-    if (tavernFacility && cameraSettled) {
-      if (!tavernUserClosedRef.current) setTavernPanelOpen(true);
-    } else {
-      setTavernPanelOpen(false);
-      tavernUserClosedRef.current = false;
-    }
-  }, [tavernFacility, cameraSettled]);
 
   const currentCombatReplay = useGameStore((s) => s.currentCombatReplay);
   const gameScene = useGameStore((s) => s.gameScene);
@@ -213,9 +182,51 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   // Keep cameraFocus aligned with active panel — HUD button or drum click both
   // funnel through here so the cinematic framing applies either way. Reset to
   // 'default' whenever the quest panel is closed.
+  //
+  // Facility-focus is a SEPARATE driver: object-click sets it via requestFacilityPanel
+  // without touching activePanel, and the facility panels' onClose restores it. This
+  // effect therefore only owns the quest-board↔default transition.
   useEffect(() => {
     setCameraFocus(activePanel === 'quests' ? 'quest-board' : 'default');
   }, [activePanel, setCameraFocus]);
+
+  // Bridge: room object click → facility function panel. Open the panel keyed by the
+  // pending type ONLY when the matching proximity finder is truthy (i.e. the camera is
+  // actually in that room), so a stale signal can't open a panel for a room we left.
+  // Clear the signal immediately after handling.
+  const pendingFacilityFunctionPanel = useGameStore((s) => s.pendingFacilityFunctionPanel);
+  const clearPendingFacilityFunctionPanel = useGameStore((s) => s.clearPendingFacilityFunctionPanel);
+  const setCameraTarget = useGameStore((s) => s.setCameraTarget);
+  useEffect(() => {
+    if (!pendingFacilityFunctionPanel) return;
+    if (pendingFacilityFunctionPanel === 'workshop' && workshopFacility) setWorkshopPanelOpen(true);
+    else if (pendingFacilityFunctionPanel === 'alchemy-lab' && alchemyFacility) setAlchemyPanelOpen(true);
+    else if (pendingFacilityFunctionPanel === 'tavern' && tavernFacility) setTavernPanelOpen(true);
+    clearPendingFacilityFunctionPanel();
+  }, [pendingFacilityFunctionPanel, clearPendingFacilityFunctionPanel, workshopFacility, alchemyFacility, tavernFacility]);
+
+  // Leaving a room (proximity finder goes falsy) closes its open panel and restores
+  // default framing — replaces the old auto-open effect's else branch.
+  useEffect(() => {
+    if (!workshopFacility && workshopPanelOpen) { setWorkshopPanelOpen(false); setCameraFocus('default'); }
+  }, [workshopFacility, workshopPanelOpen, setCameraFocus]);
+  useEffect(() => {
+    if (!alchemyFacility && alchemyPanelOpen) { setAlchemyPanelOpen(false); setCameraFocus('default'); }
+  }, [alchemyFacility, alchemyPanelOpen, setCameraFocus]);
+  useEffect(() => {
+    if (!tavernFacility && tavernPanelOpen) { setTavernPanelOpen(false); setCameraFocus('default'); }
+  }, [tavernFacility, tavernPanelOpen, setCameraFocus]);
+
+  // Closing a panel pulls the camera back from the object to the room overview and
+  // restores default framing (re-enables orbit). Falls back to leaving the target
+  // untouched if the slot is missing. Preserves current eye-height (y).
+  const restoreRoomFraming = (placedSlot: number | null) => {
+    if (placedSlot !== null) {
+      const [fx, , fz] = FACILITY_SLOTS[placedSlot];
+      setCameraTarget([fx, cameraTarget[1], fz]);
+    }
+    setCameraFocus('default');
+  };
 
   // Switch BGM when scene changes
   useEffect(() => {
@@ -285,21 +296,37 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
           {alchemyPanelOpen && alchemyFacility && (
             <AlchemyCraftPanel
               facility={alchemyFacility}
-              onClose={() => { setAlchemyPanelOpen(false); alchemyUserClosedRef.current = true; }}
+              onClose={() => { setAlchemyPanelOpen(false); restoreRoomFraming(alchemyFacility.placedSlot); }}
             />
           )}
           {workshopPanelOpen && workshopFacility && (
             <WorkshopPanel
               facility={workshopFacility}
-              onClose={() => { setWorkshopPanelOpen(false); workshopUserClosedRef.current = true; }}
+              onClose={() => { setWorkshopPanelOpen(false); restoreRoomFraming(workshopFacility.placedSlot); }}
             />
           )}
           {tavernPanelOpen && tavernFacility && (
             <TavernPanel
               facility={tavernFacility}
-              onClose={() => { setTavernPanelOpen(false); tavernUserClosedRef.current = true; }}
+              onClose={() => { setTavernPanelOpen(false); restoreRoomFraming(tavernFacility.placedSlot); }}
             />
           )}
+          <FacilityHintCoachmark
+            activeType={
+              workshopFacility ? 'workshop'
+                : alchemyFacility ? 'alchemy-lab'
+                  : tavernFacility ? 'tavern'
+                    : null
+            }
+            roomCenter={
+              workshopFacility?.placedSlot != null ? FACILITY_SLOTS[workshopFacility.placedSlot]
+                : alchemyFacility?.placedSlot != null ? FACILITY_SLOTS[alchemyFacility.placedSlot]
+                  : tavernFacility?.placedSlot != null ? FACILITY_SLOTS[tavernFacility.placedSlot]
+                    : null
+            }
+            settled={cameraSettled}
+            panelOpen={workshopPanelOpen || alchemyPanelOpen || tavernPanelOpen}
+          />
           <HomeButton />
           <KeyboardShortcuts activePanel={activePanel} setActivePanel={setActivePanel} />
           <DrumTooltipArrow activePanel={activePanel} />
