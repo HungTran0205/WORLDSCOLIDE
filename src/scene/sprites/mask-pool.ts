@@ -10,6 +10,13 @@ export const MASK_POOL = [
 export type MaskId = typeof MASK_POOL[number];
 export type MaskView = 'front' | 'east';
 
+/** Founder mask choices for char-creation — first 10 of the pool (single source, DRY). */
+export const FOUNDER_MASK_CHOICES: MaskId[] = MASK_POOL.slice(0, 10);
+
+/** Narrative shown above the mask grid in the founder Mask step (English copy). */
+export const FOUNDER_MASK_NARRATIVE =
+  'In this broken world, malevolent eyes watch from above the heavens — your identity is your most precious possession. Choose the face you show the world.';
+
 /** Asset path resolver. `front` for roster portrait, `east` for combat profile (source is east-facing; mirror via scale.x for west). */
 export function getMaskAssetPath(id: string, view: MaskView): string {
   return `/sprites/mask/pick/${id}/${view}.png`;

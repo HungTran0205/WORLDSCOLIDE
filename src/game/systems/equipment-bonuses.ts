@@ -51,6 +51,7 @@ export function createEquipmentItem(templateId: EquipmentTemplateId): EquipmentI
 const STARTING_WEAPONS: Partial<Record<CivArchetype, EquipmentTemplateId>> = {
   warrior: 'WOODEN_AXE',
   scout:   'WOODEN_CROSSBOW',
+  sword:   'WOODEN_SWORD',
 };
 
 /** Returns a starting weapon for an archetype, or null if none assigned. */

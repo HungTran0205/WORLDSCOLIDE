@@ -80,15 +80,17 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   z-index: 200;
   font-family: 'Segoe UI', system-ui, sans-serif;
+  padding: 24px 16px 32px;
+  overflow-y: auto;
 }
 
 .char-creation-overlay h1 {
   color: #ffd700;
   font-size: 2rem;
-  margin-bottom: 24px;
+  margin: 0 0 16px;
 }
 
 .stat-allocation-grid {
@@ -270,3 +272,353 @@ img[src*="sprites/icons"] {
   vertical-align: middle;
 }
 
+/* ─── Char creation: split-hero wizard ──────────────────────────────────────── */
+
+/* Step rail (visual breadcrumb above the hero) */
+.char-step-rail {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.char-step-rail-item { display: flex; align-items: center; gap: 4px; }
+.char-step-rail-sep { color: rgba(255, 215, 0, 0.4); font-size: 0.8rem; margin: 0 4px; }
+.char-step-rail-btn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.char-step-rail-btn--done { color: #bfae7a; }
+.char-step-rail-btn--done:hover { color: #ffd700; background: rgba(255, 215, 0, 0.08); }
+.char-step-rail-btn--active { color: #ffd700; border-bottom: 2px solid #ffd700; border-radius: 0; }
+.char-step-rail-btn--upcoming { color: #555; cursor: default; }
+.char-step-rail-btn:disabled { cursor: default; }
+
+/* 2-column hero layout: live preview (left) + step panel (right) */
+.char-create-hero-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 360px) minmax(320px, 520px);
+  gap: 28px;
+  width: 100%;
+  max-width: 920px;
+  align-items: start;
+}
+
+.char-create-hero {
+  position: sticky;
+  top: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.char-create-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 420px;
+}
+
+.char-create-step-body { display: flex; flex-direction: column; gap: 14px; }
+.char-create-step-title { color: #ffd700; font-size: 1.2rem; margin: 0; }
+.char-create-flavor { color: #aaa; font-size: 0.85rem; line-height: 1.5; margin: 4px 0 0; }
+
+.char-create-fields { display: flex; flex-direction: column; gap: 10px; }
+.char-create-fields input[type="text"] { max-width: none; margin-bottom: 0; }
+
+.char-create-nav {
+  display: flex;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 12px;
+}
+.char-create-nav-btn { width: auto; flex: 1; margin-top: 0; }
+
+/* ── Live character preview — TCG-style hero card ── */
+.char-preview-frame {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  border: 3px solid #D4A017;
+  border-radius: 14px;
+  padding: 10px;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.2)),
+    rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* Top-corner badges (weapon left, mask right) overlapping the art */
+.char-preview-badge {
+  position: absolute;
+  top: 16px;
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(212, 160, 23, 0.6);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.65);
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.55);
+  z-index: 2;
+}
+.char-preview-badge--weapon { left: 16px; }
+.char-preview-badge--mask { right: 16px; }
+.char-preview-badge img {
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+.char-preview-badge-empty { font-size: 1.25rem; opacity: 0.4; color: #fff; }
+.char-preview-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.char-preview-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+.char-preview-placeholder {
+  font-family: var(--ink-font-title, 'Segoe UI'), sans-serif;
+  font-size: 4rem;
+  font-weight: 700;
+  opacity: 0.55;
+  letter-spacing: 2px;
+}
+/* Mask overlay — ~25% avatar width, positioned over the face (mask POC ratio) */
+.char-preview-mask {
+  position: absolute;
+  top: 28%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 25%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  pointer-events: none;
+  z-index: 1;
+}
+/* Name plate between art and stats */
+.char-preview-nameplate {
+  text-align: center;
+  font-family: var(--ink-font-title, 'Segoe UI'), serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 4px 0;
+  border-top: 1px solid rgba(212, 160, 23, 0.35);
+  border-bottom: 1px solid rgba(212, 160, 23, 0.35);
+}
+.char-preview-nameplate--empty {
+  opacity: 0.4;
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: 1px;
+  font-weight: 400;
+}
+/* Chosen-stats footer — compact label/value chips */
+.char-preview-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+  gap: 4px 6px;
+}
+.char-preview-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.8rem;
+}
+.char-preview-stat[data-zero='true'] { opacity: 0.4; }
+.char-preview-stat-key { color: #cfd3da; letter-spacing: 0.5px; }
+.char-preview-stat-val { font-weight: 700; color: #ffd700; }
+
+/* ── Civilization cards (with locked styling) ── */
+.civ-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  width: 100%;
+}
+.civ-card {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  color: #e0e0e0;
+  text-align: center;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.civ-card:hover:not(:disabled) { border-color: rgba(255, 215, 0, 0.4); }
+.civ-card--selected { border-width: 2px; }
+.civ-card--locked {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+.civ-card-lock { position: absolute; top: 6px; right: 8px; font-size: 0.9rem; }
+.civ-card-name { font-size: 1rem; font-weight: 600; margin-bottom: 4px; }
+.civ-card-role { font-size: 0.75rem; color: #aaa; margin-bottom: 6px; }
+.civ-card-desc { font-size: 0.7rem; color: #888; margin-bottom: 8px; line-height: 1.4; }
+.civ-card-bonuses { display: flex; justify-content: center; gap: 6px; }
+.civ-card-bonus { font-size: 0.75rem; font-weight: 600; }
+.civ-card-coming-soon {
+  margin-top: 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #c9a227;
+  text-transform: uppercase;
+}
+
+/* ── Class (archetype) tiles ── */
+.archetype-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: 100%;
+}
+.archetype-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  color: #e0e0e0;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.archetype-tile:hover { border-color: rgba(255, 215, 0, 0.4); }
+.archetype-tile--selected {
+  border-color: #ffd700;
+  background: rgba(255, 215, 0, 0.12);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.3);
+}
+.archetype-tile-icon {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.archetype-tile-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+.archetype-tile-icon-fallback { font-size: 2rem; font-weight: 700; color: #ffd700; }
+.archetype-tile-name { font-size: 0.95rem; font-weight: 700; color: #ffd700; }
+.archetype-tile-tagline { font-size: 0.72rem; color: #aaa; text-align: center; line-height: 1.3; }
+.archetype-tile-weapon {
+  font-size: 0.68rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ── Mask identity tiles ── */
+.mask-selector { display: flex; flex-direction: column; gap: 14px; width: 100%; }
+.mask-selector-narrative {
+  color: #cbb884;
+  font-size: 0.85rem;
+  font-style: italic;
+  line-height: 1.55;
+  margin: 0;
+}
+.mask-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  width: 100%;
+}
+.mask-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  padding: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s;
+}
+.mask-tile:hover { border-color: rgba(255, 215, 0, 0.4); }
+.mask-tile--selected {
+  border-color: #ffd700;
+  background: rgba(255, 215, 0, 0.12);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.3);
+}
+.mask-tile-img {
+  width: 100%;
+  height: 100%;
+  max-width: 48px;
+  max-height: 48px;
+  object-fit: contain;
+}
+.mask-tile-fallback { font-size: 1.5rem; font-weight: 700; color: #888; }
+
+/* Pixel-art rendering utility (shared by mask tiles + any pixel thumbnails) */
+.pixelated {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ── Talent point allocator ── */
+.stat-allocator { display: flex; flex-direction: column; gap: 10px; }
+.stat-allocator-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.stat-allocator-title { color: #ffd700; font-size: 0.95rem; font-weight: 600; }
+.stat-allocator-remaining { color: #4caf50; font-size: 0.85rem; }
+.stat-allocator-remaining--pending { color: #ffd700; }
+
+/* ── Responsive: stack hero vertically on narrow viewports ── */
+@media (max-width: 760px) {
+  .char-create-hero-layout {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+  }
+  .char-create-hero { position: static; }
+  .char-preview-frame { max-width: 240px; margin: 0 auto; }
+}

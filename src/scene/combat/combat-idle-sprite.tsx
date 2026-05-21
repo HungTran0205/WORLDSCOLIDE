@@ -61,8 +61,8 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
   // Allies-only identity mask. Enemies render via spriteId and skip the overlay.
   const maskId = useMemo(() => {
     if (entity.spriteId || !entity.isAlly) return null;
-    return resolveMemberMaskId({ id: entity.id });
-  }, [entity.id, entity.spriteId, entity.isAlly]);
+    return resolveMemberMaskId({ id: entity.id, maskSpriteId: entity.maskSpriteId });
+  }, [entity.id, entity.maskSpriteId, entity.spriteId, entity.isAlly]);
 
   // Refs for mask animation/direction sync (mask reads these via useFrame).
   const animStateRef = useRef<string>(entity.animState);

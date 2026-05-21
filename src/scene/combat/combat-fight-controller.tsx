@@ -291,6 +291,7 @@ function buildSnapshots(engine: CombatEngineType): ArenaEntitySnapshot[] {
     archetype: e.archetype,
     civilization: e.civilization,
     gender: e.gender,
+    maskSpriteId: e.maskSpriteId,
     spriteId: e.spriteId,
     flying: e.flying,
     nextAttackAt: e.nextAttackAt,
