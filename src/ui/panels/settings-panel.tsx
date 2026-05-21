@@ -11,6 +11,7 @@ import { setMusicVolume, setSFXVolume, setMute } from '@/audio/audio-manager';
 import { saveManager } from '@/game/save/save-manager';
 import { saveSlot } from '@/game/save/save-storage';
 import { deleteSlot } from '@/game/save/save-storage';
+import { useLanguage } from '@/i18n/use-language';
 import '@/ui/styles/panels.css';
 
 interface SettingsPanelProps {
@@ -21,6 +22,7 @@ interface SettingsPanelProps {
 export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) {
   const settings = useGameStore((s) => s.settings);
   const updateSettings = useGameStore((s) => s.updateSettings);
+  const { language, setLanguage } = useLanguage();
   const resetTutorials = useUiStore((s) => s.resetTutorials);
   const [confirmReset, setConfirmReset] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -142,6 +144,27 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
         {/* Shadows + Bloom controls removed: shadows crash the WebGPU pipeline
             (samplers exceed per-stage limit) and bloom is now implicit in the
             graphics tier above. Tier preset cascades both flags. */}
+      </div>
+
+      <div className="panel-section">
+        {/* Label text is migrated to i18n in the UI-strings phase; the control
+            itself binds to the device-level language preference now. */}
+        <div style={{ marginBottom: 6 }}>Language</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {(['en', 'vi'] as const).map((lng) => (
+            <button
+              key={lng}
+              className="panel-btn"
+              style={{
+                borderColor: language === lng ? '#4caf50' : undefined,
+                opacity: language === lng ? 1 : 0.6,
+              }}
+              onClick={() => setLanguage(lng)}
+            >
+              {lng === 'en' ? 'English' : 'Tiếng Việt'}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="panel-section">

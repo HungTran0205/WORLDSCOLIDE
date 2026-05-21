@@ -1,23 +1,19 @@
 /**
  * Title screen settings overlay — minimal form for BGM/SFX volume,
- * language (en/vi), and graphics quality. Persists via `useGameStore`
- * (same source-of-truth as the in-game settings panel) so values survive
- * across title <-> game transitions and reloads.
+ * language (en/vi), and graphics quality. Volume/graphics persist via
+ * `useGameStore` (same source-of-truth as the in-game settings panel) so
+ * values survive across title <-> game transitions and reloads.
  *
- * Language toggle uses `i18n.changeLanguage` + `localStorage.settings.lang`
- * (no store field yet — the in-progress i18n plan owns wiring).
+ * Language is a device-level preference (one language across all save slots),
+ * handled by the shared `useLanguage` hook (localStorage + i18n) — not part of
+ * the saved game payload.
  */
 
-import { useEffect, useState } from 'react';
-import i18n from 'i18next';
 import { useGameStore } from '@/game/state/store';
 import { graphicsTierFlags } from '@/game/state/guild-slice';
 import { setMusicVolume, setSFXVolume, playSFX } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
-
-const LANG_STORAGE_KEY = 'settings.lang';
-
-type Lang = 'en' | 'vi';
+import { useLanguage } from '@/i18n/use-language';
 
 interface TitleScreenSettingsProps {
   onBack: () => void;
@@ -26,14 +22,7 @@ interface TitleScreenSettingsProps {
 export function TitleScreenSettings({ onBack }: TitleScreenSettingsProps) {
   const settings = useGameStore((s) => s.settings);
   const updateSettings = useGameStore((s) => s.updateSettings);
-  const [lang, setLang] = useState<Lang>(() => readStoredLang());
-
-  // Live-apply language whenever it changes. localStorage write is a fallback
-  // until the i18n plan adds a `language` field to GameSettings.
-  useEffect(() => {
-    void i18n.changeLanguage(lang);
-    localStorage.setItem(LANG_STORAGE_KEY, lang);
-  }, [lang]);
+  const { language, setLanguage } = useLanguage();
 
   const handleMusicVolume = (vol: number) => {
     updateSettings({ musicVolume: vol });
@@ -99,16 +88,16 @@ export function TitleScreenSettings({ onBack }: TitleScreenSettingsProps) {
           <button
             type="button"
             role="radio"
-            aria-checked={lang === 'en'}
-            className={`title-settings__radio${lang === 'en' ? ' title-settings__radio--active' : ''}`}
-            onClick={() => setLang('en')}
+            aria-checked={language === 'en'}
+            className={`title-settings__radio${language === 'en' ? ' title-settings__radio--active' : ''}`}
+            onClick={() => setLanguage('en')}
           >English</button>
           <button
             type="button"
             role="radio"
-            aria-checked={lang === 'vi'}
-            className={`title-settings__radio${lang === 'vi' ? ' title-settings__radio--active' : ''}`}
-            onClick={() => setLang('vi')}
+            aria-checked={language === 'vi'}
+            className={`title-settings__radio${language === 'vi' ? ' title-settings__radio--active' : ''}`}
+            onClick={() => setLanguage('vi')}
           >Tiếng Việt</button>
         </div>
       </div>
@@ -137,12 +126,4 @@ export function TitleScreenSettings({ onBack }: TitleScreenSettingsProps) {
       </div>
     </div>
   );
-}
-
-function readStoredLang(): Lang {
-  // localStorage is authoritative once user sets it; i18n.language is a fallback
-  // for first-visit users. TODO: replace with `settings.language` once the i18n
-  // plan adds a typed field to GameSettings.
-  const raw = localStorage.getItem(LANG_STORAGE_KEY);
-  return raw === 'vi' || raw === 'en' ? raw : (i18n.language === 'vi' ? 'vi' : 'en');
 }
