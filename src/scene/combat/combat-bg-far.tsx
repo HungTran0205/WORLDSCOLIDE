@@ -34,9 +34,12 @@ export function CombatBgFar({ texture = DEFAULT_FAR_BG_TEXTURE }: CombatBgFarPro
     x:      { value: 0.0, min: -20, max: 20, step: 0.1 },
     y:      { value: -2.6, min: -10, max: 20, step: 0.1 },
     z:      { value: -22.0, min: -50, max: -2, step: 0.5 },
-    // Darkened + desaturated tint so sprites pop against the foggy background.
-    // was '#e0e3c0' (bright warm); now cool grey 35% brightness.
-    tint:   { value: '#595a52' },
+    // Morning-forest tint: the distant layer reads as bright sunrise haze
+    // (atmospheric perspective → farthest = lightest). History: '#e0e3c0'
+    // (too bright) → '#595a52' (too dark, near-black photo) → '#c2c4ae'
+    // (bright warm-grey morning). The post color-grade (combat-atmosphere-
+    // preset) does the palette unifying; this just sets the BG luminance.
+    tint:   { value: '#c2c4ae' },
   }, { collapsed: true });
 
   const tex = useLoader(TextureLoader, texture);

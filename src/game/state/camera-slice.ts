@@ -2,8 +2,14 @@
 
 import type { StateCreator } from 'zustand';
 import type { FacilityType } from './game-state';
+import { GUILD_HALL_GRID_WIDTH, GUILD_HALL_GRID_DEPTH } from './guild-hall-grid';
 
-export const GUILD_HALL_CAMERA_TARGET: [number, number, number] = [5, 1.5, 3.5];
+/** Room center, derived from the floor grid so it stays aligned on resize. */
+export const GUILD_HALL_CAMERA_TARGET: [number, number, number] = [
+  GUILD_HALL_GRID_WIDTH / 2,
+  1.5,
+  GUILD_HALL_GRID_DEPTH / 2,
+];
 
 /** Camera framing modes. 'quest-board' zooms tighter on the drum for the
  *  diegetic quest panel; 'facility-focus' frames a room's iconic object when

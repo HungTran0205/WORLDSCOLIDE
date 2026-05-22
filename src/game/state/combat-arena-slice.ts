@@ -45,7 +45,10 @@ export interface CombatArenaSlice {
 
   // Arena state
   arenaPhase: ArenaPhase;
+  /** Template id (MISSIONS lookup / display). Shared across same-template parties. */
   arenaMissionId: string | null;
+  /** Unique active-mission instance id — which party's run is in the arena. */
+  arenaInstanceId: string | null;
   formation: Formation;
   arenaEntities: ArenaEntitySnapshot[];
   arenaTime: number;
@@ -58,7 +61,7 @@ export interface CombatArenaSlice {
 
   // Actions
   setGameScene: (scene: GameScene) => void;
-  enterCombatPrep: (missionId: string) => void;
+  enterCombatPrep: (missionId: string, instanceId: string) => void;
   setFormationSlot: (slotIndex: number, memberId: string | null) => void;
   clearFormation: () => void;
   startBattle: () => void;
@@ -75,6 +78,7 @@ export const createCombatArenaSlice: StateCreator<CombatArenaSlice> = (set) => (
   gameScene: 'guild-hall',
   arenaPhase: 'idle',
   arenaMissionId: null,
+  arenaInstanceId: null,
   formation: [...EMPTY_FORMATION],
   arenaEntities: [],
   arenaTime: 0,
@@ -85,10 +89,11 @@ export const createCombatArenaSlice: StateCreator<CombatArenaSlice> = (set) => (
 
   setGameScene: (scene) => set({ gameScene: scene }),
 
-  enterCombatPrep: (missionId) => set({
+  enterCombatPrep: (missionId, instanceId) => set({
     gameScene: 'combat-arena',
     arenaPhase: 'prep',
     arenaMissionId: missionId,
+    arenaInstanceId: instanceId,
     formation: [...EMPTY_FORMATION],
     arenaEntities: [],
     arenaTime: 0,
@@ -130,6 +135,7 @@ export const createCombatArenaSlice: StateCreator<CombatArenaSlice> = (set) => (
     gameScene: 'guild-hall',
     arenaPhase: 'idle',
     arenaMissionId: null,
+    arenaInstanceId: null,
     formation: [...EMPTY_FORMATION],
     arenaEntities: [],
     arenaTime: 0,

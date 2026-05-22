@@ -694,6 +694,28 @@ function migrateV25toV26(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+/**
+ * v26→v27: Add unique `instanceId` to every active mission. Pre-v27 missions were
+ * keyed only by the shared template `missionId`, so two parties on the same quest
+ * resolved as one (and the second party's members got stranded). Backfill a uuid so
+ * each dispatch is independently addressable. Skip any that somehow already have one.
+ */
+function migrateV26toV27(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+  const activeMissions: AnyRecord[] = Array.isArray(gs.activeMissions) ? gs.activeMissions : [];
+  const migrated = activeMissions.map((am) =>
+    typeof am.instanceId === 'string' && am.instanceId
+      ? am
+      : { ...am, instanceId: crypto.randomUUID() },
+  );
+
+  return {
+    ...envelope,
+    version: 27,
+    gameState: { ...gs, activeMissions: migrated } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -715,6 +737,7 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   23: migrateV23toV24,
   24: migrateV24toV25,
   25: migrateV25toV26,
+  26: migrateV26toV27,
 };
 
 /**

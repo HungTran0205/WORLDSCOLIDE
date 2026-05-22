@@ -7,6 +7,41 @@ All notable changes to Worlds Collide are documented in this file. The format fo
 
 ---
 
+## [Unreleased] — 2026-05-22 (Combat Mask Composite Atlas — Phase 3 Integration Complete)
+
+### feat(combat): replace floating mask overlay with per-character runtime composite atlases
+
+**Overview**: Replaced legacy per-archetype mask overlay plane with runtime-composite per-character atlases synced frame-by-frame to body animation. Each masked ally's mask is now baked into the rendered sprite, eliminating floating/misalignment and improving runtime perf (1 mesh/ally instead of 2).
+
+**Implementation** (Phase 3 complete):
+- **combat-idle-sprite.tsx** — Rewrote to build masked `idle`/`attack`/`blocking` composite atlases via `useMemo` when ally has `maskId`. Atlases loaded on first use; enemies and death states keep body atlas. Extended `currentAnim` type to include `'blocking'` (4 frames at 10 FPS = 400ms per `combat-engine.ts`).
+- **combat-mask-anchors.ts** — Per-frame anchor table for `LS-SWORD-M` / `LS-WARRIOR-M` / `LS-SCOUT-F` (idle 8, attack 8, blocking 4 frames) + safe fallback helpers `setDevAnchorOverride()` / `getAnchorTable()`.
+- **combat-mask-composite-atlas.ts** — Canvas-based atlas builder; draws body frame then masks texture at frame anchor with `imageSmoothingEnabled: false` (pixel-crisp rendering).
+- **combat-mask-dev-tuner.tsx** (DEV-only) — Leva-based anchor authoring tool; select `charId+anim+frame`, nudge anchor x/y/size, rebuild live, export to clipboard.
+- **Cleanup** — Deleted legacy overlay/tuner/placement files (`combat-mask-overlay.tsx` / `combat-mask-tuner.tsx` / `combat-mask-placement.ts`); removed overlay mount from `combat-idle-sprite.tsx`; DEV-gated new tuner in `combat-scene-shell.tsx`; wired `disposeCombatMaskCompositeAtlasCache()` on scene unmount.
+
+**TypeScript**: Compile clean (0 errors).
+
+**Plan Reference**: `plans/260522-1233-combat-mask-composite-atlas/phase-03-combat-sprite-integration.md` (Phase 3 complete).
+
+---
+
+## [Unreleased] — 2026-05-22 (Same-template concurrent quest dispatch fix)
+
+### fix(missions): unique `instanceId` per dispatch — two parties on same quest no longer resolve as one
+
+**Bug**: Dispatching 2 parties to the SAME quest template (e.g. "Diệt Slime"/Slime Extermination) → finishing one party's combat removed BOTH active missions; the second party's members stayed `on-mission` forever and never returned to the guild hall.
+
+**Root cause**: `ActiveMission` had no unique id — `missionId` held the shared template id, so `completeMission`/`failMission`/`updateMissionPhase`/`setTargetPriority`/`saveCombatSnapshot` filtered/mapped by template id and hit every same-template instance at once. The arena/combat-panel also `.find()`'d the active mission by template id (returning the wrong/first party).
+
+**Fix**: Added unique `ActiveMission.instanceId` (uuid, generated in `createActiveMission`). All per-instance store ops now key by `instanceId`; `completedMissions` still records the template `missionId` (derived inside `completeMission`) so quest prerequisite/tutorial checks are unchanged. Threaded `instanceId` through combat-panel-store, combat-arena-slice (`arenaInstanceId`), and UI consumers (active-missions-list, formation, battle, fight-controller, prep-panel, arena-result-handler). Template lookups (`MISSIONS.find`, tutorial/map checks) intentionally still use `missionId`.
+
+**Save migration**: `SAVE_VERSION` 26→27 (`migrateV26toV27`) backfills `instanceId` (uuid) onto existing active missions.
+
+**Tests**: Regression test in `mission-tick.test.ts` (only the targeted instance resolves when two parties share a template) + `save-migrations.test.ts` (same-template parties get distinct backfilled ids). Full game test suite green.
+
+---
+
 ## [Unreleased] — 2026-05-21 (Bilingual i18n EN+VI Support & New Game Flow)
 
 ### feat(i18n): complete bilingual architecture — two-namespace EN/VI localization

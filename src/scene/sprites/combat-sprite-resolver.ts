@@ -16,10 +16,11 @@
  * Add new civs/enemies here as their frames land.
  */
 
-export type CombatAnimState = 'idle' | 'attack' | 'death';
+export type CombatAnimState = 'idle' | 'attack' | 'blocking' | 'death';
 
 export const COMBAT_IDLE_FRAME_COUNT = 8;
 export const COMBAT_ATTACK_FRAME_COUNT = 8;
+export const COMBAT_BLOCKING_FRAME_COUNT = 4;
 export const COMBAT_DEATH_FRAME_COUNT = 8;
 
 /** Compile-time map of which entities have which combat-panel assets on disk. */
@@ -31,6 +32,10 @@ export const COMBAT_SPRITE_MANIFEST = {
   /** Char IDs with `animations/attack/east/frame_0..7.png`. */
   charsWithAttackEast: new Set<string>([
     'LS-SCOUT-F', 'LS-SCOUT-M', 'LS-WARRIOR-F', 'LS-WARRIOR-M', 'LS-SWORD-M',
+  ]),
+  /** Char IDs with `animations/blocking/east/frame_0..3.png`. */
+  charsWithBlockingEast: new Set<string>([
+    'LS-SCOUT-F', 'LS-WARRIOR-M', 'LS-SWORD-M',
   ]),
   /** Char IDs with `animations/death/east/frame_0..7.png`. */
   charsWithDeathEast: new Set<string>([
@@ -99,6 +104,13 @@ export function resolveAllyCombatSprite(
     return resolveAllyCombatSprite(basePath, 'idle', frame);
   }
 
+  if (state === 'blocking') {
+    if (COMBAT_SPRITE_MANIFEST.charsWithBlockingEast.has(charId)) {
+      return `${basePath}/animations/blocking/east/frame_${padded}.png`;
+    }
+    return resolveAllyCombatSprite(basePath, 'idle', frame);
+  }
+
   if (COMBAT_SPRITE_MANIFEST.charsWithBattleIdleEast.has(charId)) {
     return `${basePath}/animations/battle-idle/east/frame_${padded}.png`;
   }
@@ -164,6 +176,10 @@ export function getAllyCombatFrameCount(basePath: string, state: CombatAnimState
     // No attack asset → caller reuses the idle atlas; mirror idle's frame count.
     return getAllyCombatFrameCount(basePath, 'idle');
   }
+  if (state === 'blocking') {
+    if (COMBAT_SPRITE_MANIFEST.charsWithBlockingEast.has(charId)) return COMBAT_BLOCKING_FRAME_COUNT;
+    return getAllyCombatFrameCount(basePath, 'idle');
+  }
   return COMBAT_SPRITE_MANIFEST.charsWithDeathEast.has(charId) ? COMBAT_DEATH_FRAME_COUNT : 1;
 }
 
@@ -188,6 +204,10 @@ export function getEnemyCombatFrameCount(spriteId: string, state: CombatAnimStat
 /** True when the entity has dedicated attack frames on disk (not a fallback). */
 export function hasAllyAttackAnim(basePath: string): boolean {
   return COMBAT_SPRITE_MANIFEST.charsWithAttackEast.has(getCharIdFromBasePath(basePath));
+}
+/** True when the entity has dedicated blocking frames on disk (not a fallback). */
+export function hasAllyBlockingAnim(basePath: string): boolean {
+  return COMBAT_SPRITE_MANIFEST.charsWithBlockingEast.has(getCharIdFromBasePath(basePath));
 }
 export function hasEnemyAttackAnim(spriteId: string): boolean {
   return COMBAT_SPRITE_MANIFEST.enemiesWithAttackWest.has(spriteId);

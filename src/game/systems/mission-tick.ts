@@ -27,12 +27,12 @@ export function processMissionTick(store: GameStore, now: number): MissionTickEv
 
   // Spread to avoid mutation issues while iterating
   for (const active of [...store.activeMissions]) {
-    // Guard: already removed by a previous iteration (shouldn't happen but be safe)
-    if (!store.activeMissions.some((m) => m.missionId === active.missionId)) continue;
+    // Guard: this instance already removed by a previous iteration (be safe).
+    if (!store.activeMissions.some((m) => m.instanceId === active.instanceId)) continue;
 
     const mission = MISSIONS.find((m) => m.id === active.missionId);
     if (!mission) {
-      store.failMission(active.missionId);
+      store.failMission(active.instanceId);
       continue;
     }
 
@@ -40,7 +40,7 @@ export function processMissionTick(store: GameStore, now: number): MissionTickEv
       case 'traveling': {
         const travelEnd = active.startTime + mission.travelTimeMs;
         if (now >= travelEnd) {
-          store.updateMissionPhase(active.missionId, 'arrived', now);
+          store.updateMissionPhase(active.instanceId, 'arrived', now);
           events.push({
             type: 'arrival',
             missionId: active.missionId,
@@ -110,14 +110,14 @@ export function processMissionTick(store: GameStore, now: number): MissionTickEv
             store.addMemberExp(memberId, result.expPerMember);
             store.updateMemberStatus(memberId, 'idle');
           }
-          store.completeMission(active.missionId);
+          store.completeMission(active.instanceId);
           // Only real-member survivors get mission credit (mercs excluded per spec §7).
           store.incrementMissionsCompleted(memberSurvivors);
         } else {
           for (const memberId of active.memberIds) {
             store.updateMemberStatus(memberId, 'idle');
           }
-          store.failMission(active.missionId);
+          store.failMission(active.instanceId);
         }
 
         // Injury duration scales with mission difficulty (members only).

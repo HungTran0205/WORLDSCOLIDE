@@ -329,6 +329,37 @@ describe('migrateSave', () => {
     expect((result.gameState as any).founder.status).toBe('idle');
   });
 
+  it('migrates v26→v27: backfills distinct instanceId on same-template parties', () => {
+    const envelope = {
+      version: 26,
+      savedAt: Date.now(),
+      metadata: { slotId: 1, guildName: 'Test', guildLevel: 1, playTimeMs: 0, founderName: 'F', createdAt: 0, updatedAt: 0 },
+      gameState: {
+        gameTime: 0, realTimeLastTick: 0, guildName: 'Test', guildLevel: 1, gold: 100,
+        guildHall: { level: 1, floorTiles: [{ x: 0, z: 0, color: '#DAA520' }], furniture: [] },
+        settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high', shadowsEnabled: false, bloomEnabled: false, bloomThreshold: 0.85, atmosphericEnabled: true },
+        founder: null, roster: [], completedMissions: [], tutorialStep: 'complete',
+        tavern: {
+          level: 1, keeperId: null, reputation: 0, currentRoster: [], rerolledToday: false,
+          factionBias: null, rumor: null, mercContracts: [], pendingPrompts: [],
+          lastDayProcessed: 0, reputationLastTickWeek: 0, globalNegotiationDebuffUntilDay: null, veteranPool: [],
+        },
+        inventory: { items: {} }, facilities: [],
+        activeMissions: [
+          { missionId: 'slime-extermination', memberIds: ['a'], mercContractIds: [], startTime: 0, estimatedEndTime: 0, phase: 'arrived', arrivalTime: 0, targetPriority: 'focus' },
+          { missionId: 'slime-extermination', memberIds: ['b'], mercContractIds: [], startTime: 0, estimatedEndTime: 0, phase: 'arrived', arrivalTime: 0, targetPriority: 'focus' },
+        ],
+      },
+    };
+    const result = migrateSave(envelope as any);
+    expect(result.version).toBe(SAVE_VERSION);
+    const ams = (result.gameState as any).activeMissions;
+    expect(ams).toHaveLength(2);
+    expect(typeof ams[0].instanceId).toBe('string');
+    expect(ams[0].instanceId).not.toBe('');
+    expect(ams[0].instanceId).not.toBe(ams[1].instanceId);
+  });
+
   it('throws for version higher than SAVE_VERSION', () => {
     const futureEnvelope = { ...VALID_SAVE_ENVELOPE, version: 999 };
     expect(() => migrateSave(futureEnvelope)).toThrow(/newer than supported/);

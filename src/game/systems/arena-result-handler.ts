@@ -28,7 +28,7 @@ import type { ItemID } from '@/game/data/items';
  */
 export function applyMissionResultSideEffects(
   mission: Mission,
-  active: { memberIds: string[]; mercContractIds: string[] },
+  active: { instanceId: string; memberIds: string[]; mercContractIds: string[] },
   members: Member[],
   combatResult: CombatResult,
 ): MissionResult {
@@ -48,13 +48,13 @@ export function applyMissionResultSideEffects(
       store.addMemberExp(memberId, result.expPerMember);
       store.updateMemberStatus(memberId, 'idle');
     }
-    store.completeMission(mission.id);
+    store.completeMission(active.instanceId);
     store.incrementMissionsCompleted(memberSurvivors);
   } else {
     for (const memberId of active.memberIds) {
       store.updateMemberStatus(memberId, 'idle');
     }
-    store.failMission(mission.id);
+    store.failMission(active.instanceId);
   }
 
   // Injuries scale with mission difficulty (members only — mercs never enter infirmary).
@@ -74,13 +74,13 @@ export function applyMissionResultSideEffects(
 
 export function applyArenaResult(): void {
   const store = useGameStore.getState();
-  const { arenaResult, arenaMissionId } = store;
-  if (!arenaResult || !arenaMissionId) return;
+  const { arenaResult, arenaMissionId, arenaInstanceId } = store;
+  if (!arenaResult || !arenaMissionId || !arenaInstanceId) return;
 
   const mission = MISSIONS.find(m => m.id === arenaMissionId);
   if (!mission) { store.exitArena(); return; }
 
-  const active = store.activeMissions.find(m => m.missionId === arenaMissionId);
+  const active = store.activeMissions.find(m => m.instanceId === arenaInstanceId);
   if (!active) { store.exitArena(); return; }
 
   const allMembers = store.founder ? [store.founder, ...store.roster] : store.roster;

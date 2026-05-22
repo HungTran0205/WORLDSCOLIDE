@@ -21,7 +21,7 @@ export const COMBAT_CAM_DIST = 12;
 
 /** Elevation multiplier — scales tilt-derived height. Decouples camera Y
  *  position from sprite billboard angle. Baked from leva `elev mult 1.55`. */
-export const COMBAT_CAM_ELEV_MULT = 1.55;
+export const COMBAT_CAM_ELEV_MULT = 1.65;
 
 /** Camera Y position — DIST * tan(TILT) * ELEV_MULT. */
 export const COMBAT_CAM_HEIGHT = COMBAT_CAM_DIST * Math.tan(COMBAT_CAM_TILT_RAD) * COMBAT_CAM_ELEV_MULT;
@@ -38,7 +38,7 @@ export const COMBAT_CAM_ZOOM = 64;
 /** Look-at point — Y=3.0 pushes ground (y=0) toward bottom of viewport so
  *  foreground ground is visible under sprites instead of dominating
  *  mid-panel. Baked from leva `lookAt Y 3.0`. */
-export const COMBAT_CAM_TARGET: [number, number, number] = [0, 3.0, 0];
+export const COMBAT_CAM_TARGET: [number, number, number] = [0, 3.5, 0];
 
 /** Base sprite world-height (un-foreshortened). Boss = 5.4, regular = 3.96.
  *  Phase 1 polish: scale up ~1.65x from original to make sprites dominant.

@@ -270,6 +270,12 @@ export interface Mission {
 }
 
 export interface ActiveMission {
+  /** Unique per-dispatch id (uuid). Identifies THIS party's run so two parties
+   *  on the same quest template don't resolve/mutate as one. Distinct from
+   *  `missionId` (the shared template id used for MISSIONS lookups). */
+  instanceId: string;
+  /** Template id from MISSIONS (e.g. 'slime-extermination'). NOT unique —
+   *  multiple active missions can share it. Use for template/data lookups only. */
   missionId: string;
   memberIds: string[];
   /** Parallel list of merc contract ids participating in this mission (AD1).

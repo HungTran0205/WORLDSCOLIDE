@@ -84,23 +84,29 @@ export const LOLO_VILLAGE_OUTSKIRT_STAGE: CombatStageSpec = {
     // verdict: ≥0.5u of vertical face on screen. Remove before phase 06.
   ],
   spawnAnchors: {
-    // Mirror FORMATION_POSITIONS.ally exactly. Platform centered at [0,0,0]
-    // so localOffset[i] === world FORMATION_POSITIONS.ally[...][i] {x,z}.
+    // Wider x-spread per lane than the old FORMATION_POSITIONS — at zoom 64 the
+    // previous ~0.5u steps let adjacent members merge into one silhouette. Each
+    // lane now steps ~1u in x AND keeps the -3/0/+3 z lanes (z drives vertical
+    // screen separation under the 22° tilt). Back row x ≤ 8 stays inside the
+    // ~24u panel frame (±12u). Platform centered at [0,0,0] so localOffset ===
+    // world {x,z}.
     ally: [
       { formationIndex: 0, platformId: 'ground', localOffset: [-2.5, -3] },
-      { formationIndex: 1, platformId: 'ground', localOffset: [-3, 0] },
-      { formationIndex: 2, platformId: 'ground', localOffset: [-3.5, 3] },
+      { formationIndex: 1, platformId: 'ground', localOffset: [-3.5, 0] },
+      { formationIndex: 2, platformId: 'ground', localOffset: [-4.5, 3] },
       { formationIndex: 3, platformId: 'ground', localOffset: [-6, -3] },
-      { formationIndex: 4, platformId: 'ground', localOffset: [-6.5, 0] },
-      { formationIndex: 5, platformId: 'ground', localOffset: [-7, 3] },
+      { formationIndex: 4, platformId: 'ground', localOffset: [-7, 0] },
+      { formationIndex: 5, platformId: 'ground', localOffset: [-8, 3] },
     ],
+    // Mirror of ally (symmetric x + z lanes) so the two formations balance
+    // within the wide frame.
     enemy: [
-      { formationIndex: 0, platformId: 'ground', localOffset: [2.5, -3.5] },
-      { formationIndex: 1, platformId: 'ground', localOffset: [3, -0.5] },
-      { formationIndex: 2, platformId: 'ground', localOffset: [3.5, 2.5] },
-      { formationIndex: 3, platformId: 'ground', localOffset: [6, -3.5] },
-      { formationIndex: 4, platformId: 'ground', localOffset: [6.5, -0.5] },
-      { formationIndex: 5, platformId: 'ground', localOffset: [7, 2.5] },
+      { formationIndex: 0, platformId: 'ground', localOffset: [2.5, -3] },
+      { formationIndex: 1, platformId: 'ground', localOffset: [3.5, 0] },
+      { formationIndex: 2, platformId: 'ground', localOffset: [4.5, 3] },
+      { formationIndex: 3, platformId: 'ground', localOffset: [6, -3] },
+      { formationIndex: 4, platformId: 'ground', localOffset: [7, 0] },
+      { formationIndex: 5, platformId: 'ground', localOffset: [8, 3] },
     ],
   },
   foreground: 'default',

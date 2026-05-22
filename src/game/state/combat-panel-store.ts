@@ -16,11 +16,14 @@ export type CombatPanelPhase = 'formation' | 'battle' | 'result';
 interface CombatPanelStore {
   isOpen: boolean;
   phase: CombatPanelPhase | null;
+  /** Template id (MISSIONS lookup, tutorial check, map select) — may be shared. */
   missionId: string | null;
+  /** Unique active-mission instance id — identifies WHICH party is fighting. */
+  instanceId: string | null;
   resultData: MissionResult | null;
 
   /** Called by arrival modal — opens panel in formation phase */
-  openCombatPanel: (missionId: string) => void;
+  openCombatPanel: (missionId: string, instanceId: string) => void;
   setPhase: (phase: CombatPanelPhase) => void;
   setResult: (result: MissionResult) => void;
   closeCombatPanel: () => void;
@@ -30,15 +33,16 @@ export const useCombatPanelStore = create<CombatPanelStore>()((set) => ({
   isOpen: false,
   phase: null,
   missionId: null,
+  instanceId: null,
   resultData: null,
 
-  openCombatPanel: (missionId) =>
-    set({ isOpen: true, phase: 'formation', missionId, resultData: null }),
+  openCombatPanel: (missionId, instanceId) =>
+    set({ isOpen: true, phase: 'formation', missionId, instanceId, resultData: null }),
 
   setPhase: (phase) => set({ phase }),
 
   setResult: (result) => set({ phase: 'result', resultData: result }),
 
   closeCombatPanel: () =>
-    set({ isOpen: false, phase: null, missionId: null, resultData: null }),
+    set({ isOpen: false, phase: null, missionId: null, instanceId: null, resultData: null }),
 }));
