@@ -249,6 +249,16 @@ export type QuestTier = 'F' | 'E' | 'D' | 'C' | 'B' | 'A' | 'S';
 /** Phase of an active mission in the state machine */
 export type MissionPhase = 'traveling' | 'arrived' | 'in-combat' | 'completed' | 'failed';
 
+export type DialogSpeakerId = 'ba-nguyet' | 'kael' | 'mai' | 'system' | 'founder';
+
+export interface DialogLine {
+  speakerId: DialogSpeakerId;
+  speakerNameVN: string;
+  speakerNameEN: string;
+  textVN: string;
+  textEN: string;
+}
+
 export interface Mission {
   id: string;
   name: string;
@@ -271,6 +281,18 @@ export interface Mission {
   isBossGate?: boolean;
   /** Per-item conditional drops rolled on mission success */
   conditionalDrops?: Array<{ itemId: ItemID; chance: number; quantity: number }>;
+  /** Arc 1+: shown in MAIN tab only (not EXPEDITION) */
+  isMainQuest?: boolean;
+  /** Arc 1+: repeatable; shown in EXPEDITION tab */
+  isExpedition?: boolean;
+  /** For expeditions spawned by a main quest — parent quest ID */
+  spawnedFromQuestId?: string;
+  /** Narrative clue displayed on the quest card — VN-only for Arc 1 MVP */
+  cardLore?: string;
+  /** 1–3 dialog lines shown in arrival modal before "Enter Battle" */
+  preArrivalDialog?: DialogLine[];
+  /** 1–2 dialog lines shown after combat victory, before reward splash */
+  postCombatDialog?: DialogLine[];
 }
 
 export interface ActiveMission {

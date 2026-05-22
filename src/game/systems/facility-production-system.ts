@@ -12,10 +12,10 @@ import { FACILITY_DEFINITIONS, LOGGING_SITE_CONFIG, STONE_QUARRY_CONFIG } from '
 import { calcDerivedGuildStats } from './derived-guild-stats';
 import { calcMcLevel, type MiningXpGain } from './stone-quarry-production-system';
 
-// Real ticks per game-day. Online produces 1 cycle per real-second, and 1 game-day = 4 real hours,
-// so 14400 real ticks elapse per game-day. Offline catch-up must use the same scale to stay
-// consistent with online production rate (otherwise offline yields ~6x online).
-export const TICKS_PER_DAY = 14400;
+// Real ticks per game-day. Online produces 1 cycle per real-second, and 1 game-day = 30 real minutes,
+// so 1800 real ticks elapse per game-day. Offline catch-up must use the same scale to stay
+// consistent with online production rate (otherwise offline yields differ).
+export const TICKS_PER_DAY = 1800;
 
 // --- Logging Site per-tick production types ---
 
@@ -262,7 +262,7 @@ export function processFacilityProduction(
           const yieldMult = 1 + STONE_QUARRY_CONFIG.mcSkillYieldPct[currentLevel] / 100;
 
           // Per-day stone (skip vein strikes offline — those are event loot).
-          // TICKS_PER_DAY === STONE_QUARRY_CONFIG.ticksPerDay (14400) — the online tick path uses
+          // TICKS_PER_DAY === STONE_QUARRY_CONFIG.ticksPerDay (1800) — the online tick path uses
           // the same constant for strike probability, so online/offline rates stay in lockstep.
           const dailyStone =
             STONE_QUARRY_CONFIG.baseRate *

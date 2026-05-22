@@ -62,7 +62,10 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     id: 'cave-bat', name: 'Cave Bat', level: 2,
     stats: { STR: 3, END: 2, INT: 1, DEX: 6, CHA: 0, LCK: 2, AGI: 8 },
     skill: null, abilities: [],
-    loot: [{ itemId: 'BOAR_PELT', chance: 0.3, min: 1, max: 1 }],
+    loot: [
+      { itemId: 'BOAR_PELT', chance: 0.3, min: 1, max: 1 },
+      { itemId: 'STONE', chance: 0.35, min: 1, max: 2 },
+    ],
     spriteId: 'cave-bat',
     flying: true,
   },
@@ -98,9 +101,36 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     id: 'slime-king', name: 'Slime King', level: 3,
     stats: { STR: 8, END: 20, INT: 3, DEX: 2, CHA: 0, LCK: 5, AGI: 2 },
     skill: null, abilities: [],
-    loot: [{ itemId: 'SLIME_GEL', chance: 1.0, min: 2, max: 4 }, { itemId: 'STONE', chance: 0.5, min: 1, max: 2 }],
+    loot: [
+      { itemId: 'SLIME_GEL', chance: 1.0, min: 2, max: 4 },
+      { itemId: 'STONE', chance: 0.5, min: 1, max: 2 },
+      { itemId: 'SLIME_KING_CORE', chance: 1.0, min: 1, max: 1 },
+    ],
     spriteId: 'slime-king',
     isBoss: true,
+  },
+
+  // --- Arc 1: machine enemies ---
+  'flying-drone': {
+    id: 'flying-drone', name: 'Flying Drone', level: 2,
+    stats: { STR: 4, END: 3, INT: 2, DEX: 7, CHA: 0, LCK: 1, AGI: 10 },
+    skill: null, abilities: [{ type: 'stun-attack', chance: 0.15 }],
+    loot: [
+      { itemId: 'DRONE_SENSOR', chance: 0.80, min: 1, max: 1 },
+      { itemId: 'METAL_PLATE',  chance: 0.20, min: 1, max: 1 },
+    ],
+    spriteId: 'slime', // placeholder — Arc 1 sprite pending
+    flying: true,
+  },
+  'dog-robot': {
+    id: 'dog-robot', name: 'Dog Robot', level: 3,
+    stats: { STR: 8, END: 8, INT: 2, DEX: 5, CHA: 0, LCK: 1, AGI: 6 },
+    skill: null, abilities: [{ type: 'enrage', chance: 0.20 }],
+    loot: [
+      { itemId: 'METAL_PLATE',  chance: 0.75, min: 1, max: 2 },
+      { itemId: 'DRONE_SENSOR', chance: 0.30, min: 1, max: 1 },
+    ],
+    spriteId: 'slime', // placeholder — Arc 1 sprite pending
   },
 
   // --- Level 4 (boss: queen-spider) ---

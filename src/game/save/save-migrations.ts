@@ -747,6 +747,13 @@ function migrateV26toV27(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+/**
+ * v27→v28: Add Arc 1 quest story fields to Mission (additive — all optional, no transform needed).
+ */
+function migrateV27toV28(envelope: SaveEnvelope): SaveEnvelope {
+  return { ...envelope, version: 28 };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -769,6 +776,7 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   24: migrateV24toV25,
   25: migrateV25toV26,
   26: migrateV26toV27,
+  27: migrateV27toV28,
 };
 
 /**

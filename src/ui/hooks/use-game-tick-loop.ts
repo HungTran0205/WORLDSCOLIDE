@@ -124,7 +124,7 @@ export function useGameTickLoop() {
     const elapsedMs = Date.now() - store.realTimeLastTick;
 
     if (elapsedMs >= 60_000) {
-      const GAME_DAY_REAL_MS = 4 * 60 * 60 * 1000;
+      const GAME_DAY_REAL_MS = 30 * 60 * 1000;
       const gameDays = Math.min(30, Math.floor(elapsedMs / GAME_DAY_REAL_MS));
 
       if (gameDays > 0) {

@@ -20,7 +20,7 @@ export interface OfflineReport {
   missionOutcomes: OfflineMissionOutcome[];
 }
 
-const GAME_DAY_REAL_MS = 4 * 60 * 60 * 1000; // 4 real hours = 1 game day
+const GAME_DAY_REAL_MS = 30 * 60 * 1000; // 30 min real time = 1 game day
 const MAX_OFFLINE_GAME_DAYS = 30;
 
 /** Process offline progression when game loads after being away */
