@@ -661,9 +661,9 @@
   transform: translate(-50%, -100%);
   font-family: var(--ink-font-mono);
   font-weight: 700;
-  font-size: 14px;
+  font-size: 20px;
   color: #ffd24a;
-  text-shadow: 0 0 4px rgba(0, 0, 0, 0.95);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 1), 0 0 12px rgba(0, 0, 0, 0.8);
   pointer-events: none;
   white-space: nowrap;
   animation: combat-hud-damage-rise 800ms ease-out forwards;
@@ -671,7 +671,7 @@
 
 .combat-hud__damage--crit {
   color: #ff6a4a;
-  font-size: 18px;
+  font-size: 28px;
   letter-spacing: 0.04em;
 }
 
