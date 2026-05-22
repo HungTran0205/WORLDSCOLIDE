@@ -14,11 +14,11 @@ const ZONE_GLB_PATHS = [
   '/models/furnitures/alchemy-table.glb',
   '/models/furnitures/workbench.glb',
   '/models/furnitures/reception-desk.glb',
-  '/arena/forest/3dprops/p_tree_large.glb',
-  '/arena/forest/3dprops/p_tree_pine.glb',
-  '/arena/forest/3dprops/p_stump.glb',
-  '/arena/forest/3dprops/p_log_fallen.glb',
-  '/arena/forest/3dprops/p_bush.glb',
+  '/arena/forest/3dprops/optimized/p_tree_large.glb',
+  '/arena/forest/3dprops/optimized/p_tree_pine.glb',
+  '/arena/forest/3dprops/optimized/p_stump.glb',
+  '/arena/forest/3dprops/optimized/p_log_fallen.glb',
+  '/arena/forest/3dprops/optimized/p_bush.glb',
 ];
 ZONE_GLB_PATHS.forEach((p) => useGLTF.preload(p));
 
@@ -71,10 +71,10 @@ const ZONE_PROPS: Record<FacilityType, ZonePropsConfig> = {
   },
   'logging-site': {
     models: [
-      { path: '/arena/forest/3dprops/p_tree_large.glb', offset: [0, 0, -0.8], targetHeight: 3.5, minLevel: 1 },
-      { path: '/arena/forest/3dprops/p_tree_pine.glb', offset: [-1.0, 0, 0.3], targetHeight: 2.8, minLevel: 1 },
-      { path: '/arena/forest/3dprops/p_stump.glb', offset: [0.9, 0, 0.6], targetHeight: 0.55, minLevel: 1 },
-      { path: '/arena/forest/3dprops/p_bush.glb', offset: [0.3, 0, 0.8], targetHeight: 0.7, minLevel: 1 },
+      { path: '/arena/forest/3dprops/optimized/p_tree_large.glb', offset: [0, 0, -0.8], targetHeight: 3.5, minLevel: 1 },
+      { path: '/arena/forest/3dprops/optimized/p_tree_pine.glb', offset: [-1.0, 0, 0.3], targetHeight: 2.8, minLevel: 1 },
+      { path: '/arena/forest/3dprops/optimized/p_stump.glb', offset: [0.9, 0, 0.6], targetHeight: 0.55, minLevel: 1 },
+      { path: '/arena/forest/3dprops/optimized/p_bush.glb', offset: [0.3, 0, 0.8], targetHeight: 0.7, minLevel: 1 },
     ],
     light: { color: '#fff5cc', intensity: 2.5, distance: 4 },
   },
