@@ -119,6 +119,56 @@
       "name": "Ấn Triện Bị Lãng Quên",
       "description": "Một ấn triện bị lãng quên đang suy yếu. Ngăn chặn thứ đang cố phá vỡ nó.",
       "zone": "Hang Động Sâu"
+    },
+    "ft-strange-exodus": {
+      "name": "Cuộc Di Tản Kỳ Lạ",
+      "description": "Dơi hang — loài chưa từng rời khỏi núi — tấn công bìa rừng.",
+      "zone": "Bìa Rừng"
+    },
+    "ft-path-to-depths": {
+      "name": "Đường Vào Lòng Đất",
+      "description": "Slime xâm chiếm rừng sâu, xua đuổi muông thú bỏ chạy.",
+      "zone": "Rừng Sâu"
+    },
+    "ft-ancient-threshold": {
+      "name": "Ngưỡng Cửa Cổ Đại",
+      "description": "Những cỗ máy cổ đại, ngủ yên 2000 năm, canh giữ cửa hang.",
+      "zone": "Cửa Hang"
+    },
+    "ft-ruins-forgotten-age": {
+      "name": "Di Tích Thời Đại Bị Lãng Quên",
+      "description": "Robot canh gác bảo vệ tầng sâu nhất của di tích tiền sử.",
+      "zone": "Di Tích Lòng Đất"
+    },
+    "ft-slime-sovereign": {
+      "name": "Slime Vương",
+      "description": "Sinh vật đáng sợ nuốt chửng mọi thứ xung quanh, xuất hiện từ sâu trong lòng đất là nguyên nhân của tất cả.",
+      "zone": "Lõi Cổ Đại"
+    },
+    "exp-forest-edge-bats": {
+      "name": "Tuần Tra Bìa Rừng",
+      "description": "Ngăn dơi hang quấy phá bìa rừng.",
+      "zone": "Bìa Rừng"
+    },
+    "exp-deep-forest-slimes": {
+      "name": "Tuần Tra Rừng Sâu",
+      "description": "Tiêu diệt slime đang lan rộng khắp rừng sâu.",
+      "zone": "Rừng Sâu"
+    },
+    "exp-cave-patrol": {
+      "name": "Tuần Tra Cửa Hang",
+      "description": "Tuần tra cửa hang đề phòng drone tái kích hoạt.",
+      "zone": "Cửa Hang"
+    },
+    "exp-ruins-patrol": {
+      "name": "Tuần Tra Di Tích",
+      "description": "Đẩy lùi robot canh gác trong di tích lòng đất.",
+      "zone": "Di Tích Lòng Đất"
+    },
+    "exp-ancient-core": {
+      "name": "Tuần Tra Lõi Cổ Đại",
+      "description": "Trấn áp slime còn rỉ ra từ khe nứt sâu nhất.",
+      "zone": "Lõi Cổ Đại"
     }
   },
   "items": {

@@ -7,6 +7,27 @@ All notable changes to Worlds Collide are documented in this file. The format fo
 
 ---
 
+## [Unreleased] — 2026-05-22 (Arc 1 Quest Chain — "The First Tremor")
+
+### feat(arc1): quest chain data — 5 main quests + 5 expeditions
+
+**Arc 1 "The First Tremor" quest chain** (Phase 3 of `plans/260522-1600-arc1-quest-story-first-tremor/`). Causal narrative: bats flee deep caves → slimes invade the forest → 2000-year-dormant prehistoric machines wake defending the ruins → Slime King, a petroleum + ether creature risen from the deepest earth crack. No empire/faction origin; machine civilization unknown.
+
+Five chained main quests (`chain-first-tremor`, chainOrder 2–6): `ft-strange-exodus` (cave bats, Forest Edge) → `ft-path-to-depths` (slimes, Deep Forest) → `ft-ancient-threshold` (flying-drones, Cave Entrance) → `ft-ruins-forgotten-age` (dog-robots, Underground Ruins) → `ft-slime-sovereign` (Slime King boss, Ancient Core). Each carries bilingual (VN+EN) pre-arrival + post-combat dialog and a VN `cardLore` clue. Five repeatable expeditions (`exp-*`, `isExpedition: true`) unlock after their parent quest.
+
+**Key Files (New)**:
+- `src/game/data/missions-arc1-first-tremor.ts` — exports `ARC1_MISSIONS: Mission[]` (10 missions)
+
+**Key Files (Modified)**:
+- `src/game/data/missions.ts` — import + `...ARC1_MISSIONS` spread into `MISSIONS`
+- `src/i18n/content.vi.json` — VN overlay (name/description/zone) for all 10 new mission ids (required by `content-coverage.test.ts`)
+
+**Test coverage**: 595/595 vitest pass; `tsc -b` clean. Code review 9.5/10.
+
+**Deferred (per plan)**: Phase 4 adds new zones (`Forest Edge`, `Cave Entrance`, `Underground Ruins`, `Ancient Core`) to `ZONE_TO_MAP` (graceful fallback to default village map until then). Phase 7 repoints facility `unlockQuestId` (Stone Quarry → `ft-ancient-threshold`, Alchemy Lab → `ft-ruins-forgotten-age`).
+
+---
+
 ## [Unreleased] — 2026-05-22 (MVP Recruit Gating, VN Names & Roster Rename)
 
 ### feat(tavern): recruitable units gating + deterministic spawn with VN names

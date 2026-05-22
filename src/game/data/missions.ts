@@ -1,5 +1,6 @@
 import type { Mission, QuestTier } from '@/game/state/game-state';
 import { TUTORIAL_QUEST } from './tutorial-data';
+import { ARC1_MISSIONS } from './missions-arc1-first-tremor';
 
 export const MISSIONS: Mission[] = [
   TUTORIAL_QUEST,
@@ -225,6 +226,9 @@ export const MISSIONS: Mission[] = [
     enemyIds: ['orc-warrior', 'dire-wolf', 'goblin-shaman'], requiredMembers: 2, requiredLevel: 4,
     chainId: 'crumbling-path', chainOrder: 4, prerequisiteId: 'chain-depths',
   },
+
+  // ========== Arc 1: "The First Tremor" (chain-first-tremor) ==========
+  ...ARC1_MISSIONS,
 ];
 
 export const TIER_REQUIREMENTS: Record<QuestTier, { guildLevel: number }> = {
