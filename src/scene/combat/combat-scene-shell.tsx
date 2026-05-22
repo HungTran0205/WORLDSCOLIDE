@@ -32,8 +32,10 @@ import { CombatProjectionPublisher } from './combat-projection-publisher';
 import { CombatFightController } from './combat-fight-controller';
 import { CombatShadowLayer } from './combat-shadow-layer';
 import { CombatDofPost } from './combat-dof-post';
+import { CombatWebGpuPost } from './combat-webgpu-post';
 import { CombatScissor } from './combat-scissor';
 import { CombatCameraDebug } from './combat-camera-debug';
+import { CombatMaskDevTuner } from './combat-mask-dev-tuner';
 import { CombatAoeLayer } from './combat-aoe-layer';
 
 export interface CombatSceneShellProps {
@@ -55,6 +57,8 @@ export function CombatSceneShell({ bg, ground, foreground }: CombatSceneShellPro
           subsequent render call to the panel's pixel rectangle. */}
       <CombatScissor />
       <CombatCameraDebug />
+      {/* DEV-only anchor tuner for composite mask authoring. Tree-shaken in prod. */}
+      {import.meta.env.DEV && <CombatMaskDevTuner />}
       <CombatSceneLighting />
       {bg}
       {ground}
@@ -70,10 +74,14 @@ export function CombatSceneShell({ bg, ground, foreground }: CombatSceneShellPro
       {foreground}
       <CombatProjectionPublisher />
       <CombatFightController />
-      {/* DOF — must mount AFTER all visible scene content so the composer's
-          render-loop replacement renders the full tree. Self-disables on
-          'low' graphics quality and on WebGPU. */}
+      {/* Post FX — must mount AFTER all visible scene content so the composer's
+          render-loop replacement renders the full tree. The two paths are
+          mutually exclusive by renderer type, so exactly one composer runs:
+            - WebGL  → <CombatDofPost> (DOF; self-disables on 'low' quality).
+            - WebGPU → <CombatWebGpuPost> (bloom/tilt-shift/grade/vignette/ACES;
+                       tilt-shift supersedes the WebGPU-dead DOF). */}
       <CombatDofPost />
+      <CombatWebGpuPost />
     </>
   );
 }

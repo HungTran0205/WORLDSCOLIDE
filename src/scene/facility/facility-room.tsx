@@ -13,6 +13,7 @@ import { useGameStore } from '@/game/state/store';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { RoomMemberSprites } from './room-member-sprites';
 import { ForestRoomDecor } from '../logging-site/logging-site-furniture';
+import { GrassScatter } from '../logging-site/grass-scatter';
 import { LoggingSiteZoneCard } from '../logging-site/facility-room-forest-decor';
 import { FacilityRoomFurniture } from './facility-room-furniture';
 import { QuarryRoomDecor } from '../quarry/quarry-furniture';
@@ -273,6 +274,7 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
 
       {/* Per-facility decor / furniture */}
       {isLoggingSite && <ForestRoomDecor cx={cx} cz={cz} />}
+      {isLoggingSite && <GrassScatter cx={cx} cz={cz} />}
       {isQuarry && <QuarryRoomDecor cx={cx} cz={cz} />}
       {!isLoggingSite && !isQuarry && <FacilityRoomFurniture type={facility.type} cx={cx} cz={cz} />}
 

@@ -64,16 +64,18 @@ export function ActiveMissionsList() {
 
   if (activeMissions.length === 0) return null;
 
-  const openArrival = (missionId: string) => setArrivalModalFor(missionId);
+  // Track by unique instanceId so two parties on the SAME quest template open
+  // the correct party's modal/combat (not just the first match).
+  const openArrival = (instanceId: string) => setArrivalModalFor(instanceId);
   const closeArrival = () => setArrivalModalFor(null);
 
-  const handleStartCombat = (missionId: string) => {
+  const handleStartCombat = (am: { missionId: string; instanceId: string }) => {
     // Idle pattern (Phase 3 redesign): open the panel and seed the legacy
     // arena-slice formation. mission.phase stays 'arrived' until the player
     // explicitly presses Start Battle in the formation sub-phase — this avoids
     // the auto-resolve race when the player closes the panel mid-formation.
-    enterCombatPrep(missionId);
-    openCombatPanel(missionId);
+    enterCombatPrep(am.missionId, am.instanceId);
+    openCombatPanel(am.missionId, am.instanceId);
     closeArrival();
   };
 
@@ -88,9 +90,9 @@ export function ActiveMissionsList() {
 
         return (
           <div
-            key={`${am.missionId}-${am.startTime}`}
+            key={am.instanceId}
             style={{ ...CARD_STYLE, cursor: isArrived ? 'pointer' : 'default' }}
-            onClick={isArrived ? () => openArrival(am.missionId) : undefined}
+            onClick={isArrived ? () => openArrival(am.instanceId) : undefined}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <strong style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -124,8 +126,8 @@ export function ActiveMissionsList() {
       })}
 
       {arrivalModalFor && (() => {
-        const am = activeMissions.find((m) => m.missionId === arrivalModalFor);
-        const missionData = MISSIONS.find((m) => m.id === arrivalModalFor);
+        const am = activeMissions.find((m) => m.instanceId === arrivalModalFor);
+        const missionData = am && MISSIONS.find((m) => m.id === am.missionId);
         if (!am || !missionData || !am.arrivalTime) return null;
         return (
           <ArrivalModal
@@ -133,7 +135,7 @@ export function ActiveMissionsList() {
             missionName={missionData.name}
             zone={missionData.zone ?? ''}
             enemyIds={missionData.enemyIds}
-            onStartCombat={() => handleStartCombat(am.missionId)}
+            onStartCombat={() => handleStartCombat(am)}
             onClose={closeArrival}
           />
         );

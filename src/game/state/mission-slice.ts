@@ -14,14 +14,16 @@ export interface MissionSlice {
   currentCombatReplay: CombatResult | null;
 
   dispatchMission: (mission: ActiveMission) => void;
-  completeMission: (missionId: string) => void;
-  failMission: (missionId: string) => void;
+  /** Identity ops below take the unique `instanceId` (NOT the template missionId)
+   *  so two parties running the same quest template resolve independently. */
+  completeMission: (instanceId: string) => void;
+  failMission: (instanceId: string) => void;
   setTutorialStep: (step: TutorialStep) => void;
-  updateMissionPhase: (missionId: string, phase: MissionPhase, arrivalTime?: number) => void;
-  setTargetPriority: (missionId: string, priority: TargetPriority) => void;
+  updateMissionPhase: (instanceId: string, phase: MissionPhase, arrivalTime?: number) => void;
+  setTargetPriority: (instanceId: string, priority: TargetPriority) => void;
   /** Autosave the live engine entity list onto an active mission (D12).
    *  Pass `null` to clear (combat finished or mission removed). */
-  saveCombatSnapshot: (missionId: string, snapshot: CombatEntity[] | null, snapshotTime: number) => void;
+  saveCombatSnapshot: (instanceId: string, snapshot: CombatEntity[] | null, snapshotTime: number) => void;
   pushMissionResult: (result: MissionResult) => void;
   setCurrentCombatReplay: (replay: CombatResult | null) => void;
   dismissResult: () => void;
@@ -37,39 +39,46 @@ export const createMissionSlice: StateCreator<MissionSlice> = (set) => ({
   dispatchMission: (mission) =>
     set((s) => ({ activeMissions: [...s.activeMissions, mission] })),
 
-  completeMission: (missionId) =>
-    set((s) => ({
-      activeMissions: s.activeMissions.filter((m) => m.missionId !== missionId),
-      completedMissions: [...s.completedMissions, missionId],
-    })),
+  completeMission: (instanceId) =>
+    set((s) => {
+      // Record the TEMPLATE id (not instanceId) in completedMissions so quest
+      // prerequisite/tutorial checks keep working; remove only THIS instance.
+      const done = s.activeMissions.find((m) => m.instanceId === instanceId);
+      return {
+        activeMissions: s.activeMissions.filter((m) => m.instanceId !== instanceId),
+        completedMissions: done
+          ? [...s.completedMissions, done.missionId]
+          : s.completedMissions,
+      };
+    }),
 
-  failMission: (missionId) =>
+  failMission: (instanceId) =>
     set((s) => ({
-      activeMissions: s.activeMissions.filter((m) => m.missionId !== missionId),
+      activeMissions: s.activeMissions.filter((m) => m.instanceId !== instanceId),
     })),
 
   setTutorialStep: (step) => set({ tutorialStep: step }),
 
-  updateMissionPhase: (missionId, phase, arrivalTime) =>
+  updateMissionPhase: (instanceId, phase, arrivalTime) =>
     set((s) => ({
       activeMissions: s.activeMissions.map((m) =>
-        m.missionId === missionId
+        m.instanceId === instanceId
           ? { ...m, phase, ...(arrivalTime !== undefined ? { arrivalTime } : {}) }
           : m,
       ),
     })),
 
-  setTargetPriority: (missionId, priority) =>
+  setTargetPriority: (instanceId, priority) =>
     set((s) => ({
       activeMissions: s.activeMissions.map((m) =>
-        m.missionId === missionId ? { ...m, targetPriority: priority } : m,
+        m.instanceId === instanceId ? { ...m, targetPriority: priority } : m,
       ),
     })),
 
-  saveCombatSnapshot: (missionId, snapshot, snapshotTime) =>
+  saveCombatSnapshot: (instanceId, snapshot, snapshotTime) =>
     set((s) => ({
       activeMissions: s.activeMissions.map((m) => {
-        if (m.missionId !== missionId) return m;
+        if (m.instanceId !== instanceId) return m;
         if (snapshot === null) {
           // Clear snapshot — mid-fight resume should fall through to normal resolver.
           const { combatSnapshot: _drop, combatSnapshotTime: _dropT, ...rest } = m;

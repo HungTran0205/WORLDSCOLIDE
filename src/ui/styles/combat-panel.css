@@ -12,8 +12,12 @@
 }
 
 .combat-panel {
-  width: min(900px, 95vw);
-  height: min(640px, 90vh);
+  /* Shared size for ALL phases (formation/result/battle) so switching phases
+     doesn't jump size. ~80% screen, framed; aspect ~1.74 ≈ 16:9. Battle relies
+     on this width too — see the camera-zoom coverage note in
+     .combat-panel--phase-battle. */
+  width: min(1536px, 90vw);
+  height: min(880px, 88vh);
   background: var(--ink-bg-panel);
   border: var(--ink-border-w) solid var(--ink-gold);
   border-radius: var(--ink-radius-md);
@@ -284,8 +288,12 @@
      the canvas underneath has full-frustum bg planes that would otherwise
      show through any noticeable transparency. */
   box-shadow: 0 0 0 9999px rgba(6, 4, 3, 0.98);
-  width: min(960px, 96vw);
-  height: min(620px, 92vh);
+  /* Size inherited from .combat-panel (~80% screen, framed) so all phases match.
+     Camera zoom (COMBAT_CAM_ZOOM) is paired with that width so fighters fill the
+     rect instead of leaving empty arena. Coverage constraint: panel-visible
+     world width = panel_px / zoom must stay ≤ far-bg width (25.5u). At
+     1536px / 64 = 24u ✓. Box-shadow + full-window canvas mean the bigger rect
+     just unmasks more of the already-rendered scene — bg/camera unaffected. */
 }
 
 .combat-panel--phase-battle .combat-panel-header {
@@ -315,11 +323,12 @@
 .combat-panel-battle__fog {
   position: absolute;
   inset: 0;
-  /* Bottom-heavy fog gradient: dark ground fog rises from bottom */
+  /* Bottom-heavy fog gradient: light morning ground haze rises from bottom.
+     Softened from 0.45/0.18 so it doesn't crush a bright scene. */
   background: linear-gradient(
     to top,
-    rgba(6, 4, 3, 0.45) 0%,
-    rgba(6, 4, 3, 0.18) 30%,
+    rgba(6, 4, 3, 0.28) 0%,
+    rgba(6, 4, 3, 0.1) 30%,
     transparent 60%
   );
   pointer-events: none;
@@ -329,12 +338,13 @@
 .combat-panel-battle__vignette {
   position: absolute;
   inset: 0;
-  /* Radial vignette: dark edges, transparent center */
+  /* Radial vignette: soft dark edges, transparent center. Lightened + starts
+     later (55%) so the morning sky at the top of the frame isn't crushed. */
   background: radial-gradient(
-    ellipse 90% 85% at 50% 50%,
-    transparent 45%,
-    rgba(4, 3, 2, 0.55) 80%,
-    rgba(3, 2, 1, 0.8) 100%
+    ellipse 92% 88% at 50% 50%,
+    transparent 55%,
+    rgba(4, 3, 2, 0.26) 82%,
+    rgba(3, 2, 1, 0.46) 100%
   );
   pointer-events: none;
   z-index: 2;
@@ -347,7 +357,8 @@
   left: 0;
   right: 0;
   height: 60px;
-  background: linear-gradient(to bottom, rgba(4, 3, 2, 0.6) 0%, transparent 100%);
+  /* Softened from 0.6 — was a big contributor to the dark top band. */
+  background: linear-gradient(to bottom, rgba(4, 3, 2, 0.3) 0%, transparent 100%);
   pointer-events: none;
   z-index: 2;
 }

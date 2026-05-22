@@ -1,5 +1,6 @@
 import type { StateCreator, StoreApi } from 'zustand';
 import type { GuildHall, GameSettings, TavernState, Member, FloorTile, PlacedFurniture, GridCell, Rotation, FurnitureType, GuildRank, FacilityType, GuildFacility, SyringeLoadout, AlchemyCraftJob, MemberEquipment, MedicineSlot, MedicineCondition, TavernVisitor } from './game-state';
+import { GUILD_HALL_GRID_WIDTH, GUILD_HALL_GRID_DEPTH } from './guild-hall-grid';
 import {
   generateTavernRoster,
   getEffectiveKeeperStats,
@@ -149,11 +150,11 @@ export const DEFAULT_MEDICINE_SLOTS: [MedicineSlot, MedicineSlot] = [
   { itemId: null, condition: 'start' as MedicineCondition },
 ];
 
-/** Generate the default 10x7 diorama floor (no default furniture — quest board is a static scene prop) */
+/** Generate the default diorama floor (no default furniture — quest board is a static scene prop) */
 export function createDefaultFloor(): GuildHall {
   const floorTiles: FloorTile[] = [];
-  for (let x = 0; x < 10; x++) {
-    for (let z = 0; z < 7; z++) {
+  for (let x = 0; x < GUILD_HALL_GRID_WIDTH; x++) {
+    for (let z = 0; z < GUILD_HALL_GRID_DEPTH; z++) {
       floorTiles.push({ x, z, color: '#DAA520' });
     }
   }

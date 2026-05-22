@@ -83,6 +83,7 @@ export const VALID_SETTINGS: GameSettings = {
 };
 
 export const VALID_ACTIVE_MISSION: ActiveMission = {
+  instanceId: 'inst-mission-f-01',
   missionId: 'mission-f-01',
   memberIds: ['founder-001'],
   mercContractIds: [],

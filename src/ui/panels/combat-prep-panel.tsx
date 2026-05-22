@@ -39,6 +39,7 @@ function autoSuggestFormation(members: Member[]): Formation {
 
 export function CombatPrepPanel() {
   const arenaMissionId = useGameStore(s => s.arenaMissionId);
+  const arenaInstanceId = useGameStore(s => s.arenaInstanceId);
   const formation = useGameStore(s => s.formation);
   const setFormationSlot = useGameStore(s => s.setFormationSlot);
   const startBattle = useGameStore(s => s.startBattle);
@@ -47,7 +48,7 @@ export function CombatPrepPanel() {
   const roster = useGameStore(s => s.roster);
   const activeMissions = useGameStore(s => s.activeMissions);
 
-  const mission = activeMissions.find(m => m.missionId === arenaMissionId);
+  const mission = activeMissions.find(m => m.instanceId === arenaInstanceId);
   const allMembers = useMemo(() => founder ? [founder, ...roster] : roster, [founder, roster]);
   const partyMembers = useMemo(
     () => allMembers.filter(m => mission?.memberIds.includes(m.id)),

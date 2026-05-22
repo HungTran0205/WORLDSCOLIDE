@@ -48,6 +48,7 @@ export function createActiveMission(
   now: number,
 ): ActiveMission {
   return {
+    instanceId: crypto.randomUUID(),
     missionId: mission.id,
     memberIds,
     mercContractIds,

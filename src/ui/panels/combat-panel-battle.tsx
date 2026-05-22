@@ -21,13 +21,13 @@ const SHAKE_DURATION_MS = 220;
 
 export function CombatPanelBattle() {
   const { t } = useTranslation();
-  const missionId = useCombatPanelStore((s) => s.missionId);
+  const instanceId = useCombatPanelStore((s) => s.instanceId);
   const speedMultiplier = useGameStore((s) => s.speedMultiplier);
   const setSpeedMultiplier = useGameStore((s) => s.setSpeedMultiplier);
   const waveState = useGameStore((s) => s.waveState);
   const arenaTime = useGameStore((s) => s.arenaTime);
   const targetPriority = useGameStore((s) =>
-    s.activeMissions.find((m) => m.missionId === missionId)?.targetPriority ?? 'focus',
+    s.activeMissions.find((m) => m.instanceId === instanceId)?.targetPriority ?? 'focus',
   );
 
   // Crit screen-shake listener — engine dispatches `combat-vfx-crit` window
