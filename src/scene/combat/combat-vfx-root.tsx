@@ -17,7 +17,7 @@
  */
 
 import { useMemo } from 'react';
-import { VFXParticles } from 'r3f-vfx';
+import { VFXParticles, Blending } from 'r3f-vfx';
 import { Lighting } from 'core-vfx';
 import { allPresets } from '@/scene/effects/preset-registry';
 import type { ParticlesPreset } from '@/scene/effects/preset-types';
@@ -27,13 +27,16 @@ export function CombatVfxRoot() {
     () =>
       allPresets
         .filter((p): p is ParticlesPreset => p.kind !== 'meshline')
-        .filter((p) => p.category === 'linh-son')
+        .filter((p) => p.category === 'linh-son' || p.category === 'generic')
         .map((p) => (
           <VFXParticles
             key={p.id}
             name={p.id}
             autoStart={false}
             {...p.props}
+            // MULTIPLY blending looks brown/earthy on dark backgrounds (enemy side).
+            // Force ADDITIVE so hit/burst effects read consistently across the arena.
+            blending={Blending.ADDITIVE}
             lighting={Lighting.BASIC}
           />
         )),
