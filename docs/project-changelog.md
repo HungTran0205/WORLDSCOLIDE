@@ -7,6 +7,75 @@ All notable changes to Worlds Collide are documented in this file. The format fo
 
 ---
 
+## [Unreleased] — 2026-05-22 (Arc 1 Story Dialog — pre-arrival & post-combat)
+
+### feat(arc1): pre-arrival + post-combat story dialog
+
+**Story dialog beats** (Phase 6 of `plans/260522-1600-arc1-quest-story-first-tremor/`). Main quests now play their `preArrivalDialog` lines in the arrival modal before the enemy list, and their `postCombatDialog` lines after a winning fight before the result splash. Click / Enter / Space advances; Escape skips. Language-aware (VN when `i18n.language === 'vi'`). Expeditions (no dialog data) are unaffected.
+
+- New reusable `StoryDialogOverlay` (click/keyboard-advanced, self-contained inline styles).
+- Combat panel store gains a `'story-dialog'` phase that holds the resolved result (`pendingResult`) until the player dismisses the dialog, then reveals it. Reward side-effects still run at combat finish — the dialog only delays the result panel, never re-applies rewards.
+- Post-combat dialog gates on success only (`outcome !== 'full-wipe'`); offline auto-resolve path is untouched (no dialog).
+- Defensive: closing the panel mid-dialog reveals the earned result rather than discarding it.
+
+**Key Files (New)**:
+- `src/ui/components/story-dialog-overlay.tsx`
+
+**Key Files (Modified)**:
+- `src/game/state/combat-panel-store.ts` — `'story-dialog'` phase, `dialogLines`/`pendingResult`, `showStoryDialog`/`confirmStoryDialog`
+- `src/scene/combat/combat-fight-controller.tsx` — `finalizeCombat` routes through `showStoryDialog` for main quests with post-combat dialog
+- `src/ui/panels/combat-panel.tsx` — story-dialog phase render + close guard
+- `src/ui/panels/arrival-modal.tsx` — pre-arrival dialog gating
+- `src/ui/panels/active-missions-list.tsx` — pass `preArrivalDialog`; wave-flattened enemy preview
+
+**Verification**: 595/595 vitest pass; `tsc -b` + `vite build` clean. Code review: 0 critical, reward-flow double-apply risk verified absent, offline path untouched; one HIGH (close-during-dialog) addressed with a guard.
+
+---
+
+## [Unreleased] — 2026-05-22 (Arc 1 Quest Board — MAIN / EXPEDITION tabs)
+
+### feat(arc1): quest board tab split + card lore
+
+**Quest Board UI** (Phase 5 of `plans/260522-1600-arc1-quest-story-first-tremor/`). Split the quest list into **MAIN** (story chain) and **EXPEDITION** (repeatable + legacy) tabs, and surface each main quest's narrative `cardLore` clue on its card.
+
+- MAIN tab: `isMainQuest` quests with prerequisite met, not completed, tutorial excluded. Not tier-gated (Arc 1 story quests are tier F, always visible).
+- EXPEDITION tab: `isExpedition` quests + legacy flagless missions (backward compat). Keeps the existing quest-board-level tier-gate and tier-filter pills (pills hidden on MAIN).
+- `cardLore` (VN-only for Arc 1 MVP) renders italic/muted under the quest title.
+- Tutorial flow preserved: during the tutorial the board still shows only the tutorial quest (tabs hidden) so the accept-quest beat is intact.
+
+**Key Files (Modified)**:
+- `src/ui/panels/quest-board.tsx` — `activeTab` state, three mission-filter memos, tutorial-gated tab switcher
+- `src/ui/panels/quest-card.tsx` — `cardLore` line
+- `src/ui/styles/quest-board.css` — `.quest-board__tabs`, `.quest-card__lore`
+- `src/i18n/ui.en.json` + `src/i18n/ui.vi.json` — `questBoard.tabMain` / `tabExpedition` / `tabsAria`
+
+**Verification**: 595/595 vitest pass; `tsc -b` + `vite build` clean; i18n EN/VN parity verified. Code review: 0 critical, all acceptance criteria + tutorial/dispatch regression checks verified against live code.
+
+---
+
+## [Unreleased] — 2026-05-22 (Arc 1 Combat Maps — Crystal Cave & Underground Entrance)
+
+### feat(arc1): 2 new combat stages + zone routing for First Tremor
+
+**Arc 1 combat maps** (Phase 4 of `plans/260522-1600-arc1-quest-story-first-tremor/`). Two new `CombatStageSpec` stages, each a two-platform layout (allies on a flat floor, enemies on a raised platform with a cracked-stone front face) reusing existing village/cliff placeholder tiles until the art pass. Spawn-anchor geometry mirrors `broken-cliff-outskirt` so combat math is unchanged.
+
+- `crystal-cave` — enemy shelf raised +1.2u, cave backdrop (`#050a12`). Routes zones `Crystal Cave` (legacy cave missions) + `Cave Entrance` (Q3 drones).
+- `underground-entrance` — enemy slab raised +0.8u (shallow step), industrial backdrop (`#080808`). Routes zones `Underground Ruins` (Q4 dog-robots) + `Ancient Core` (Q5 Slime King boss).
+- `Forest Edge` (Q1 bats) routes to the existing `lolo-village-outskirt` map. `Deep Forest` (Q2) already mapped to `the-forest`.
+
+**Key Files (New)**:
+- `src/scene/combat/maps/stages/crystal-cave.ts`
+- `src/scene/combat/maps/stages/underground-entrance.ts`
+
+**Key Files (Modified)**:
+- `src/scene/combat/maps/combat-map-registry.ts` — `CombatMapId` union (+2), `STAGE_SPECS` (+2), `ZONE_TO_MAP` (+5)
+
+**Verification**: `npm run build` (`tsc -b && vite build`) clean. Code review: 0 critical/high/medium findings, all acceptance criteria verified against live code.
+
+**Note**: Stale plan zone names (`Crystal Throne Room`, `Abandoned Mine`, `Underground Entrance`) were intentionally NOT mapped — no mission references them; the implemented zones match real `zone:` strings in mission data.
+
+---
+
 ## [Unreleased] — 2026-05-22 (Arc 1 Quest Chain — "The First Tremor")
 
 ### feat(arc1): quest chain data — 5 main quests + 5 expeditions
@@ -24,7 +93,7 @@ Five chained main quests (`chain-first-tremor`, chainOrder 2–6): `ft-strange-e
 
 **Test coverage**: 595/595 vitest pass; `tsc -b` clean. Code review 9.5/10.
 
-**Deferred (per plan)**: Phase 4 adds new zones (`Forest Edge`, `Cave Entrance`, `Underground Ruins`, `Ancient Core`) to `ZONE_TO_MAP` (graceful fallback to default village map until then). Phase 7 repoints facility `unlockQuestId` (Stone Quarry → `ft-ancient-threshold`, Alchemy Lab → `ft-ruins-forgotten-age`).
+**Deferred (per plan)**: Phase 4 (zone routing for `Forest Edge`, `Cave Entrance`, `Underground Ruins`, `Ancient Core`) — now **DONE**, see entry above. Phase 7 repoints facility `unlockQuestId` (Stone Quarry → `ft-ancient-threshold`, Alchemy Lab → `ft-ruins-forgotten-age`).
 
 ---
 

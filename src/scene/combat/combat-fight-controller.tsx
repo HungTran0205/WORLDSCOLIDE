@@ -70,6 +70,7 @@ export function CombatFightController() {
   const phase = useCombatPanelStore((s) => s.phase);
   const missionId = useCombatPanelStore((s) => s.missionId);
   const setPanelResult = useCombatPanelStore((s) => s.setResult);
+  const showStoryDialog = useCombatPanelStore((s) => s.showStoryDialog);
 
   // Emitter handles for each combat VFX event. Resolved once per Canvas
   // lifetime — useVFXEmitter returns a stable closure tied to the preset
@@ -266,7 +267,14 @@ export function CombatFightController() {
     const members = allMembers.filter((m) => active.memberIds.includes(m.id));
 
     const missionResult = applyMissionResultSideEffects(mission, active, members, result);
-    setPanelResult(missionResult);
+    // Story beat: main quests with post-combat dialog play it before the
+    // result splash (success only — no dialog on a full wipe). The result is
+    // held in the panel store and revealed when the player dismisses it.
+    if (mission.postCombatDialog?.length && result.outcome !== 'full-wipe') {
+      showStoryDialog(mission.postCombatDialog, missionResult);
+    } else {
+      setPanelResult(missionResult);
+    }
     engineRef.current = null;
   }
 

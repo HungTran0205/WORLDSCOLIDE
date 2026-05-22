@@ -132,7 +132,10 @@ export function ActiveMissionsList() {
             missionId={am.missionId}
             missionName={missionData.name}
             zone={missionData.zone ?? ''}
-            enemyIds={missionData.enemyIds}
+            // Wave missions carry no top-level enemyIds — flatten waves so the
+            // arrival preview isn't empty.
+            enemyIds={missionData.waves?.flatMap((w) => w.enemyIds) ?? missionData.enemyIds}
+            preArrivalDialog={missionData.preArrivalDialog}
             onStartCombat={() => handleStartCombat(am.missionId)}
             onClose={closeArrival}
           />
