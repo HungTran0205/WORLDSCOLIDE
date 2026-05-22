@@ -71,6 +71,11 @@
   flex-wrap: wrap;
 }
 
+.quest-board__tabs {
+  display: flex;
+  gap: 6px;
+}
+
 .tier-pill {
   background: rgba(232, 217, 176, 0.4);
   border: 1px solid var(--parchment-aged);
@@ -169,6 +174,13 @@
   font-size: 1rem;
   letter-spacing: 0.03em;
   color: var(--ink-dark);
+}
+.quest-card__lore {
+  margin: 2px 0 6px;
+  font-size: 0.75rem;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--ink-faded);
 }
 .quest-card__tier {
   flex: 0 0 auto;

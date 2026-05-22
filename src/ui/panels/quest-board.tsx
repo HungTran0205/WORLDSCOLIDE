@@ -56,6 +56,7 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
   }, [guildHall]);
 
   const [filterTier, setFilterTier] = useState<QuestTier | 'all'>('all');
+  const [activeTab, setActiveTab] = useState<'main' | 'expedition'>('main');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
 
@@ -95,32 +96,68 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
     playSFX(AUDIO.SFX_WOOD_CLINK);
   }, []);
 
-  const filteredMissions = useMemo<Mission[]>(() => {
-    let missions = MISSIONS.filter(
-      (m) =>
-        (filterTier === 'all' || m.tier === filterTier) &&
-        unlockedTiers.includes(m.tier) &&
-        (!m.prerequisiteId || completedMissions.includes(m.prerequisiteId)),
-    );
-    if (tutorialStep !== 'complete') {
-      missions = missions.filter(
-        (m) => m.id.startsWith('tutorial-') && !completedMissions.includes(m.id),
-      );
-    }
-    return missions;
-  }, [filterTier, unlockedTiers, completedMissions, tutorialStep]);
+  // During the tutorial only tutorial quests appear (drives the accept-quest
+  // beat); after completion the board splits into MAIN (story) + EXPEDITION
+  // (repeatable) tabs. Tutorial quests are excluded from both tabs.
+  const isTutorialActive = tutorialStep !== 'complete';
 
-  const selectedMission = useMemo(
-    () => filteredMissions.find((m) => m.id === selectedId) ?? null,
-    [filteredMissions, selectedId],
+  const tutorialMissions = useMemo<Mission[]>(
+    () =>
+      MISSIONS.filter(
+        (m) =>
+          m.id.startsWith('tutorial-') &&
+          !completedMissions.includes(m.id) &&
+          unlockedTiers.includes(m.tier) &&
+          (!m.prerequisiteId || completedMissions.includes(m.prerequisiteId)),
+      ),
+    [completedMissions, unlockedTiers],
   );
 
-  // Clear selection if filtered missions no longer include it
+  // MAIN: story quests with prerequisite met, not yet completed. Not tier-gated
+  // — Arc 1 story quests stay visible regardless of quest-board level.
+  const mainMissions = useMemo<Mission[]>(
+    () =>
+      MISSIONS.filter(
+        (m) =>
+          m.isMainQuest &&
+          !m.id.startsWith('tutorial-') &&
+          !completedMissions.includes(m.id) &&
+          (!m.prerequisiteId || completedMissions.includes(m.prerequisiteId)),
+      ),
+    [completedMissions],
+  );
+
+  // EXPEDITION: repeatable quests + legacy missions without a tab flag
+  // (backward compat). Tier-gated by quest-board level, same as before.
+  const expeditionMissions = useMemo<Mission[]>(
+    () =>
+      MISSIONS.filter(
+        (m) =>
+          (m.isExpedition || (!m.isMainQuest && !m.id.startsWith('tutorial-'))) &&
+          (filterTier === 'all' || m.tier === filterTier) &&
+          unlockedTiers.includes(m.tier) &&
+          (!m.prerequisiteId || completedMissions.includes(m.prerequisiteId)),
+      ),
+    [completedMissions, filterTier, unlockedTiers],
+  );
+
+  const displayedMissions = isTutorialActive
+    ? tutorialMissions
+    : activeTab === 'main'
+      ? mainMissions
+      : expeditionMissions;
+
+  const selectedMission = useMemo(
+    () => displayedMissions.find((m) => m.id === selectedId) ?? null,
+    [displayedMissions, selectedId],
+  );
+
+  // Clear selection if the displayed missions no longer include it
   useEffect(() => {
-    if (selectedId && !filteredMissions.some((m) => m.id === selectedId)) {
+    if (selectedId && !displayedMissions.some((m) => m.id === selectedId)) {
       setSelectedId(null);
     }
-  }, [filteredMissions, selectedId]);
+  }, [displayedMissions, selectedId]);
 
   const handleSelect = (id: string) => {
     setSelectedId(id);
@@ -149,7 +186,9 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
   };
 
   const isMobile = useIsMobile();
-  const showTierFilter = tutorialStep === 'complete';
+  // Tier pills are an expedition-only affordance (Arc 1 main quests are all
+  // tier F) and stay hidden during the tutorial.
+  const showTierFilter = !isTutorialActive && activeTab === 'expedition';
 
   return (
     <div
@@ -167,6 +206,22 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
       >
         <header className="quest-board__header">
           <h2 className="quest-board__title parchment-title">{t('questBoard.title')}</h2>
+          {!isTutorialActive && (
+            <div className="quest-board__tabs" role="tablist" aria-label={t('questBoard.tabsAria')}>
+              {(['main', 'expedition'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  role="tab"
+                  className={`tier-pill${activeTab === tab ? ' tier-pill--active' : ''}`}
+                  aria-selected={activeTab === tab}
+                  onClick={() => setActiveTab(tab)}
+                >
+                  {tab === 'main' ? t('questBoard.tabMain') : t('questBoard.tabExpedition')}
+                </button>
+              ))}
+            </div>
+          )}
           {showTierFilter && (
             <div className="quest-board__filter" role="toolbar" aria-label={t('questBoard.filter.ariaLabel')}>
               <button
@@ -199,10 +254,10 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
             className="quest-list-pane"
             aria-label={t('questBoard.listAria')}
           >
-            {filteredMissions.length === 0 ? (
+            {displayedMissions.length === 0 ? (
               <div className="quest-list-pane__empty">{t('questBoard.empty')}</div>
             ) : (
-              filteredMissions.map((m) => (
+              displayedMissions.map((m) => (
                 <QuestCard
                   key={m.id}
                   mission={m}

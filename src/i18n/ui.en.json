@@ -341,6 +341,9 @@
     "returnAria": "Return to Guild",
     "empty": "No quests available.",
     "listAria": "Available quests",
+    "tabMain": "Main",
+    "tabExpedition": "Expedition",
+    "tabsAria": "Quest category",
     "filter": {
       "ariaLabel": "Filter by tier",
       "all": "All",

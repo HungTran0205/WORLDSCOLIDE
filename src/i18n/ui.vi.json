@@ -341,6 +341,9 @@
     "returnAria": "Về Hội Quán",
     "empty": "Không có nhiệm vụ nào.",
     "listAria": "Nhiệm vụ khả dụng",
+    "tabMain": "Chính Tuyến",
+    "tabExpedition": "Thám Hiểm",
+    "tabsAria": "Phân loại nhiệm vụ",
     "filter": {
       "ariaLabel": "Lọc theo bậc",
       "all": "Tất Cả",
