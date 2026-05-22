@@ -800,7 +800,8 @@
     "buildConfirmBtn": "Xây",
     "costFree": "Miễn Phí",
     "costPermit": "Giấy Phép",
-    "needMaterials": "Cần {{materials}}"
+    "needMaterials": "Cần {{materials}}",
+    "lockedByQuest": "Hoàn thành nhiệm vụ chính để mở khoá cơ sở này."
   },
   "guildUpgrade": {
     "label": "Đại Sảnh — Lv.{{level}}",

@@ -190,9 +190,14 @@ function EmptySlotTray({ slotIdx, onBuildComplete }: { slotIdx: number; onBuildC
   const facilities    = useGameStore(s => s.facilities);
   const gold          = useGameStore(s => s.gold);
   const inventory     = useGameStore(s => s.inventory);
+  const completedMissions = useGameStore(s => s.completedMissions);
   const buildFacility = useGameStore(s => s.buildFacility);
   const placeFacility = useGameStore(s => s.placeFacility);
   const tutorialStep  = useGameStore(s => s.tutorialStep);
+
+  // Narrative gate: facilities tied to a story quest stay locked until that quest is completed.
+  const isQuestLocked = (def: FacilityDefVal) =>
+    !!(def.unlockQuestId && !completedMissions.includes(def.unlockQuestId));
 
   // Tutorial in-panel guidance: which blueprint should the player pick on this build beat.
   const tutorialTarget: FacilityType | null =
@@ -238,12 +243,14 @@ function EmptySlotTray({ slotIdx, onBuildComplete }: { slotIdx: number; onBuildC
         <div className="fp-blueprint-list">
           {buildable.length === 0 && <div className="fp-blueprint-empty">{t('facilityTray.allBuilt')}</div>}
           {buildable.map(def => {
+            const locked     = isQuestLocked(def);
             const affordable = canAfford(def);
+            const selectable = affordable && !locked;
             return (
               <div
                 key={def.type}
-                className={`fp-blueprint-row${selectedBp === def.type ? ' selected' : ''}${!affordable ? ' unaffordable' : ''}${tutorialTarget === def.type && selectedBp !== def.type ? ' tutorial-highlight' : ''}`}
-                onClick={() => affordable && setSelectedBp(def.type)}
+                className={`fp-blueprint-row${selectedBp === def.type ? ' selected' : ''}${!selectable ? ' unaffordable' : ''}${tutorialTarget === def.type && selectedBp !== def.type ? ' tutorial-highlight' : ''}`}
+                onClick={() => selectable && setSelectedBp(def.type)}
               >
                 <span className="fp-bp-name">{def.name}</span>
                 <span className="fp-bp-stat">{def.primaryStats}</span>
@@ -251,7 +258,11 @@ function EmptySlotTray({ slotIdx, onBuildComplete }: { slotIdx: number; onBuildC
                   <span className="fp-bp-instance-count">{getActiveCount(def.type)}/3</span>
                 )}
                 <span className="fp-bp-cost">{costLabel(def)}</span>
-                {def.buildMaterialCost && !affordable && (
+                {locked ? (
+                  <span style={{ fontSize: '0.65rem', color: '#888', fontStyle: 'italic', marginLeft: 6 }}>
+                    {t('facilityTray.lockedByQuest')}
+                  </span>
+                ) : def.buildMaterialCost && !affordable && (
                   <span style={{ fontSize: '0.65rem', color: '#d9534f', marginLeft: 6 }}>
                     {t('facilityTray.needMaterials', { materials: materialCostLabel(def.buildMaterialCost) })}
                   </span>

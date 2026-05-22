@@ -558,6 +558,12 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
       }
 
       const def = FACILITY_DEFINITIONS[type];
+      // Narrative gate: facility stays unbuildable until its unlock quest is completed.
+      // Store-layer guard mirrors the UI gate so any caller is held to the same constraint.
+      if (def.unlockQuestId) {
+        const completed = (s as unknown as { completedMissions: string[] }).completedMissions ?? [];
+        if (!completed.includes(def.unlockQuestId)) return s;
+      }
       const cost = def.buildCost;
       if (cost > 0 && s.guildLevel < 2) return s;
       if (s.gold < cost) return s;

@@ -800,7 +800,8 @@
     "buildConfirmBtn": "Build",
     "costFree": "Free",
     "costPermit": "Permit",
-    "needMaterials": "Need {{materials}}"
+    "needMaterials": "Need {{materials}}",
+    "lockedByQuest": "Complete the main quest to unlock this facility."
   },
   "guildUpgrade": {
     "label": "Guild Hall — Lv.{{level}}",

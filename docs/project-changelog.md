@@ -7,6 +7,27 @@ All notable changes to Worlds Collide are documented in this file. The format fo
 
 ---
 
+## [Unreleased] — 2026-05-23 (Arc 1 Narrative Unlock Gates)
+
+### feat(arc1): gate facilities behind story quests
+
+**Narrative facility gates** (Phase 7 of `plans/260522-1600-arc1-quest-story-first-tremor/` — completes the arc). Stone Quarry and Alchemy Lab now stay locked until their story quest is completed: Stone Quarry after `ft-ancient-threshold` (Q3 — cave entrance reached), Alchemy Lab after `ft-ruins-forgotten-age` (Q4 — ruins cleared). Workshop, Tavern, Logging Site, Training Yard, Infirmary are ungated.
+
+- `FacilityDef` gains optional `unlockQuestId?: string` (static config; not saved → no migration).
+- Build tray: locked blueprints are non-selectable, dimmed, and show the `facilityTray.lockedByQuest` message (EN + VN); the locked message suppresses the material-cost message.
+- Store-layer guard in `buildFacility` mirrors the UI gate so any caller is held to the same constraint (defense-in-depth, matching the existing material/permit/gold guards).
+- Old saves lacking the new quest IDs keep both facilities locked until Q3/Q4 are re-completed — acceptable for a fresh arc reset.
+
+**Key Files (Modified)**:
+- `src/game/data/facility-definitions.ts` — `unlockQuestId` field + stone-quarry/alchemy-lab values
+- `src/ui/components/facility-detail-tray.tsx` — `completedMissions` selector, `isQuestLocked`, locked render branch
+- `src/game/state/guild-slice.ts` — `buildFacility` narrative gate guard
+- `src/i18n/ui.en.json` + `src/i18n/ui.vi.json` — `facilityTray.lockedByQuest`
+
+**Verification**: 595/595 vitest pass; `tsc -b` + `vite build` clean. Code review: 0 critical; the UI-only-gate concern was closed by adding the store-layer guard.
+
+---
+
 ## [Unreleased] — 2026-05-22 (Arc 1 Story Dialog — pre-arrival & post-combat)
 
 ### feat(arc1): pre-arrival + post-combat story dialog

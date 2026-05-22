@@ -21,6 +21,8 @@ export interface FacilityDef {
   zonePosition: [number, number, number];
   /** Zone size in tiles [width, depth] */
   tileFootprint: [number, number];
+  /** Quest ID that must be completed before this facility can be built. Absent = no narrative gate. */
+  unlockQuestId?: string;
 }
 
 export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
@@ -92,6 +94,7 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     primaryStats: 'STR + LCK',
     zonePosition: [7, 0, 1],
     tileFootprint: [3, 3],
+    unlockQuestId: 'ft-ancient-threshold', // cave entrance reached — STONE scripted drop ties here
   },
   'alchemy-lab': {
     type: 'alchemy-lab',
@@ -104,6 +107,7 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     primaryStats: 'INT + DEX',
     zonePosition: [5, 0, 5],
     tileFootprint: [3, 3],
+    unlockQuestId: 'ft-ruins-forgotten-age', // ruins cleared — ether + materials available
   },
 };
 
