@@ -388,6 +388,9 @@
     "release": "Giải Tán",
     "releaseConfirm": "Giải tán {{name}}? Hành động này không thể hoàn tác.",
     "releaseConfirmFallback": "thành viên này",
+    "rename": "Đổi Tên",
+    "renameSave": "Lưu tên",
+    "renameCancel": "Huỷ",
     "status": {
       "idle": "Sẵn Sàng",
       "on-mission": "Đang Đi Nhiệm Vụ",

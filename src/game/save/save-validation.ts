@@ -11,7 +11,7 @@ const TUTORIAL_STEPS = [
   'char-creation', 'arrival-alarm', 'open-quest-board', 'accept-bear-quest',
   'assign-and-dispatch', 'quest-travel', 'moonbear-combat', 'kael-rescue',
   'reward-splash', 'build-logging-site', 'assign-kael', 'first-haul-reward',
-  'build-tavern', 'complete',
+  'build-tavern', 'assign-keeper', 'recruit-first-member', 'complete',
 ] as const;
 
 const STAT_KEYS: (keyof Stats)[] = ['STR', 'END', 'INT', 'DEX', 'CHA', 'LCK', 'AGI'];

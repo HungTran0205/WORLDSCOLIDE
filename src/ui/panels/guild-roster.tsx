@@ -34,6 +34,7 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
   const inviteMercenary  = useGameStore(s => s.inviteMercenary);
   const promoteMember    = useGameStore(s => s.promoteMember);
   const removeMember     = useGameStore(s => s.removeMember);
+  const renameMember     = useGameStore(s => s.renameMember);
   const setSyringeLoadout = useGameStore(s => s.setSyringeLoadout);
   const equipGear        = useGameStore(s => s.equipGear);
   const unequipGear      = useGameStore(s => s.unequipGear);
@@ -103,6 +104,7 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
             onEquipGear={id => equipGear(selected.id, id)}
             onUnequipGear={slot => unequipGear(selected.id, slot as EquipmentSlot)}
             onOpenEquipMode={() => setView('equip')}
+            onRename={name => renameMember(selected.id, name)}
           />
           {!selected.isFounder && (
             <div style={{ padding: '8px 14px', borderTop: '1px solid var(--ink-gold-dim)', display: 'flex', justifyContent: 'flex-end' }}>

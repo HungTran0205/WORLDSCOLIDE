@@ -21,6 +21,8 @@ export interface RosterSlice {
   setFounder: (member: Member) => void;
   addMember: (member: Member) => void;
   removeMember: (id: string) => void;
+  /** Rename a roster member. No-op for the founder (not in roster) and mercenaries. Trims, rejects empty, clamps to 24 chars. */
+  renameMember: (id: string, name: string) => void;
   updateMemberStatus: (id: string, status: MemberStatus) => void;
   setMemberInjuredUntil: (id: string, until: number | null) => void;
   toggleAutoCast: (memberId: string) => void;
@@ -70,6 +72,17 @@ export const createRosterSlice: StateCreator<RosterSlice> = (set) => ({
   addMember: (member) => set((s) => ({ roster: [...s.roster, member] })),
 
   removeMember: (id) => set((s) => ({ roster: s.roster.filter((m) => m.id !== id) })),
+
+  renameMember: (id, name) =>
+    set((s) => {
+      const trimmed = name.trim().slice(0, 24);
+      if (!trimmed) return s;
+      return {
+        roster: s.roster.map((m) =>
+          m.id === id && m.rank !== 'MERCENARY' ? { ...m, name: trimmed } : m,
+        ),
+      };
+    }),
 
   updateMemberStatus: (id, status) =>
     set((s) => {

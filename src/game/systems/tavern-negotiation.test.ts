@@ -57,8 +57,10 @@ function member(id: string, partial: Partial<Stats>, traits: Member['traits'] = 
 function visitor(overrides: Partial<TavernVisitor>): TavernVisitor {
   return {
     id: 'v1',
+    name: 'v1',
     archetype: 'warrior',
     civilization: 'LinhSon',
+    gender: 'M',
     rarity: 1,
     level: 1,
     stats: zeroStats(),
@@ -318,6 +320,17 @@ describe('rollNegotiation', () => {
     const a = rollNegotiation(k, v, baseMods(), attemptSeed(1, v.id, 0));
     const b = rollNegotiation(k, v, baseMods(), attemptSeed(2, v.id, 0));
     expect(a.roll).not.toBe(b.roll);
+  });
+
+  it('guaranteedRecruit visitor always succeeds (comfortable), ignoring stats/seed', () => {
+    const weakKeeper = member('k', { CHA: 0, INT: 0 }); // would normally give a low rate
+    const v = visitor({ guaranteedRecruit: true, rarity: 5, dailyMoodBias: 5 });
+    for (const seed of [1, 2, 999, 123456]) {
+      const res = rollNegotiation(weakKeeper, v, baseMods(), attemptSeed(seed, v.id, 0));
+      expect(res.outcome).toEqual({ kind: 'success', tier: 'comfortable' });
+      expect(res.attemptOutcome).toBe('success');
+      expect(res.rate).toBe(100);
+    }
   });
 
   it('populates computed fields (rate, demand, kNeg, modSum)', () => {

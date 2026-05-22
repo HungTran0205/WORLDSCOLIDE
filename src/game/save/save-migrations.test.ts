@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { migrateSave } from './save-migrations';
 import { VALID_SAVE_ENVELOPE } from './test-fixtures';
 import { SAVE_VERSION } from './save-types';
+import { CIV_CONFIG } from '@/game/data/civilization-config';
 
 /** Build a minimal v7 save envelope for migration testing */
 function makeV7Envelope(overrides: Record<string, unknown> = {}) {
@@ -167,7 +168,15 @@ describe('migrateSave', () => {
       },
     };
     const result = migrateSave(v24Envelope as any);
-    expect((result.gameState as any).tavern.veteranPool).toEqual(existingPool);
+    const pool = (result.gameState as any).tavern.veteranPool;
+    expect(pool).toHaveLength(1);
+    expect(pool[0].contractId).toBe('merc-old-1');
+    expect(pool[0].relationshipPoints).toBe(7);
+    expect(pool[0].addedDay).toBe(1);
+    expect(pool[0].visitorSnapshot.id).toBe('v1');
+    // v26→v27 additionally backfills name + gender onto the embedded snapshot.
+    expect(pool[0].visitorSnapshot.gender).toBeDefined();
+    expect(typeof pool[0].visitorSnapshot.name).toBe('string');
   });
 
   it('migrates v11→v12+: old tutorial steps remapped to complete', () => {
@@ -327,6 +336,73 @@ describe('migrateSave', () => {
     expect((result.gameState as any).tutorialStep).toBe('open-quest-board');
     expect((result.gameState as any).activeMissions).toEqual([]);
     expect((result.gameState as any).founder.status).toBe('idle');
+  });
+
+  // v26→v27: TavernVisitor gains name + gender. Backfill embedded visitor snapshots
+  // (currentRoster + visitorSnapshot inside mercContracts / pendingPrompts / veteranPool).
+  function makeV26TavernEnvelope(tavern: Record<string, unknown>) {
+    return {
+      version: 26,
+      savedAt: Date.now(),
+      metadata: { slotId: 1, guildName: 'Test', guildLevel: 1, playTimeMs: 0, founderName: 'F', createdAt: 0, updatedAt: 0 },
+      gameState: {
+        gameTime: 0, realTimeLastTick: 0, guildName: 'Test', guildLevel: 1, gold: 100,
+        guildHall: { level: 1, floorTiles: [], furniture: [] }, settings: {},
+        founder: null, roster: [], activeMissions: [], completedMissions: [],
+        tutorialStep: 'complete', tavern, inventory: { items: {} }, facilities: [],
+      },
+    };
+  }
+
+  const staleVisitor = (id: string, archetype: string) => ({
+    id, archetype, civilization: 'LinhSon', rarity: 2, level: 2,
+    stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 },
+    derivedDemand: 0, dailyMoodBias: 0, traits: [],
+    preferredGiftCategory: 'consumable', attemptHistory: [], veteranTag: false, spawnedDay: 0,
+    // name + gender intentionally absent (pre-v27 shape)
+  });
+
+  const baseTavern = (extra: Record<string, unknown>) => ({
+    level: 1, keeperId: null, reputation: 0, currentRoster: [], rerolledToday: false,
+    factionBias: null, rumor: null, mercContracts: [], pendingPrompts: [],
+    lastDayProcessed: 0, reputationLastTickWeek: 0, globalNegotiationDebuffUntilDay: null, veteranPool: [],
+    ...extra,
+  });
+
+  it('migrates v26→v27: backfills currentRoster gender from archetype + VN name from pool', () => {
+    const env = makeV26TavernEnvelope(baseTavern({
+      currentRoster: [staleVisitor('tav-1-0', 'scout'), staleVisitor('tav-1-1', 'warrior')],
+    }));
+    const result = migrateSave(env as any);
+    expect(result.version).toBe(SAVE_VERSION);
+    const roster = (result.gameState as any).tavern.currentRoster;
+    const pool = new Set(CIV_CONFIG.LinhSon.namePool);
+    expect(roster[0].gender).toBe('F'); // scout → Ranger
+    expect(roster[1].gender).toBe('M'); // warrior → Forester
+    for (const v of roster) {
+      expect(typeof v.name).toBe('string');
+      expect(pool.has(v.name)).toBe(true);
+    }
+  });
+
+  it('migrates v26→v27: backfills visitorSnapshot in mercContracts / pendingPrompts / veteranPool', () => {
+    const env = makeV26TavernEnvelope(baseTavern({
+      mercContracts: [{ id: 'c1', visitorSnapshot: staleVisitor('v-c1', 'warrior'), hireCost: 0, hireDay: 0, questId: null, relationshipPoints: 0, status: 'available' }],
+      pendingPrompts: [{ kind: 'reinvite', contractId: 'c1', visitorSnapshot: staleVisitor('v-p1', 'scout'), bonusModifier: 25, createdDay: 0 }],
+      veteranPool: [{ contractId: 'c1', visitorSnapshot: staleVisitor('v-vp1', 'scout'), relationshipPoints: 5, addedDay: 0 }],
+    }));
+    const tavern = (migrateSave(env as any).gameState as any).tavern;
+    expect(tavern.mercContracts[0].visitorSnapshot.gender).toBe('M');
+    expect(typeof tavern.mercContracts[0].visitorSnapshot.name).toBe('string');
+    expect(tavern.pendingPrompts[0].visitorSnapshot.gender).toBe('F');
+    expect(tavern.veteranPool[0].visitorSnapshot.gender).toBe('F');
+  });
+
+  it('migrates v26→v27: name backfill is deterministic across runs (hash by id)', () => {
+    const make = () => makeV26TavernEnvelope(baseTavern({ currentRoster: [staleVisitor('tav-X-0', 'scout')] }));
+    const a = migrateSave(make() as any);
+    const b = migrateSave(make() as any);
+    expect((a.gameState as any).tavern.currentRoster[0].name).toBe((b.gameState as any).tavern.currentRoster[0].name);
   });
 
   it('throws for version higher than SAVE_VERSION', () => {

@@ -10,7 +10,7 @@ import type {
   WorkshopBlueprint,
 } from '@/game/data/workshop-types';
 import type { TraitId } from '@/game/data/traits';
-import type { Civilization, CivArchetype } from '@/game/data/civilization-config';
+import type { Civilization, CivArchetype, Gender } from '@/game/data/civilization-config';
 
 export interface EquipmentItem {
   /** Unique instance ID — uuid */
@@ -168,8 +168,10 @@ export interface AttemptRecord {
 
 export interface TavernVisitor {
   id: string;
+  name: string;                          // VN name assigned at spawn (from civ namePool)
   archetype: CivArchetype;
   civilization: Civilization;
+  gender: Gender;                        // from RECRUITABLE_UNITS — drives sprite folder
   rarity: 1 | 2 | 3 | 4 | 5;
   level: number;
   stats: Stats;                          // talent stats
@@ -180,6 +182,8 @@ export interface TavernVisitor {
   attemptHistory: AttemptRecord[];
   veteranTag: boolean;
   spawnedDay: number;
+  /** Tutorial-only: forces a 100% negotiation success (scripted first recruit). */
+  guaranteedRecruit?: boolean;
 }
 
 export type MercContractStatus = 'available' | 'on-quest' | 'completed' | 'defeated';
@@ -369,6 +373,8 @@ export type TutorialStep =
   | 'assign-kael'
   | 'first-haul-reward'
   | 'build-tavern'
+  | 'assign-keeper'
+  | 'recruit-first-member'
   | 'complete';
 
 export interface InventoryState {

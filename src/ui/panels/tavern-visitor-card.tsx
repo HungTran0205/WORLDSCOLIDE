@@ -11,6 +11,7 @@
  */
 
 import { useTranslation } from 'react-i18next';
+import { useGameStore } from '@/game/state/store';
 import type { TavernVisitor } from '@/game/state/game-state';
 import { totalCombatPower, ARCHETYPE_ROLE_MAP, hireMercCost } from '@/game/systems/tavern-negotiation';
 import { getSpritePath, getBattleIdleFramePath } from '@/scene/sprites/sprite-path-resolver';
@@ -36,6 +37,9 @@ export function TavernVisitorCard({
   disabled,
 }: VisitorCardProps) {
   const { t } = useTranslation();
+  const tutorialStep = useGameStore((s) => s.tutorialStep);
+  const isGuaranteed = Boolean(visitor.guaranteedRecruit);
+  const highlightNegotiate = isGuaranteed && tutorialStep === 'recruit-first-member';
   const role = ARCHETYPE_ROLE_MAP[visitor.archetype];
   const power = totalCombatPower(visitor.stats, role);
   // Combat-derived display values (HP/ATK/DEF) derived from power for visibility tier 10+
@@ -43,7 +47,7 @@ export function TavernVisitorCard({
   const atk = Math.floor(visitor.stats.STR * 1.2 + visitor.stats.DEX * 0.4);
   const def = Math.floor(visitor.stats.END * 0.8 + visitor.stats.AGI * 0.3);
   const mercCost = hireMercCost(visitor);
-  const base = getSpritePath(visitor.civilization, visitor.archetype, 'M');
+  const base = getSpritePath(visitor.civilization, visitor.archetype, visitor.gender);
   const portraitSrc = getBattleIdleFramePath(base, 'south', 0);
   const stars = '★'.repeat(visitor.rarity) + '☆'.repeat(5 - visitor.rarity);
 
@@ -53,9 +57,9 @@ export function TavernVisitorCard({
         <span className="tv-veteran-badge" title={t('tavern.card.veteran')}>V</span>
       )}
       <div className="tv-card-portrait ink-pixelated">
-        <img src={portraitSrc} alt={visitor.archetype} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+        <img src={portraitSrc} alt={visitor.name} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
       </div>
-      <div className="tv-card-name">{visitor.archetype.charAt(0).toUpperCase() + visitor.archetype.slice(1)} #{visitor.id.slice(-4)}</div>
+      <div className="tv-card-name">{visitor.name}</div>
       <div className="tv-card-meta">
         <span className="tv-card-rarity">{stars}</span>
         <span>· {visitor.civilization}</span>
@@ -112,17 +116,25 @@ export function TavernVisitorCard({
       )}
 
       <div className="tv-card-actions">
-        <button className="tv-btn is-primary" onClick={onNegotiate} disabled={disabled}>
+        <button
+          className={`tv-btn is-primary${highlightNegotiate ? ' tutorial-highlight' : ''}`}
+          onClick={onNegotiate}
+          disabled={disabled}
+        >
           {t('tavern.action.negotiate')}
         </button>
-        <button
-          className="tv-btn is-small"
-          onClick={onHireMerc}
-          disabled={disabled || gold < mercCost}
-          title={gold < mercCost ? t('tavern.action.notEnoughGold', { cost: mercCost }) : ''}
-        >
-          {t('tavern.action.hireMerc')} — {formatGold(mercCost)}
-        </button>
+        {/* Hire-as-merc is hidden for the scripted tutorial recruit so the tutorial
+            can only complete via a real (permanent) negotiate-recruit. */}
+        {!isGuaranteed && (
+          <button
+            className="tv-btn is-small"
+            onClick={onHireMerc}
+            disabled={disabled || gold < mercCost}
+            title={gold < mercCost ? t('tavern.action.notEnoughGold', { cost: mercCost }) : ''}
+          >
+            {t('tavern.action.hireMerc')} — {formatGold(mercCost)}
+          </button>
+        )}
       </div>
     </div>
   );

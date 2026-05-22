@@ -1927,6 +1927,19 @@ interface Member {
 - **Data Preservation**: Transparent migration; auto-triggered on load, no player interaction required
 - **Backward Compat**: Old saves load seamlessly with 14-beat flow; player simply continues from remapped beat
 
+### Save Migration v26 → v27 (MVP Recruit Gating, VN Names & Roster Rename)
+
+**`migrateV26toV27()`** (`src/game/save/save-migrations.ts`):
+- **TavernVisitor Schema Change**: `TavernVisitor` adds required `name` + `gender` fields
+  - Backfill existing `tavern.mercContracts[]` visitors (persisted active/pending contracts)
+  - Founder visitors: assign name as `'Founder'`
+  - Recruited visitors: deterministically assign from `CIV_CONFIG[civ].namePool` (same logic as new spawn)
+  - All visitors get gender from archetype→gender mapping in `RECRUITABLE_UNITS`
+- **Backward Compat**: Old saves load with proper names; no player interaction required
+- **Archetype Gating**: New `RECRUITABLE_UNITS` config gates recruitable units per civilization (MVP: Linh Sơn only)
+  - Non-recruitable archetypes (e.g., `LS-SCOUT-M`, `LS-WARRIOR-F`) never spawn in tavern or through recruitment system
+  - Existing saves' members unaffected (loaded members keep archetype/gender as-is)
+
 ### Inventory Panel Updates (v1.26)
 
 **Changes**:

@@ -10,6 +10,7 @@ import { FACILITY_DEFINITIONS, LOGGING_SITE_CONFIG, STONE_QUARRY_CONFIG } from '
 import { FACILITY_SLOTS, getSlotCameraOffset } from '@/game/data/facility-slot-positions';
 import { calcMcLevel } from '@/game/systems/stone-quarry-production-system';
 import { handleFirstHaul } from '@/game/systems/tutorial-first-haul-handler';
+import { handleKeeperAssigned } from '@/game/systems/tutorial-keeper-handler';
 import { FacilityMemberAvatar } from './facility-member-avatar';
 import { InkConfirmDialog } from './ink-confirm-dialog';
 
@@ -97,7 +98,9 @@ function BuiltRoomTray({ facility, onClose }: { facility: GuildFacility; onClose
   const tutorialStep    = useGameStore(s => s.tutorialStep);
 
   // Tutorial: pulse the assign slot when the player must put Kael on the Logging Site.
-  const highlightAssign = tutorialStep === 'assign-kael' && facility.type === 'logging-site';
+  const highlightAssign =
+    (tutorialStep === 'assign-kael' && facility.type === 'logging-site') ||
+    (tutorialStep === 'assign-keeper' && facility.type === 'tavern');
 
   const allMembers     = founder ? [founder, ...roster] : roster;
   const def            = FACILITY_DEFINITIONS[facility.type];
@@ -145,8 +148,12 @@ function BuiltRoomTray({ facility, onClose }: { facility: GuildFacility; onClose
               {eligible.length > 0 && (
                 <select value="" onChange={e => {
                   if (!e.target.value) return;
-                  // Grant the scripted first haul if this is Kael → logging site at the tutorial step.
-                  if (assignMember(e.target.value, facility.id)) handleFirstHaul(e.target.value, facility.id);
+                  if (assignMember(e.target.value, facility.id)) {
+                    // Grant the scripted first haul (Kael → logging site) or spawn the
+                    // tutorial recruit (keeper → tavern), each gated to its tutorial step.
+                    handleFirstHaul(e.target.value, facility.id);
+                    handleKeeperAssigned(e.target.value, facility.id);
+                  }
                 }}>
                   <option value="">—</option>
                   {eligible.map(m => <option key={m.id} value={m.id}>{m.name} Lv.{m.level}</option>)}

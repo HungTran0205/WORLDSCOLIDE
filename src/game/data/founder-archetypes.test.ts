@@ -6,7 +6,9 @@
  *  - archetype/gender mapping: templar→{sword,M}, forester→{warrior,M}, ranger→{scout,F}.
  *  - getSpritePath(civ, choice.archetype, choice.gender) resolves to
  *    LS-SWORD-M / LS-WARRIOR-M / LS-SCOUT-F.
- *  - Recruit-safety regression: CIV_CONFIG.LinhSon.archetypes must NOT include 'sword'.
+ *  - Recruit-safety: RECRUITABLE_UNITS gates tavern spawns to the 3 playable
+ *    sprites only (Templar/Forester/Ranger); never the NPC-only sprites
+ *    LS-SCOUT-M / LS-WARRIOR-F.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -15,7 +17,7 @@ import {
   FOUNDER_CHOICES_BY_CIV,
   type FounderArchetypeChoice,
 } from './founder-archetypes';
-import { CIV_CONFIG } from './civilization-config';
+import { CIV_CONFIG, RECRUITABLE_UNITS } from './civilization-config';
 import { getSpritePath } from '@/scene/sprites/sprite-path-resolver';
 
 function choiceById(id: FounderArchetypeChoice['id']): FounderArchetypeChoice {
@@ -68,12 +70,38 @@ describe('getSpritePath resolves each founder choice to its sprite folder', () =
   });
 });
 
-describe('recruit-safety regression — sword is founder-only', () => {
-  it("CIV_CONFIG.LinhSon.archetypes does NOT include 'sword'", () => {
-    expect(CIV_CONFIG.LinhSon.archetypes).not.toContain('sword');
+describe('recruit-safety — RECRUITABLE_UNITS gates tavern spawns to playable sprites', () => {
+  it('LinhSon recruitable units are exactly Templar/Forester/Ranger', () => {
+    expect(RECRUITABLE_UNITS.LinhSon).toEqual([
+      { archetype: 'sword', gender: 'M' },
+      { archetype: 'warrior', gender: 'M' },
+      { archetype: 'scout', gender: 'F' },
+    ]);
   });
 
-  it("CIV_CONFIG.LinhSon.archetypes stays exactly ['warrior','scout']", () => {
+  it('never offers the NPC-only sprites (scout+M, warrior+F)', () => {
+    const combos = RECRUITABLE_UNITS.LinhSon.map((u) => `${u.archetype}-${u.gender}`);
+    expect(combos).not.toContain('scout-M');   // LS-SCOUT-M
+    expect(combos).not.toContain('warrior-F'); // LS-WARRIOR-F
+  });
+
+  it('every recruitable unit resolves to a playable sprite folder', () => {
+    const allowed = new Set([
+      '/sprites/characters/LS-SWORD-M',
+      '/sprites/characters/LS-WARRIOR-M',
+      '/sprites/characters/LS-SCOUT-F',
+    ]);
+    for (const u of RECRUITABLE_UNITS.LinhSon) {
+      expect(allowed.has(getSpritePath('LinhSon', u.archetype, u.gender))).toBe(true);
+    }
+  });
+
+  it('locked civs have no recruitable units in MVP', () => {
+    expect(RECRUITABLE_UNITS.DeQuoc).toEqual([]);
+    expect(RECRUITABLE_UNITS.ThienLu).toEqual([]);
+  });
+
+  it("legacy CIV_CONFIG.LinhSon.archetypes is no longer the recruit gate (unchanged)", () => {
     expect(CIV_CONFIG.LinhSon.archetypes).toEqual(['warrior', 'scout']);
   });
 });

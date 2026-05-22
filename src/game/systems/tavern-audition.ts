@@ -102,7 +102,7 @@ export function promoteMercToMember(contract: MercContract, now: number = Date.n
   const v = contract.visitorSnapshot;
   return {
     id: `mem-${now}-${contract.id.slice(-6)}`,
-    name: `Member-${contract.id.slice(-4)}`,
+    name: v.name,
     level: v.level,
     exp: 0,
     stats: { ...v.stats },
@@ -112,6 +112,7 @@ export function promoteMercToMember(contract: MercContract, now: number = Date.n
     injuredUntil: null,
     civilization: v.civilization,
     archetype: v.archetype,
+    gender: v.gender,
     isFounder: false,
     rank: 'MEMBER',
     missionsCompleted: 0,

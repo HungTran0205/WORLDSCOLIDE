@@ -7,6 +7,49 @@ All notable changes to Worlds Collide are documented in this file. The format fo
 
 ---
 
+## [Unreleased] — 2026-05-22 (MVP Recruit Gating, VN Names & Roster Rename)
+
+### feat(tavern): recruitable units gating + deterministic spawn with VN names
+
+**MVP-ready tavern recruitment** — single source of truth at spawn layer, replacing 3-site placeholder generation. Gate tavern recruits to 3 playable units per civilization (Linh Sơn MVP: Templar `sword`+M, Forester `warrior`+M, Ranger `scout`+F). New `RECRUITABLE_UNITS` defined in `civilization-config.ts` encodes both archetype allow-list and gender→sprite mapping. Non-recruitable sprite paths (e.g., `LS-SCOUT-M`, `LS-WARRIOR-F`) unspawnable by construction.
+
+**TavernVisitor deterministic naming** — `TavernVisitor` now carries required `name` + `gender` fields, assigned at spawn time (not at hire time). VN name pool (~44 entries) in `CIV_CONFIG.LinhSon.namePool` replaces placeholder `Warrior #xxxx` names. Visitor names distinct within a game-day (daily refresh enforces uniqueness). Removed hardcoded gender 'M' and placeholder naming from 3 hire sites (tavern-visitor-card, tavern-panel, tavern-audition); all now consume `visitor.name` + `visitor.gender` directly.
+
+**Save migration v26→v27** — `migrateV26toV27()` backfills `name` + `gender` onto persisted `tavern.mercContracts[]` visitors (founders get `'Founder'`, others assigned from `CIV_CONFIG` name pool). Migration is transparent; players' existing visitors load with proper names.
+
+**Key Files (New)**:
+- `src/game/systems/tavern-spawn.ts` — Deterministic visitor spawn engine; `spawnTavernVisitor(civ)` assigns name + gender + archetype from `RECRUITABLE_UNITS` + name pool.
+
+**Key Files (Modified)**:
+- `src/game/data/civilization-config.ts` — +`RECRUITABLE_UNITS` (archetype×gender allowed list), +`namePool` (44 VN names)
+- `src/game/state/game-state.ts` — `TavernVisitor` interface: +`name`, +`gender` (required fields)
+- `src/game/save/save-migrations.ts` — `migrateV26toV27()` backfill migration
+- `src/game/save/save-types.ts` — `SAVE_VERSION: 27`
+- `src/ui/panels/tavern-visitor-card.tsx` — consume `visitor.name` / `visitor.gender`; removed placeholder generation
+- `src/ui/panels/tavern-panel.tsx` — consume `visitor.name` / `visitor.gender`; removed hardcoded gender 'M'
+- `src/game/systems/tavern-audition.ts` — consume `visitor.name` / `visitor.gender`; removed placeholder generation
+
+**Deleted**:
+- `src/game/systems/mercenary-generator.ts` — dead code (no live callers; replaced by tavern-spawn.ts engine)
+
+### feat(roster): member rename UI + validation (non-founder, non-mercenary)
+
+**Inline roster rename** — character detail panel gains "Rename" action; click opens inline text input (24-char max, trim, reject empty). Validation: founder + mercenary ranks cannot rename (founder is structural, mercenaries are hired). Player-initiated rename via `renameMember(memberId, newName)` Zustand action.
+
+**Key Files (New)**:
+- `src/game/state/roster-slice.ts` — `renameMember(id, name)` action (validation + state update)
+
+**Key Files (Modified)**:
+- `src/ui/components/member-book-detail-page.tsx` — +inline rename input in header; calls `renameMember()`; disable for founder/mercenary
+- `src/ui/panels/character-detail-panel.tsx` — +rename button / inline rename UI
+- `src/game/state/game-state.ts` — no schema change (member.name already exists)
+
+**Test coverage**: rename validation, founder/mercenary exclusion, empty/whitespace rejection.
+
+**Plan Reference**: `plans/260522-0930-mvp-recruit-gating-vn-names-rename/` (phases 01–04 complete)
+
+---
+
 ## [Unreleased] — 2026-05-21 (Bilingual i18n EN+VI Support & New Game Flow)
 
 ### feat(i18n): complete bilingual architecture — two-namespace EN/VI localization

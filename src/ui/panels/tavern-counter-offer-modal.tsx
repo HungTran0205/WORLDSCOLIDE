@@ -26,7 +26,7 @@ export function TavernCounterOfferModal({ visitor, visibilityScore, onClose }: C
   const baseCost = hireMercCost(visitor);
   const counterCost = hireMercCost(visitor, 1.2);
   const canAfford = gold >= counterCost;
-  const base = getSpritePath(visitor.civilization, visitor.archetype, 'M');
+  const base = getSpritePath(visitor.civilization, visitor.archetype, visitor.gender);
   const src = getBattleIdleFramePath(base, 'south', 0);
 
   return (
@@ -34,7 +34,7 @@ export function TavernCounterOfferModal({ visitor, visibilityScore, onClose }: C
       <div className="tv-modal-secondary parchment-surface parchment-frame" onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div className="tv-card-portrait ink-pixelated" style={{ width: 48, height: 48 }}>
-            <img src={src} alt={visitor.archetype} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            <img src={src} alt={visitor.name} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
           </div>
           <h3 className="parchment-title" style={{ margin: 0 }}>{t('tavern.counter.title')}</h3>
         </div>

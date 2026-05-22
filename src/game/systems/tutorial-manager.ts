@@ -131,6 +131,23 @@ export const TUTORIAL_STEPS: TutorialStepConfig[] = [
       state.facilities.some((f) => f.type === 'tavern' && f.level > 0),
   },
   {
+    // Assign any guild member as Tavern Keeper. handleKeeperAssigned spawns the
+    // scripted guaranteed visitor immediately (no next-day wait) and advances.
+    step: 'assign-keeper',
+    message: 'Assign a guild member as your Tavern Keeper to draw in a visitor.',
+    highlightPanel: 'facilities',
+    autoAdvance: false,
+  },
+  {
+    // Negotiate to recruit the scripted visitor (guaranteedRecruit → 100%).
+    // Advances once that visitor leaves the roster (i.e. is recruited).
+    step: 'recruit-first-member',
+    message: 'Open the Tavern and negotiate to recruit your first guild member.',
+    autoAdvance: true,
+    advanceCondition: (state) =>
+      !state.tavern.currentRoster.some((v) => v.guaranteedRecruit),
+  },
+  {
     step: 'complete',
     message: 'Tutorial complete! Your guild adventure begins.',
     autoAdvance: false,

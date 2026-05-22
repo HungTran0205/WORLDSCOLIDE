@@ -48,8 +48,10 @@ function makeFounder(overrides: Partial<Member> = {}): Member {
 function fakeVisitor(overrides: Partial<TavernVisitor> = {}): TavernVisitor {
   return {
     id: 'v-aud-1',
+    name: 'v-aud-1',
     archetype: 'warrior',
     civilization: 'LinhSon',
+    gender: 'M',
     rarity: 3,
     level: 5,
     stats: { STR: 10, END: 10, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 },

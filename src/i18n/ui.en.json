@@ -388,6 +388,9 @@
     "release": "Release",
     "releaseConfirm": "Release {{name}}? This cannot be undone.",
     "releaseConfirmFallback": "this member",
+    "rename": "Rename",
+    "renameSave": "Save name",
+    "renameCancel": "Cancel",
     "status": {
       "idle": "Available",
       "on-mission": "On Quest",

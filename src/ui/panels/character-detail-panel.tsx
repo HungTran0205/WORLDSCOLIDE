@@ -36,6 +36,8 @@ export interface CharacterDetailPanelProps {
   onEquipGear?: (id: string) => void;
   onUnequipGear?: (slot: EquipmentSlot) => void;
   onOpenEquipMode?: () => void; // wired in phase 04
+  /** Rename this member. Omit to disable renaming (e.g. founder / mercenaries). */
+  onRename?: (name: string) => void;
 }
 
 export function CharacterDetailPanel({
@@ -43,11 +45,20 @@ export function CharacterDetailPanel({
   onInviteMercenary, inviteCost, canAffordInvite,
   onPromote, canAffordPromote, onClose,
   syringeCount = 0, onSetSyringeLoadout,
-  onUnequipGear, onOpenEquipMode,
+  onUnequipGear, onOpenEquipMode, onRename,
 }: CharacterDetailPanelProps) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<TabKey>('stats');
   const [imgFailed, setImgFailed] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+
+  const canRename = Boolean(onRename) && !member.isFounder && member.rank !== 'MERCENARY';
+  const commitRename = () => {
+    const next = nameDraft.trim();
+    if (next && onRename) onRename(next);
+    setEditingName(false);
+  };
 
   const expNeeded = expToNextLevel(member.level);
   const expPct    = Math.min(100, Math.floor((member.exp / expNeeded) * 100));
@@ -79,7 +90,39 @@ export function CharacterDetailPanel({
           }
         </div>
         <div className="char-identity">
-          <div className="char-name">{member.name || t('characterDetail.unknownName')}</div>
+          <div className="char-name">
+            {editingName ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <input
+                  type="text"
+                  value={nameDraft}
+                  maxLength={24}
+                  autoFocus
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') commitRename();
+                    else if (e.key === 'Escape') setEditingName(false);
+                  }}
+                  style={{ font: 'inherit', maxWidth: '10rem', background: 'var(--ink-bg, #1a1a1a)', color: 'inherit', border: '1px solid var(--ink-gold-dim)', borderRadius: 4, padding: '2px 6px' }}
+                />
+                <button className="char-btn" type="button" onClick={commitRename} title={t('roster.renameSave')}>✓</button>
+                <button className="char-btn" type="button" onClick={() => setEditingName(false)} title={t('roster.renameCancel')}>✕</button>
+              </span>
+            ) : (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {member.name || t('characterDetail.unknownName')}
+                {canRename && (
+                  <button
+                    className="char-btn"
+                    type="button"
+                    style={{ fontSize: '0.7rem', padding: '2px 6px' }}
+                    onClick={() => { setNameDraft(member.name); setEditingName(true); }}
+                    title={t('roster.rename')}
+                  >✎</button>
+                )}
+              </span>
+            )}
+          </div>
           <div className="char-sub">{t('characterDetail.subline', { rank: member.rank, level: member.level, civ: civName })}</div>
           <div className="char-bar-row">
             <div>

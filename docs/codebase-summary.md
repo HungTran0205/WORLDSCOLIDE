@@ -2,7 +2,7 @@
 
 **Worlds Collide** — An HD-2D auto-RPG idle guild builder where civilizations collide. Build your guild hall, recruit members from different civilizations, dispatch quests, and watch your guild grow — even while you're away.
 
-**Last Updated**: 2026-05-21 (New Game Flow — Split-Hero Character-Creation Wizard)
+**Last Updated**: 2026-05-22 (MVP Recruit Gating, VN Names & Roster Rename)
 
 ## Technology Stack
 
@@ -200,6 +200,41 @@
 - **Title Screen**: Slot display, action buttons, messages
 - **Save/Import Dialogs**: User-facing feedback
 
+## Recent Changes (MVP Recruit Gating, VN Names & Roster Rename — 2026-05-22)
+
+### Recruitable Units Gating System (NEW)
+- **`RECRUITABLE_UNITS`**: Single source of truth in `civilization-config.ts` encoding recruitable (archetype, gender) pairs per civilization
+  - MVP Linh Sơn: Templar (`sword`+M), Forester (`warrior`+M), Ranger (`scout`+F)
+  - Non-recruitable sprite paths (e.g., `LS-SCOUT-M`, `LS-WARRIOR-F`) unspawnable by construction
+- **Spawn Layer Gating**: New `TavernVisitor` spawn engine (`tavern-spawn.ts`) enforces gating at visitor creation (not hire-time)
+- **Save Migration v26→v27**: `migrateV26toV27()` backfills `name` + `gender` onto persisted `tavern.mercContracts[]` visitors
+
+### TavernVisitor Deterministic Naming (NEW)
+- **Required Fields**: `name` + `gender` assigned at spawn time (single source of truth, not 3 hire sites)
+- **VN Name Pool**: ~44 Vietnamese names in `CIV_CONFIG.LinhSon.namePool`, distinct per game-day
+- **Removed Placeholders**: Deleted hardcoded gender 'M' and `Warrior #xxxx` generation from `tavern-visitor-card.tsx`, `tavern-panel.tsx`, `tavern-audition.ts`
+- **Deleted File**: `src/game/systems/mercenary-generator.ts` (no live callers; replaced by tavern-spawn.ts)
+
+**Key Files (New)**:
+- `src/game/systems/tavern-spawn.ts` — Deterministic visitor spawn engine; `spawnTavernVisitor(civ)` assigns name + gender + archetype from `RECRUITABLE_UNITS` + name pool
+
+**Key Files (Modified)**:
+- `src/game/data/civilization-config.ts` — +`RECRUITABLE_UNITS` (archetype×gender allowed list), +`namePool` (44 VN names)
+- `src/game/state/game-state.ts` — `TavernVisitor` interface: +`name`, +`gender` (required)
+- `src/game/save/save-types.ts` — `SAVE_VERSION: 27`
+- `src/game/save/save-migrations.ts` — `migrateV26toV27()` backfill
+
+### Roster Member Rename (NEW)
+- **UI**: Inline rename input in character detail panel (24-char max, trim, reject empty)
+- **Restrictions**: Founder + mercenary ranks cannot rename (structural/hired)
+- **Validation**: Basic (non-empty, whitespace trim, char limit) via `renameMember(id, name)` Zustand action
+- **No Schema Change**: `member.name` field already exists
+
+**Key Files (Modified)**:
+- `src/ui/components/member-book-detail-page.tsx` — +inline rename input
+- `src/ui/panels/character-detail-panel.tsx` — +rename button
+- `src/game/state/roster-slice.ts` — `renameMember(id, name)` action
+
 ## Recent Changes (Building System Refactor — v1.10)
 
 ### Floor Tile Painting System (NEW - Tile-Based Architecture)
@@ -303,7 +338,7 @@
 - `game-state.ts` — Member interface: added optional `archetype` and `gender` fields
 - `civilization-config.ts` — Added CivArchetype type (6 archetypes), Gender type, archetype arrays per civ — ENHANCED v1.11
 - `character-creation.ts` — Sets archetype + gender from civ selection
-- `mercenary-generator.ts` — Randomly assigns archetype + gender during recruitment
+- `tavern-spawn.ts` — Deterministic archetype + gender assignment at visitor spawn (live recruitment path)
 
 ### Zero Breaking Changes
 - Sprite system fully additive (visual enhancement only)

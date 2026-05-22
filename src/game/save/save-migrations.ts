@@ -6,6 +6,9 @@
 import type { SaveEnvelope } from './save-types';
 import { SAVE_VERSION } from './save-types';
 import { FACILITY_DEFAULT_SLOTS } from '@/game/data/facility-slot-positions';
+import { RECRUITABLE_UNITS, CIV_CONFIG } from '@/game/data/civilization-config';
+import type { Civilization } from '@/game/data/civilization-config';
+import { hashSeed } from '@/game/systems/seeded-rng';
 
 export type MigrationFn = (envelope: SaveEnvelope) => SaveEnvelope;
 
@@ -694,6 +697,56 @@ function migrateV25toV26(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+/**
+ * v26→v27: TavernVisitor gains required `name` + `gender` (assigned at spawn).
+ * Backfill embedded visitor snapshots in pre-v27 saves so they load + render:
+ *   - gender from the civ's RECRUITABLE_UNITS archetype→gender map (fallback 'M')
+ *   - name from a stable hash over the visitor id (deterministic across reloads)
+ * Visitors live in tavern.currentRoster plus the visitorSnapshot inside
+ * mercContracts / pendingPrompts / veteranPool. The next day-tick respawns the
+ * roster fresh — this only keeps in-flight saves crash-free and readable.
+ */
+function migrateV26toV27(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+  const tavern = (gs.tavern ?? {}) as AnyRecord;
+
+  const backfillVisitor = (v: AnyRecord): AnyRecord => {
+    if (!v) return v;
+    const civ = v.civilization as Civilization;
+    const units = RECRUITABLE_UNITS[civ] ?? [];
+    const gender = v.gender === 'M' || v.gender === 'F'
+      ? v.gender
+      : (units.find((u) => u.archetype === v.archetype)?.gender ?? 'M');
+    const pool = CIV_CONFIG[civ]?.namePool ?? CIV_CONFIG.LinhSon.namePool;
+    const name = typeof v.name === 'string' && v.name
+      ? v.name
+      : pool[Math.abs(hashSeed(String(v.id ?? ''), 'visitor-name')) % pool.length];
+    return { ...v, name, gender };
+  };
+
+  const backfillSnapshot = (rec: AnyRecord): AnyRecord =>
+    rec && rec.visitorSnapshot
+      ? { ...rec, visitorSnapshot: backfillVisitor(rec.visitorSnapshot as AnyRecord) }
+      : rec;
+
+  const mapArr = (arr: unknown, fn: (r: AnyRecord) => AnyRecord) =>
+    Array.isArray(arr) ? (arr as AnyRecord[]).map(fn) : arr;
+
+  const migratedTavern = {
+    ...tavern,
+    currentRoster: mapArr(tavern.currentRoster, backfillVisitor),
+    mercContracts: mapArr(tavern.mercContracts, backfillSnapshot),
+    pendingPrompts: mapArr(tavern.pendingPrompts, backfillSnapshot),
+    veteranPool: mapArr(tavern.veteranPool, backfillSnapshot),
+  };
+
+  return {
+    ...envelope,
+    version: 27,
+    gameState: { ...gs, tavern: migratedTavern } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -715,6 +768,7 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   23: migrateV23toV24,
   24: migrateV24toV25,
   25: migrateV25toV26,
+  26: migrateV26toV27,
 };
 
 /**
