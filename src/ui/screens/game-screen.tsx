@@ -332,6 +332,10 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
             }
             settled={cameraSettled}
             panelOpen={workshopPanelOpen || alchemyPanelOpen || tavernPanelOpen}
+            // Re-point at the tavern counter during the recruit beat: the keeper
+            // assignment already clicked the counter, which would otherwise leave
+            // the player with no hint on where to open the recruitment panel.
+            forceShow={tutorialStep === 'recruit-first-member'}
           />
           <HomeButton />
           <KeyboardShortcuts activePanel={activePanel} setActivePanel={setActivePanel} />

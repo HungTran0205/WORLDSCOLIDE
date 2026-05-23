@@ -41,6 +41,11 @@ interface FacilityHintCoachmarkProps {
   settled: boolean;
   /** True if any facility function panel is open (hide the hint while in-panel). */
   panelOpen: boolean;
+  /** Re-show the hint even if its seen-flag is set. The tutorial uses this to
+   *  re-point at the counter during 'recruit-first-member': assigning a keeper
+   *  already clicked the counter (setting the seen-flag), which would otherwise
+   *  permanently suppress the hint the player still needs to find. */
+  forceShow?: boolean;
 }
 
 export function FacilityHintCoachmark({
@@ -48,13 +53,16 @@ export function FacilityHintCoachmark({
   roomCenter,
   settled,
   panelOpen,
+  forceShow = false,
 }: FacilityHintCoachmarkProps) {
   const { t } = useTranslation();
   const seen = useUiStore((s) => s.facilityHintSeen);
 
-  // Show only when settled in a room, no panel open, and the hint is unseen.
+  // Show only when settled in a room, no panel open, and the hint is unseen
+  // (or forced by the tutorial).
   const active =
-    activeType !== null && roomCenter !== null && settled && !panelOpen && !seen[activeType];
+    activeType !== null && roomCenter !== null && settled && !panelOpen &&
+    (forceShow || !seen[activeType]);
 
   // World target = room center + the object's local offset.
   const target: [number, number, number] =

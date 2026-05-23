@@ -146,6 +146,18 @@ export const TUTORIAL_STEPS: TutorialStepConfig[] = [
     autoAdvance: true,
     advanceCondition: (state) =>
       !state.tavern.currentRoster.some((v) => v.guaranteedRecruit),
+    // Two-phase guidance: while the panel is CLOSED, the (tutorial-forced)
+    // FacilityHintCoachmark points at the counter so the player knows to click
+    // it — see game-screen forceShow. Once the panel opens, this dom coach
+    // points at the Negotiate button. It auto-hides while the panel is closed
+    // (target absent), so the two never overlap.
+    coach: {
+      targetType: 'dom',
+      target: '.tv-visitor-card .tv-btn.is-primary',
+      caption: 'Negotiate to recruit your visitor.',
+      arrow: true,
+      pulse: true,
+    },
   },
   {
     step: 'complete',
