@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import type { TavernVisitor } from '@/game/state/game-state';
 import { hireMercCost } from '@/game/systems/tavern-negotiation';
-import { getSpritePath, getBattleIdleFramePath } from '@/scene/sprites/sprite-path-resolver';
+import { getSpritePath, getAvatarPath } from '@/scene/sprites/sprite-path-resolver';
 
 interface CounterOfferModalProps {
   visitor: TavernVisitor;
@@ -27,7 +27,7 @@ export function TavernCounterOfferModal({ visitor, visibilityScore, onClose }: C
   const counterCost = hireMercCost(visitor, 1.2);
   const canAfford = gold >= counterCost;
   const base = getSpritePath(visitor.civilization, visitor.archetype, visitor.gender);
-  const src = getBattleIdleFramePath(base, 'south', 0);
+  const src = getAvatarPath(base);
 
   return (
     <div className="tv-modal-overlay" onClick={onClose}>

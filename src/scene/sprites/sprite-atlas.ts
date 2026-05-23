@@ -1,17 +1,21 @@
 /**
- * Sprite atlas loader — packs individual frame images into a single
- * CanvasTexture grid. Animation selects frames via texture.offset/repeat
- * instead of swapping material.map (zero texture binding overhead).
+ * Sprite atlas helpers — UV-based frame animation over a pre-packed sheet texture.
+ * Animation selects frames via texture.offset/repeat instead of swapping material.map
+ * (zero texture binding overhead).
+ *
+ * Phase 3: primary entry point is buildAtlasFromSheet (one PNG sheet → SpriteAtlas).
+ * buildAtlasFromTextures / buildAtlasFromUrls were removed — all animators now load
+ * a single pre-packed sheet via useLoader(TextureLoader, sheetPath).
  *
  * Atlas layout: frames arranged in a grid, left-to-right, top-to-bottom.
  */
 
 import * as THREE from 'three';
-import { assetUrl } from '@/lib/asset-url';
 
 export interface SpriteAtlas {
-  /** Single CanvasTexture containing all frames in a grid */
-  texture: THREE.CanvasTexture;
+  /** Texture containing all frames in a grid (CanvasTexture for composite atlases,
+   *  or a plain Texture for pre-packed sheet PNGs loaded via TextureLoader). */
+  texture: THREE.Texture;
   /** Number of columns in the grid */
   cols: number;
   /** Number of rows in the grid */
@@ -55,110 +59,41 @@ export function getAtlasFrameUv(
 }
 
 /**
- * Build a sprite atlas from an array of already-loaded Three.js Textures.
- * Draws all frames onto a single Canvas in a grid layout.
+ * Wrap a single pre-packed sheet texture as a SpriteAtlas. No canvas draw.
  *
- * @param textures - Array of loaded textures (from useLoader or manual load)
- * @param cols - Number of columns in the grid (default: 8)
- * @returns SpriteAtlas with one shared CanvasTexture
+ * Use with `useLoader(TextureLoader, sheetPath)` (one URL string, not array).
+ * Frame addressing: atlasIdx = row * cols + frame, where row is derived from
+ * the manifest's dirRows via indexOf — never a local hardcoded direction map.
+ *
+ * IMPORTANT — clones the input texture. `useLoader(TextureLoader, url)` returns
+ * ONE cached Texture per URL, shared across every component that loads the same
+ * sheet. The texture-offset animators (sprite-animator, guild-hall, working,
+ * woodcutting, enemy) animate by mutating `texture.offset` via setAtlasFrame, so
+ * a shared texture would make all instances of the same character fight over one
+ * offset (last writer wins → every member shows the same frame/direction).
+ * Cloning gives each instance an independent offset/repeat/matrix while three.js
+ * shares the underlying `Source` — so there is exactly ONE GPU upload regardless
+ * of instance count (matches the per-instance independence the old
+ * buildAtlasFromTextures CanvasTexture path had). Combat uses uniform-UV (it does
+ * not touch texture.offset), so the clone is harmless there.
+ *
+ * Mipmap note: NearestMipmapNearestFilter matches the old buildAtlasFromTextures
+ * behavior. If mip-bleed appears across sheet cells in QA (padded dims), flip to
+ * NearestFilter + generateMipmaps=false — see phase-03 Risk/Open-Q2.
  */
-export function buildAtlasFromTextures(
-  textures: THREE.Texture[],
-  cols = 8,
+export function buildAtlasFromSheet(
+  texture: THREE.Texture,
+  cols: number,
+  rows: number,
+  frameCount: number,
 ): SpriteAtlas {
-  if (textures.length === 0) {
-    throw new Error('Cannot build atlas from empty texture array');
-  }
-
-  const frameCount = textures.length;
-  const rows = Math.ceil(frameCount / cols);
-
-  // Get frame dimensions from first texture's source image
-  const firstImage = textures[0].image as HTMLImageElement | HTMLCanvasElement;
-  const frameW = firstImage.width || 128;
-  const frameH = firstImage.height || 128;
-
-  // Create atlas canvas
-  const canvas = document.createElement('canvas');
-  canvas.width = cols * frameW;
-  canvas.height = rows * frameH;
-  const ctx = canvas.getContext('2d')!;
-
-  // Draw each frame into grid position
-  for (let i = 0; i < frameCount; i++) {
-    const img = textures[i].image as HTMLImageElement | HTMLCanvasElement;
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    ctx.drawImage(img, col * frameW, row * frameH, frameW, frameH);
-  }
-
-  // Create a single CanvasTexture
-  const atlasTexture = new THREE.CanvasTexture(canvas);
-  atlasTexture.magFilter = THREE.NearestFilter;
-  // NearestMipmapNearestFilter: preserve pixel-art look at zoom-in,
-  // use pre-computed mip levels at distance (avoids random aliasing sampling).
-  atlasTexture.minFilter = THREE.NearestMipmapNearestFilter;
-  atlasTexture.colorSpace = THREE.SRGBColorSpace;
-  atlasTexture.generateMipmaps = true;
-
-  // Set initial frame (0,0)
-  atlasTexture.repeat.set(1 / cols, 1 / rows);
-  atlasTexture.offset.set(0, 1 - 1 / rows);
-
-  return { texture: atlasTexture, cols, rows, frameCount };
-}
-
-/**
- * Build a sprite atlas from an array of image URLs loaded manually.
- * Returns a Promise that resolves to the atlas.
- * Silently returns null if any image fails to load (graceful 404).
- */
-export async function buildAtlasFromUrls(
-  urls: string[],
-  cols = 8,
-): Promise<SpriteAtlas | null> {
-  if (urls.length === 0) return null;
-
-  try {
-    const images = await Promise.all(
-      urls.map(
-        (url) =>
-          new Promise<HTMLImageElement>((resolve, reject) => {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => resolve(img);
-            img.onerror = reject;
-            img.src = assetUrl(url);
-          }),
-      ),
-    );
-
-    const frameCount = images.length;
-    const rows = Math.ceil(frameCount / cols);
-    const frameW = images[0].width || 128;
-    const frameH = images[0].height || 128;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = cols * frameW;
-    canvas.height = rows * frameH;
-    const ctx = canvas.getContext('2d')!;
-
-    for (let i = 0; i < frameCount; i++) {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      ctx.drawImage(images[i], col * frameW, row * frameH, frameW, frameH);
-    }
-
-    const atlasTexture = new THREE.CanvasTexture(canvas);
-    atlasTexture.magFilter = THREE.NearestFilter;
-    atlasTexture.minFilter = THREE.NearestMipmapNearestFilter;
-    atlasTexture.colorSpace = THREE.SRGBColorSpace;
-    atlasTexture.generateMipmaps = true;
-    atlasTexture.repeat.set(1 / cols, 1 / rows);
-    atlasTexture.offset.set(0, 1 - 1 / rows);
-
-    return { texture: atlasTexture, cols, rows, frameCount };
-  } catch {
-    return null; // Graceful 404 — frames don't exist
-  }
+  const tex = texture.clone();
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestMipmapNearestFilter;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.generateMipmaps = true;
+  tex.repeat.set(1 / cols, 1 / rows);
+  tex.offset.set(0, 1 - 1 / rows);
+  tex.needsUpdate = true;
+  return { texture: tex, cols, rows, frameCount };
 }

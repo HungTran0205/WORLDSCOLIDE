@@ -12,12 +12,20 @@
  * no rotations folder). Mask picks are tentative; swap freely in polish.
  */
 
+import { useMemo } from 'react';
 import { Billboard, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
+import { assetUrl } from '@/lib/asset-url';
 
 interface MaskedFigureSpec {
-  /** Avatar sprite path — Linh Son character. */
+  /** Avatar sprite path — Linh Son character. Either a single-image avatar PNG
+   *  or, when `sheetCrop` is set, a sprite-sheet PNG to crop one cell from. */
   avatar: string;
+  /** Optional: crop one cell from `avatar` (a sprite sheet) instead of using the
+   *  whole image. Used to show the walking sheet's south-row frame 0 — the
+   *  original bottom-anchored standing pose — for figures whose avatar portrait
+   *  sits too high on the billboard plane. col/row index a (cols × rows) grid. */
+  sheetCrop?: { cols: number; rows: number; col: number; row: number };
   /** Mask sprite path — gasf-* or half-* series. */
   mask: string;
   /** World-space position (x, y, z). z = depth into scene. */
@@ -91,7 +99,8 @@ const FIGURES: MaskedFigureSpec[] = [
   ,
   // Front-left flanking — deeper shadow for silhouette contrast
   {
-    avatar: '/sprites/characters/LS-SCOUT-F/animations/walking-8-frames/south/frame_000.png',
+    avatar: '/sprites/characters/LS-SCOUT-F/animations/walking-8-frames.png',
+    sheetCrop: { cols: 8, rows: 4, col: 0, row: 1 }, // south row, frame 0
     mask: '/sprites/mask/half-mask10.png',
     position: [-1.3, 0.9, -1.7],
     scale: 1.0,
@@ -102,7 +111,8 @@ const FIGURES: MaskedFigureSpec[] = [
   },
   // Front-right flanking — deeper shadow for silhouette contrast
   {
-    avatar: '/sprites/characters/LS-WARRIOR-M/animations/walking-8-frames/south/frame_000.png',
+    avatar: '/sprites/characters/LS-WARRIOR-M/animations/walking-8-frames.png',
+    sheetCrop: { cols: 8, rows: 4, col: 0, row: 1 }, // south row, frame 0
     mask: '/sprites/mask/mask-039.png',
     position: [1.3, 1.05, -1.7],
     scale: 1.0,
@@ -138,6 +148,7 @@ const FIGURES: MaskedFigureSpec[] = [
 
 function MaskedFigure({
   avatar,
+  sheetCrop,
   mask,
   position,
   scale,
@@ -146,8 +157,20 @@ function MaskedFigure({
   maskScale,
   tint = SHADOW_TINT,
 }: MaskedFigureSpec) {
-  const avatarTex = useTexture(avatar);
-  const maskTex = useTexture(mask);
+  const rawAvatarTex = useTexture(assetUrl(avatar));
+  const maskTex = useTexture(assetUrl(mask));
+
+  // When the source is a sprite sheet, crop one cell (clone so the shared
+  // cached sheet texture's UV isn't mutated for other consumers). Otherwise use
+  // the single-image avatar as-is.
+  const avatarTex = useMemo(() => {
+    if (!sheetCrop) return rawAvatarTex;
+    const t = rawAvatarTex.clone();
+    t.repeat.set(1 / sheetCrop.cols, 1 / sheetCrop.rows);
+    t.offset.set(sheetCrop.col / sheetCrop.cols, 1 - (sheetCrop.row + 1) / sheetCrop.rows);
+    t.needsUpdate = true;
+    return t;
+  }, [rawAvatarTex, sheetCrop]);
 
   // Pixel art needs nearest filter to keep crisp edges.
   avatarTex.magFilter = THREE.NearestFilter;

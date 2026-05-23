@@ -2,7 +2,7 @@
 
 import '@/ui/styles/member-avatar.css';
 import type { Member } from '@/game/state/game-state';
-import { getSpritePath, getBattleIdleFramePath } from '@/scene/sprites/sprite-path-resolver';
+import { getSpritePath, getAvatarPath } from '@/scene/sprites/sprite-path-resolver';
 
 interface FacilityMemberAvatarProps {
   member: Member;
@@ -11,7 +11,7 @@ interface FacilityMemberAvatarProps {
 
 export function FacilityMemberAvatar({ member, onUnassign }: FacilityMemberAvatarProps) {
   const base = getSpritePath(member.civilization, member.archetype ?? 'warrior', member.gender ?? 'M');
-  const src  = getBattleIdleFramePath(base, 'east', 0);
+  const src  = getAvatarPath(base);
 
   return (
     <div className="fp-avatar-card">

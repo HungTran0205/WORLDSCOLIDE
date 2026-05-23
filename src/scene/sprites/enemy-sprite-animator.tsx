@@ -1,19 +1,27 @@
 /**
  * Sprite animator for enemies — uses sprite atlas for zero texture binding
- * overhead. Walk/attack/death frames packed into CanvasTexture grids,
- * selected via UV offset. Sprites are west-facing, mirrored for east.
+ * overhead. Phase 3: loads ONE pre-packed sheet PNG per animation state
+ * (walk/attack/death) via useLoader (single URL string). Geometry (cols, rows,
+ * frameCount) comes from SPRITE_SHEET_MANIFEST via getSheetEntry.
+ *
+ * Graceful-missing: if getSheetEntry returns undefined for attack or death,
+ * those atlases stay null — mirroring the previous buildAtlasFromUrls→null
+ * behavior. Walk sheet is assumed always present (loaded via useLoader which
+ * throws on 404 → caught by parent Suspense).
+ *
+ * Direction rows derived from manifest dirRows via indexOf — no hardcoded maps.
+ * Enemies are single-direction (west); row index is always dirRows.indexOf('west').
  */
 
 import { useRef, useMemo, useEffect } from 'react';
 import { useLoader, useFrame, useThree } from '@react-three/fiber';
 import { TextureLoader, MeshStandardMaterial, Mesh } from 'three';
 import type { MutableRefObject } from 'react';
-import { getEnemyAnimFramePath } from './sprite-path-resolver';
-import { buildAtlasFromTextures, buildAtlasFromUrls, setAtlasFrame } from './sprite-atlas';
+import { buildAtlasFromSheet, setAtlasFrame } from './sprite-atlas';
 import type { SpriteAtlas } from './sprite-atlas';
+import { getSheetEntry } from './sprite-sheet-manifest';
+import { assetUrl } from '@/lib/asset-url';
 
-const WALK_FRAMES = 8;
-const ATTACK_FRAMES = 4;
 const WALK_FPS = 10;
 const ATTACK_FPS = 12;
 const DEATH_FPS = 8;
@@ -27,6 +35,22 @@ interface EnemySpriteAnimatorProps {
   size?: [number, number];
 }
 
+/** Resolve sheet path + row + frameCount for one enemy animation from the manifest.
+ *  Returns null if the sheet manifest has no entry (graceful-missing). */
+function resolveEnemySheet(
+  spriteId: string,
+  anim: string,
+): { sheetPath: string; row: number; frameCount: number } | null {
+  const entityKey = `enemies/${spriteId}`;
+  const entry = getSheetEntry(entityKey, anim);
+  if (!entry) return null;
+  // All enemy sheets are single-direction (west); fallback to row 0 if key absent.
+  const dir = entry.dirRows.includes('west') ? 'west' : entry.dirRows[0];
+  const row = entry.dirRows.indexOf(dir);
+  const fc = entry.frameCounts[dir] ?? entry.cols;
+  return { sheetPath: assetUrl(entry.path), row, frameCount: fc };
+}
+
 export function EnemySpriteAnimator({
   spriteId,
   animStateRef,
@@ -37,34 +61,49 @@ export function EnemySpriteAnimator({
   const elapsedRef = useRef(0);
   const prevAnimRef = useRef<EnemyAnimState>('idle');
 
-  // --- Walk atlas (always available via useLoader) ---
-  const walkPaths = useMemo(() => {
-    const p: string[] = [];
-    for (let i = 0; i < WALK_FRAMES; i++) {
-      p.push(getEnemyAnimFramePath(spriteId, 'walk', i));
-    }
-    return p;
-  }, [spriteId]);
+  // --- Walk sheet (always present — useLoader throws on 404, parent Suspense catches) ---
+  const walkMeta = useMemo(() => resolveEnemySheet(spriteId, 'walk'), [spriteId]);
+  const walkSheetPath = useMemo(() => {
+    if (walkMeta) return walkMeta.sheetPath;
+    // Fallback: best-effort path so useLoader doesn't receive undefined
+    return assetUrl(`/sprites/enemies/${spriteId}/animations/walk.png`);
+  }, [walkMeta, spriteId]);
 
-  const walkTextures = useLoader(TextureLoader, walkPaths);
-
+  const walkSheetTexture = useLoader(TextureLoader, walkSheetPath);
   const { gl } = useThree();
 
-  // Build walk atlas (8 frames → 8×1 grid)
-  const walkAtlas = useMemo<SpriteAtlas>(
-    () => buildAtlasFromTextures(walkTextures, 8),
-    [walkTextures, gl],
-  );
+  const walkAtlas = useMemo<SpriteAtlas>(() => {
+    const meta = walkMeta ?? { row: 0, frameCount: 8 };
+    // Walk sheets are single-row — atlasIdx = row*cols + frame. Since row≥0 and
+    // cols matches the sheet, we build the atlas over the full sheet grid and let
+    // setAtlasFrame index into the correct row naturally.
+    const entry = getSheetEntry(`enemies/${spriteId}`, 'walk');
+    const cols = entry?.cols ?? 8;
+    const rows = entry?.rows ?? 1;
+    return buildAtlasFromSheet(walkSheetTexture, cols, rows, meta.frameCount);
+  }, [walkSheetTexture, walkMeta, spriteId, gl]);
 
   // --- Attack atlas (async, graceful 404) ---
   const attackAtlasRef = useRef<SpriteAtlas | null>(null);
   useEffect(() => {
     let cancelled = false;
-    const paths: string[] = [];
-    for (let i = 0; i < ATTACK_FRAMES; i++) paths.push(getEnemyAnimFramePath(spriteId, 'attack', i));
-    buildAtlasFromUrls(paths, ATTACK_FRAMES).then((atlas) => {
-      if (!cancelled) attackAtlasRef.current = atlas;
-    });
+    const meta = resolveEnemySheet(spriteId, 'attack');
+    if (!meta) {
+      attackAtlasRef.current = null;
+      return;
+    }
+    const entry = getSheetEntry(`enemies/${spriteId}`, 'attack');
+    if (!entry) { attackAtlasRef.current = null; return; }
+    const loader = new TextureLoader();
+    loader.load(
+      meta.sheetPath,
+      (tex) => {
+        if (cancelled) return;
+        attackAtlasRef.current = buildAtlasFromSheet(tex, entry.cols, entry.rows, meta.frameCount);
+      },
+      undefined,
+      () => { if (!cancelled) attackAtlasRef.current = null; },
+    );
     return () => { cancelled = true; };
   }, [spriteId]);
 
@@ -72,11 +111,23 @@ export function EnemySpriteAnimator({
   const deathAtlasRef = useRef<SpriteAtlas | null>(null);
   useEffect(() => {
     let cancelled = false;
-    const paths: string[] = [];
-    for (let i = 0; i < 8; i++) paths.push(getEnemyAnimFramePath(spriteId, 'death', i));
-    buildAtlasFromUrls(paths, 8).then((atlas) => {
-      if (!cancelled) deathAtlasRef.current = atlas;
-    });
+    const meta = resolveEnemySheet(spriteId, 'death');
+    if (!meta) {
+      deathAtlasRef.current = null;
+      return;
+    }
+    const entry = getSheetEntry(`enemies/${spriteId}`, 'death');
+    if (!entry) return;
+    const loader = new TextureLoader();
+    loader.load(
+      meta.sheetPath,
+      (tex) => {
+        if (cancelled) return;
+        deathAtlasRef.current = buildAtlasFromSheet(tex, entry.cols, entry.rows, meta.frameCount);
+      },
+      undefined,
+      () => { if (!cancelled) deathAtlasRef.current = null; },
+    );
     return () => { cancelled = true; };
   }, [spriteId]);
 
@@ -84,7 +135,6 @@ export function EnemySpriteAnimator({
   const materialRef = useRef<MeshStandardMaterial>(null);
   const meshRef = useRef<Mesh>(null);
   const deathFrozenRef = useRef(false);
-  // Track which atlas is currently bound
   const currentAtlasRef = useRef<'walk' | 'attack' | 'death'>('walk');
 
   useFrame((_, delta) => {
@@ -102,6 +152,10 @@ export function EnemySpriteAnimator({
 
     // Mirror for east (enemy sprites are west-facing)
     meshRef.current.scale.x = facingRight ? -size[0] : size[0];
+
+    // Walk atlas row offset: if walk sheet has multiple rows, offset by row index
+    const walkRow = walkMeta?.row ?? 0;
+    const walkCols = walkAtlas.cols;
 
     // --- Death ---
     if (anim === 'dead' && deathAtlasRef.current) {
@@ -121,7 +175,10 @@ export function EnemySpriteAnimator({
           }
         }
       }
-      setAtlasFrame(atlas, frameIndexRef.current);
+      // Death sheets may be multi-row (e.g. bandit death has east+west rows)
+      const deathMeta = resolveEnemySheet(spriteId, 'death');
+      const deathRow = deathMeta?.row ?? 0;
+      setAtlasFrame(atlas, deathRow * atlas.cols + frameIndexRef.current);
       return;
     }
 
@@ -137,7 +194,9 @@ export function EnemySpriteAnimator({
         elapsedRef.current -= 1 / ATTACK_FPS;
         frameIndexRef.current = (frameIndexRef.current + 1) % atlas.frameCount;
       }
-      setAtlasFrame(atlas, frameIndexRef.current);
+      const attackMeta = resolveEnemySheet(spriteId, 'attack');
+      const attackRow = attackMeta?.row ?? 0;
+      setAtlasFrame(atlas, attackRow * atlas.cols + frameIndexRef.current);
       return;
     }
 
@@ -150,13 +209,13 @@ export function EnemySpriteAnimator({
       elapsedRef.current += delta;
       if (elapsedRef.current >= 1 / WALK_FPS) {
         elapsedRef.current -= 1 / WALK_FPS;
-        frameIndexRef.current = (frameIndexRef.current + 1) % WALK_FRAMES;
+        frameIndexRef.current = (frameIndexRef.current + 1) % walkAtlas.frameCount;
       }
     } else {
       frameIndexRef.current = 0;
       elapsedRef.current = 0;
     }
-    setAtlasFrame(walkAtlas, frameIndexRef.current);
+    setAtlasFrame(walkAtlas, walkRow * walkCols + frameIndexRef.current);
   });
 
   const scaleX = facingRight ? -size[0] : size[0];

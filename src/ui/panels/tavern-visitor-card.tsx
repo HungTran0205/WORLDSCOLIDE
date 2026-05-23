@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import type { TavernVisitor } from '@/game/state/game-state';
 import { totalCombatPower, ARCHETYPE_ROLE_MAP, hireMercCost } from '@/game/systems/tavern-negotiation';
-import { getSpritePath, getBattleIdleFramePath } from '@/scene/sprites/sprite-path-resolver';
+import { getSpritePath, getAvatarPath } from '@/scene/sprites/sprite-path-resolver';
 import { getTraitDef } from '@/game/data/traits';
 
 interface VisitorCardProps {
@@ -48,7 +48,7 @@ export function TavernVisitorCard({
   const def = Math.floor(visitor.stats.END * 0.8 + visitor.stats.AGI * 0.3);
   const mercCost = hireMercCost(visitor);
   const base = getSpritePath(visitor.civilization, visitor.archetype, visitor.gender);
-  const portraitSrc = getBattleIdleFramePath(base, 'south', 0);
+  const portraitSrc = getAvatarPath(base);
   const stars = '★'.repeat(visitor.rarity) + '☆'.repeat(5 - visitor.rarity);
 
   return (

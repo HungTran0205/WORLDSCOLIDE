@@ -1,7 +1,9 @@
 /**
  * Guild hall sprite animator — uses sprite atlas for zero texture binding cost.
- * Walk atlas: 4 dirs × 8 frames = 32 frames in 8-col grid.
- * Animation selects frames via UV offset (no material.map swap, no needsUpdate).
+ * Phase 3: loads ONE pre-packed walking sheet PNG via TextureLoader (single URL).
+ * Direction row derived from manifest dirRows via indexOf — no hardcoded DIR_ROW map.
+ * Animation selects frames via UV offset (setAtlasFrame); no material.map swap.
+ *
  * MeshStandardMaterial so guild hall torches and ambient light affect sprites.
  *
  * NOTE (2026-05-09): Uses texture.offset/repeat for UV animation (setAtlasFrame).
@@ -14,21 +16,19 @@
  */
 
 import { useRef, useMemo } from 'react';
-import { useLoader, useFrame, useThree } from '@react-three/fiber';
-import { TextureLoader, NearestFilter, SRGBColorSpace } from 'three';
+import { useLoader, useFrame } from '@react-three/fiber';
+import { TextureLoader } from 'three';
 import type { MutableRefObject } from 'react';
 import type { MeshStandardMaterial } from 'three';
 import type { SpriteDirection } from './sprite-path-resolver';
-import { getWalkingFramePath } from './sprite-path-resolver';
-import { buildAtlasFromTextures, setAtlasFrame } from './sprite-atlas';
+import { getEntityKeyFromBasePath } from './sprite-path-resolver';
+import { buildAtlasFromSheet, setAtlasFrame } from './sprite-atlas';
 import type { SpriteAtlas } from './sprite-atlas';
+import { getSheetEntry } from './sprite-sheet-manifest';
+import { assetUrl } from '@/lib/asset-url';
 
-const DIRECTIONS: SpriteDirection[] = ['north', 'south', 'east', 'west'];
-const FRAME_COUNT = 8;
 const ANIMATION_FPS = 10;
-
-/** Direction → row in the atlas (8-col × 4-row grid) */
-const DIR_ROW: Record<SpriteDirection, number> = { north: 0, south: 1, east: 2, west: 3 };
+const WALK_ANIM = 'walking-8-frames';
 
 interface SpriteAnimatorProps {
   basePath: string;
@@ -42,46 +42,59 @@ export function SpriteAnimator({ basePath, directionRef, isMovingRef, size = [2.
   const elapsedRef = useRef(0);
   const materialRef = useRef<MeshStandardMaterial>(null);
 
-  /* Build atlas from loaded textures (same load as before, but packed once) */
-  const allPaths = useMemo(() => {
-    const p: string[] = [];
-    for (const dir of DIRECTIONS) {
-      for (let i = 0; i < FRAME_COUNT; i++) p.push(getWalkingFramePath(basePath, dir, i));
+  // Resolve sheet geometry from manifest once per basePath
+  const { sheetPath, cols, rows, dirRows, frameCounts } = useMemo(() => {
+    const entityKey = getEntityKeyFromBasePath(basePath);
+    const entry = getSheetEntry(entityKey, WALK_ANIM);
+    if (!entry) {
+      console.warn(`SpriteAnimator: no manifest entry for ${entityKey}/${WALK_ANIM}`);
+      // Fallback: assume 8-col × 4-row, directions north/south/east/west
+      return {
+        sheetPath: assetUrl(`${basePath}/animations/${WALK_ANIM}.png`),
+        cols: 8, rows: 4,
+        dirRows: ['north', 'south', 'east', 'west'],
+        frameCounts: { north: 8, south: 8, east: 8, west: 8 } as Record<string, number>,
+      };
     }
-    return p;
+    return {
+      sheetPath: assetUrl(entry.path),
+      cols: entry.cols,
+      rows: entry.rows,
+      dirRows: entry.dirRows,
+      frameCounts: entry.frameCounts,
+    };
   }, [basePath]);
 
-  const allTextures = useLoader(TextureLoader, allPaths);
+  // Single sheet load — one PNG for all 4 directions
+  const sheetTexture = useLoader(TextureLoader, sheetPath);
 
-  const { gl } = useThree();
-
-  const atlas = useMemo<SpriteAtlas>(() => {
-    for (const t of allTextures) {
-      t.magFilter = NearestFilter;
-      t.minFilter = NearestFilter;
-      t.colorSpace = SRGBColorSpace;
-    }
-    return buildAtlasFromTextures(allTextures, FRAME_COUNT);
-  }, [allTextures, gl]);
+  const atlas = useMemo<SpriteAtlas>(
+    () => buildAtlasFromSheet(sheetTexture, cols, rows, cols * rows),
+    [sheetTexture, cols, rows],
+  );
 
   /* Animation loop — only updates UV uniforms, no texture swap */
   useFrame((_, rawDelta) => {
     if (!materialRef.current) return;
-    // Clamp to prevent frame-bunching after initial load freeze or tab resume
     const delta = Math.min(rawDelta, 0.1);
+
+    const dir = directionRef.current;
+    const frameCount = frameCounts[dir] ?? cols;
 
     if (isMovingRef.current) {
       elapsedRef.current += delta;
       if (elapsedRef.current >= 1 / ANIMATION_FPS) {
         elapsedRef.current -= 1 / ANIMATION_FPS;
-        frameIndexRef.current = (frameIndexRef.current + 1) % FRAME_COUNT;
+        frameIndexRef.current = (frameIndexRef.current + 1) % frameCount;
       }
     } else {
       frameIndexRef.current = 0;
       elapsedRef.current = 0;
     }
 
-    const atlasIdx = DIR_ROW[directionRef.current] * FRAME_COUNT + frameIndexRef.current;
+    // Row derived from manifest dirRows — never a hardcoded local map
+    const row = dirRows.indexOf(dir);
+    const atlasIdx = (row >= 0 ? row : 0) * cols + frameIndexRef.current;
     setAtlasFrame(atlas, atlasIdx);
   });
 

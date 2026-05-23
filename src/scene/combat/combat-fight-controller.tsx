@@ -33,10 +33,7 @@ import { applyMissionResultSideEffects } from '@/game/systems/arena-result-handl
 import { simulateCombatFromSnapshot, cloneCombatEntity } from '@/game/systems/combat-simulator';
 import { resolveCombatMapId, getStageSpec } from './maps/combat-map-registry';
 import { useCombatProjectionStore } from './combat-projection-store';
-import {
-  getEnemyCombatFrameCount,
-  resolveEnemyCombatSprite,
-} from '@/scene/sprites/combat-sprite-resolver';
+import { resolveEnemyCombatSheet } from '@/scene/sprites/combat-sprite-resolver';
 import {
   COMBAT_VFX_PRESETS, COMBAT_VFX_COUNTS,
   COMBAT_CRIT_DOM_EVENT, COMBAT_SKIP_DOM_EVENT,
@@ -396,19 +393,12 @@ function preloadNextWaveTextures(wm: WaveManager): void {
   }
 
   for (const spriteId of spriteIds) {
-    // Preload idle frames — the primary animation; attack/death are warm on first use.
-    const idleCount = getEnemyCombatFrameCount(spriteId, 'idle');
-    const idlePaths = Array.from({ length: Math.max(1, idleCount) }, (_, i) =>
-      resolveEnemyCombatSprite(spriteId, 'idle', i),
-    );
-    useLoader.preload(TextureLoader, idlePaths);
-
-    // Preload attack frames to avoid a second suspend on first attack animation.
-    const attackCount = getEnemyCombatFrameCount(spriteId, 'attack');
-    const attackPaths = Array.from({ length: Math.max(1, attackCount) }, (_, i) =>
-      resolveEnemyCombatSprite(spriteId, 'attack', i),
-    );
-    useLoader.preload(TextureLoader, attackPaths);
+    // Preload the idle + attack SHEETS (one PNG each) into the useLoader cache —
+    // CombatIdleSprite loads exactly these sheet paths, so warming them here keeps
+    // new entities from suspending on mount. Death sheet is warm on first KO.
+    const idleSheet = resolveEnemyCombatSheet(spriteId, 'idle').sheetPath;
+    const attackSheet = resolveEnemyCombatSheet(spriteId, 'attack').sheetPath;
+    useLoader.preload(TextureLoader, [idleSheet, attackSheet]);
   }
 }
 

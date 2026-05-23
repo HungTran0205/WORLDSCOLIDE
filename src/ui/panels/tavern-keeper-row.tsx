@@ -7,7 +7,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import type { Member, GuildFacility } from '@/game/state/game-state';
-import { getSpritePath, getBattleIdleFramePath } from '@/scene/sprites/sprite-path-resolver';
+import { getSpritePath, getAvatarPath } from '@/scene/sprites/sprite-path-resolver';
 import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
 import { handleKeeperAssigned } from '@/game/systems/tutorial-keeper-handler';
 
@@ -127,7 +127,7 @@ export function TavernKeeperRow({ facility }: KeeperRowProps) {
 
 function KeeperAvatar({ member, onUnassign }: { member: Member; onUnassign: () => void }) {
   const base = getSpritePath(member.civilization, member.archetype ?? 'warrior', member.gender ?? 'M');
-  const src = getBattleIdleFramePath(base, 'east', 0);
+  const src = getAvatarPath(base);
   return (
     <button
       className="tv-keeper-avatar is-set"
