@@ -22,7 +22,7 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useFrame, useLoader, useThree } from '@react-three/fiber';
-import { TextureLoader, Mesh, type Texture } from 'three';
+import { TextureLoader, Mesh, Group, type Texture } from 'three';
 import type { ArenaEntitySnapshot } from '@/game/state/combat-arena-slice';
 import { COMBAT_CAM_TILT_RAD, getCombatSpriteScale } from './combat-camera-config';
 import { resolveMemberMaskId, getMaskAssetPath } from '@/scene/sprites/mask-pool';
@@ -74,8 +74,19 @@ interface CombatIdleSpriteProps {
   entity: ArenaEntitySnapshot;
 }
 
+/** Lerp constant for the spawn slide-in (k≈8 → ~0.3–0.4s settle time).
+ *  Driven by real frame dt, independent of the 5Hz snapshot sync rate and
+ *  speedMultiplier — so the slide is smooth at 1×/2×/4×. */
+const SLIDE_LERP_K = 8;
+
 export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
   const meshRef = useRef<Mesh>(null);
+  const groupRef = useRef<Group>(null);
+  /** Current display X (cosmetic only). Initialized lazily in useFrame on first
+   *  call so it reads the latest entity snapshot (entity may update before
+   *  the first frame runs). Starts at spawnSlideFromX for new-wave enemies,
+   *  or at position.x for wave-1 entities and allies (no visible motion). */
+  const dispXRef = useRef<number | null>(null);
   const { gl } = useThree();
 
   // Allies-only identity mask. Enemies render via spriteId and skip composite logic.
@@ -205,7 +216,19 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
 
   useFrame((_, dt) => {
     const mesh = meshRef.current;
-    if (!handle || !mesh) return;
+    const group = groupRef.current;
+    if (!handle || !mesh || !group) return;
+
+    // Cosmetic slide-in: lerp display X toward the entity's logic home X.
+    // Lazy-init dispX on the first frame so we read the current snapshot value
+    // (spawnSlideFromX is only present on the first snapshot after wave spawn).
+    if (dispXRef.current === null) {
+      dispXRef.current = entity.spawnSlideFromX ?? entity.position.x;
+    }
+    const targetX = entity.position.x;
+    const dispX = dispXRef.current + (targetX - dispXRef.current) * Math.min(1, dt * SLIDE_LERP_K);
+    dispXRef.current = dispX;
+    group.position.x = dispX;
 
     const isDead = entity.currentHp <= 0;
     const isAttackingState = entity.animState === 'attacking' || entity.animState === 'skill';
@@ -312,9 +335,13 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
 
   const initialScale = getCombatSpriteScale(entity.position.z, !!entity.isBoss);
   const initialY = (entity.position.y ?? 0) + initialScale * 0.5;
+  // Initial group X: start at spawnSlideFromX (off-screen) for new-wave enemies,
+  // or at the home slot for wave-1 entities and allies. The useFrame lerp drives
+  // group.position.x every frame so this value is immediately overwritten.
+  const initialGroupX = entity.spawnSlideFromX ?? entity.position.x;
 
   return (
-    <group position={[entity.position.x, 0, entity.position.z]}>
+    <group ref={groupRef} position={[initialGroupX, 0, entity.position.z]}>
       <mesh
         ref={meshRef}
         position={[0, initialY, 0]}

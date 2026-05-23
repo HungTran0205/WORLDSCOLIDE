@@ -6,6 +6,9 @@
 import type { SaveEnvelope } from './save-types';
 import { SAVE_VERSION } from './save-types';
 import { FACILITY_DEFAULT_SLOTS } from '@/game/data/facility-slot-positions';
+import { RECRUITABLE_UNITS, CIV_CONFIG } from '@/game/data/civilization-config';
+import type { Civilization } from '@/game/data/civilization-config';
+import { hashSeed } from '@/game/systems/seeded-rng';
 
 export type MigrationFn = (envelope: SaveEnvelope) => SaveEnvelope;
 
@@ -695,24 +698,95 @@ function migrateV25toV26(envelope: SaveEnvelope): SaveEnvelope {
 }
 
 /**
- * v26→v27: Add unique `instanceId` to every active mission. Pre-v27 missions were
+ * Backfill unique `instanceId` onto every active mission. Pre-instanceId missions were
  * keyed only by the shared template `missionId`, so two parties on the same quest
- * resolved as one (and the second party's members got stranded). Backfill a uuid so
- * each dispatch is independently addressable. Skip any that somehow already have one.
+ * resolved as one (and the second party's members got stranded). Idempotent — skips any
+ * mission that already carries an id, so it is safe to re-run defensively.
  */
-function migrateV26toV27(envelope: SaveEnvelope): SaveEnvelope {
-  const gs = envelope.gameState as unknown as AnyRecord;
+function backfillMissionInstanceIds(gs: AnyRecord): AnyRecord {
   const activeMissions: AnyRecord[] = Array.isArray(gs.activeMissions) ? gs.activeMissions : [];
   const migrated = activeMissions.map((am) =>
     typeof am.instanceId === 'string' && am.instanceId
       ? am
       : { ...am, instanceId: crypto.randomUUID() },
   );
+  return { ...gs, activeMissions: migrated };
+}
 
+/**
+ * v26→v27: Add unique `instanceId` to every active mission so same-template parties are
+ * independently addressable (see backfillMissionInstanceIds).
+ */
+function migrateV26toV27(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
   return {
     ...envelope,
     version: 27,
-    gameState: { ...gs, activeMissions: migrated } as unknown as SaveEnvelope['gameState'],
+    gameState: backfillMissionInstanceIds(gs) as unknown as SaveEnvelope['gameState'],
+  };
+}
+
+/**
+ * v27→v28: TavernVisitor gains required `name` + `gender` (assigned at spawn).
+ * Backfill embedded visitor snapshots in older saves so they load + render:
+ *   - gender from the civ's RECRUITABLE_UNITS archetype→gender map (fallback 'M')
+ *   - name from a stable hash over the visitor id (deterministic across reloads)
+ * Visitors live in tavern.currentRoster plus the visitorSnapshot inside
+ * mercContracts / pendingPrompts / veteranPool. The next day-tick respawns the
+ * roster fresh — this only keeps in-flight saves crash-free and readable.
+ */
+function migrateV27toV28(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+  const tavern = (gs.tavern ?? {}) as AnyRecord;
+
+  const backfillVisitor = (v: AnyRecord): AnyRecord => {
+    if (!v) return v;
+    const civ = v.civilization as Civilization;
+    const units = RECRUITABLE_UNITS[civ] ?? [];
+    const gender = v.gender === 'M' || v.gender === 'F'
+      ? v.gender
+      : (units.find((u) => u.archetype === v.archetype)?.gender ?? 'M');
+    const pool = CIV_CONFIG[civ]?.namePool ?? CIV_CONFIG.LinhSon.namePool;
+    const name = typeof v.name === 'string' && v.name
+      ? v.name
+      : pool[Math.abs(hashSeed(String(v.id ?? ''), 'visitor-name')) % pool.length];
+    return { ...v, name, gender };
+  };
+
+  const backfillSnapshot = (rec: AnyRecord): AnyRecord =>
+    rec && rec.visitorSnapshot
+      ? { ...rec, visitorSnapshot: backfillVisitor(rec.visitorSnapshot as AnyRecord) }
+      : rec;
+
+  const mapArr = (arr: unknown, fn: (r: AnyRecord) => AnyRecord) =>
+    Array.isArray(arr) ? (arr as AnyRecord[]).map(fn) : arr;
+
+  const migratedTavern = {
+    ...tavern,
+    currentRoster: mapArr(tavern.currentRoster, backfillVisitor),
+    mercContracts: mapArr(tavern.mercContracts, backfillSnapshot),
+    pendingPrompts: mapArr(tavern.pendingPrompts, backfillSnapshot),
+    veteranPool: mapArr(tavern.veteranPool, backfillSnapshot),
+  };
+
+  return {
+    ...envelope,
+    version: 28,
+    gameState: { ...gs, tavern: migratedTavern } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
+/**
+ * v28→v29: Add Arc 1 quest story fields to Mission (additive — all optional, no transform).
+ * Also re-runs the mission instanceId backfill defensively: saves created on the Arc 1
+ * branch reached v28 before the instanceId migration existed, so they may still lack it.
+ */
+function migrateV28toV29(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+  return {
+    ...envelope,
+    version: 29,
+    gameState: backfillMissionInstanceIds(gs) as unknown as SaveEnvelope['gameState'],
   };
 }
 
@@ -738,6 +812,8 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   24: migrateV24toV25,
   25: migrateV25toV26,
   26: migrateV26toV27,
+  27: migrateV27toV28,
+  28: migrateV28toV29,
 };
 
 /**

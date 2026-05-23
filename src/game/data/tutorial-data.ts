@@ -1,6 +1,6 @@
 /** Tutorial-specific static data — Kael NPC template and the intro quest definition. */
 
-import type { Member, Mission } from '@/game/state/game-state';
+import type { Member, Mission, TavernVisitor } from '@/game/state/game-state';
 
 /** Single source of truth for the tutorial Moonbear mission id. Used by the
  *  HP-floor wiring (Phase 04) so the engine + every auto-resolve simulator path
@@ -36,6 +36,32 @@ export const KAEL_TEMPLATE: Omit<Member, 'id'> = {
  * needs no import churn. zone 'Village Outskirts' falls back to the lolo-village-outskirt
  * combat map (the village below the mountain). chainOrder 2+ graduation: deferred (Q2).
  */
+/**
+ * Scripted first tavern recruit — a Ranger (scout, female → LS-SCOUT-F) spawned the
+ * instant the player assigns a Tavern Keeper during the `assign-keeper` step, so the
+ * tutorial doesn't have to wait for the next-day visitor roll. `guaranteedRecruit`
+ * forces a 100% negotiation success (see rollNegotiation) so the closing beat always
+ * lands. Stable id keeps the spawn idempotent across re-assigns.
+ */
+export const TUTORIAL_RECRUIT_VISITOR: TavernVisitor = {
+  id: 'tutorial-recruit-ranger',
+  name: 'Mai',
+  archetype: 'scout',
+  civilization: 'LinhSon',
+  gender: 'F',
+  rarity: 2,
+  level: 1,
+  stats: { STR: 5, END: 5, INT: 4, DEX: 8, CHA: 4, LCK: 5, AGI: 7 },
+  derivedDemand: 20,
+  dailyMoodBias: 0,
+  traits: [],
+  preferredGiftCategory: 'consumable',
+  attemptHistory: [],
+  veteranTag: false,
+  spawnedDay: 0,
+  guaranteedRecruit: true,
+};
+
 export const TUTORIAL_QUEST: Mission = {
   id: TUTORIAL_BEAR_MISSION_ID,
   tier: 'F',

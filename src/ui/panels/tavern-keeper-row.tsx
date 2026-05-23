@@ -9,6 +9,7 @@ import { useGameStore } from '@/game/state/store';
 import type { Member, GuildFacility } from '@/game/state/game-state';
 import { getSpritePath, getBattleIdleFramePath } from '@/scene/sprites/sprite-path-resolver';
 import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
+import { handleKeeperAssigned } from '@/game/systems/tutorial-keeper-handler';
 
 interface KeeperRowProps {
   facility: GuildFacility;
@@ -20,6 +21,8 @@ export function TavernKeeperRow({ facility }: KeeperRowProps) {
   const roster = useGameStore((s) => s.roster);
   const assignMember = useGameStore((s) => s.assignMemberToFacility);
   const unassignMember = useGameStore((s) => s.unassignMemberFromFacility);
+  const tutorialStep = useGameStore((s) => s.tutorialStep);
+  const highlightKeeper = tutorialStep === 'assign-keeper';
 
   const [openDropdown, setOpenDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -53,7 +56,7 @@ export function TavernKeeperRow({ facility }: KeeperRowProps) {
       )}
       {hasOpenSlot && (
         <button
-          className="tv-keeper-avatar"
+          className={`tv-keeper-avatar${highlightKeeper ? ' tutorial-highlight' : ''}`}
           onClick={() => setOpenDropdown((v) => !v)}
           aria-label={t('tavern.keeper.assign')}
           title={t('tavern.keeper.assignHint')}
@@ -82,7 +85,7 @@ export function TavernKeeperRow({ facility }: KeeperRowProps) {
       {hasOpenSlot && (
         <div className="tv-keeper-dropdown" ref={dropdownRef}>
           <button
-            className="tv-btn is-small"
+            className={`tv-btn is-small${highlightKeeper ? ' tutorial-highlight' : ''}`}
             onClick={() => setOpenDropdown((v) => !v)}
             aria-haspopup="listbox"
             aria-expanded={openDropdown}
@@ -100,7 +103,11 @@ export function TavernKeeperRow({ facility }: KeeperRowProps) {
                     role="option"
                     className="tv-keeper-option"
                     onClick={() => {
-                      if (assignMember(m.id, facility.id)) setOpenDropdown(false);
+                      if (assignMember(m.id, facility.id)) {
+                        // Tutorial: assigning the keeper spawns the scripted recruit + advances.
+                        handleKeeperAssigned(m.id, facility.id);
+                        setOpenDropdown(false);
+                      }
                     }}
                   >
                     <span>{m.name}</span>

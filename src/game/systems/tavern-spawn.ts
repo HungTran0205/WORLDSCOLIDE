@@ -10,8 +10,8 @@
 import type { Stats, TavernVisitor, RumorEntry, Member } from '@/game/state/game-state';
 import type { TraitId } from '@/game/data/traits';
 import { TRAIT_POOL } from '@/game/data/traits';
-import { CIV_CONFIG, applyCivBonuses, CIVILIZATIONS } from '@/game/data/civilization-config';
-import type { Civilization, CivArchetype } from '@/game/data/civilization-config';
+import { CIV_CONFIG, applyCivBonuses, CIVILIZATIONS, RECRUITABLE_UNITS } from '@/game/data/civilization-config';
+import type { Civilization } from '@/game/data/civilization-config';
 import { CIV_ARCHETYPE_PROFILES } from '@/game/data/characters';
 import { distributeStatsByWeights } from './stat-allocation';
 import { mulberry32, hashSeed, pickFromList, pickDistinct, weightedPick } from './seeded-rng';
@@ -96,13 +96,20 @@ export function generateTavernRoster(args: GenerateRosterArgs): TavernVisitor[] 
   const count = VISITOR_COUNT_BY_LEVEL[level];
   const keeperLck = keeperStats?.LCK ?? 0;
 
+  // Only civs with at least one recruitable unit can spawn (MVP: Linh Sơn only).
+  const recruitableCivs = unlockedCivs.filter((c) => RECRUITABLE_UNITS[c].length > 0);
+  const civs: readonly Civilization[] = recruitableCivs.length > 0 ? recruitableCivs : ['LinhSon'];
+
+  // Track names assigned this day so the on-screen roster shows distinct names.
+  const usedNames = new Set<string>();
   const roster: TavernVisitor[] = [];
   for (let i = 0; i < count; i++) {
     roster.push(generateTavernVisitor({
       level,
       keeperLck,
       rng,
-      unlockedCivs,
+      unlockedCivs: civs,
+      usedNames,
       spawnedDay,
       daySeed,
       index: i,
@@ -116,16 +123,22 @@ interface GenerateVisitorArgs {
   keeperLck: number;
   rng: () => number;
   unlockedCivs: readonly Civilization[];
+  usedNames: Set<string>;
   spawnedDay: number;
   daySeed: number;
   index: number;
 }
 
 function generateTavernVisitor(args: GenerateVisitorArgs): TavernVisitor {
-  const { level, keeperLck, rng, unlockedCivs, spawnedDay, daySeed, index } = args;
+  const { level, keeperLck, rng, unlockedCivs, usedNames, spawnedDay, daySeed, index } = args;
 
   const civ = pickFromList(unlockedCivs, rng);
-  const archetype = pickFromList(CIV_CONFIG[civ].archetypes, rng) as CivArchetype;
+  // Pick a recruitable (archetype, gender) unit — this gates BOTH the archetype
+  // and the sprite gender, so non-playable sprites can never be generated.
+  const unit = pickFromList(RECRUITABLE_UNITS[civ], rng);
+  const archetype = unit.archetype;
+  const gender = unit.gender;
+  const name = pickVisitorName(civ, rng, usedNames);
   const rarity = rollRarity(level, keeperLck, rng);
   const talentBudget = talentBudgetForRarity(rarity);
   const profile = CIV_ARCHETYPE_PROFILES[archetype];
@@ -140,8 +153,10 @@ function generateTavernVisitor(args: GenerateVisitorArgs): TavernVisitor {
 
   const visitor: TavernVisitor = {
     id: `tav-${daySeed}-${index}`,
+    name,
     archetype,
     civilization: civ,
+    gender,
     rarity,
     level: visitorLevel,
     stats,
@@ -156,6 +171,25 @@ function generateTavernVisitor(args: GenerateVisitorArgs): TavernVisitor {
   // Phase 03: real demand = floor(power × 0.4) + rarity×5 + moodBias.
   visitor.derivedDemand = targetDemand(visitor);
   return visitor;
+}
+
+/**
+ * Pick a VN name from the civ pool, avoiding names already used this day.
+ * Uses one rng draw for the start index then linear-probes (keeps the rng draw
+ * count per visitor constant → reload-deterministic). Falls back to a repeat
+ * only if the day's visitor count ever exceeds the pool size.
+ */
+function pickVisitorName(civ: Civilization, rng: () => number, used: Set<string>): string {
+  const pool = CIV_CONFIG[civ].namePool;
+  const start = Math.floor(rng() * pool.length);
+  for (let i = 0; i < pool.length; i++) {
+    const name = pool[(start + i) % pool.length];
+    if (!used.has(name)) {
+      used.add(name);
+      return name;
+    }
+  }
+  return pool[start];
 }
 
 /** Pick 1-2 distinct visitor-eligible traits. */

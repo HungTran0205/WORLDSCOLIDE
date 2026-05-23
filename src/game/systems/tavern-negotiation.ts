@@ -272,6 +272,21 @@ export function rollNegotiation(
   const kNeg = keeperNegotiation(keeper);
   const demand = targetDemand(visitor);
   const modSum = sumModifiers(mods);
+
+  // Tutorial scripted recruit: always a comfortable success regardless of stats.
+  if (visitor.guaranteedRecruit) {
+    return {
+      outcome: { kind: 'success', tier: 'comfortable' },
+      margin: -100,
+      rate: 100,
+      roll: 0,
+      keeperNegotiation: kNeg,
+      demand,
+      modSum,
+      attemptOutcome: 'success',
+    };
+  }
+
   const rate = successRate(kNeg, demand, modSum);
   const rng = mulberry32(attemptSeed);
   const roll = rng() * 100;

@@ -25,6 +25,19 @@ export const COMBAT_DEATH_FRAME_COUNT = 8;
 
 /** Compile-time map of which entities have which combat-panel assets on disk. */
 export const COMBAT_SPRITE_MANIFEST = {
+  /**
+   * Char IDs whose `animations/working/` folder exists on disk.
+   * Used by hasWorkingAnim() to gate the tavern working-loop branch in
+   * room-member-sprites.tsx so members without the asset fall back to patrol
+   * instead of rendering nothing via Suspense fallback={null}.
+   *
+   * KEEP IN SYNC with on-disk `working/` folders under
+   * public/sprites/characters/<charId>/animations/working/.
+   * Update here whenever art adds or removes a working/ sprite sheet.
+   */
+  charsWithWorking: new Set<string>([
+    'LS-SCOUT-F', 'LS-SCOUT-M', 'LS-SWORD-M', 'LS-WARRIOR-M',
+  ]),
   /** Char IDs (e.g. 'LS-WARRIOR-M') with `animations/battle-idle/east/frame_0..7.png`. */
   charsWithBattleIdleEast: new Set<string>([
     'LS-SCOUT-F', 'LS-SCOUT-M', 'LS-WARRIOR-F', 'LS-WARRIOR-M', 'LS-SWORD-M',
@@ -47,15 +60,15 @@ export const COMBAT_SPRITE_MANIFEST = {
   ]),
   /** Enemy IDs with `animations/attack/west/frame_0..N.png`. */
   enemiesWithAttackWest: new Set<string>([
-    'cave-bat', 'forest-spider', 'slime', 'slime-king', 'moonbear',
+    'cave-bat', 'forest-spider', 'slime', 'slime-king', 'moonbear', 'drone',
   ]),
   /** Enemy IDs with `animations/death/west/frame_0..N.png`. */
   enemiesWithDeathWest: new Set<string>([
-    'cave-bat', 'forest-spider', 'slime', 'slime-king', 'moonbear',
+    'cave-bat', 'forest-spider', 'slime', 'slime-king', 'moonbear', 'drone',
   ]),
   /** Enemy IDs with `animations/walk/west/` (last-resort idle fallback when idle missing). */
   enemiesWithWalkWest: new Set<string>([
-    'cave-bat', 'forest-spider', 'slime', 'slime-king',
+    'cave-bat', 'forest-spider', 'slime', 'slime-king', 'drone',
   ]),
 } as const;
 
@@ -67,12 +80,23 @@ const ENEMY_DEATH_FRAME_OVERRIDES: Record<string, number> = {
 /** Enemy IDs whose attack animation has fewer than COMBAT_ATTACK_FRAME_COUNT frames. */
 const ENEMY_ATTACK_FRAME_OVERRIDES: Record<string, number> = {
   'slime': 4,
+  'drone': 4,
 };
 
 /** Extract char id (e.g. 'LS-WARRIOR-M') from a basePath like '/sprites/characters/LS-WARRIOR-M'. */
-function getCharIdFromBasePath(basePath: string): string {
+export function getCharIdFromBasePath(basePath: string): string {
   const parts = basePath.split('/').filter(Boolean);
   return parts[parts.length - 1] ?? '';
+}
+
+/**
+ * True when the character has an `animations/working/` folder on disk.
+ * Use this to gate the WorkingAnimator in facility rooms — characters that
+ * return false must fall to the patrol SpriteAnimator branch so they remain
+ * visible (WorkingAnimator on a missing folder triggers Suspense fallback={null}).
+ */
+export function hasWorkingAnim(basePath: string): boolean {
+  return COMBAT_SPRITE_MANIFEST.charsWithWorking.has(getCharIdFromBasePath(basePath));
 }
 
 /**

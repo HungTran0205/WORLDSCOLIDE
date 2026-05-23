@@ -27,6 +27,7 @@ import {
   type MercQuestOutcome,
 } from '@/game/systems/tavern-merc-lifecycle';
 import { promoteMercToMember, REINVITE_SUCCESS_REP_BONUS } from '@/game/systems/tavern-audition';
+import { TUTORIAL_RECRUIT_VISITOR } from '@/game/data/tutorial-data';
 import type { InventoryState } from './game-state';
 import type { InventorySlice } from './inventory-slice';
 import type { RosterSlice } from './roster-slice';
@@ -114,6 +115,8 @@ export interface GuildSlice extends WorkshopActions {
   // --- Tavern daily lifecycle (phase 02) ---
   /** Day-tick driver. Idempotent — guards on tavern.lastDayProcessed. */
   tickTavernDay: (currentDay: number) => void;
+  /** Tutorial-only: place the scripted guaranteed visitor into the roster immediately (skips the next-day wait). */
+  spawnTutorialRecruit: () => void;
   /** Spend `100 × level` gold to regenerate today's roster with the deterministic reroll seed.
    *  Max 1 per game-day. Returns false on insufficient gold or already rerolled. */
   rerollTavernRoster: () => boolean;
@@ -556,6 +559,12 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
       }
 
       const def = FACILITY_DEFINITIONS[type];
+      // Narrative gate: facility stays unbuildable until its unlock quest is completed.
+      // Store-layer guard mirrors the UI gate so any caller is held to the same constraint.
+      if (def.unlockQuestId) {
+        const completed = (s as unknown as { completedMissions: string[] }).completedMissions ?? [];
+        if (!completed.includes(def.unlockQuestId)) return s;
+      }
       const cost = def.buildCost;
       if (cost > 0 && s.guildLevel < 2) return s;
       if (s.gold < cost) return s;
@@ -1018,6 +1027,9 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
       const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null };
       // AD5: stable seed per-save; pre-tutorial returns empty roster, no crash.
       if (!fullState.founder) return s;
+      // Tutorial: never regenerate over the scripted guaranteed recruit — a day
+      // boundary or offline catch-up must not wipe the visitor the player must recruit.
+      if (s.tavern.currentRoster.some((v) => v.guaranteedRecruit)) return s;
       if (s.tavern.lastDayProcessed === currentDay && s.tavern.currentRoster.length > 0) return s;
 
       const tavernFacility = s.facilities.find((f) => f.type === 'tavern');
@@ -1075,6 +1087,15 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
       return { tavern };
     });
   },
+
+  spawnTutorialRecruit: () =>
+    set((s) => {
+      // Idempotent: the step gate also guards, but never double-add the scripted visitor.
+      if (s.tavern.currentRoster.some((v) => v.id === TUTORIAL_RECRUIT_VISITOR.id)) return s;
+      const visitor: TavernVisitor = { ...TUTORIAL_RECRUIT_VISITOR, spawnedDay: s.tavern.lastDayProcessed };
+      visitor.derivedDemand = targetDemand(visitor);
+      return { tavern: { ...s.tavern, currentRoster: [visitor] } };
+    }),
 
   rerollTavernRoster: () => {
     let success = false;

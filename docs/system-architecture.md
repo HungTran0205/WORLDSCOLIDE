@@ -640,11 +640,21 @@ Shifted from isometric (20°) to beat-em-up sidescroller:
 - **Zoom**: 80 (was 114)
 - **Parallax**: Background Y offsets raised for 35° angle
 
+#### Spawn Slide Animation (v1.28 — Cosmetic Wave Entry Visual)
+
+New-wave enemies (wave > 0) spawn off-screen and slide in from the right edge for visual polish:
+- **Field**: `ArenaEntity.spawnSlideFromX?: number` (optional, cosmetic only)
+- **Set by engine**: `CombatEngine.addEnemies()` calculates `spawnSlideFromX ≥ +14 + formation.x` (off-screen right edge)
+- **Initial wave**: Wave 0 enemies + allies have `spawnSlideFromX` undefined (spawn in-place, no slide)
+- **Renderer**: `combat-idle-sprite.tsx` initializes group X to `spawnSlideFromX ?? position.x`, lerps to `position.x` over 400ms
+- **Logic unaffected**: Combat AI, turn locks, victory checks unchanged; field is renderer-only
+
 #### Backward Compatibility
 
 - Missions without `waves` field default to single-wave mode (all enemies at once)
 - Existing formation positions preserved for non-wave combat
 - Post-processing additive (new DoF layers on top of existing vignette)
+- `spawnSlideFromX` optional; missions without it render enemies at `position.x` immediately
 
 ## Combat Formation Movement (Phase 1 — Positional Attacks)
 
@@ -1926,6 +1936,19 @@ interface Member {
   - The deleted mission no longer exists in MISSIONS registry, so members would be stranded if not cleaned up
 - **Data Preservation**: Transparent migration; auto-triggered on load, no player interaction required
 - **Backward Compat**: Old saves load seamlessly with 14-beat flow; player simply continues from remapped beat
+
+### Save Migration v26 → v27 (MVP Recruit Gating, VN Names & Roster Rename)
+
+**`migrateV26toV27()`** (`src/game/save/save-migrations.ts`):
+- **TavernVisitor Schema Change**: `TavernVisitor` adds required `name` + `gender` fields
+  - Backfill existing `tavern.mercContracts[]` visitors (persisted active/pending contracts)
+  - Founder visitors: assign name as `'Founder'`
+  - Recruited visitors: deterministically assign from `CIV_CONFIG[civ].namePool` (same logic as new spawn)
+  - All visitors get gender from archetype→gender mapping in `RECRUITABLE_UNITS`
+- **Backward Compat**: Old saves load with proper names; no player interaction required
+- **Archetype Gating**: New `RECRUITABLE_UNITS` config gates recruitable units per civilization (MVP: Linh Sơn only)
+  - Non-recruitable archetypes (e.g., `LS-SCOUT-M`, `LS-WARRIOR-F`) never spawn in tavern or through recruitment system
+  - Existing saves' members unaffected (loaded members keep archetype/gender as-is)
 
 ### Inventory Panel Updates (v1.26)
 

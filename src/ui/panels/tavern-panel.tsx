@@ -99,7 +99,7 @@ export function TavernPanel({ facility, onClose }: TavernPanelProps) {
           const baseRoster = s.roster ?? [];
           const newMember: Member = {
             id: `mem-${Date.now()}-${visitor.id.slice(-4)}`,
-            name: `${visitor.archetype.charAt(0).toUpperCase()}${visitor.archetype.slice(1)} #${visitor.id.slice(-4)}`,
+            name: visitor.name,
             level: visitor.level,
             exp: 0,
             stats: visitor.stats,
@@ -109,7 +109,7 @@ export function TavernPanel({ facility, onClose }: TavernPanelProps) {
             injuredUntil: null,
             civilization: visitor.civilization,
             archetype: visitor.archetype,
-            gender: 'M',
+            gender: visitor.gender,
             isFounder: false,
             rank: 'MEMBER',
             missionsCompleted: 0,

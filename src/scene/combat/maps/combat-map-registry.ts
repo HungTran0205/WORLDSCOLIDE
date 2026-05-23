@@ -22,11 +22,15 @@ import type { CombatStageSpec } from './stage-spec-types';
 import { LOLO_VILLAGE_OUTSKIRT_STAGE } from './stages/lolo-village-outskirt';
 import { THE_FOREST_STAGE } from './stages/the-forest';
 import { BROKEN_CLIFF_OUTSKIRT_STAGE } from './stages/broken-cliff-outskirt';
+import { CRYSTAL_CAVE_STAGE } from './stages/crystal-cave';
+import { UNDERGROUND_ENTRANCE_STAGE } from './stages/underground-entrance';
 
 export type CombatMapId =
   | 'lolo-village-outskirt'
   | 'the-forest'
-  | 'broken-cliff-outskirt';
+  | 'broken-cliff-outskirt'
+  | 'crystal-cave'
+  | 'underground-entrance';
 
 /** First map and current default — used when a mission's zone has no entry. */
 export const DEFAULT_COMBAT_MAP: CombatMapId = 'lolo-village-outskirt';
@@ -36,6 +40,8 @@ const STAGE_SPECS: Record<CombatMapId, CombatStageSpec> = {
   'lolo-village-outskirt': LOLO_VILLAGE_OUTSKIRT_STAGE,
   'the-forest': THE_FOREST_STAGE,
   'broken-cliff-outskirt': BROKEN_CLIFF_OUTSKIRT_STAGE,
+  'crystal-cave': CRYSTAL_CAVE_STAGE,
+  'underground-entrance': UNDERGROUND_ENTRANCE_STAGE,
 };
 
 /** Resolve a stage spec for a given mapId. */
@@ -61,6 +67,14 @@ const ZONE_TO_MAP: Record<string, CombatMapId> = {
   // Phase 06: multi-platform demo stage — allies on lower-ground (y=0),
   // enemies on raised cliff (y=1.5), cracked-stone wall between.
   'Broken Cliff': 'broken-cliff-outskirt',
+  // Arc 1 "First Tremor" zones. Q1 bats reuse the village map; cave/ruins
+  // route to the two new raised-platform stages. 'Deep Forest' (Q2) already
+  // maps to 'the-forest' above.
+  'Forest Edge': 'lolo-village-outskirt',
+  'Crystal Cave': 'crystal-cave',
+  'Cave Entrance': 'crystal-cave',
+  'Underground Ruins': 'underground-entrance',
+  'Ancient Core': 'underground-entrance',
 };
 
 /** Resolve the map for a given missionId. Falls back to default on miss.

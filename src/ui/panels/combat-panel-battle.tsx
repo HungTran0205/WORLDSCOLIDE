@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
+import { MISSIONS } from '@/game/data/missions';
 import { COMBAT_CRIT_DOM_EVENT, COMBAT_SKIP_DOM_EVENT } from '@/scene/combat/combat-vfx-bridge';
 import { CombatPanelHud } from './combat-panel-hud';
 import { CombatPanelEnemyRoster, CombatPanelAllyRoster } from './combat-panel-roster';
@@ -22,6 +23,7 @@ const SHAKE_DURATION_MS = 220;
 export function CombatPanelBattle() {
   const { t } = useTranslation();
   const instanceId = useCombatPanelStore((s) => s.instanceId);
+  const missionId = useCombatPanelStore((s) => s.missionId);
   const speedMultiplier = useGameStore((s) => s.speedMultiplier);
   const setSpeedMultiplier = useGameStore((s) => s.setSpeedMultiplier);
   const waveState = useGameStore((s) => s.waveState);
@@ -29,6 +31,12 @@ export function CombatPanelBattle() {
   const targetPriority = useGameStore((s) =>
     s.activeMissions.find((m) => m.instanceId === instanceId)?.targetPriority ?? 'focus',
   );
+
+  // Skip is allowed only for non-main, non-tutorial missions. This matches the
+  // quest board's expedition classification: `!isMainQuest && !id.startsWith('tutorial-')`.
+  // Legacy farm missions without `isExpedition` remain skippable under this rule.
+  const m = MISSIONS.find((x) => x.id === missionId);
+  const isSkippable = !!m && !m.isMainQuest && !m.id.startsWith('tutorial-');
 
   // Crit screen-shake listener — engine dispatches `combat-vfx-crit` window
   // events from inside the canvas; this hook applies a CSS class for ~220ms
@@ -141,14 +149,16 @@ export function CombatPanelBattle() {
               {mult}×
             </button>
           ))}
-          <button
-            type="button"
-            className="combat-panel-btn combat-panel-btn--primary"
-            onClick={handleSkip}
-            title={t('combatPanel.battle.skipTitle')}
-          >
-            {t('combatPanel.battle.skip')}
-          </button>
+          {isSkippable && (
+            <button
+              type="button"
+              className="combat-panel-btn combat-panel-btn--primary"
+              onClick={handleSkip}
+              title={t('combatPanel.battle.skipTitle')}
+            >
+              {t('combatPanel.battle.skip')}
+            </button>
+          )}
         </div>
       </div>
     </div>

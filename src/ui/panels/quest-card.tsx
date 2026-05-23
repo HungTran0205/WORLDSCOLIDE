@@ -44,6 +44,7 @@ export function QuestCard({ mission, selected, onClick, onHover }: QuestCardProp
           />
         </span>
       </div>
+      {mission.cardLore && <p className="quest-card__lore">{tContent('missions', mission.id, 'cardLore', mission.cardLore)}</p>}
       <div className="quest-card__badges">
         {mission.isBossGate && <span className="quest-badge quest-badge--gate">{t('questBoard.card.gate')}</span>}
         {mission.chainId && <span className="quest-badge quest-badge--chain">{t('questBoard.card.chain')}</span>}

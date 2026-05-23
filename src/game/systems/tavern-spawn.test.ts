@@ -14,6 +14,7 @@ import {
   rerollSeedForDay,
 } from './tavern-spawn';
 import { dailyTavernSeed, mulberry32 } from './seeded-rng';
+import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Stats, Member } from '@/game/state/game-state';
 
 const zeroStats = (): Stats => ({ STR: 0, END: 0, INT: 0, DEX: 0, CHA: 0, LCK: 0, AGI: 0 });
@@ -152,6 +153,55 @@ describe('generateTavernRoster', () => {
     const a = generateTavernRoster({ level: 2, keeperStats: null, daySeed: altSeed, spawnedDay: 4 });
     const b = generateTavernRoster({ level: 2, keeperStats: null, daySeed: altSeed, spawnedDay: 4 });
     expect(a.map((v) => v.id)).toEqual(b.map((v) => v.id));
+  });
+});
+
+describe('recruit gating + name/gender (MVP)', () => {
+  const ALLOWED = new Set(['sword-M', 'warrior-M', 'scout-F']);
+
+  it('every visitor is an allowed (archetype,gender) unit across many seeds', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const roster = generateTavernRoster({ level: 3, keeperStats: null, daySeed: seed, spawnedDay: 0 });
+      for (const v of roster) {
+        expect(v.civilization).toBe('LinhSon');
+        expect(ALLOWED.has(`${v.archetype}-${v.gender}`)).toBe(true);
+      }
+    }
+  });
+
+  it('never spawns the NPC-only sprites (scout+M / warrior+F)', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const roster = generateTavernRoster({ level: 3, keeperStats: null, daySeed: seed, spawnedDay: 0 });
+      for (const v of roster) {
+        const combo = `${v.archetype}-${v.gender}`;
+        expect(combo).not.toBe('scout-M');
+        expect(combo).not.toBe('warrior-F');
+      }
+    }
+  });
+
+  it('assigns a VN name from the LinhSon pool', () => {
+    const pool = new Set(CIV_CONFIG.LinhSon.namePool);
+    const roster = generateTavernRoster({ level: 3, keeperStats: null, daySeed: 42, spawnedDay: 0 });
+    for (const v of roster) {
+      expect(typeof v.name).toBe('string');
+      expect(v.name.length).toBeGreaterThan(0);
+      expect(pool.has(v.name)).toBe(true);
+    }
+  });
+
+  it('same-day roster has distinct names', () => {
+    const roster = generateTavernRoster({ level: 3, keeperStats: null, daySeed: 7, spawnedDay: 0 });
+    const names = roster.map((v) => v.name);
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  it('name + gender stable across reloads (same seed)', () => {
+    const args = { level: 3 as const, keeperStats: null, daySeed: 555, spawnedDay: 0 };
+    const a = generateTavernRoster(args);
+    const b = generateTavernRoster(args);
+    expect(a.map((v) => v.name)).toEqual(b.map((v) => v.name));
+    expect(a.map((v) => v.gender)).toEqual(b.map((v) => v.gender));
   });
 });
 

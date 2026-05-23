@@ -65,8 +65,8 @@ export function TavernNegotiateModal({ visitor, keeper, visibilityScore, onClose
   const netMod = mods ? sumModifiers(mods) : 0;
   const kNeg = keeper ? keeperNegotiation(keeper) : 0;
   const demand = targetDemand(visitor);
-  const rate = mods ? successRate(kNeg, demand, netMod) : 0;
-  const showRate = visibilityScore >= 32;
+  const rate = visitor.guaranteedRecruit ? 100 : (mods ? successRate(kNeg, demand, netMod) : 0);
+  const showRate = visibilityScore >= 32 || Boolean(visitor.guaranteedRecruit);
 
   const giftLabel = gift ? `${gift.itemId} (${gift.tier === 'personal' ? '+15%' : '+5%'})` : t('tavern.modifier.giftPlaceholder');
 
@@ -129,7 +129,7 @@ export function TavernNegotiateModal({ visitor, keeper, visibilityScore, onClose
           <div className="tv-negotiate-body">
             <div>
               <div className="parchment-text" style={{ marginBottom: 6 }}>
-                <strong>{visitor.archetype} #{visitor.id.slice(-4)}</strong>
+                <strong>{visitor.name}</strong>
                 <div>{visitor.civilization} · Lv{visitor.level} · {'★'.repeat(visitor.rarity)}</div>
                 {visibilityScore >= 22 && visitor.traits.length > 0 && (
                   <div style={{ marginTop: 4 }}>

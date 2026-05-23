@@ -1,8 +1,8 @@
 /**
  * Verify online tick-by-tick production matches offline catch-up over 1 game-day.
  *
- * 1 game-day = 14400 real ticks (4h × 3600s @ 1Hz scheduler).
- * Online: loop processLoggingSiteTick / processStoneQuarryTick 14400 times.
+ * 1 game-day = TICKS_PER_DAY real ticks (30 min @ 1Hz scheduler).
+ * Online: loop processLoggingSiteTick / processStoneQuarryTick TICKS_PER_DAY times.
  * Offline: single processFacilityProduction(gameDays=1) call.
  * Difference must be < 1 (floor rounding only).
  */
@@ -12,10 +12,11 @@ import type { GuildFacility, Member } from '@/game/state/game-state';
 import {
   processLoggingSiteTick,
   processFacilityProduction,
+  TICKS_PER_DAY,
 } from '@/game/systems/facility-production-system';
 import { processStoneQuarryTick } from '@/game/systems/stone-quarry-production-system';
 
-const TICKS_PER_GAMEDAY = 14400;
+const TICKS_PER_GAMEDAY = TICKS_PER_DAY;
 
 function makeMember(overrides: Partial<Member> = {}): Member {
   return {
@@ -53,11 +54,11 @@ function makeFacility(type: 'logging-site' | 'stone-quarry', memberId: string): 
 }
 
 describe('Facility Production Parity (online vs offline)', () => {
-  it('logging-site: 14400 online ticks ≈ offline 1 game-day', () => {
+  it('logging-site: TICKS_PER_DAY online ticks ≈ offline 1 game-day', () => {
     const member = makeMember();
     const facility = makeFacility('logging-site', member.id);
 
-    // Online: simulate 14400 ticks, accumulate wood produced
+    // Online: simulate TICKS_PER_DAY ticks, accumulate wood produced
     let onlineWood = 0;
     let reserve = facility.woodReserve!;
     for (let i = 0; i < TICKS_PER_GAMEDAY; i++) {
@@ -70,18 +71,18 @@ describe('Facility Production Parity (online vs offline)', () => {
     }
 
     // Offline: 1 game-day catch-up
-    const offlineResults = processFacilityProduction([facility], [member], 1, 0);
+    const offlineResults = processFacilityProduction([facility], [member], 1);
     const offlineWood = offlineResults.find((r) => r.facilityType === 'logging-site')?.itemGains.WOOD ?? 0;
 
     // Floor() applied offline; online sums fractional values. Allow 1-unit gap.
     expect(Math.abs(Math.floor(onlineWood) - offlineWood)).toBeLessThanOrEqual(1);
   });
 
-  it('stone-quarry: 14400 online ticks ≈ offline 1 game-day (excluding vein strikes)', () => {
+  it('stone-quarry: TICKS_PER_DAY online ticks ≈ offline 1 game-day (excluding vein strikes)', () => {
     const member = makeMember();
     const facility = makeFacility('stone-quarry', member.id);
 
-    // Online: simulate 14400 ticks. Use mcXpGains.xpGained (= base stone, no vein bonus)
+    // Online: simulate TICKS_PER_DAY ticks. Use mcXpGains.xpGained (= base stone, no vein bonus)
     // to compare apples-to-apples with offline (which skips vein strikes).
     let onlineStone = 0;
     for (let i = 0; i < TICKS_PER_GAMEDAY; i++) {
@@ -90,7 +91,7 @@ describe('Facility Production Parity (online vs offline)', () => {
       if (xpGain) onlineStone += xpGain.xpGained;
     }
 
-    const offlineResults = processFacilityProduction([facility], [member], 1, 0);
+    const offlineResults = processFacilityProduction([facility], [member], 1);
     const offlineStone = offlineResults.find((r) => r.facilityType === 'stone-quarry')?.itemGains.STONE ?? 0;
 
     expect(Math.abs(Math.floor(onlineStone) - offlineStone)).toBeLessThanOrEqual(1);

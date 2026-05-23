@@ -119,6 +119,61 @@
       "name": "Ấn Triện Bị Lãng Quên",
       "description": "Một ấn triện bị lãng quên đang suy yếu. Ngăn chặn thứ đang cố phá vỡ nó.",
       "zone": "Hang Động Sâu"
+    },
+    "ft-strange-exodus": {
+      "name": "Cuộc Di Tản Kỳ Lạ",
+      "description": "Dơi hang — loài chưa từng rời khỏi núi — tấn công bìa rừng.",
+      "zone": "Bìa Rừng",
+      "cardLore": "Đàn thú rừng kéo nhau bỏ lãnh địa. Dơi hang — loài chỉ sống sâu trong núi — đang tấn công người dân ở bìa rừng."
+    },
+    "ft-path-to-depths": {
+      "name": "Đường Vào Lòng Đất",
+      "description": "Slime xâm chiếm rừng sâu, xua đuổi muông thú bỏ chạy.",
+      "zone": "Rừng Sâu",
+      "cardLore": "Tiếng vọng kỳ lạ lan khắp núi rừng. Guild cử người tiến sâu vào rừng — hướng về cửa hang cổ đại nghìn năm tuổi."
+    },
+    "ft-ancient-threshold": {
+      "name": "Ngưỡng Cửa Cổ Đại",
+      "description": "Những cỗ máy cổ đại, ngủ yên 2000 năm, canh giữ cửa hang.",
+      "zone": "Cửa Hang",
+      "cardLore": "Cửa hang cổ đại dẫn xuống lòng đất. Những âm thanh cơ khí vang vọng từ bên trong — di tích của một nền văn minh đã khuất hơn 2000 năm."
+    },
+    "ft-ruins-forgotten-age": {
+      "name": "Di Tích Thời Đại Bị Lãng Quên",
+      "description": "Robot canh gác bảo vệ tầng sâu nhất của di tích tiền sử.",
+      "zone": "Di Tích Lòng Đất",
+      "cardLore": "Di tích trải dài xuống tầng sâu nhất. Hàng trăm cỗ máy ngủ yên từ thời tiền sử đang tỉnh giấc — và chúng đang bảo vệ điều gì đó."
+    },
+    "ft-slime-sovereign": {
+      "name": "Slime Vương",
+      "description": "Sinh vật đáng sợ nuốt chửng mọi thứ xung quanh, xuất hiện từ sâu trong lòng đất là nguyên nhân của tất cả.",
+      "zone": "Lõi Cổ Đại",
+      "cardLore": "Không phải máy móc. Không phải sinh vật bình thường. Slime King hình thành từ thứ chất lỏng đen trào lên từ khe nứt sâu nhất, thấm đẫm ether của 2000 năm di tích — chui lên từ lòng đất."
+    },
+    "exp-forest-edge-bats": {
+      "name": "Tuần Tra Bìa Rừng",
+      "description": "Ngăn dơi hang quấy phá bìa rừng.",
+      "zone": "Bìa Rừng"
+    },
+    "exp-deep-forest-slimes": {
+      "name": "Tuần Tra Rừng Sâu",
+      "description": "Tiêu diệt slime đang lan rộng khắp rừng sâu.",
+      "zone": "Rừng Sâu"
+    },
+    "exp-cave-patrol": {
+      "name": "Tuần Tra Cửa Hang",
+      "description": "Tuần tra cửa hang đề phòng drone tái kích hoạt.",
+      "zone": "Cửa Hang"
+    },
+    "exp-ruins-patrol": {
+      "name": "Tuần Tra Di Tích",
+      "description": "Đẩy lùi robot canh gác trong di tích lòng đất.",
+      "zone": "Di Tích Lòng Đất"
+    },
+    "exp-ancient-core": {
+      "name": "Tuần Tra Lõi Cổ Đại",
+      "description": "Trấn áp slime còn rỉ ra từ khe nứt sâu nhất.",
+      "zone": "Lõi Cổ Đại"
     }
   },
   "items": {
@@ -202,6 +257,8 @@
     "bandit": { "name": "Tên Cướp" },
     "cave-bat": { "name": "Dơi Hang" },
     "moonbear": { "name": "Gấu Trăng" },
+    "flying-drone": { "name": "Drone Bay" },
+    "dog-robot": { "name": "Chó Robot" },
     "wolf": { "name": "Sói" },
     "wild-boar": { "name": "Lợn Rừng" },
     "slime-king": { "name": "Slime Vương" },

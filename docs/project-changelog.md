@@ -7,6 +7,160 @@ All notable changes to Worlds Collide are documented in this file. The format fo
 
 ---
 
+## [Unreleased] — 2026-05-23 (Arc 1 Narrative Unlock Gates)
+
+### feat(arc1): gate facilities behind story quests
+
+**Narrative facility gates** (Phase 7 of `plans/260522-1600-arc1-quest-story-first-tremor/` — completes the arc). Stone Quarry and Alchemy Lab now stay locked until their story quest is completed: Stone Quarry after `ft-ancient-threshold` (Q3 — cave entrance reached), Alchemy Lab after `ft-ruins-forgotten-age` (Q4 — ruins cleared). Workshop, Tavern, Logging Site, Training Yard, Infirmary are ungated.
+
+- `FacilityDef` gains optional `unlockQuestId?: string` (static config; not saved → no migration).
+- Build tray: locked blueprints are non-selectable, dimmed, and show the `facilityTray.lockedByQuest` message (EN + VN); the locked message suppresses the material-cost message.
+- Store-layer guard in `buildFacility` mirrors the UI gate so any caller is held to the same constraint (defense-in-depth, matching the existing material/permit/gold guards).
+- Old saves lacking the new quest IDs keep both facilities locked until Q3/Q4 are re-completed — acceptable for a fresh arc reset.
+
+**Key Files (Modified)**:
+- `src/game/data/facility-definitions.ts` — `unlockQuestId` field + stone-quarry/alchemy-lab values
+- `src/ui/components/facility-detail-tray.tsx` — `completedMissions` selector, `isQuestLocked`, locked render branch
+- `src/game/state/guild-slice.ts` — `buildFacility` narrative gate guard
+- `src/i18n/ui.en.json` + `src/i18n/ui.vi.json` — `facilityTray.lockedByQuest`
+
+**Verification**: 595/595 vitest pass; `tsc -b` + `vite build` clean. Code review: 0 critical; the UI-only-gate concern was closed by adding the store-layer guard.
+
+---
+
+## [Unreleased] — 2026-05-22 (Arc 1 Story Dialog — pre-arrival & post-combat)
+
+### feat(arc1): pre-arrival + post-combat story dialog
+
+**Story dialog beats** (Phase 6 of `plans/260522-1600-arc1-quest-story-first-tremor/`). Main quests now play their `preArrivalDialog` lines in the arrival modal before the enemy list, and their `postCombatDialog` lines after a winning fight before the result splash. Click / Enter / Space advances; Escape skips. Language-aware (VN when `i18n.language === 'vi'`). Expeditions (no dialog data) are unaffected.
+
+- New reusable `StoryDialogOverlay` (click/keyboard-advanced, self-contained inline styles).
+- Combat panel store gains a `'story-dialog'` phase that holds the resolved result (`pendingResult`) until the player dismisses the dialog, then reveals it. Reward side-effects still run at combat finish — the dialog only delays the result panel, never re-applies rewards.
+- Post-combat dialog gates on success only (`outcome !== 'full-wipe'`); offline auto-resolve path is untouched (no dialog).
+- Defensive: closing the panel mid-dialog reveals the earned result rather than discarding it.
+
+**Key Files (New)**:
+- `src/ui/components/story-dialog-overlay.tsx`
+
+**Key Files (Modified)**:
+- `src/game/state/combat-panel-store.ts` — `'story-dialog'` phase, `dialogLines`/`pendingResult`, `showStoryDialog`/`confirmStoryDialog`
+- `src/scene/combat/combat-fight-controller.tsx` — `finalizeCombat` routes through `showStoryDialog` for main quests with post-combat dialog
+- `src/ui/panels/combat-panel.tsx` — story-dialog phase render + close guard
+- `src/ui/panels/arrival-modal.tsx` — pre-arrival dialog gating
+- `src/ui/panels/active-missions-list.tsx` — pass `preArrivalDialog`; wave-flattened enemy preview
+
+**Verification**: 595/595 vitest pass; `tsc -b` + `vite build` clean. Code review: 0 critical, reward-flow double-apply risk verified absent, offline path untouched; one HIGH (close-during-dialog) addressed with a guard.
+
+---
+
+## [Unreleased] — 2026-05-22 (Arc 1 Quest Board — MAIN / EXPEDITION tabs)
+
+### feat(arc1): quest board tab split + card lore
+
+**Quest Board UI** (Phase 5 of `plans/260522-1600-arc1-quest-story-first-tremor/`). Split the quest list into **MAIN** (story chain) and **EXPEDITION** (repeatable + legacy) tabs, and surface each main quest's narrative `cardLore` clue on its card.
+
+- MAIN tab: `isMainQuest` quests with prerequisite met, not completed, tutorial excluded. Not tier-gated (Arc 1 story quests are tier F, always visible).
+- EXPEDITION tab: `isExpedition` quests + legacy flagless missions (backward compat). Keeps the existing quest-board-level tier-gate and tier-filter pills (pills hidden on MAIN).
+- `cardLore` (VN-only for Arc 1 MVP) renders italic/muted under the quest title.
+- Tutorial flow preserved: during the tutorial the board still shows only the tutorial quest (tabs hidden) so the accept-quest beat is intact.
+
+**Key Files (Modified)**:
+- `src/ui/panels/quest-board.tsx` — `activeTab` state, three mission-filter memos, tutorial-gated tab switcher
+- `src/ui/panels/quest-card.tsx` — `cardLore` line
+- `src/ui/styles/quest-board.css` — `.quest-board__tabs`, `.quest-card__lore`
+- `src/i18n/ui.en.json` + `src/i18n/ui.vi.json` — `questBoard.tabMain` / `tabExpedition` / `tabsAria`
+
+**Verification**: 595/595 vitest pass; `tsc -b` + `vite build` clean; i18n EN/VN parity verified. Code review: 0 critical, all acceptance criteria + tutorial/dispatch regression checks verified against live code.
+
+---
+
+## [Unreleased] — 2026-05-22 (Arc 1 Combat Maps — Crystal Cave & Underground Entrance)
+
+### feat(arc1): 2 new combat stages + zone routing for First Tremor
+
+**Arc 1 combat maps** (Phase 4 of `plans/260522-1600-arc1-quest-story-first-tremor/`). Two new `CombatStageSpec` stages, each a two-platform layout (allies on a flat floor, enemies on a raised platform with a cracked-stone front face) reusing existing village/cliff placeholder tiles until the art pass. Spawn-anchor geometry mirrors `broken-cliff-outskirt` so combat math is unchanged.
+
+- `crystal-cave` — enemy shelf raised +1.2u, cave backdrop (`#050a12`). Routes zones `Crystal Cave` (legacy cave missions) + `Cave Entrance` (Q3 drones).
+- `underground-entrance` — enemy slab raised +0.8u (shallow step), industrial backdrop (`#080808`). Routes zones `Underground Ruins` (Q4 dog-robots) + `Ancient Core` (Q5 Slime King boss).
+- `Forest Edge` (Q1 bats) routes to the existing `lolo-village-outskirt` map. `Deep Forest` (Q2) already mapped to `the-forest`.
+
+**Key Files (New)**:
+- `src/scene/combat/maps/stages/crystal-cave.ts`
+- `src/scene/combat/maps/stages/underground-entrance.ts`
+
+**Key Files (Modified)**:
+- `src/scene/combat/maps/combat-map-registry.ts` — `CombatMapId` union (+2), `STAGE_SPECS` (+2), `ZONE_TO_MAP` (+5)
+
+**Verification**: `npm run build` (`tsc -b && vite build`) clean. Code review: 0 critical/high/medium findings, all acceptance criteria verified against live code.
+
+**Note**: Stale plan zone names (`Crystal Throne Room`, `Abandoned Mine`, `Underground Entrance`) were intentionally NOT mapped — no mission references them; the implemented zones match real `zone:` strings in mission data.
+
+---
+
+## [Unreleased] — 2026-05-22 (Arc 1 Quest Chain — "The First Tremor")
+
+### feat(arc1): quest chain data — 5 main quests + 5 expeditions
+
+**Arc 1 "The First Tremor" quest chain** (Phase 3 of `plans/260522-1600-arc1-quest-story-first-tremor/`). Causal narrative: bats flee deep caves → slimes invade the forest → 2000-year-dormant prehistoric machines wake defending the ruins → Slime King, a petroleum + ether creature risen from the deepest earth crack. No empire/faction origin; machine civilization unknown.
+
+Five chained main quests (`chain-first-tremor`, chainOrder 2–6): `ft-strange-exodus` (cave bats, Forest Edge) → `ft-path-to-depths` (slimes, Deep Forest) → `ft-ancient-threshold` (flying-drones, Cave Entrance) → `ft-ruins-forgotten-age` (dog-robots, Underground Ruins) → `ft-slime-sovereign` (Slime King boss, Ancient Core). Each carries bilingual (VN+EN) pre-arrival + post-combat dialog and a VN `cardLore` clue. Five repeatable expeditions (`exp-*`, `isExpedition: true`) unlock after their parent quest.
+
+**Key Files (New)**:
+- `src/game/data/missions-arc1-first-tremor.ts` — exports `ARC1_MISSIONS: Mission[]` (10 missions)
+
+**Key Files (Modified)**:
+- `src/game/data/missions.ts` — import + `...ARC1_MISSIONS` spread into `MISSIONS`
+- `src/i18n/content.vi.json` — VN overlay (name/description/zone) for all 10 new mission ids (required by `content-coverage.test.ts`)
+
+**Test coverage**: 595/595 vitest pass; `tsc -b` clean. Code review 9.5/10.
+
+**Deferred (per plan)**: Phase 4 (zone routing for `Forest Edge`, `Cave Entrance`, `Underground Ruins`, `Ancient Core`) — now **DONE**, see entry above. Phase 7 repoints facility `unlockQuestId` (Stone Quarry → `ft-ancient-threshold`, Alchemy Lab → `ft-ruins-forgotten-age`).
+
+---
+
+## [Unreleased] — 2026-05-22 (MVP Recruit Gating, VN Names & Roster Rename)
+
+### feat(tavern): recruitable units gating + deterministic spawn with VN names
+
+**MVP-ready tavern recruitment** — single source of truth at spawn layer, replacing 3-site placeholder generation. Gate tavern recruits to 3 playable units per civilization (Linh Sơn MVP: Templar `sword`+M, Forester `warrior`+M, Ranger `scout`+F). New `RECRUITABLE_UNITS` defined in `civilization-config.ts` encodes both archetype allow-list and gender→sprite mapping. Non-recruitable sprite paths (e.g., `LS-SCOUT-M`, `LS-WARRIOR-F`) unspawnable by construction.
+
+**TavernVisitor deterministic naming** — `TavernVisitor` now carries required `name` + `gender` fields, assigned at spawn time (not at hire time). VN name pool (~44 entries) in `CIV_CONFIG.LinhSon.namePool` replaces placeholder `Warrior #xxxx` names. Visitor names distinct within a game-day (daily refresh enforces uniqueness). Removed hardcoded gender 'M' and placeholder naming from 3 hire sites (tavern-visitor-card, tavern-panel, tavern-audition); all now consume `visitor.name` + `visitor.gender` directly.
+
+**Save migration v26→v27** — `migrateV26toV27()` backfills `name` + `gender` onto persisted `tavern.mercContracts[]` visitors (founders get `'Founder'`, others assigned from `CIV_CONFIG` name pool). Migration is transparent; players' existing visitors load with proper names.
+
+**Key Files (New)**:
+- `src/game/systems/tavern-spawn.ts` — Deterministic visitor spawn engine; `spawnTavernVisitor(civ)` assigns name + gender + archetype from `RECRUITABLE_UNITS` + name pool.
+
+**Key Files (Modified)**:
+- `src/game/data/civilization-config.ts` — +`RECRUITABLE_UNITS` (archetype×gender allowed list), +`namePool` (44 VN names)
+- `src/game/state/game-state.ts` — `TavernVisitor` interface: +`name`, +`gender` (required fields)
+- `src/game/save/save-migrations.ts` — `migrateV26toV27()` backfill migration
+- `src/game/save/save-types.ts` — `SAVE_VERSION: 27`
+- `src/ui/panels/tavern-visitor-card.tsx` — consume `visitor.name` / `visitor.gender`; removed placeholder generation
+- `src/ui/panels/tavern-panel.tsx` — consume `visitor.name` / `visitor.gender`; removed hardcoded gender 'M'
+- `src/game/systems/tavern-audition.ts` — consume `visitor.name` / `visitor.gender`; removed placeholder generation
+
+**Deleted**:
+- `src/game/systems/mercenary-generator.ts` — dead code (no live callers; replaced by tavern-spawn.ts engine)
+
+### feat(roster): member rename UI + validation (non-founder, non-mercenary)
+
+**Inline roster rename** — character detail panel gains "Rename" action; click opens inline text input (24-char max, trim, reject empty). Validation: founder + mercenary ranks cannot rename (founder is structural, mercenaries are hired). Player-initiated rename via `renameMember(memberId, newName)` Zustand action.
+
+**Key Files (New)**:
+- `src/game/state/roster-slice.ts` — `renameMember(id, name)` action (validation + state update)
+
+**Key Files (Modified)**:
+- `src/ui/components/member-book-detail-page.tsx` — +inline rename input in header; calls `renameMember()`; disable for founder/mercenary
+- `src/ui/panels/character-detail-panel.tsx` — +rename button / inline rename UI
+- `src/game/state/game-state.ts` — no schema change (member.name already exists)
+
+**Test coverage**: rename validation, founder/mercenary exclusion, empty/whitespace rejection.
+
+**Plan Reference**: `plans/260522-0930-mvp-recruit-gating-vn-names-rename/` (phases 01–04 complete)
+
+---
+
 ## [Unreleased] — 2026-05-22 (Combat Mask Composite Atlas — Phase 3 Integration Complete)
 
 ### feat(combat): replace floating mask overlay with per-character runtime composite atlases

@@ -34,7 +34,7 @@ function member(id: string, level = 5, status: Member['status'] = 'idle'): Membe
 
 function visitor(level = 5): TavernVisitor {
   return {
-    id: 'vis-1', archetype: 'warrior', civilization: 'LinhSon',
+    id: 'vis-1', name: 'vis-1', archetype: 'warrior', civilization: 'LinhSon', gender: 'M',
     rarity: 2, level,
     stats: { STR: 10, END: 10, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 },
     derivedDemand: 0, dailyMoodBias: 0, traits: [],

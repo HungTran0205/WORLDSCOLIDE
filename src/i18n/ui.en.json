@@ -341,6 +341,9 @@
     "returnAria": "Return to Guild",
     "empty": "No quests available.",
     "listAria": "Available quests",
+    "tabMain": "Main",
+    "tabExpedition": "Expedition",
+    "tabsAria": "Quest category",
     "filter": {
       "ariaLabel": "Filter by tier",
       "all": "All",
@@ -388,6 +391,9 @@
     "release": "Release",
     "releaseConfirm": "Release {{name}}? This cannot be undone.",
     "releaseConfirmFallback": "this member",
+    "rename": "Rename",
+    "renameSave": "Save name",
+    "renameCancel": "Cancel",
     "status": {
       "idle": "Available",
       "on-mission": "On Quest",
@@ -794,7 +800,8 @@
     "buildConfirmBtn": "Build",
     "costFree": "Free",
     "costPermit": "Permit",
-    "needMaterials": "Need {{materials}}"
+    "needMaterials": "Need {{materials}}",
+    "lockedByQuest": "Complete the main quest to unlock this facility."
   },
   "guildUpgrade": {
     "label": "Guild Hall — Lv.{{level}}",

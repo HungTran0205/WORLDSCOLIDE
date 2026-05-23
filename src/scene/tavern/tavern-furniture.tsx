@@ -2,15 +2,14 @@ import { useGLTF } from '@react-three/drei';
 import { RoomProp } from '../facility/room-prop';
 import { InteractiveFacilityObject } from '../facility/interactive-facility-object';
 
-useGLTF.preload('/models/furnitures/Tavern_Linh_Son_Tu_Quan_Apot.glb');
-useGLTF.preload('/models/furnitures/wine-barrel.glb');
+useGLTF.preload('/models/furnitures/LinhSonTavernBackground.glb');
 
 export function TavernFurniture({ cx, cz }: { cx: number; cz: number }) {
   return (
     <group>
       {/* Apothecary counter — click to open the recruitment panel for this tavern */}
       <InteractiveFacilityObject
-        glbPath="/models/furnitures/Tavern_Linh_Son_Tu_Quan_Apot.glb"
+        glbPath="/models/furnitures/LinhSonTavernBackground.glb"
         position={[cx - 2.8, 0, cz + 1.2]}
         targetHeight={3}
         rotY={1.55}

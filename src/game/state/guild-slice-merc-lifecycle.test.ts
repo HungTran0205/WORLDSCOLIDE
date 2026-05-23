@@ -60,8 +60,10 @@ function setupTavern(opts: { level?: 1 | 2 | 3; gold?: number } = {}) {
 function fakeVisitor(overrides: Partial<TavernVisitor> = {}): TavernVisitor {
   return {
     id: 'v-fake-1',
+    name: 'v-fake-1',
     archetype: 'warrior',
     civilization: 'LinhSon',
+    gender: 'M',
     rarity: 2,
     level: 3,
     stats: { STR: 10, END: 10, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 },
