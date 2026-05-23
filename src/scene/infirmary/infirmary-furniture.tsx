@@ -1,8 +1,9 @@
 import { useGLTF } from '@react-three/drei';
 import { RoomProp } from '../facility/room-prop';
+import { assetUrl } from '@/lib/asset-url';
 
-useGLTF.preload('/models/furnitures/medical-bed.glb');
-useGLTF.preload('/models/furnitures/alchemy-table.glb');
+useGLTF.preload(assetUrl('/models/furnitures/medical-bed.glb'));
+useGLTF.preload(assetUrl('/models/furnitures/alchemy-table.glb'));
 
 export function InfirmaryFurniture({ cx, cz }: { cx: number; cz: number }) {
   return (

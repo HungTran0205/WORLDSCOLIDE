@@ -7,13 +7,14 @@
 
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
+import { assetUrl } from '@/lib/asset-url';
 
 const BACK_WALL_SPRITE = '/GuildHall/LinhSon/wall-back.png';
 const LEFT_WALL_SPRITE = '/GuildHall/LinhSon/wall-left.png';
 
 /** Preload both wall sprites */
-useTexture.preload(BACK_WALL_SPRITE);
-useTexture.preload(LEFT_WALL_SPRITE);
+useTexture.preload(assetUrl(BACK_WALL_SPRITE));
+useTexture.preload(assetUrl(LEFT_WALL_SPRITE));
 
 interface GuildHallWallProps {
   /** Floor grid width in world units (default: 10) */
@@ -77,7 +78,7 @@ export function GuildHallWall({
   backSrc = BACK_WALL_SPRITE,
   leftSrc = LEFT_WALL_SPRITE,
 }: GuildHallWallProps) {
-  const [backTexture, leftTexture] = useTexture([backSrc, leftSrc]);
+  const [backTexture, leftTexture] = useTexture([assetUrl(backSrc), assetUrl(leftSrc)]);
 
   return (
     <>

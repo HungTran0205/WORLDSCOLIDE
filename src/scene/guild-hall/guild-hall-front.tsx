@@ -14,10 +14,11 @@
 
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
+import { assetUrl } from '@/lib/asset-url';
 
 const FRONT_SPRITE = '/GuildHall/LinhSon/front.png';
 
-useTexture.preload(FRONT_SPRITE);
+useTexture.preload(assetUrl(FRONT_SPRITE));
 
 interface GuildHallFrontProps {
   /** Floor grid width in world units (must match GuildHallWall) */
@@ -37,7 +38,7 @@ export function GuildHallFront({
   gridDepth = 10,
   wallHeight = 6.8,
 }: GuildHallFrontProps) {
-  const texture = useTexture(FRONT_SPRITE);
+  const texture = useTexture(assetUrl(FRONT_SPRITE));
 
   const aspect = SPRITE_W / SPRITE_H;
   const planeHeight = wallHeight;

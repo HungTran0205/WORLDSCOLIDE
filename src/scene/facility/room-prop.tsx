@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { applyLitMaterial } from '../guild-hall/apply-lit-material';
+import { assetUrl } from '@/lib/asset-url';
 
 /** Scaled GLB prop placed at world-space position inside a room */
 export function RoomProp({ path, position, targetHeight, rotY = 0, castShadow = false }: {
@@ -12,7 +13,7 @@ export function RoomProp({ path, position, targetHeight, rotY = 0, castShadow = 
   /** Convert materials to MeshStandard and enable castShadow + receiveShadow */
   castShadow?: boolean;
 }) {
-  const { scene } = useGLTF(path);
+  const { scene } = useGLTF(assetUrl(path));
   const model = useMemo(() => {
     const clone = scene.clone(true);
     const box = new THREE.Box3().setFromObject(clone);

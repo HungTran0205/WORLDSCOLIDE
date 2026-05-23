@@ -14,6 +14,7 @@ import { useTexture, Billboard } from '@react-three/drei';
 import { useControls } from 'leva';
 import * as THREE from 'three';
 import { VFXParticles, EmitterShape, Blending } from 'r3f-vfx';
+import { assetUrl } from '@/lib/asset-url';
 
 /** Default warm flame palette — white core → orange/red edge. */
 const DEFAULT_FIRE_COLOR_START: [string, string] = ['#ffffff', '#ffdd88'];
@@ -104,7 +105,7 @@ function TorchFireVfxImpl({
   params: dbg,
 }: TorchFireVfxProps & { params: TorchFireParams }) {
   // Static core flame sprite (same asset as legacy, preserves visual identity)
-  const fireTex = useTexture('/arena/cave/props/fire-flame.png');
+  const fireTex = useTexture(assetUrl('/arena/cave/props/fire-flame.png'));
   fireTex.magFilter = THREE.NearestFilter;
   fireTex.minFilter = THREE.NearestFilter;
 

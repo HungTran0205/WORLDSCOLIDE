@@ -15,6 +15,7 @@ import { useMemo } from 'react';
 import * as THREE from 'three';
 import { applyLitMaterial } from '@/scene/guild-hall/apply-lit-material';
 import { DrumFireVfx } from '@/scene/vfx/drum-fire-vfx';
+import { assetUrl } from '@/lib/asset-url';
 
 const DRUM_GLB = '/GuildHall/LinhSon/optimized/p_cooperdrumfireholder.glb';
 const DRUM_HEIGHT = 0.65;
@@ -40,7 +41,7 @@ interface TitleDrumProps {
 }
 
 export function TitleDrum({ position = [0, 0, 0.5] }: TitleDrumProps) {
-  const { scene } = useGLTF(DRUM_GLB);
+  const { scene } = useGLTF(assetUrl(DRUM_GLB));
   const model = useScaledDrum(scene);
 
   return (
@@ -67,4 +68,4 @@ export function TitleDrum({ position = [0, 0, 0.5] }: TitleDrumProps) {
   );
 }
 
-useGLTF.preload(DRUM_GLB);
+useGLTF.preload(assetUrl(DRUM_GLB));

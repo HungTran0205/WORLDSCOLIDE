@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
+import { assetUrl } from '@/lib/asset-url';
 
 [
   '/arena/forest/3dprops/optimized/p_tree_large.glb',
@@ -8,7 +9,7 @@ import * as THREE from 'three';
   '/arena/forest/3dprops/optimized/p_stump.glb',
   '/arena/forest/3dprops/optimized/p_log_fallen.glb',
   '/arena/forest/3dprops/optimized/p_bush.glb',
-].forEach((p) => useGLTF.preload(p));
+].forEach((p) => useGLTF.preload(assetUrl(p)));
 
 function ForestProp({ path, position, targetHeight, rotY = 0 }: {
   path: string;
@@ -16,7 +17,7 @@ function ForestProp({ path, position, targetHeight, rotY = 0 }: {
   targetHeight: number;
   rotY?: number;
 }) {
-  const { scene } = useGLTF(path);
+  const { scene } = useGLTF(assetUrl(path));
   const model = useMemo(() => {
     const clone = scene.clone(true);
     const box = new THREE.Box3().setFromObject(clone);

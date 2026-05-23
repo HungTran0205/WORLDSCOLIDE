@@ -11,6 +11,7 @@ import { useGLTF } from '@react-three/drei';
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { applyLitMaterial } from '@/scene/guild-hall/apply-lit-material';
+import { assetUrl } from '@/lib/asset-url';
 
 const FLAG_GLB = '/models/furnitures/Flag_Golden_Phoenix_Over.glb';
 /** Target world-space height of each flag in units. ~2.8 reads as a tall
@@ -35,7 +36,7 @@ function useScaledFlag(scene: THREE.Group, mirrorX: boolean) {
 }
 
 export function TitleFlags() {
-  const { scene } = useGLTF(FLAG_GLB);
+  const { scene } = useGLTF(assetUrl(FLAG_GLB));
   const leftFlag = useScaledFlag(scene, false);
   const rightFlag = useScaledFlag(scene, true);
 
@@ -53,4 +54,4 @@ export function TitleFlags() {
   );
 }
 
-useGLTF.preload(FLAG_GLB);
+useGLTF.preload(assetUrl(FLAG_GLB));

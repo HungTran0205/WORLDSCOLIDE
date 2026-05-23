@@ -1,7 +1,8 @@
 import { useGLTF } from '@react-three/drei';
 import { RoomProp } from '../facility/room-prop';
+import { assetUrl } from '@/lib/asset-url';
 
-useGLTF.preload('/models/furnitures/training-dummy.glb');
+useGLTF.preload(assetUrl('/models/furnitures/training-dummy.glb'));
 
 export function TrainingYardFurniture({ cx, cz }: { cx: number; cz: number }) {
   return (

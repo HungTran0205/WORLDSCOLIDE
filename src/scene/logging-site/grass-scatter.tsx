@@ -20,6 +20,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, useLoader, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { createGrassMaterial, type GrassMaterialHandle } from './grass-blade-material';
+import { assetUrl } from '@/lib/asset-url';
 
 const GRASS_TEXTURES = [
   '/decals/combat/grass-tuft-1.png',
@@ -64,7 +65,7 @@ function GrassVariant({
   cz: number;
   seed: number;
 }) {
-  const loaded = useLoader(THREE.TextureLoader, texPath);
+  const loaded = useLoader(THREE.TextureLoader, assetUrl(texPath));
   const { gl } = useThree();
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const [handle, setHandle] = useState<GrassMaterialHandle | null>(null);

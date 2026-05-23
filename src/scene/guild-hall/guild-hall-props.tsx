@@ -14,6 +14,7 @@ import { useGraphicsQuality } from '../world';
 import { applyLitMaterial } from './apply-lit-material';
 import { InteractiveDrum } from './interactive-drum';
 import { useRegisterObstacle } from './use-register-obstacle';
+import { assetUrl } from '@/lib/asset-url';
 
 // ─── GLB paths ────────────────────────────────────────────────────────────────
 
@@ -26,7 +27,7 @@ const GLB = {
   pillar: '/GuildHall/LinhSon/optimized/p_woodpillar.glb'
 } as const;
 
-Object.values(GLB).forEach((p) => useGLTF.preload(p));
+Object.values(GLB).forEach((p) => useGLTF.preload(assetUrl(p)));
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -55,7 +56,7 @@ function WallTorch({ position, rotationY = 0, label = 'Torch' }: {
   label?: string;
 }) {
   const quality = useGraphicsQuality();
-  const { scene } = useGLTF(GLB.torch);
+  const { scene } = useGLTF(assetUrl(GLB.torch));
   const model = useScaledModel(scene, 0.4);
 
   return (
@@ -73,7 +74,7 @@ function WallTorch({ position, rotationY = 0, label = 'Torch' }: {
 // ─── Scene props ──────────────────────────────────────────────────────────────
 
 function IronThrone() {
-  const { scene } = useGLTF(GLB.throne);
+  const { scene } = useGLTF(assetUrl(GLB.throne));
   const model = useScaledModel(scene, 2.2);
   const ref = useRef<THREE.Group>(null);
   useRegisterObstacle('throne', ref);
@@ -86,7 +87,7 @@ function IronThrone() {
 }
 
 function FairyMotherStatues() {
-  const { scene } = useGLTF(GLB.fairy);
+  const { scene } = useGLTF(assetUrl(GLB.fairy));
   const model = useScaledModel(scene, 2.8);
   const ref = useRef<THREE.Group>(null);
   useRegisterObstacle('fairy', ref);
@@ -99,7 +100,7 @@ function FairyMotherStatues() {
 }
 
 function DragonFatherStatues() {
-  const { scene } = useGLTF(GLB.dragon);
+  const { scene } = useGLTF(assetUrl(GLB.dragon));
   const model = useScaledModel(scene, 2.8);
   const ref = useRef<THREE.Group>(null);
   useRegisterObstacle('dragon', ref);
@@ -117,7 +118,7 @@ function WoodPillar({ position, obstacleId }: {
   position: [number, number, number];
   obstacleId: string;
 }) {
-  const { scene } = useGLTF(GLB.pillar);
+  const { scene } = useGLTF(assetUrl(GLB.pillar));
   const model = useScaledModel(scene, 4.5);
   const ref = useRef<THREE.Group>(null);
   useRegisterObstacle(obstacleId, ref);

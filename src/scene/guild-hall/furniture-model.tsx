@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import type { PlacedFurniture } from '@/game/state/game-state';
 import { FURNITURE_DEFINITIONS } from '@/game/data/furniture';
 import { applyLitMaterial } from './apply-lit-material';
+import { assetUrl } from '@/lib/asset-url';
 
 /** Map furniture type → GLB model path (files live in public/models/furnitures/) */
 const MODEL_PATH: Record<string, string> = {
@@ -20,7 +21,7 @@ const MODEL_PATH: Record<string, string> = {
 };
 
 /** Preload all furniture models */
-Object.values(MODEL_PATH).forEach((path) => useGLTF.preload(path, false, true));
+Object.values(MODEL_PATH).forEach((path) => useGLTF.preload(assetUrl(path), false, true));
 
 /** Cache bounding-box derived transform per model path (computed once per model type) */
 const transformCache = new Map<string, { scale: number; offsetY: number }>();
@@ -53,7 +54,7 @@ export function FurnitureModel({ furniture }: { furniture: PlacedFurniture }) {
   const modelPath = MODEL_PATH[furniture.type];
   if (!def || !modelPath) return null;
 
-  const { scene } = useGLTF(modelPath, false, true);
+  const { scene } = useGLTF(assetUrl(modelPath), false, true);
 
   const [cellW, cellD] = (furniture.rotation === 90 || furniture.rotation === 270)
     ? [def.depth, def.width] : [def.width, def.depth];

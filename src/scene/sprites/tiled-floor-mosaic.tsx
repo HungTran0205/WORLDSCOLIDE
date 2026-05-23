@@ -33,6 +33,7 @@ import {
   ClampToEdgeWrapping,
   SRGBColorSpace,
 } from 'three';
+import { assetUrl } from '@/lib/asset-url';
 
 export interface TiledFloorMosaicProps {
   width: number;
@@ -64,7 +65,7 @@ export function TiledFloorMosaic({
 }: TiledFloorMosaicProps) {
   // Spread into a single useLoader call so all tiles arrive in one Suspense
   // resolution. useLoader caches by URL, so accent reuse is free.
-  const allUrls = [primaryTile, ...accentTiles];
+  const allUrls = [primaryTile, ...accentTiles].map(assetUrl);
   const textures = useLoader(TextureLoader, allUrls);
   const primaryTex = textures[0];
   const accentTexes = textures.slice(1);

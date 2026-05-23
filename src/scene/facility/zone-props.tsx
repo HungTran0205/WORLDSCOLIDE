@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import type { FacilityType } from '@/game/state/game-state';
+import { assetUrl } from '@/lib/asset-url';
 
 // Preload all GLBs used by zone props
 const ZONE_GLB_PATHS = [
@@ -20,7 +21,7 @@ const ZONE_GLB_PATHS = [
   '/arena/forest/3dprops/optimized/p_log_fallen.glb',
   '/arena/forest/3dprops/optimized/p_bush.glb',
 ];
-ZONE_GLB_PATHS.forEach((p) => useGLTF.preload(p));
+ZONE_GLB_PATHS.forEach((p) => useGLTF.preload(assetUrl(p)));
 
 interface PropConfig {
   path: string;
@@ -106,7 +107,7 @@ function useScaledModel(scene: THREE.Group, targetHeight: number) {
 }
 
 function ZoneProp({ path, offset, targetHeight }: { path: string; offset: [number, number, number]; targetHeight: number }) {
-  const { scene } = useGLTF(path);
+  const { scene } = useGLTF(assetUrl(path));
   const model = useScaledModel(scene, targetHeight);
   return (
     <group position={offset}>

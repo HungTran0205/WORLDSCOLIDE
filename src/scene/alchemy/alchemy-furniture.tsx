@@ -14,10 +14,12 @@ import { FloorDecal } from '../sprites/floor-decal';
 import { useGraphicsQuality } from '../world';
 import { useGameStore } from '@/game/state/store';
 
-useGLTF.preload('/models/furnitures/alchemy_reactor.glb');
-useGLTF.preload('/models/furnitures/alchemy_shelf.glb');
-useGLTF.preload('/models/furnitures/alchemy_silo.glb');
-useGLTF.preload('/models/furnitures/alchemy_workbend.glb');
+import { assetUrl } from '@/lib/asset-url';
+
+useGLTF.preload(assetUrl('/models/furnitures/alchemy_reactor.glb'));
+useGLTF.preload(assetUrl('/models/furnitures/alchemy_shelf.glb'));
+useGLTF.preload(assetUrl('/models/furnitures/alchemy_silo.glb'));
+useGLTF.preload(assetUrl('/models/furnitures/alchemy_workbend.glb'));
 
 /** Point light với flicker nhẹ dùng cho candle */
 function FlickerPointLight({ position, color, baseIntensity, distance, decay = 2 }: {
