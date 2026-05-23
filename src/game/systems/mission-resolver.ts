@@ -55,8 +55,10 @@ export function resolveMissionWithResult(
   };
 }
 
-/** Resolve a mission by running combat simulation and calculating rewards */
-export function resolveMission(mission: Mission, members: Member[]): MissionResult {
+/** Resolve a mission by running combat simulation and calculating rewards.
+ *  `hpFloor` (Phase 04) keeps tutorial allies at ≥1 HP on the from-scratch
+ *  auto-resolve path (e.g. mid-fight reload before a snapshot exists). */
+export function resolveMission(mission: Mission, members: Member[], hpFloor = false): MissionResult {
   if (members.length === 0) {
     return {
       missionId: mission.id, outcome: 'full-wipe', goldEarned: 0, expPerMember: 0,
@@ -69,7 +71,7 @@ export function resolveMission(mission: Mission, members: Member[]): MissionResu
     .map((id) => ENEMIES[id])
     .filter(Boolean);
 
-  const combatResult = simulateCombat(members, enemyTemplates);
+  const combatResult = simulateCombat(members, enemyTemplates, hpFloor);
 
   let goldEarned = 0;
   let expPerMember = 0;

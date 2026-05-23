@@ -7,7 +7,500 @@ All notable changes to Worlds Collide are documented in this file. The format fo
 
 ---
 
+## [Unreleased] — 2026-05-23 (Facilities Build Picker — Icon Panel)
+
+### feat(ui): replace facility build text-list with left-docked icon picker
+
+**Game-style build picker** (`plans/260523-1105-facilities-build-picker-icon-panel/`). Selecting an empty facility slot now opens a left-docked **icon-card panel** instead of the bottom slide-up text list. Each card shows the room PNG icon (`icon-room-*.png`), name, primary stat, and cost; states cover affordable / unaffordable (grayscale + red cost) / quest-locked (🔒 overlay) / selected / x-of-3 instance count. A footer "Build" button opens the existing confirm dialog. Built-room flow (assign/upgrade) is unchanged.
+
+**Key Files**:
+- `src/ui/components/facility-build-picker.tsx` — NEW icon-card picker (logic lifted from old `EmptySlotTray`)
+- `src/ui/components/facility-detail-tray.tsx` — removed `EmptySlotTray`; tray now opens only for built rooms
+- `src/ui/panels/facilities-panel.tsx` — renders picker as left sibling of the panel when an empty slot is selected
+- `src/ui/utils/icon-paths.ts` — `training-yard → training` icon override (load-bearing; avoids 404)
+- `src/ui/styles/facilities-panel.css` — `.fp-build-picker` / `.fp-bp-*` styles + responsive @820px; removed dead `.fp-blueprint-*` / `.fp-btn-build` CSS
+- `src/i18n/ui.en.json` + `ui.vi.json` — removed now-orphaned `facilityTray.needMaterials` (red cost label already names materials)
+- `src/ui/components/ink-confirm-dialog.tsx` — now `createPortal`s to `<body>` so the modal escapes the facilities overlay's `pointer-events:none` (build-confirm clicks were falling through to the scene) and any zoomed ancestor; affects all 6 confirm-dialog call sites (modal-only, no visual change)
+
+**Post-verify fixes**: (1) Build-confirm dialog clicks did nothing — the dialog rendered inside the picker which lives in the `pointer-events:none` `.fp-overlay`; fixed by portaling the dialog to `<body>` + `pointer-events:auto` on `.fp-dialog-overlay`. (2) Facilities panel + build picker scaled up 20% (`zoom: 1.2`, `max-height` divided by zoom) for readability on large displays.
+
+**Verification**: `tsc -b` + `vite build` clean; 730/730 game tests pass (3 pre-existing infra-noise unchanged); code review 8.5/10, 0 critical/high. Tutorial build beats (`build-logging-site` / `build-tavern`) preserved — highlight re-pointed from blueprint row to icon-card + Build button. Manual visual re-verify pending after post-verify fixes.
+---
+
+## [Unreleased] — 2026-05-23 (Quest Board Party Slot Assign)
+
+### feat(quest): facility-style party slots + roster card picker
+
+Replaced the quest board's flat name+level member list (`PartySelectList`) with a **facility-style square slot row**. Filled slots show a member avatar tile (reuses `FacilityMemberAvatar`); empty/add slots open a **roster flyout anchored to the right** showing rich `MemberCard`s — click a card to add the member. Slots are **required + expandable**: `requiredMembers` mandatory slots plus a trailing add-slot up to a soft cap (6), preserving over-stacking. Goal: read as game UI, not a web form.
+
+- `quest-party-slots.tsx` (NEW) — slot row + `QUEST_PARTY_SOFT_CAP`; add-slot only when committed slots full, below cap, and idle members remain; required is never clipped if `requiredMembers > cap`.
+- `quest-roster-picker.tsx` (NEW) — right-anchored flyout, excludes already-selected, disables underleveled (with reason), Esc + outside-click close, focus save/restore; mobile (<1024px) falls back to a bottom sheet.
+- `MemberCard` gains optional `disabled`/`reason` (click-guard + `aria-disabled`, kept focusable); default unchanged so the member browser is unaffected.
+- `.fp-avatar-*` styles relocated from `facilities-panel.css` → shared `member-avatar.css` (decouples load order).
+- `PartySelectList` + its `.party-select*` CSS + orphaned `partySelect.empty` key removed.
+
+**Key Files**:
+- NEW: `src/ui/panels/quest-party-slots.tsx`, `src/ui/panels/quest-roster-picker.tsx`, `src/ui/styles/member-avatar.css`
+- Modified: `src/ui/panels/quest-detail-pane.tsx`, `src/ui/components/member-card.tsx`, `src/ui/components/facility-member-avatar.tsx`, `src/ui/styles/quest-board.css`, `src/ui/styles/facilities-panel.css`, `src/ui/styles/member-card.css`, `src/i18n/ui.{en,vi}.json`
+- Deleted: `src/ui/panels/party-select-list.tsx`
+
+**Verification**: 605/605 vitest pass (incl. ui-parity, content-coverage); `tsc -b` + `vite build` clean. Code review: 0 critical/high; one latent count/tile divergence (selected member leaving idle mid-modal) documented as currently non-triggerable. Interactive in-browser slot→picker flow pending manual confirmation.
+
+---
+
+## [Unreleased] — 2026-05-23 (Arc 1 Narrative Unlock Gates)
+
+### feat(arc1): gate facilities behind story quests
+
+**Narrative facility gates** (Phase 7 of `plans/260522-1600-arc1-quest-story-first-tremor/` — completes the arc). Stone Quarry and Alchemy Lab now stay locked until their story quest is completed: Stone Quarry after `ft-ancient-threshold` (Q3 — cave entrance reached), Alchemy Lab after `ft-ruins-forgotten-age` (Q4 — ruins cleared). Workshop, Tavern, Logging Site, Training Yard, Infirmary are ungated.
+
+- `FacilityDef` gains optional `unlockQuestId?: string` (static config; not saved → no migration).
+- Build tray: locked blueprints are non-selectable, dimmed, and show the `facilityTray.lockedByQuest` message (EN + VN); the locked message suppresses the material-cost message.
+- Store-layer guard in `buildFacility` mirrors the UI gate so any caller is held to the same constraint (defense-in-depth, matching the existing material/permit/gold guards).
+- Old saves lacking the new quest IDs keep both facilities locked until Q3/Q4 are re-completed — acceptable for a fresh arc reset.
+
+**Key Files (Modified)**:
+- `src/game/data/facility-definitions.ts` — `unlockQuestId` field + stone-quarry/alchemy-lab values
+- `src/ui/components/facility-detail-tray.tsx` — `completedMissions` selector, `isQuestLocked`, locked render branch
+- `src/game/state/guild-slice.ts` — `buildFacility` narrative gate guard
+- `src/i18n/ui.en.json` + `src/i18n/ui.vi.json` — `facilityTray.lockedByQuest`
+
+**Verification**: 595/595 vitest pass; `tsc -b` + `vite build` clean. Code review: 0 critical; the UI-only-gate concern was closed by adding the store-layer guard.
+
+---
+
+## [Unreleased] — 2026-05-22 (Arc 1 Story Dialog — pre-arrival & post-combat)
+
+### feat(arc1): pre-arrival + post-combat story dialog
+
+**Story dialog beats** (Phase 6 of `plans/260522-1600-arc1-quest-story-first-tremor/`). Main quests now play their `preArrivalDialog` lines in the arrival modal before the enemy list, and their `postCombatDialog` lines after a winning fight before the result splash. Click / Enter / Space advances; Escape skips. Language-aware (VN when `i18n.language === 'vi'`). Expeditions (no dialog data) are unaffected.
+
+- New reusable `StoryDialogOverlay` (click/keyboard-advanced, self-contained inline styles).
+- Combat panel store gains a `'story-dialog'` phase that holds the resolved result (`pendingResult`) until the player dismisses the dialog, then reveals it. Reward side-effects still run at combat finish — the dialog only delays the result panel, never re-applies rewards.
+- Post-combat dialog gates on success only (`outcome !== 'full-wipe'`); offline auto-resolve path is untouched (no dialog).
+- Defensive: closing the panel mid-dialog reveals the earned result rather than discarding it.
+
+**Key Files (New)**:
+- `src/ui/components/story-dialog-overlay.tsx`
+
+**Key Files (Modified)**:
+- `src/game/state/combat-panel-store.ts` — `'story-dialog'` phase, `dialogLines`/`pendingResult`, `showStoryDialog`/`confirmStoryDialog`
+- `src/scene/combat/combat-fight-controller.tsx` — `finalizeCombat` routes through `showStoryDialog` for main quests with post-combat dialog
+- `src/ui/panels/combat-panel.tsx` — story-dialog phase render + close guard
+- `src/ui/panels/arrival-modal.tsx` — pre-arrival dialog gating
+- `src/ui/panels/active-missions-list.tsx` — pass `preArrivalDialog`; wave-flattened enemy preview
+
+**Verification**: 595/595 vitest pass; `tsc -b` + `vite build` clean. Code review: 0 critical, reward-flow double-apply risk verified absent, offline path untouched; one HIGH (close-during-dialog) addressed with a guard.
+
+---
+
+## [Unreleased] — 2026-05-22 (Arc 1 Quest Board — MAIN / EXPEDITION tabs)
+
+### feat(arc1): quest board tab split + card lore
+
+**Quest Board UI** (Phase 5 of `plans/260522-1600-arc1-quest-story-first-tremor/`). Split the quest list into **MAIN** (story chain) and **EXPEDITION** (repeatable + legacy) tabs, and surface each main quest's narrative `cardLore` clue on its card.
+
+- MAIN tab: `isMainQuest` quests with prerequisite met, not completed, tutorial excluded. Not tier-gated (Arc 1 story quests are tier F, always visible).
+- EXPEDITION tab: `isExpedition` quests + legacy flagless missions (backward compat). Keeps the existing quest-board-level tier-gate and tier-filter pills (pills hidden on MAIN).
+- `cardLore` (VN-only for Arc 1 MVP) renders italic/muted under the quest title.
+- Tutorial flow preserved: during the tutorial the board still shows only the tutorial quest (tabs hidden) so the accept-quest beat is intact.
+
+**Key Files (Modified)**:
+- `src/ui/panels/quest-board.tsx` — `activeTab` state, three mission-filter memos, tutorial-gated tab switcher
+- `src/ui/panels/quest-card.tsx` — `cardLore` line
+- `src/ui/styles/quest-board.css` — `.quest-board__tabs`, `.quest-card__lore`
+- `src/i18n/ui.en.json` + `src/i18n/ui.vi.json` — `questBoard.tabMain` / `tabExpedition` / `tabsAria`
+
+**Verification**: 595/595 vitest pass; `tsc -b` + `vite build` clean; i18n EN/VN parity verified. Code review: 0 critical, all acceptance criteria + tutorial/dispatch regression checks verified against live code.
+
+---
+
+## [Unreleased] — 2026-05-22 (Arc 1 Combat Maps — Crystal Cave & Underground Entrance)
+
+### feat(arc1): 2 new combat stages + zone routing for First Tremor
+
+**Arc 1 combat maps** (Phase 4 of `plans/260522-1600-arc1-quest-story-first-tremor/`). Two new `CombatStageSpec` stages, each a two-platform layout (allies on a flat floor, enemies on a raised platform with a cracked-stone front face) reusing existing village/cliff placeholder tiles until the art pass. Spawn-anchor geometry mirrors `broken-cliff-outskirt` so combat math is unchanged.
+
+- `crystal-cave` — enemy shelf raised +1.2u, cave backdrop (`#050a12`). Routes zones `Crystal Cave` (legacy cave missions) + `Cave Entrance` (Q3 drones).
+- `underground-entrance` — enemy slab raised +0.8u (shallow step), industrial backdrop (`#080808`). Routes zones `Underground Ruins` (Q4 dog-robots) + `Ancient Core` (Q5 Slime King boss).
+- `Forest Edge` (Q1 bats) routes to the existing `lolo-village-outskirt` map. `Deep Forest` (Q2) already mapped to `the-forest`.
+
+**Key Files (New)**:
+- `src/scene/combat/maps/stages/crystal-cave.ts`
+- `src/scene/combat/maps/stages/underground-entrance.ts`
+
+**Key Files (Modified)**:
+- `src/scene/combat/maps/combat-map-registry.ts` — `CombatMapId` union (+2), `STAGE_SPECS` (+2), `ZONE_TO_MAP` (+5)
+
+**Verification**: `npm run build` (`tsc -b && vite build`) clean. Code review: 0 critical/high/medium findings, all acceptance criteria verified against live code.
+
+**Note**: Stale plan zone names (`Crystal Throne Room`, `Abandoned Mine`, `Underground Entrance`) were intentionally NOT mapped — no mission references them; the implemented zones match real `zone:` strings in mission data.
+
+---
+
+## [Unreleased] — 2026-05-22 (Arc 1 Quest Chain — "The First Tremor")
+
+### feat(arc1): quest chain data — 5 main quests + 5 expeditions
+
+**Arc 1 "The First Tremor" quest chain** (Phase 3 of `plans/260522-1600-arc1-quest-story-first-tremor/`). Causal narrative: bats flee deep caves → slimes invade the forest → 2000-year-dormant prehistoric machines wake defending the ruins → Slime King, a petroleum + ether creature risen from the deepest earth crack. No empire/faction origin; machine civilization unknown.
+
+Five chained main quests (`chain-first-tremor`, chainOrder 2–6): `ft-strange-exodus` (cave bats, Forest Edge) → `ft-path-to-depths` (slimes, Deep Forest) → `ft-ancient-threshold` (flying-drones, Cave Entrance) → `ft-ruins-forgotten-age` (dog-robots, Underground Ruins) → `ft-slime-sovereign` (Slime King boss, Ancient Core). Each carries bilingual (VN+EN) pre-arrival + post-combat dialog and a VN `cardLore` clue. Five repeatable expeditions (`exp-*`, `isExpedition: true`) unlock after their parent quest.
+
+**Key Files (New)**:
+- `src/game/data/missions-arc1-first-tremor.ts` — exports `ARC1_MISSIONS: Mission[]` (10 missions)
+
+**Key Files (Modified)**:
+- `src/game/data/missions.ts` — import + `...ARC1_MISSIONS` spread into `MISSIONS`
+- `src/i18n/content.vi.json` — VN overlay (name/description/zone) for all 10 new mission ids (required by `content-coverage.test.ts`)
+
+**Test coverage**: 595/595 vitest pass; `tsc -b` clean. Code review 9.5/10.
+
+**Deferred (per plan)**: Phase 4 (zone routing for `Forest Edge`, `Cave Entrance`, `Underground Ruins`, `Ancient Core`) — now **DONE**, see entry above. Phase 7 repoints facility `unlockQuestId` (Stone Quarry → `ft-ancient-threshold`, Alchemy Lab → `ft-ruins-forgotten-age`).
+
+---
+
+## [Unreleased] — 2026-05-22 (MVP Recruit Gating, VN Names & Roster Rename)
+
+### feat(tavern): recruitable units gating + deterministic spawn with VN names
+
+**MVP-ready tavern recruitment** — single source of truth at spawn layer, replacing 3-site placeholder generation. Gate tavern recruits to 3 playable units per civilization (Linh Sơn MVP: Templar `sword`+M, Forester `warrior`+M, Ranger `scout`+F). New `RECRUITABLE_UNITS` defined in `civilization-config.ts` encodes both archetype allow-list and gender→sprite mapping. Non-recruitable sprite paths (e.g., `LS-SCOUT-M`, `LS-WARRIOR-F`) unspawnable by construction.
+
+**TavernVisitor deterministic naming** — `TavernVisitor` now carries required `name` + `gender` fields, assigned at spawn time (not at hire time). VN name pool (~44 entries) in `CIV_CONFIG.LinhSon.namePool` replaces placeholder `Warrior #xxxx` names. Visitor names distinct within a game-day (daily refresh enforces uniqueness). Removed hardcoded gender 'M' and placeholder naming from 3 hire sites (tavern-visitor-card, tavern-panel, tavern-audition); all now consume `visitor.name` + `visitor.gender` directly.
+
+**Save migration v26→v27** — `migrateV26toV27()` backfills `name` + `gender` onto persisted `tavern.mercContracts[]` visitors (founders get `'Founder'`, others assigned from `CIV_CONFIG` name pool). Migration is transparent; players' existing visitors load with proper names.
+
+**Key Files (New)**:
+- `src/game/systems/tavern-spawn.ts` — Deterministic visitor spawn engine; `spawnTavernVisitor(civ)` assigns name + gender + archetype from `RECRUITABLE_UNITS` + name pool.
+
+**Key Files (Modified)**:
+- `src/game/data/civilization-config.ts` — +`RECRUITABLE_UNITS` (archetype×gender allowed list), +`namePool` (44 VN names)
+- `src/game/state/game-state.ts` — `TavernVisitor` interface: +`name`, +`gender` (required fields)
+- `src/game/save/save-migrations.ts` — `migrateV26toV27()` backfill migration
+- `src/game/save/save-types.ts` — `SAVE_VERSION: 27`
+- `src/ui/panels/tavern-visitor-card.tsx` — consume `visitor.name` / `visitor.gender`; removed placeholder generation
+- `src/ui/panels/tavern-panel.tsx` — consume `visitor.name` / `visitor.gender`; removed hardcoded gender 'M'
+- `src/game/systems/tavern-audition.ts` — consume `visitor.name` / `visitor.gender`; removed placeholder generation
+
+**Deleted**:
+- `src/game/systems/mercenary-generator.ts` — dead code (no live callers; replaced by tavern-spawn.ts engine)
+
+### feat(roster): member rename UI + validation (non-founder, non-mercenary)
+
+**Inline roster rename** — character detail panel gains "Rename" action; click opens inline text input (24-char max, trim, reject empty). Validation: founder + mercenary ranks cannot rename (founder is structural, mercenaries are hired). Player-initiated rename via `renameMember(memberId, newName)` Zustand action.
+
+**Key Files (New)**:
+- `src/game/state/roster-slice.ts` — `renameMember(id, name)` action (validation + state update)
+
+**Key Files (Modified)**:
+- `src/ui/components/member-book-detail-page.tsx` — +inline rename input in header; calls `renameMember()`; disable for founder/mercenary
+- `src/ui/panels/character-detail-panel.tsx` — +rename button / inline rename UI
+- `src/game/state/game-state.ts` — no schema change (member.name already exists)
+
+**Test coverage**: rename validation, founder/mercenary exclusion, empty/whitespace rejection.
+
+**Plan Reference**: `plans/260522-0930-mvp-recruit-gating-vn-names-rename/` (phases 01–04 complete)
+
+---
+
+## [Unreleased] — 2026-05-22 (Combat Mask Composite Atlas — Phase 3 Integration Complete)
+
+### feat(combat): replace floating mask overlay with per-character runtime composite atlases
+
+**Overview**: Replaced legacy per-archetype mask overlay plane with runtime-composite per-character atlases synced frame-by-frame to body animation. Each masked ally's mask is now baked into the rendered sprite, eliminating floating/misalignment and improving runtime perf (1 mesh/ally instead of 2).
+
+**Implementation** (Phase 3 complete):
+- **combat-idle-sprite.tsx** — Rewrote to build masked `idle`/`attack`/`blocking` composite atlases via `useMemo` when ally has `maskId`. Atlases loaded on first use; enemies and death states keep body atlas. Extended `currentAnim` type to include `'blocking'` (4 frames at 10 FPS = 400ms per `combat-engine.ts`).
+- **combat-mask-anchors.ts** — Per-frame anchor table for `LS-SWORD-M` / `LS-WARRIOR-M` / `LS-SCOUT-F` (idle 8, attack 8, blocking 4 frames) + safe fallback helpers `setDevAnchorOverride()` / `getAnchorTable()`.
+- **combat-mask-composite-atlas.ts** — Canvas-based atlas builder; draws body frame then masks texture at frame anchor with `imageSmoothingEnabled: false` (pixel-crisp rendering).
+- **combat-mask-dev-tuner.tsx** (DEV-only) — Leva-based anchor authoring tool; select `charId+anim+frame`, nudge anchor x/y/size, rebuild live, export to clipboard.
+- **Cleanup** — Deleted legacy overlay/tuner/placement files (`combat-mask-overlay.tsx` / `combat-mask-tuner.tsx` / `combat-mask-placement.ts`); removed overlay mount from `combat-idle-sprite.tsx`; DEV-gated new tuner in `combat-scene-shell.tsx`; wired `disposeCombatMaskCompositeAtlasCache()` on scene unmount.
+
+**TypeScript**: Compile clean (0 errors).
+
+**Plan Reference**: `plans/260522-1233-combat-mask-composite-atlas/phase-03-combat-sprite-integration.md` (Phase 3 complete).
+
+---
+
+## [Unreleased] — 2026-05-22 (Same-template concurrent quest dispatch fix)
+
+### fix(missions): unique `instanceId` per dispatch — two parties on same quest no longer resolve as one
+
+**Bug**: Dispatching 2 parties to the SAME quest template (e.g. "Diệt Slime"/Slime Extermination) → finishing one party's combat removed BOTH active missions; the second party's members stayed `on-mission` forever and never returned to the guild hall.
+
+**Root cause**: `ActiveMission` had no unique id — `missionId` held the shared template id, so `completeMission`/`failMission`/`updateMissionPhase`/`setTargetPriority`/`saveCombatSnapshot` filtered/mapped by template id and hit every same-template instance at once. The arena/combat-panel also `.find()`'d the active mission by template id (returning the wrong/first party).
+
+**Fix**: Added unique `ActiveMission.instanceId` (uuid, generated in `createActiveMission`). All per-instance store ops now key by `instanceId`; `completedMissions` still records the template `missionId` (derived inside `completeMission`) so quest prerequisite/tutorial checks are unchanged. Threaded `instanceId` through combat-panel-store, combat-arena-slice (`arenaInstanceId`), and UI consumers (active-missions-list, formation, battle, fight-controller, prep-panel, arena-result-handler). Template lookups (`MISSIONS.find`, tutorial/map checks) intentionally still use `missionId`.
+
+**Save migration**: `SAVE_VERSION` 26→27 (`migrateV26toV27`) backfills `instanceId` (uuid) onto existing active missions.
+
+**Tests**: Regression test in `mission-tick.test.ts` (only the targeted instance resolves when two parties share a template) + `save-migrations.test.ts` (same-template parties get distinct backfilled ids). Full game test suite green.
+
+---
+
+## [Unreleased] — 2026-05-21 (Bilingual i18n EN+VI Support & New Game Flow)
+
+### feat(i18n): complete bilingual architecture — two-namespace EN/VI localization
+
+**i18next + react-i18next** bilingual support with device-level language preference (localStorage, one language across all save slots). Branch `feature/WC-BiLangSupport`.
+
+**Two-namespace strategy**:
+- `ui` (interface chrome): 708 keys each language (EN source of truth; VI overlay); parity enforced by `ui-parity.test.ts`
+- `content` (game-data display + narrative): asymmetric source-language resolution — EN-authored entities (missions, items, enemies, equipment, furniture, facilities, recipes, archetypes, ranks) have EN inline + VI overlay; VN-authored entities (civ display/description/passive, skills) have VN inline + EN overlay (sourced from lore glossary)
+
+**Architecture details**:
+- `src/i18n/index.ts` — i18next init with namespaced strategy, dev-only `saveMissing` for ui namespace
+- `src/i18n/content-localization.ts` — `tContent(cat, id, field, fallback)` resolver with **`fallbackLng: false`** (critical for correct VN-authored entity fallback to inline VN value)
+- `src/i18n/content-wrappers.ts` — Typed per-category helpers: `missionName()`, `itemName()`, `civName()`, `skillName()`, `equipmentName()`, `recipeName()`, `archetypeDisplayName()`, `enemyName()`, `furnitureName()`, `facilityName()`, `rankLabel()`, `civRole()`, `civPassiveName()`, `civPassiveDescription()`
+- `src/i18n/use-language.ts` — `useLanguage()` centralized device-level pref hook (localStorage + i18n reactivity)
+- `src/i18n/ui.{en,vi}.json` — UI namespace (708 keys each, exact parity)
+- `src/i18n/content.{en,vi}.json` — Content namespace (per-source-language overlay)
+- `src/i18n/ui-parity.test.ts` — Guard: exact key count alignment
+- `src/i18n/content-coverage.test.ts` — Guard: all entity fields have required overlay entries
+
+**Lore fidelity**: Faction/proper-noun names follow `docs/LORE.md` canon (The LinhSon/Linh Sơn, The Republic Empire/Đế Quốc, The Astopia/Thiên Lữ); character proper names never translated. See `plans/260521-1101-bilingual-i18n-vn-en-support/lore-glossary.md`.
+
+**Number formatting**: Intentionally left as browser locale / en-US (pixel-art HUD consistency); `.toLocaleString()` unchanged. Language-aware formatting is a known consideration (user decision pending).
+
+**UI integration**: Settings panel language toggle (EN ↔ VI) via `useLanguage()` — changes persist in localStorage, all components re-render on `languageChanged` event with zero flash.
+
+**Docs**: New `docs/i18n.md` (comprehensive architecture + contributor guide); `docs/system-architecture.md` updated with i18n details.
+
+**Test results**: `ui-parity.test.ts` (708 keys each), `content-coverage.test.ts` (all entities covered); full test suite green.
+
+**Verification**:
+- Build clean: `tsc -b && vite build`
+- All tests pass: `npm run test`
+- Settings toggle EN ↔ VI: all UI labels + game-data displays update live (no flash, no stale text)
+- Playthrough: quest board, roster, build, combat, settings in both languages
+- Dev console: zero `[i18n] missing ui key` warnings
+
+**Plan Reference**: `plans/260521-1101-bilingual-i18n-vn-en-support/` (phases 01–06 complete)
+
+---
+
+## [Unreleased] — 2026-05-21 (New Game Flow — Split-Hero Character-Creation Wizard)
+
+### feat(char-creation): split-hero new-game wizard + founder-only `sword` archetype
+
+Replaced the old single-form new-game screen with a game-style **split-hero wizard**: a large live character preview pinned on the left, a per-step choice panel on the right. Step flow: **Civilization → Class → Mask → Identity → Begin**. The preview swaps its avatar as the player picks a class and overlays the chosen mask on the face, updating live. Branch `feature/WC-NewGameFlow`.
+
+**New founder-only class** — `sword` (Templar): added to `CivArchetype` + `CIV_ARCHETYPE_PROFILES` + skill kit (reuses warrior kit for MVP) + `WOODEN_SWORD` weapon template. `sword` is **FOUNDER-ONLY** — deliberately NOT added to `CIV_CONFIG.LinhSon.archetypes` (still `['warrior','scout']`), so recruits/tavern never roll it (recruit-safety regression test guards this).
+
+**3 founder presets** (Linh Sơn MVP, in new `src/game/data/founder-archetypes.ts`):
+- Templar — sword, M, `LS-SWORD-M`, Wooden Sword
+- Forester — warrior, M, `LS-WARRIOR-M`, Wooden Axe
+- Ranger — scout, F, `LS-SCOUT-F`, Wooden Crossbow
+
+**`createFounder` new signature**: `(name, stats, civilization, archetype, gender, maskSpriteId)` — was auto-picking `archetypes[0]` + random gender + always-warrior skill; now honors player choice. Founder skill is archetype-matched (sword/warrior→warrior kit, scout→scout kit). **No SAVE_VERSION bump** — fields were already optional on `Member`.
+
+**Faction lock (MVP-temporary)**: only Linh Sơn selectable; Đế Quốc + Thiên Lữ shown dimmed with lock glyph + "Coming Soon" (non-clickable, non-focusable). **Follow-up**: unlock the two locked civs once their founder presets/sprites ship.
+
+**Mask identity step**: `FOUNDER_MASK_CHOICES = MASK_POOL.slice(0, 10)` (10 curated tiles) + English narrative; selection persisted to `Member.maskSpriteId`, overlaid live on the preview face.
+
+**New files**:
+- `src/game/data/founder-archetypes.ts` — `FounderArchetypeChoice` + `LINH_SON_FOUNDER_CHOICES` + `FOUNDER_CHOICES_BY_CIV`
+- `src/ui/components/character-preview.tsx` — large live avatar + mask overlay
+- `src/ui/components/archetype-selector.tsx` — class tiles (weapon icon + tagline)
+- `src/ui/components/stat-allocator.tsx` — "Talent Points" allocator (50 pts across 7 stats)
+- `src/ui/components/mask-selector.tsx` — 10 mask tiles
+- `public/ui/icons/founder/{sword,axe,crossbow}.png` — 3 monochrome weapon icons
+
+**Modified**:
+- `src/ui/panels/char-creation.tsx` — rebuilt as split-hero orchestrator (step rail civ→class→mask→identity)
+- `src/ui/components/civ-selector.tsx` — locked-civ rendering (dim + lock + Coming Soon)
+- `src/game/systems/character-creation.ts` — new `createFounder` signature
+- `src/game/data/{civilization-config,characters,skills,equipment-templates}.ts` — `sword` archetype + `WOODEN_SWORD`
+- `src/game/systems/equipment-bonuses.ts` — `sword → WOODEN_SWORD` starting weapon
+- `src/game/systems/tavern-negotiation.ts` — `sword → fighter` portrait class map
+- `src/scene/sprites/mask-pool.ts` — `FOUNDER_MASK_CHOICES`
+- `src/ui/styles/panels.css` — split-hero layout styles
+
+**All new player-facing copy is English** (project convention).
+
+**Verification**:
+- Build green (`tsc -b && vite build`); lint clean on all feature files.
+- Tests: 55 new unit tests pass (founder-archetypes, createFounder per class, mask-pool/FOUNDER_MASK_CHOICES, recruit-safety regression) + full suite 633 pass, 0 feature regressions.
+- Code review: zero critical/important issues; recruit-safety + exhaustive `Record<CivArchetype>` maps verified.
+- chrome-devtools playthrough: New Game → slot → split-hero wizard; preview swaps to `LS-SWORD-M`/`LS-WARRIOR-M`/`LS-SCOUT-F` per class; mask overlay swaps live; 2 civs locked; Begin creates founder + enters guild hall; zero console/page errors.
+
+**Docs**: `docs/feature/new-game-flow.md` (new); `codebase-summary.md`, `system-architecture.md`, `development-roadmap.md` updated.
+
+**Plan Reference**: `plans/260520-2124-new-game-archetype-flow/` (phases 01–06)
+
+---
+
+## [Unreleased] — 2026-05-20 (Tutorial Quest Redesign Phase 07 — Playthrough Fixes & Cleanup)
+
+### fix(tutorial): 6 playthrough fixes from first live test + Phase 07 cleanup
+
+A partial live playthrough surfaced 6 issues; all fixed. (1) **Opening lore modal gated on scene readiness**: added a `worldReady` flag to `ui-store` (set when the existing `SceneReadySignal`/`onAssetsReady` fires); `<WorldBoardModal>` now only renders once the 3D world is interactive, fixing the dead "Begin" button during the 5–10s WebGPU first-load freeze. (2) **Drum beat guidance**: removed `highlightPanel: 'quests'` from the `open-quest-board` step (it pulsed the wrong HUD button) and made the existing world-target drum coachmark (`DrumTooltipArrow`, drum at `[5,1.2,3.5]`) show during that beat regardless of the `questBoardTutorialSeen` localStorage flag — previously suppressed for returning players. (3) **Hint bar repositioned** bottom → prominent top-center banner with a glow pulse. (4) **Kael-rescue deferred**: the rescue dialogue now waits until the combat victory screen is dismissed (`!isCombatPanelOpen`), so order is VICTORY+rewards → Continue → rescue → permit splash. (5) **In-panel guidance**: added the existing `.tutorial-highlight` pulse to the actual elements to click — empty slots → blueprint row → Build button (build beats), and the Logging Site slot → assign dropdown (assign-kael) — previously only the Facilities HUD button was highlighted. (6) **Moonbear combat sprite 404**: registered `moonbear` in `COMBAT_SPRITE_MANIFEST` (idle/attack/death west) so the resolver loads `animations/{idle,attack,death}/west` instead of the non-existent `rotations/west.png`.
+
+**Modified**:
+- `src/game/state/ui-store.ts` — +`worldReady: boolean` + `setWorldReady(v)` (UI-only, not persisted)
+- `src/scene/world.tsx` — set `worldReady` false on mount, true via the existing `onAssetsReady` callback
+- `src/ui/screens/game-screen.tsx` — gate `<WorldBoardModal>` on `worldReady`; gate `<KaelRescueDialogue>` on `!isCombatPanelOpen`; removed a redundant `loreSeen`-reset effect
+- `src/game/systems/tutorial-manager.ts` — dropped `highlightPanel` from `open-quest-board`
+- `src/ui/overlays/drum-tooltip-arrow.tsx` — show drum coachmark during `open-quest-board` regardless of `questBoardTutorialSeen`
+- `src/ui/styles/hud.css` — `.tutorial-hint-bar` moved to top-center + `tutorialHintGlow` pulse
+- `src/ui/panels/facilities-panel.tsx` — pulse empty slots (build beats) / built Logging Site slot (assign-kael)
+- `src/ui/components/facility-detail-tray.tsx` — pulse target blueprint row + Build button (build beats), assign dropdown (assign-kael)
+- `src/scene/sprites/combat-sprite-resolver.ts` — added `moonbear` to `enemiesWithIdleWest/AttackWest/DeathWest`
+
+**Deleted**:
+- `src/ui/overlays/drum-tooltip-arrow.css` — dead (component was refactored to use `<TutorialCoachmark>`; no importer)
+
+**Tests**:
+- `tests/mission-tick.test.ts` — mock updated with `tavern.mercContracts` + `mercContractIds` (a pre-existing gap from the tavern-merc integration, not from this work) → 12/12 pass
+- `npx tsc --noEmit` clean; changed files lint-clean (the repo-wide `npm run lint` still reports pre-existing errors under `tools/vfx-playground/`); full vitest suite green apart from documented infra/hook noise
+
+**Plan Reference**: `plans/260520-1152-tutorial-quest-redesign/` (Phase 07 — code-side tasks done)
+
+**Manual QA — PENDING (requires live browser):** full guided playthrough, GDD §9 edge cases, and legacy v25→v26 save-load test are NOT yet verified. A partial playthrough confirmed the 6 fixes above only.
+
+---
+
+## [Unreleased] — 2026-05-20 (Tutorial Quest Redesign Phase 06 Complete)
+
+### feat(tutorial): full state-machine integration + coachmark wiring (Phase 06)
+
+Completed Phase 06 of tutorial-quest-redesign: expanded tutorial onboarding from legacy 8-step sandbox flow to a fully-wired 14-beat narrative chain (the GDD "Bear the Bear" / "First Tremor" story arc). Tutorial state machine now drives all key moments: char-creation → arrival-alarm (messenger scene) → open-quest-board (beat-the-drum) → accept-bear-quest → assign-and-dispatch → quest-travel → moonbear-combat (with HP-floor victory guarantee) → kael-rescue (narrative) → reward-splash → build-logging-site → assign-kael (grants +200 wood/gold) → first-haul-reward → build-tavern → complete.
+
+**Expanded TutorialStep Union** (`src/game/state/game-state.ts`):
+- Was 8 IDs (char-creation, world-board, quest-dispatch, quest-active, kael-rescue, reward, build-logging, assign-kael)
+- Now 14 beats (char-creation → arrival-alarm → open-quest-board → accept-bear-quest → assign-and-dispatch → quest-travel → moonbear-combat → kael-rescue → reward-splash → build-logging-site → assign-kael → first-haul-reward → build-tavern → complete)
+
+**Tutorial Manager Enhanced** (`src/game/systems/tutorial-manager.ts`):
+- `TUTORIAL_STEPS: TutorialStepConfig[]` carries optional `coach?: CoachConfig` per beat (GDD §6 coachmark guidance)
+- Beats advance via hybrid model:
+  - **Tick-loop predicates** (autoAdvance + advanceCondition): store-observable signals (cameraFocus, activeMissions, facility level)
+  - **UI callbacks**: Modals/handlers fire custom events advancing to next beat (quest-board selection, combat victory, first-haul handler completion)
+- `shouldAdvanceTutorial(currentStep, state)` checks predicates in tick loop; called from mission-tick.ts for state-driven advances
+- Order matters: TUTORIAL_STEPS list must match TutorialStep union so `getNextStep` walks linearly
+
+**Coachmark Wiring** (Phase 01 infrastructure + Phase 06 integration):
+- Reusable `<TutorialCoachmark>` component (Phase 01) mounted in game-screen.tsx, driven by `current step's coach config`
+- Coachmark mounts only if `tutorialStep` matches the active step AND step config has `coach` field (None for modals/dedicated overlays)
+- Example: 'accept-bear-quest' renders dom-target coachmark on `.quest-card` (spotlight, arrow, pulse, advanceOn='quest-selected' event)
+- Visibility gated by `isTutorialActive` check; zero overhead when tutorial complete
+
+**Save Format Bump** (SAVE_VERSION 25 → 26):
+- Migration `migrateV25toV26()` remaps legacy 8-step IDs forward to 14-beat flow via `STEP_REMAP` table:
+  - 'char-creation' → 'char-creation' (unchanged)
+  - 'world-board' → 'arrival-alarm' (prerequisites met: no blocking items)
+  - 'tutorial-quest-dispatch', 'tutorial-quest-active' → 'open-quest-board' (dead 'tutorial-into-the-clearing' mission strips below; player re-dispatches new 'tutorial-bear-the-bear')
+  - 'tutorial-kael-rescue' → 'kael-rescue' (Kael + permit already granted pre-rescue)
+  - 'tutorial-reward' → 'reward-splash' (permit already granted; no item gaps)
+  - 'build-logging-site' → 'build-logging-site', 'assign-kael' → 'assign-kael' (unchanged, new beats exist)
+  - Unknown legacy IDs → 'complete' (defensive fallback)
+- **Stranded Member Cleanup**: Removed 'tutorial-into-the-clearing' mission from `activeMissions[]`; any members stuck 'on-mission' for that mission reset to 'idle' (frees their status so they're available for new tutorial flow)
+- Transparent migration: auto-triggers on load, no player interaction needed
+
+**Verification**: `npm run typecheck` ✓ (tight TutorialStep → TUTORIAL_STEPS sync); `npm run lint` ✓; all 7 migration tests pass (remapping + stranded-member-cleanup coverage).
+
+**Plan Reference**: `plans/260520-1152-tutorial-quest-redesign/phase-06-state-machine-integration.md`
+
+---
+
+### feat(ui/narrative): RetroSpeechBubble reusable component + NpcAlarm beat-2 narrative binding (Phase 05)
+
+Introduced reusable JRPG-style speech bubble component for future NPC dialogue scenes (e.g., Kael rescue quest). RetroSpeechBubble features typewriter text reveal (configurable chars/sec), reveal-all-on-click, blinking continue caret, and prefers-reduced-motion support. Anchoring via world coordinates (reuses Phase 01 coachmark world→screen projection bridge) with fixed-bottom fallback. NpcAlarm implements beat-2 narrative beat (messenger alarm scene) driving the bubble; mounted DEBUG-gated in GameScreen.tsx, live step wiring deferred to Phase 06.
+
+**New files**:
+- `src/ui/components/retro-speech-bubble.tsx` — Reusable retro speech bubble (~120 LOC, typewriter crawl + click-through + caret animation)
+- `src/ui/components/retro-speech-bubble.css` — Speech bubble styling (retro borders, caret keyframes, reduced-motion safe)
+- `src/ui/components/npc-alarm.tsx` — Beat-2 narrative scene driver (~40 LOC, English copy, world-anchored)
+
+**Modified**:
+- `src/ui/screens/game-screen.tsx` — Added DEBUG-gated stub mount; live wiring deferred to Phase 06
+- `src/ui/components/world-board-modal.tsx` — Trimmed intro lore from 2 pages → 1 page, single "Begin" button
+
+**Notes**: Reusable for future NPC dialogue (no hardcoding to tutorial flow). Shares coachmark projection bridge; safe because alarm + coachmark steps never run simultaneously. English copy (project convention). Phase 06 owns live step machine wiring; Phase 05 establishes reusable infrastructure.
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; DEBUG-gated, no player-visible change until Phase 06 wiring.
+
+### feat(tutorial/combat): HP-floor guarantee for Moonbear fight + soft-retry UI (Phase 04)
+
+Tutorial-only mechanic to guarantee victory in the `tutorial-bear-the-bear` mission. Added `CombatEngine.hpFloorActive` boolean (default false) + `clampTutorialAllyFloor()` helper called after each of 4 ally-damage sites (effect-tick poison, ThienLu clone, auto-attack, skill), ensuring allies clamp to minimum 1 HP. Headless simulator (`runCombatLoop()`) gains optional `hpFloor` param, honored during Skip button and mid-fight reload for offline-resolved missions. Scoping via `TUTORIAL_BEAR_MISSION_ID` (exported from `tutorial-data.ts`); flag set true **only** for that mission in `combat-fight-controller.tsx`, `mission-tick.ts`, `offline-progression.ts`. Zero behavior change for all other combat.
+
+**Modified**:
+- `src/game/systems/combat-engine.ts` — `hpFloorActive` field + `clampTutorialAllyFloor()` private method (4 call sites)
+- `src/game/systems/combat-simulator.ts` — `runCombatLoop(entities, pickTarget, margin, hpFloor)` param + clamp logic inside loop
+- `src/scene/combat/combat-fight-controller.tsx` — Set `engine.hpFloorActive = missionId === TUTORIAL_BEAR_MISSION_ID` on init
+- `src/game/systems/mission-tick.ts` — Pass `hpFloor` when calling `runCombatLoop()` for offline mission resolution
+- `src/game/systems/offline-progression.ts` — Pass `hpFloor` for Skip button simulator call
+- `src/ui/panels/combat-panel-result.tsx` — Added tutorial-only "Try again" soft-retry button (re-enters battle at full HP) when outcome !== 'victory'
+- `src/ui/panels/combat-skill-hotbar.tsx` — Added `data-coach="skill-hotbar"` selector on primary skill button (Phase 06 coachmark mount point)
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; tutorial mission guaranteed win, outcome !== 'victory' shows retry button, offline Skip honors floor, normal combat unaffected.
+
+### feat(economy): Tavern now costs 200 Wood to build — global, applies post-tutorial (GDD §0.3 LOCKED)
+
+Building a Tavern now requires 200 Oak Wood in addition to the existing gold cost. This is a **locked design decision** (GDD §0.3) that affects all Tavern builds — including post-tutorial players who already have Kael. The economy model change is implemented via a new generic `FacilityDef.buildMaterialCost?: Partial<Record<ItemID, number>>` field; `buildFacility` checks and deducts material cost atomically with gold inside one Zustand `set()`. The facility build UI displays the wood cost and disables the build button with a "Need 200 Oak Wood" caption when inventory is insufficient.
+
+**Modified**:
+- `src/game/data/facility-defs.ts` — Added `buildMaterialCost: { WOOD: 200 }` to Tavern def
+- `src/game/systems/building-system.ts` (or equivalent) — `buildFacility` atomic material + gold deduction
+- `src/ui/panels/build-menu.tsx` (or equivalent) — Cost display + disabled state with caption
+
+**Plan reference**: `plans/260520-1152-tutorial-quest-redesign/phase-03-state-and-save.md`
+
+### feat(tutorial): scripted first-haul reward handler + splash (Phase 03 of tutorial-quest-redesign, wiring deferred to Phase 06)
+
+Incremental tutorial-chain piece: `handleFirstHaul` in `src/game/systems/tutorial-first-haul-handler.ts` grants +200 Wood +200 Gold (once) when Kael is assigned to the logging site at the `assign-kael` step. Presentational `src/ui/components/tutorial-first-haul-splash.tsx` built but not yet mounted — Phase 06 mounts and wires it. No player-visible change at this phase.
+
+**New files**:
+- `src/game/systems/tutorial-first-haul-handler.ts` — `handleFirstHaul` one-shot reward logic
+- `src/ui/components/tutorial-first-haul-splash.tsx` — Reward splash UI (unmounted until Phase 06)
+
+**Plan reference**: `plans/260520-1152-tutorial-quest-redesign/phase-03-state-and-save.md`
+
+---
+
 ## [Unreleased] — 2026-05-12 (Quest Board Diegetic Redesign + Tiles + Platformer + HD-2D Atmospheric)
+
+### feat(ui): title screen Settings + Credits overlays (Phase 5 Title Screen 2000s A.C. Redesign)
+
+Title screen redesign Phase 5: two modal overlays for Settings and Credits. Settings panel features BGM/SFX volume sliders, language toggle (en/vi via i18next), and graphics quality selector (low/med/high); all settings persist to localStorage. Credits overlay displays scrollable credits list with role/name pairs (hardcoded, non-localized). Both overlays triggered from main menu via mode state machine, back button returns to main menu. Settings changes apply live (volume immediate feedback). CSS appended to `title-screen.css` with `.title-settings` and `.title-credits` styling.
+
+**New files**:
+- `src/ui/screens/title-screen-settings.tsx` — Settings form component with state management
+- `src/ui/screens/title-screen-credits.tsx` — Scrollable credits list component
+
+**Modified**:
+- `src/ui/screens/title-screen.tsx` — Wired `mode === 'settings'` and `mode === 'credits'` render branches
+- `src/ui/styles/title-screen.css` — Added Phase 5 overlay CSS (settings sliders, language radio buttons, credits list styling)
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; overlays render, back button functional, localStorage persistence verified.
+
+**Plan reference**: `plans/260519-0926-title-screen-2000s-ac/phase-05-overlays.md`
+
+### feat(audio): title-screen audio crossfade + BGM_TITLE key registration (Phase 6 Title Screen 2000s A.C. Redesign)
+
+Phase 6 completes title-screen-2000s-ac flow integration: splash → title → game audio transitions now use `crossfadeBGM(key, durationMs)` 1500ms fade function. Added `BGM_TITLE` key to audio registry; `crossfadeBGM` uses Howler.js native fade + setTimeout cleanup for clean BGM cutoff during transitions. Audio asset (bgm-title.mp3/mp3) TBD Phase 7. System gracefully handles missing assets (Howler logs 404 silently, Havok continues).
+
+**Modified**:
+- `src/audio/audio-keys.ts` — Added `BGM_TITLE: 'bgm-title'` constant
+- `src/audio/audio-manager.ts` — Registered `bgm-title` Howl + `crossfadeBGM(key, durationMs=1500)` function
+- `src/ui/app.tsx` — Audio transition handlers now use `crossfadeBGM` instead of `playBGM`; `handleReturnToTitle` crossfades back; `handleSplashReady` lazy-inits audio
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; splash → title → game flow audio transitions working; no BGM_TITLE asset errors (Howler graceful 404 handling).
+
+**Plan reference**: `plans/260519-0926-title-screen-2000s-ac/phase-06-app-integration-audio-crossfade.md`
+
+### feat(combat): per-ally identity mask overlay with animation-state tracking (Phase 3 Mask Overlay POC)
+
+Combat identity system Phase 3: per-character deterministic mask sprite overlay rendered on allies during battle, using established `mask-pool.ts` infrastructure (15-mask curated set, texture cache). `CombatMaskOverlay` component renders R3F plane inside Billboard (west.png, mirrored east via scale); tracks animation state via offset table (idle/walking/attacking/skill/hit/dead) with 0.25 lerp smoothing for smooth head-tracking during transitions. Mask selection deterministic per member id; enemies skip overlay (render via spriteId path). Preload on first combat scene mount via `preloadCombatMasks()`.
+
+**New files**:
+- `src/scene/combat/combat-mask-overlay.tsx` — R3F plane mesh (0.525u) with per-state offset table, animation tracking, directional mirroring
+
+**Modified**:
+- `src/scene/combat/combat-entity-sprite.tsx` — +maskId memo (allies only), +<CombatMaskOverlay/> conditional render inside Billboard after HpBar
+- `src/scene/combat/combat-scene.tsx` — +useEffect preloadCombatMasks on mount
+
+**Verification**: `npm run typecheck` ✓; `npm run lint` ✓; mask renders on ally entities only, tracks idle/attacking/hit states, direction flip correct, no texture leaks (cache hit).
+
+**Plan reference**: `plans/260519-1641-mask-overlay-poc/phase-03-combat-overlay.md`
 
 ### feat(atmospheric): per-room theming foundation — context provider, preset registry, active-room detection (Phase 01)
 

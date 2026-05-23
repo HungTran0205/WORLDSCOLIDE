@@ -5,7 +5,7 @@
  * Grid: 10 wide (x) × 7 deep (z). Back wall at z=0, left wall at x=0.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { TorchFireVfx } from '../vfx/torch-fire-vfx';
@@ -13,12 +13,12 @@ import { TorchFireEffect as TorchFireEffectLegacy } from '../vfx/torch-fire-part
 import { useGraphicsQuality } from '../world';
 import { applyLitMaterial } from './apply-lit-material';
 import { InteractiveDrum } from './interactive-drum';
+import { useRegisterObstacle } from './use-register-obstacle';
 
 // ─── GLB paths ────────────────────────────────────────────────────────────────
 
 const GLB = {
   torch: '/arena/cave/3dprops/optimized/p_standing_torch.glb',
-  questBoard: '/models/furnitures/quest-board.glb',
   throne: '/GuildHall/LinhSon/optimized/p_ironthrone.glb',
   fairy: '/GuildHall/LinhSon/optimized/p_fairtymotherstatues.glb',
   dragon: '/GuildHall/LinhSon/optimized/p_dragonfatherstatues.glb',
@@ -72,23 +72,14 @@ function WallTorch({ position, rotationY = 0, label = 'Torch' }: {
 
 // ─── Scene props ──────────────────────────────────────────────────────────────
 
-function QuestBoard() {
-  const { scene } = useGLTF(GLB.questBoard);
-  const model = useScaledModel(scene, 1.2);
-  // Raised to y=0.7 so it reads as wall-mounted, not lying on floor
-  return (
-    <group position={[1.5, 0.7, 0.08]}>
-      <primitive object={model} />
-    </group>
-  );
-}
-
 function IronThrone() {
   const { scene } = useGLTF(GLB.throne);
   const model = useScaledModel(scene, 2.2);
+  const ref = useRef<THREE.Group>(null);
+  useRegisterObstacle('throne', ref);
   // Moved forward (z=1.2) so the backrest is not clipped by the back wall
   return (
-    <group position={[5, 0, 1.2]}>
+    <group ref={ref} position={[5, 0, 1.2]}>
       <primitive object={model} />
     </group>
   );
@@ -97,9 +88,11 @@ function IronThrone() {
 function FairyMotherStatues() {
   const { scene } = useGLTF(GLB.fairy);
   const model = useScaledModel(scene, 2.8);
+  const ref = useRef<THREE.Group>(null);
+  useRegisterObstacle('fairy', ref);
   // Right of throne, pulled slightly forward to clear wall
   return (
-    <group position={[7.5, 0, 0.5]}>
+    <group ref={ref} position={[7.5, 0, 0.5]}>
       <primitive object={model} />
     </group>
   );
@@ -108,9 +101,11 @@ function FairyMotherStatues() {
 function DragonFatherStatues() {
   const { scene } = useGLTF(GLB.dragon);
   const model = useScaledModel(scene, 2.8);
+  const ref = useRef<THREE.Group>(null);
+  useRegisterObstacle('dragon', ref);
   // Left of throne, mirrored placement from fairy statues
   return (
-    <group position={[2.5, 0, 0.5]} rotation={[0, 0, 0]}>
+    <group ref={ref} position={[2.5, 0, 0.5]} rotation={[0, 0, 0]}>
       <primitive object={model} />
     </group>
   );
@@ -118,11 +113,16 @@ function DragonFatherStatues() {
 
 // ─── Wood Pillars ─────────────────────────────────────────────────────────────
 
-function WoodPillar({ position }: { position: [number, number, number] }) {
+function WoodPillar({ position, obstacleId }: {
+  position: [number, number, number];
+  obstacleId: string;
+}) {
   const { scene } = useGLTF(GLB.pillar);
   const model = useScaledModel(scene, 4.5);
+  const ref = useRef<THREE.Group>(null);
+  useRegisterObstacle(obstacleId, ref);
   return (
-    <group position={position}>
+    <group ref={ref} position={position}>
       <primitive object={model} />
     </group>
   );
@@ -137,17 +137,11 @@ export function GuildHallProps() {
       {/* Back wall torch — left side only (right side moved to pillar top) */}
       <WallTorch position={[0.8, 1.8, 0.25]} rotationY={0} label="Torch BL" />
 
-      {/* Left wall torch — front section only (back section moved to pillar top) */}
-      <WallTorch position={[0.25, 1.8, 2]} rotationY={Math.PI / 2} label="Torch LL" />
-
       {/* Pillar-body torches — pushed out to outer face, facing into room */}
       {/* North pillar: shift +z to clear pillar radius, face into room (+z) */}
       <WallTorch position={[9.5, 1.8, 1.3]} rotationY={0} label="Torch North Pillar" />
       {/* West pillar: shift +x to clear pillar radius, face into room (+x) */}
       <WallTorch position={[1.3, 1.8, 6.5]} rotationY={Math.PI / 2} label="Torch West Pillar" />
-
-      {/* Quest board — wall-mounted on left section of back wall */}
-      <QuestBoard />
 
       {/* Hero props */}
       <IronThrone />
@@ -156,8 +150,8 @@ export function GuildHallProps() {
       <InteractiveDrum />
 
       {/* Wood pillars — north corner (back-right) + west corner (front-left) */}
-      <WoodPillar position={[9.5, 0, 0.5]} />
-      <WoodPillar position={[0.5, 0, 6.5]} />
+      <WoodPillar position={[9.5, 0, 0.5]} obstacleId="pillar-n" />
+      <WoodPillar position={[0.5, 0, 6.5]} obstacleId="pillar-w" />
     </>
   );
 }

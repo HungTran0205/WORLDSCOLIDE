@@ -16,6 +16,7 @@ import { SpriteAnimator } from '../sprites/sprite-animator';
 import { WoodcuttingAnimator } from '../sprites/woodcutting-animator';
 import { WorkingAnimator } from '../sprites/working-animator';
 import { getSpritePath } from '../sprites/sprite-path-resolver';
+import { hasWorkingAnim } from '../sprites/combat-sprite-resolver';
 import type { SpriteDirection } from '../sprites/sprite-path-resolver';
 import type { Member, FacilityType } from '@/game/state/game-state';
 import type { MutableRefObject } from 'react';
@@ -41,7 +42,9 @@ const FACILITY_SPOTS: Record<FacilityType, SpotDef[]> = {
     { offset: [ 0.5,  1.2], facing: 'south' },
   ],
   tavern: [
-    { offset: [-0.5,  0.8], facing: 'north' }, // behind bar counter
+    // Keeper stands in the open floor in front of the bar (+Z = toward camera),
+    // clear of the tall counter shelf (cx-2.8, cz+1.2) that was occluding it.
+    { offset: [-2,  2.2], facing: 'north' },
     { offset: [ 1.2,  0.5], facing: 'west'  },
     { offset: [-1.5,  0.0], facing: 'east'  },
     { offset: [ 0.0, -0.5], facing: 'north' },
@@ -146,21 +149,28 @@ function FacilityMemberSprite({ member, facilityType, slotIndex, roomCx, roomCz 
     facilityType === 'alchemy-lab' ||
     (facilityType === 'workshop' && (slotIndex === 1 || slotIndex === 2));
 
-  const dirRef = useRef<SpriteDirection>(spot.facing);
-  const isMovingRef = useRef(true);
-
-  // Stationary workers don't patrol; woodcutting/working/blacksmith use fixed-direction animators
-  usePatrolAnimation(
-    dirRef,
-    isMovingRef,
-    spot.facing,
-    !isWoodcutting && !isWorking && !isBlacksmith,
-  );
-
   const civConfig = CIV_CONFIG[member.civilization as Civilization];
   const archetype = member.archetype ?? civConfig?.archetypes[0] ?? 'warrior';
   const gender = member.gender ?? 'M';
   const basePath = getSpritePath(member.civilization, archetype, gender);
+
+  // Tavern working branch: only for char types that have an on-disk working/
+  // sprite folder. Characters without it (DQ-*, TL-*, LS-WARRIOR-F) fall
+  // through to the patrol SpriteAnimator so they remain visible.
+  const canWork = hasWorkingAnim(basePath);
+  const isTavernWorker = facilityType === 'tavern' && canWork;
+
+  const dirRef = useRef<SpriteDirection>(spot.facing);
+  const isMovingRef = useRef(true);
+
+  // Stationary workers don't patrol; woodcutting/working/blacksmith/tavern workers
+  // use fixed-direction animators. isTavernWorker only true when asset exists.
+  usePatrolAnimation(
+    dirRef,
+    isMovingRef,
+    spot.facing,
+    !isWoodcutting && !isWorking && !isBlacksmith && !isTavernWorker,
+  );
 
   const x = roomCx + spot.offset[0];
   const z = roomCz + spot.offset[1];
@@ -198,6 +208,11 @@ function FacilityMemberSprite({ member, facilityType, slotIndex, roomCx, roomCz 
             />
           ) : isWorking ? (
             // WorkingAnimator with SpriteAnimator (isMoving=false) as fallback via Suspense
+            <WorkingAnimator basePath={basePath} />
+          ) : isTavernWorker ? (
+            // Tavern: play working loop for chars that have the asset on disk.
+            // canWork===false (DQ-*, TL-*, LS-WARRIOR-F) never enters this branch
+            // and fall to the patrol SpriteAnimator below — no missing-texture error.
             <WorkingAnimator basePath={basePath} />
           ) : (
             <SpriteAnimator basePath={basePath} directionRef={dirRef} isMovingRef={isMovingRef} />

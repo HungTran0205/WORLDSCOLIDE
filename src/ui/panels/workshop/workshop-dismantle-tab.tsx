@@ -5,13 +5,14 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
-import { ITEM_DATABASE, type ItemID } from '@/game/data/items';
 import { EQUIPMENT_DATABASE } from '@/game/data/equipment-templates';
 import { WORKSHOP_CONFIG } from '@/game/data/workshop-config';
 import type { EquipmentItem } from '@/game/state/game-state';
 import { InkConfirmDialog } from '@/ui/components/ink-confirm-dialog';
-
+import { equipmentName, itemName } from '@/i18n/content-wrappers';
+import type { ItemID } from '@/game/data/items';
 
 function previewRecovery(eq: EquipmentItem): { matId: ItemID | null; range: [number, number]; isCrafted: boolean } {
   const tpl = EQUIPMENT_DATABASE[eq.templateId];
@@ -28,6 +29,7 @@ function previewRecovery(eq: EquipmentItem): { matId: ItemID | null; range: [num
 }
 
 export function WorkshopDismantleTab() {
+  const { t } = useTranslation();
   const equipmentInventory = useGameStore((s) => s.inventory.equipmentInventory ?? []);
   const dismantleEquipment = useGameStore((s) => s.dismantleEquipment);
 
@@ -42,25 +44,26 @@ export function WorkshopDismantleTab() {
   return (
     <div className="ws-tab-body">
       <div className="ws-section">
-        <div className="ws-section-title">Equipment Inventory</div>
-        {equipmentInventory.length === 0 && <div className="ws-empty">Inventory empty.</div>}
+        <div className="ws-section-title">{t('workshop.dismantle.inventoryTitle')}</div>
+        {equipmentInventory.length === 0 && (
+          <div className="ws-empty">{t('workshop.dismantle.inventoryEmpty')}</div>
+        )}
         <div className="ws-eq-list">
           {equipmentInventory.map((e) => {
-            const tpl = EQUIPMENT_DATABASE[e.templateId];
             const slots = e.slots ?? [];
             return (
               <div key={e.id} className="ws-eq-row">
                 <div className="ws-eq-info">
-                  <span className="ws-eq-name">{tpl.name}</span>
+                  <span className="ws-eq-name">{equipmentName(e.templateId)}</span>
                   <span className="ws-eq-meta">
-                    {slots.length} slot{slots.length !== 1 ? 's' : ''}
+                    {t('workshop.dismantle.slot', { count: slots.length })}
                     {slots.map((s, i) => (
                       <span key={i} className="ws-slot-chip">{s.statKey}+{s.value}</span>
                     ))}
                   </span>
                 </div>
                 <button className="ws-btn ws-btn-small ws-btn-danger" onClick={() => setTarget(e)}>
-                  Dismantle
+                  {t('workshop.dismantle.dismantleBtn')}
                 </button>
               </div>
             );
@@ -70,17 +73,27 @@ export function WorkshopDismantleTab() {
 
       {target && (() => {
         const prev = previewRecovery(target);
-        const tpl = EQUIPMENT_DATABASE[target.templateId];
-        const matName = prev.matId ? ITEM_DATABASE[prev.matId].name : '—';
+        const mat = prev.matId ? itemName(prev.matId) : t('workshop.dismantle.matPlaceholder');
         const matRecoveryPct = Math.round(WORKSHOP_CONFIG.dismantleMaterialRecoveryChance * 100);
         const body = prev.isCrafted
-          ? `Dismantle ${tpl.name}? Recovery: ~${prev.range[0]}-${prev.range[1]}× ${matName} + ${matRecoveryPct}% chance 1× monster material.`
-          : `Dismantle ${tpl.name}? Recovery: ~${prev.range[0]}-${prev.range[1]}× ${matName}.`;
+          ? t('workshop.dismantle.bodyCrafted', {
+              name: equipmentName(target.templateId),
+              min: prev.range[0],
+              max: prev.range[1],
+              mat,
+              pct: matRecoveryPct,
+            })
+          : t('workshop.dismantle.bodyPlain', {
+              name: equipmentName(target.templateId),
+              min: prev.range[0],
+              max: prev.range[1],
+              mat,
+            });
         return (
           <InkConfirmDialog
-            title="Dismantle Equipment"
+            title={t('workshop.dismantle.title')}
             body={body}
-            confirmLabel="Dismantle"
+            confirmLabel={t('workshop.dismantle.confirmLabel')}
             onConfirm={handleConfirm}
             onCancel={() => setTarget(null)}
           />

@@ -1,6 +1,7 @@
 /** Static config for each guild facility — costs, slot limits, stat descriptions. */
 
 import type { FacilityType } from '@/game/state/game-state';
+import type { ItemID } from '@/game/data/items';
 
 export interface FacilityDef {
   type: FacilityType;
@@ -8,6 +9,8 @@ export interface FacilityDef {
   description: string;
   /** Gold to unlock from level 0 → 1. 0 = free (tavern). guildLevel >= 2 required for cost > 0. */
   buildCost: number;
+  /** Optional material cost to build (consumed atomically with buildCost gold). e.g. tavern → 200 WOOD. */
+  buildMaterialCost?: Partial<Record<ItemID, number>>;
   /** Gold costs for lv1→2 and lv2→3 upgrades. Absent = no upgrade path (e.g. logging-site). */
   upgradeCosts?: [number, number];
   /** Max assigned member slots per level [lv1, lv2, lv3] */
@@ -18,6 +21,10 @@ export interface FacilityDef {
   zonePosition: [number, number, number];
   /** Zone size in tiles [width, depth] */
   tileFootprint: [number, number];
+  /** Quest ID that must be completed before this facility can be built. Absent = no narrative gate. */
+  unlockQuestId?: string;
+  /** Min guild level required before this facility appears in the build picker. Absent = available from Lv.1. */
+  requiredGuildLevel?: number;
 }
 
 export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
@@ -26,6 +33,7 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     name: 'Tavern',
     description: 'High CHA members attract better mercenaries and reduce upkeep.',
     buildCost: 0,
+    buildMaterialCost: { WOOD: 200 }, // GDD §0.3: tavern costs 200 wood globally (gate for the tutorial first-haul loop)
     upgradeCosts: [200, 400],
     maxSlots: [1, 2, 2],
     primaryStats: 'CHA',
@@ -42,6 +50,7 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     primaryStats: 'DEX + AGI',
     zonePosition: [2, 0, 2.5],
     tileFootprint: [3, 3],
+    requiredGuildLevel: 3,
   },
   infirmary: {
     type: 'infirmary',
@@ -53,12 +62,14 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     primaryStats: 'END + INT',
     zonePosition: [2, 0, 5],
     tileFootprint: [3, 3],
+    requiredGuildLevel: 3,
   },
   workshop: {
     type: 'workshop',
     name: 'Workshop',
     description: 'Produces materials daily. STR increases speed, DEX increases quality.',
-    buildCost: 350,
+    buildCost: 250,
+    buildMaterialCost: { WOOD: 50 },
     upgradeCosts: [400, 700],
     maxSlots: [1, 2, 3],
     primaryStats: 'STR + DEX',
@@ -80,32 +91,36 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     type: 'stone-quarry',
     name: 'Stone Quarry',
     description: 'Mine stone continuously. STR controls yield. LCK unlocks rare vein strikes (Iron Ore, Gems). MC skill amplifies both.',
-    buildCost: 250,
+    buildCost: 500,
+    buildMaterialCost: { WOOD: 20 },
     upgradeCosts: [300, 500],
     maxSlots: [1, 2, 3],
     primaryStats: 'STR + LCK',
     zonePosition: [7, 0, 1],
     tileFootprint: [3, 3],
+    unlockQuestId: 'ft-ancient-threshold', // cave entrance reached — STONE scripted drop ties here
   },
   'alchemy-lab': {
     type: 'alchemy-lab',
     name: 'Alchemy Lab',
     description: 'Alchemists brew Healing Syringes from Slime Gel. Higher Alchemy skill → more gels per batch → more syringes produced.',
-    buildCost: 400,
+    buildCost: 350,
+    buildMaterialCost: { STONE: 20, WOOD: 50 },
     upgradeCosts: [500, 800],
     maxSlots: [1, 2, 3],
     primaryStats: 'INT + DEX',
     zonePosition: [5, 0, 5],
     tileFootprint: [3, 3],
+    unlockQuestId: 'ft-ruins-forgotten-age', // ruins cleared — ether + materials available
   },
 };
 
 /** Infinite-production config for the Stone Quarry facility */
 export const STONE_QUARRY_CONFIG = {
   /** stone/tick per unit of (STR×0.5)/100 — baseScore is normalized by /100 to keep the rate small.
-   *  Calibrated: STR20 → baseScore=10 → baseScore/100=0.1 → 0.002315×0.1×14400 ≈ 3.33 stone/game-day at lv1, MC0
-   *  (1 game-day = 14400 real ticks = 4 real-hour @ 1Hz scheduler). */
-  baseRate: 0.002315,
+   *  Calibrated: Kael (STR 8) → baseScore=4 → baseScore/100=0.04 → 0.1389×0.04×1800 ≈ 10 stone/game-day at lv1, MC0
+   *  (1 game-day = 1800 real ticks = 30 min @ 1Hz scheduler). */
+  baseRate: 0.1389,
   /** Level production multipliers [lv1, lv2, lv3] */
   levelMult: [1.0, 2.0, 3.5] as const,
   /** MC skill XP thresholds (cumulative stone mined) — 25% harder than WC */
@@ -121,8 +136,8 @@ export const STONE_QUARRY_CONFIG = {
   /** Level bonus to daily vein strike chance [lv1, lv2, lv3] */
   levelStrikeBonus: [0, 0.015, 0.035] as const,
   /** Real ticks per game-day — used to convert daily strike probability to per-tick.
-   *  14400 = 4 real-hour × 3600s, matching the online 1Hz scheduler (1 game-day = 4 real hours). */
-  ticksPerDay: 14400,
+   *  1800 = 30 min × 60s, matching the online 1Hz scheduler (1 game-day = 30 real minutes). */
+  ticksPerDay: 1800,
   mcSkillMaxLevel: 10,
   /** Vein type cumulative thresholds: roll < weights[0] → iron, < weights[1] → richStone, else gem */
   veinWeights: [0.65, 0.90] as const,
@@ -150,8 +165,8 @@ export const ALCHEMY_CONFIG = {
 export const LOGGING_SITE_CONFIG = {
   /** Starting wood reserve per site */
   woodReserve: 1000,
-  /** wood/tick per 1 baseScore point — calibrated: STR20/END15/DEX0/WC0 depletes 1000 wood in ~7 days (604 800 ticks) */
-  baseRate: 0.0114,
+  /** wood/tick per 1 baseScore point — calibrated: Kael (STR 8, END 7) → ~25 WOOD/game-day @ 1800 ticks/day */
+  baseRate: 0.2277,
   /** XP thresholds for WC levels 0–10 */
   wcSkillThresholds: [0, 50, 150, 350, 700, 1200, 2000, 3200, 5000, 7500, 11000] as const,
   /** Bonus harvest % per WC level */

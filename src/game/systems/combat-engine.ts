@@ -25,6 +25,10 @@ import { memberToArenaEntity, enemyToArenaEntity } from './combat-entity-factory
 
 const LOGIC_TICK_MS = 100;
 const MAX_COMBAT_MS = 120_000; // 2 min hard cap
+/** Minimum screen-X from which new-wave enemies slide in (just off the right
+ *  edge of the visible arena ≈ +12 at zoom 64/1536px). Renderer-only — no
+ *  engine logic reads this value; it is stored as the cosmetic spawnSlideFromX. */
+const OFFSCREEN_SLIDE_MIN_X = 14;
 // 8 frames @ 12fps = 667ms. With strict-> expiry check, animState persists one
 // extra tick (100ms) past this value, so effective display = 600 + 100 = 700ms.
 const ANIM_ATTACK_DURATION = 600;
@@ -54,6 +58,11 @@ export class CombatEngine {
   /** Active stage spec — drives spawn anchors (and y per platform). null →
    *  fallback to legacy FORMATION_POSITIONS (y=0). Set during init(). */
   private stageSpec: CombatStageSpec | null = null;
+  /** Tutorial HP-floor (Phase 04). When true, ally entities are clamped to a
+   *  minimum of 1 HP at every ally-damage site → the tutorial Moonbear fight is
+   *  a guaranteed win. Set ONLY by CombatFightController for the tutorial
+   *  mission; default false keeps every other fight byte-for-byte unchanged. */
+  hpFloorActive = false;
 
   /** Initialize combat from formation + enemies */
   init(
@@ -115,13 +124,23 @@ export class CombatEngine {
     }
   }
 
-  /** Spawn new enemies mid-combat (wave transition) */
+  /** Spawn new enemies mid-combat (wave transition).
+   *
+   *  Logic position = on-screen home slot (pos.x is NOT shifted off-screen).
+   *  The cosmetic spawnSlideFromX is set so the renderer slides the sprite in
+   *  from off the right edge (≥ OFFSCREEN_SLIDE_MIN_X) to the home slot.
+   *  AI, victory, turn-lock, and nextAttackAt are untouched — new enemies can
+   *  act and be targeted immediately (accepted cosmetic trade-off). */
   addEnemies(templates: EnemyTemplate[], xOffset: number, hpMultiplier: number): void {
     templates.forEach((tmpl, i) => {
       const slotIndex = i % 6;
       const pos = this.resolveSpawn(slotIndex, 'enemy');
-      pos.x += xOffset;
-      this.entities.push(enemyToArenaEntity(tmpl, this.nextEnemyIndex++, pos, hpMultiplier));
+      // pos.x is the on-screen home slot — do NOT offset it for logic placement.
+      const entity = enemyToArenaEntity(tmpl, this.nextEnemyIndex++, pos, hpMultiplier);
+      // Cosmetic slide hint: start off the right edge, clamped to OFFSCREEN_SLIDE_MIN_X.
+      entity.spawnSlideFromX = Math.max(pos.x + Math.max(xOffset, 6), OFFSCREEN_SLIDE_MIN_X);
+      entity.animState = 'battle-idle';
+      this.entities.push(entity);
     });
   }
 
@@ -327,6 +346,7 @@ export class CombatEngine {
     const effectResult = applyEffectTick(entity);
     if (effectResult.damage > 0) {
       entity.currentHp -= effectResult.damage;
+      this.clampTutorialAllyFloor(entity);
       this.eventQueue.push({ type: 'effect-tick', targetId: entity.id, effect: 'poison', damage: effectResult.damage });
       if (entity.currentHp <= 0) {
         entity.animState = 'dead';
@@ -376,6 +396,7 @@ export class CombatEngine {
         const cloneCrit = rollCrit(entity.stats.LCK);
         if (cloneCrit) cloneDmg = Math.floor(cloneDmg * entity.critDmg);
         cloneTarget.currentHp -= cloneDmg;
+        this.clampTutorialAllyFloor(cloneTarget);
         this.totalDamageDealt += entity.isAlly ? cloneDmg : 0;
         this.eventQueue.push({
           type: 'auto-attack',
@@ -397,6 +418,16 @@ export class CombatEngine {
    *  animation reverts to battle-idle. */
   private isActorDone(actor: ArenaEntity): boolean {
     return actor.animState !== 'attacking' && actor.animState !== 'skill';
+  }
+
+  /** Tutorial-only HP-floor (Phase 04). Clamp an ally to ≥1 HP when the floor
+   *  is active. No-op for enemies and for every non-tutorial fight (flag false).
+   *  Call immediately after any `currentHp -= damage` write that can hit an ally,
+   *  before the death (`<= 0`) check, so floored allies never die. */
+  private clampTutorialAllyFloor(target: ArenaEntity): void {
+    if (this.hpFloorActive && target.isAlly && target.currentHp < 1) {
+      target.currentHp = 1;
+    }
   }
 
   private tryAttack(entity: ArenaEntity, target: ArenaEntity): void {
@@ -444,6 +475,7 @@ export class CombatEngine {
     }
 
     target.currentHp -= damage;
+    this.clampTutorialAllyFloor(target);
     this.totalDamageDealt += entity.isAlly ? damage : 0;
     this.eventQueue.push({ type: 'auto-attack', attackerId: entity.id, targetId: target.id, damage, isCrit });
 
@@ -532,6 +564,7 @@ export class CombatEngine {
     }
 
     target.currentHp -= skillDmg;
+    this.clampTutorialAllyFloor(target);
     this.totalDamageDealt += entity.isAlly ? skillDmg : 0;
     this.eventQueue.push({ type: 'skill-use', attackerId: entity.id, targetId: target.id, damage: skillDmg, skillName: entity.skill.name, isCrit: isCrit2 });
     entity.skillCooldownUntil = this.time + entity.skill.cooldownMs;

@@ -5,16 +5,19 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { QuestTier, Mission } from '@/game/state/game-state';
 import { useGameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
 import { validateDispatch, createActiveMission } from '@/game/systems/mission-dispatch';
+import { autoAssignMembers } from '@/game/utils/auto-assign-members';
 import { QUEST_BOARD_TIER_BY_LEVEL } from '@/game/data/buildings';
 import { GameIcon } from '@/ui/components/game-icon';
 import { playSFX } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
 import { QuestCard } from './quest-card';
 import { QuestDetailPane } from './quest-detail-pane';
+import { QuestRosterPicker } from './quest-roster-picker';
 import '@/ui/styles/panels.css';
 import '@/ui/styles/quest-board.css';
 
@@ -28,15 +31,16 @@ interface QuestBoardProps {
 }
 
 export function QuestBoard({ onClose }: QuestBoardProps) {
+  const { t } = useTranslation();
   const founder = useGameStore((s) => s.founder);
   const roster = useGameStore((s) => s.roster);
   const guildHall = useGameStore((s) => s.guildHall);
   const gold = useGameStore((s) => s.gold);
   const dispatchMission = useGameStore((s) => s.dispatchMission);
-  const spendGold = useGameStore((s) => s.spendGold);
   const updateMemberStatus = useGameStore((s) => s.updateMemberStatus);
   const completedMissions = useGameStore((s) => s.completedMissions);
   const tutorialStep = useGameStore((s) => s.tutorialStep);
+  const setTutorialStep = useGameStore((s) => s.setTutorialStep);
 
   const availableMembers = useMemo(() => {
     const all = founder ? [founder, ...roster] : roster;
@@ -52,8 +56,24 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
   }, [guildHall]);
 
   const [filterTier, setFilterTier] = useState<QuestTier | 'all'>('all');
+  const [activeTab, setActiveTab] = useState<'main' | 'expedition'>('main');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
+  // Party selection lives here (not in the detail pane) so the roster picker can
+  // render as a sibling panel beside the board instead of cramped inside it.
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  // Roster picker open state: the empty/add slot index that opened it (null = closed).
+  const [pickerSlot, setPickerSlot] = useState<number | null>(null);
+
+  // Reset party + close the picker when the selected quest changes. Done during
+  // render (React's "adjust state on prop change" pattern) rather than in an
+  // effect, so the stale party never paints for a frame after switching quests.
+  const [prevSelectedId, setPrevSelectedId] = useState<string | null>(selectedId);
+  if (selectedId !== prevSelectedId) {
+    setPrevSelectedId(selectedId);
+    setSelectedMemberIds([]);
+    setPickerSlot(null);
+  }
 
   // Paper-unroll on open / seal-break on close. The cleanup fires after the
   // store flips activePanel back to null (panel unmount) which matches the
@@ -87,60 +107,123 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
     playSFX(AUDIO.SFX_PAPER_FLIP);
   }, []);
 
-  const handleMemberToggleSfx = useCallback(() => {
+  const toggleMember = useCallback((id: string) => {
+    setSelectedMemberIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
     playSFX(AUDIO.SFX_WOOD_CLINK);
   }, []);
 
-  const filteredMissions = useMemo<Mission[]>(() => {
-    let missions = MISSIONS.filter(
-      (m) =>
-        (filterTier === 'all' || m.tier === filterTier) &&
-        unlockedTiers.includes(m.tier) &&
-        (!m.prerequisiteId || completedMissions.includes(m.prerequisiteId)),
-    );
-    if (tutorialStep !== 'complete') {
-      missions = missions.filter(
-        (m) => m.id.startsWith('tutorial-') && !completedMissions.includes(m.id),
-      );
-    }
-    return missions;
-  }, [filterTier, unlockedTiers, completedMissions, tutorialStep]);
+  const handlePickMember = useCallback((id: string) => {
+    setSelectedMemberIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    setPickerSlot(null);
+    playSFX(AUDIO.SFX_WOOD_CLINK);
+  }, []);
 
-  const selectedMission = useMemo(
-    () => filteredMissions.find((m) => m.id === selectedId) ?? null,
-    [filteredMissions, selectedId],
+  const closePicker = useCallback(() => setPickerSlot(null), []);
+
+  // During the tutorial only tutorial quests appear (drives the accept-quest
+  // beat); after completion the board splits into MAIN (story) + EXPEDITION
+  // (repeatable) tabs. Tutorial quests are excluded from both tabs.
+  const isTutorialActive = tutorialStep !== 'complete';
+
+  const tutorialMissions = useMemo<Mission[]>(
+    () =>
+      MISSIONS.filter(
+        (m) =>
+          m.id.startsWith('tutorial-') &&
+          !completedMissions.includes(m.id) &&
+          unlockedTiers.includes(m.tier) &&
+          (!m.prerequisiteId || completedMissions.includes(m.prerequisiteId)),
+      ),
+    [completedMissions, unlockedTiers],
   );
 
-  // Clear selection if filtered missions no longer include it
+  // MAIN: story quests with prerequisite met, not yet completed. Not tier-gated
+  // — Arc 1 story quests stay visible regardless of quest-board level.
+  const mainMissions = useMemo<Mission[]>(
+    () =>
+      MISSIONS.filter(
+        (m) =>
+          m.isMainQuest &&
+          !m.id.startsWith('tutorial-') &&
+          !completedMissions.includes(m.id) &&
+          (!m.prerequisiteId || completedMissions.includes(m.prerequisiteId)),
+      ),
+    [completedMissions],
+  );
+
+  // EXPEDITION: repeatable quests + legacy missions without a tab flag
+  // (backward compat). Tier-gated by quest-board level, same as before.
+  const expeditionMissions = useMemo<Mission[]>(
+    () =>
+      MISSIONS.filter(
+        (m) =>
+          (m.isExpedition || (!m.isMainQuest && !m.id.startsWith('tutorial-'))) &&
+          (filterTier === 'all' || m.tier === filterTier) &&
+          unlockedTiers.includes(m.tier) &&
+          (!m.prerequisiteId || completedMissions.includes(m.prerequisiteId)),
+      ),
+    [completedMissions, filterTier, unlockedTiers],
+  );
+
+  const displayedMissions = isTutorialActive
+    ? tutorialMissions
+    : activeTab === 'main'
+      ? mainMissions
+      : expeditionMissions;
+
+  const selectedMission = useMemo(
+    () => displayedMissions.find((m) => m.id === selectedId) ?? null,
+    [displayedMissions, selectedId],
+  );
+
+  // Clear selection if the displayed missions no longer include it
   useEffect(() => {
-    if (selectedId && !filteredMissions.some((m) => m.id === selectedId)) {
+    if (selectedId && !displayedMissions.some((m) => m.id === selectedId)) {
       setSelectedId(null);
     }
-  }, [filteredMissions, selectedId]);
+  }, [displayedMissions, selectedId]);
+
+  const handleAutoAssign = useCallback(() => {
+    if (!selectedMission) return;
+    setSelectedMemberIds(autoAssignMembers(availableMembers, selectedMission));
+  }, [selectedMission, availableMembers]);
 
   const handleSelect = (id: string) => {
     setSelectedId(id);
     setMobileView('detail');
+    // Tutorial beat 4 → 5: selecting the tutorial quest advances to assign-and-dispatch.
+    if (tutorialStep === 'accept-bear-quest' && id.startsWith('tutorial-')) {
+      setTutorialStep('assign-and-dispatch');
+    }
   };
 
-  const handleDispatch = (memberIds: string[]) => {
+  const handleDispatch = () => {
     if (!selectedMission) return;
+    const memberIds = selectedMemberIds;
+    // Tavern mercs are not surfaced in the quest-board party UI today, so the
+    // party is members-only. Kept as an empty list for createActiveMission.
+    const mercContractIds: string[] = [];
     const allMembers = [...(founder ? [founder] : []), ...roster];
     const party = allMembers.filter((m) => memberIds.includes(m.id));
-    const validation = validateDispatch(selectedMission, party, gold);
+    const validation = validateDispatch(selectedMission, party, [], gold);
     if (!validation.valid) return;
-    if (validation.mercenaryFee > 0 && !spendGold(validation.mercenaryFee)) return;
     const now = Date.now();
-    dispatchMission(createActiveMission(selectedMission, memberIds, now));
+    dispatchMission(createActiveMission(selectedMission, memberIds, mercContractIds, now));
     memberIds.forEach((id) => updateMemberStatus(id, 'on-mission'));
     setSelectedId(null);
+    setSelectedMemberIds([]);
+    setPickerSlot(null);
     setMobileView('list');
     playSFX(AUDIO.SFX_INK_STAMP);
     playSFX(AUDIO.SFX_DISPATCH);
   };
 
   const isMobile = useIsMobile();
-  const showTierFilter = tutorialStep === 'complete';
+  // Tier pills are an expedition-only affordance (Arc 1 main quests are all
+  // tier F) and stay hidden during the tutorial.
+  const showTierFilter = !isTutorialActive && activeTab === 'expedition';
 
   return (
     <div
@@ -149,24 +232,44 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
       onClick={onClose}
     >
       <div
-        className="quest-board parchment-surface parchment-frame parchment-rivets parchment-anim-unroll"
-        role="dialog"
-        aria-label="Quest Board"
-        aria-modal="true"
-        data-mobile-view={isMobile ? mobileView : undefined}
+        className="quest-board-stage"
+        data-picker-open={pickerSlot !== null ? '' : undefined}
         onClick={(e) => e.stopPropagation()}
       >
+      <div
+        className="quest-board parchment-surface parchment-frame parchment-rivets parchment-anim-unroll"
+        role="dialog"
+        aria-label={t('questBoard.ariaLabel')}
+        aria-modal="true"
+        data-mobile-view={isMobile ? mobileView : undefined}
+      >
         <header className="quest-board__header">
-          <h2 className="quest-board__title parchment-title">Quest Board</h2>
+          <h2 className="quest-board__title parchment-title">{t('questBoard.title')}</h2>
+          {!isTutorialActive && (
+            <div className="quest-board__tabs" role="tablist" aria-label={t('questBoard.tabsAria')}>
+              {(['main', 'expedition'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  role="tab"
+                  className={`quest-board__tab${activeTab === tab ? ' quest-board__tab--active' : ''}`}
+                  aria-selected={activeTab === tab}
+                  onClick={() => setActiveTab(tab)}
+                >
+                  {tab === 'main' ? t('questBoard.tabMain') : t('questBoard.tabExpedition')}
+                </button>
+              ))}
+            </div>
+          )}
           {showTierFilter && (
-            <div className="quest-board__filter" role="toolbar" aria-label="Filter by tier">
+            <div className="quest-board__filter" role="toolbar" aria-label={t('questBoard.filter.ariaLabel')}>
               <button
                 type="button"
                 className={`tier-pill${filterTier === 'all' ? ' tier-pill--active' : ''}`}
                 onClick={() => setFilterTier('all')}
                 aria-pressed={filterTier === 'all'}
               >
-                All
+                {t('questBoard.filter.all')}
               </button>
               {unlockedTiers.map((tier) => (
                 <button
@@ -175,7 +278,7 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
                   className={`tier-pill${filterTier === tier ? ' tier-pill--active' : ''}`}
                   onClick={() => setFilterTier(tier)}
                   aria-pressed={filterTier === tier}
-                  aria-label={`Tier ${tier}`}
+                  aria-label={t('questBoard.filter.tierAria', { tier })}
                 >
                   <GameIcon category="badge" id={tier} size={24} fallbackText={tier} />
                 </button>
@@ -188,12 +291,12 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
           <div
             ref={listPaneRef}
             className="quest-list-pane"
-            aria-label="Available quests"
+            aria-label={t('questBoard.listAria')}
           >
-            {filteredMissions.length === 0 ? (
-              <div className="quest-list-pane__empty">No quests available.</div>
+            {displayedMissions.length === 0 ? (
+              <div className="quest-list-pane__empty">{t('questBoard.empty')}</div>
             ) : (
-              filteredMissions.map((m) => (
+              displayedMissions.map((m) => (
                 <QuestCard
                   key={m.id}
                   mission={m}
@@ -209,8 +312,11 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
             mission={selectedMission}
             availableMembers={availableMembers}
             gold={gold}
+            selectedMemberIds={selectedMemberIds}
+            onToggleMember={toggleMember}
+            onOpenPicker={setPickerSlot}
+            onAutoAssign={handleAutoAssign}
             onDispatch={handleDispatch}
-            onMemberToggle={handleMemberToggleSfx}
             onBack={isMobile ? () => setMobileView('list') : undefined}
           />
         </div>
@@ -219,11 +325,21 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
           type="button"
           className="quest-board__return"
           onClick={onClose}
-          aria-label="Return to Guild"
+          aria-label={t('questBoard.returnAria')}
         >
           <span className="quest-board__return-icon" aria-hidden="true">⮌</span>
-          Return to Guild
+          {t('questBoard.return')}
         </button>
+      </div>
+
+        <QuestRosterPicker
+          open={pickerSlot !== null}
+          mission={selectedMission}
+          availableMembers={availableMembers}
+          selectedMemberIds={selectedMemberIds}
+          onPick={handlePickMember}
+          onClose={closePicker}
+        />
       </div>
     </div>
   );

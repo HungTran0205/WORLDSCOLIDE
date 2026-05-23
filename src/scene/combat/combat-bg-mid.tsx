@@ -17,6 +17,7 @@ import { useLoader } from '@react-three/fiber';
 import { TextureLoader } from 'three';
 import { useControls } from 'leva';
 import { COMBAT_CAM_TILT_RAD } from './combat-camera-config';
+import { CombatHorizonGradient } from './combat-horizon-gradient';
 
 export interface CombatBgMidProps {
   /** Texture path. Default keeps the Mu Cang Chai silhouette for back-compat. */
@@ -33,23 +34,34 @@ export function CombatBgMid({ texture = DEFAULT_MID_BG_TEXTURE }: CombatBgMidPro
     width:     { value: 27.0, min: 5, max: 100, step: 0.5 },
     height:    { value: 14.0, min: 3, max: 50, step: 0.5 },
     x:         { value: -0.6, min: -20, max: 20, step: 0.1 },
-    y:         { value: 0.9,  min: -10, max: 25, step: 0.1 },
+    // Lowered from 0.9 so the silhouette base sits at the ground horizon and
+    // bridges the seam (the horizon gradient softens what remains) instead of
+    // floating above it. Tune with the horizon plane together.
+    y:         { value: -0.6, min: -10, max: 25, step: 0.1 },
     z:         { value: -15.5, min: -30, max: -2, step: 0.5 },
-    // Darker + cooler tint so mid-ground silhouette recedes behind sprites.
-    // history: '#9faab0' (too bright) → '#3a3f45' (too dark) → '#4a5058' (gentle lift).
-    tint:      { value: '#9ba08e' },
+    // Morning-forest tint: lifted so the mid silhouette isn't near-black, but
+    // kept a touch darker than the far layer so it still recedes behind the
+    // sprites (atmospheric perspective). history: '#9faab0' → '#4a5058' (too
+    // dark) → '#9ba08e' → '#adb19a' (morning lift).
+    tint:      { value: '#adb19a' },
     alphaTest: { value: 0.05, min: 0, max: 1, step: 0.01 },
   }, { collapsed: true });
 
   const tex = useLoader(TextureLoader, texture);
 
   return (
-    <mesh
-      position={[x, y, z]}
-      rotation={[-COMBAT_CAM_TILT_RAD, 0, 0]}
-    >
-      <planeGeometry args={[width, height]} />
-      <meshBasicMaterial map={tex} color={tint} transparent alphaTest={alphaTest} />
-    </mesh>
+    <>
+      <mesh
+        position={[x, y, z]}
+        rotation={[-COMBAT_CAM_TILT_RAD, 0, 0]}
+      >
+        <planeGeometry args={[width, height]} />
+        <meshBasicMaterial map={tex} color={tint} transparent alphaTest={alphaTest} />
+      </mesh>
+      {/* Haze band bridging BG → ground (sits in front of this silhouette, at
+          z≈-8). Kept here so the seam fix lives with the horizon layer without
+          editing the shared stage-render-host. */}
+      <CombatHorizonGradient />
+    </>
   );
 }

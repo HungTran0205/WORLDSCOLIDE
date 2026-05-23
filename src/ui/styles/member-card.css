@@ -47,6 +47,28 @@
 /* Injured: dim card body */
 .member-card[data-status="injured"] { opacity: 0.7; }
 
+/* Disabled (e.g. underleveled for a quest): dim + not-allowed, kept focusable. */
+.member-card--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+.member-card--disabled:hover { box-shadow: none; }
+.member-card__reason {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  background: rgba(0, 0, 0, 0.78);
+  color: var(--ink-status-bad);
+  font-family: var(--ink-font-mono);
+  font-size: 0.5rem;
+  text-align: center;
+  padding: 2px 3px;
+  letter-spacing: 0.03em;
+}
+
 /* ── Corner diamond ornaments ── */
 /* TL + TR via ::before / ::after */
 .member-card::before,
@@ -106,6 +128,24 @@
   font-family: var(--ink-font-title);
   font-size: 1.8rem;
   color: var(--rank-color, var(--ink-gold-dim));
+}
+
+/* Identity mask overlay — pixel-aligned to head area, below insignia (z:2) and merc slash (z:3) */
+/* Compound selector needed: `.card-avatar img` (0,1,1) would otherwise override width/height/object-fit. */
+/* translate(-50%) keeps centering on the GPU compositor — reduces sub-pixel drift across browser zoom levels. */
+.card-avatar img.card-mask-overlay {
+  position: absolute;
+  top: 29%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 25%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+  z-index: 1;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  pointer-events: none;
 }
 
 /* ── Insignia frame (rank-badge sprite, top-left of avatar) ── */

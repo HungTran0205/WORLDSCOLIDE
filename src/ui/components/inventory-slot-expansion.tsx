@@ -1,6 +1,7 @@
 /** Slot expansion button — spends tier1 materials to add 10 slots to a category. */
 
 import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import {
   SLOT_EXPANSION_COSTS,
@@ -17,6 +18,7 @@ interface InventorySlotExpansionProps {
 }
 
 export function InventorySlotExpansion({ category, currentSlots, maxSlots }: InventorySlotExpansionProps) {
+  const { t } = useTranslation();
   const hasItems           = useGameStore(s => s.hasItems);
   const consumeItems       = useGameStore(s => s.consumeItems);
   const expandCategorySlots = useGameStore(s => s.expandCategorySlots);
@@ -34,7 +36,7 @@ export function InventorySlotExpansion({ category, currentSlots, maxSlots }: Inv
   }, [isMaxed, canAfford, consumeItems, cost, expandCategorySlots, category]);
 
   if (isMaxed) {
-    return <span className="inv-expand-maxed">Max capacity reached</span>;
+    return <span className="inv-expand-maxed">{t('inventoryExpansion.maxCapacity')}</span>;
   }
 
   return (
@@ -42,9 +44,11 @@ export function InventorySlotExpansion({ category, currentSlots, maxSlots }: Inv
       className="inv-expand-btn"
       onClick={handleExpand}
       disabled={!canAfford}
-      title={canAfford ? `Expand +${SLOT_EXPANSION_AMOUNT} slots` : 'Not enough resources'}
+      title={canAfford
+        ? t('inventoryExpansion.expandTitle', { count: SLOT_EXPANSION_AMOUNT })
+        : t('inventoryExpansion.notEnoughResources')}
     >
-      +{SLOT_EXPANSION_AMOUNT} slots
+      {t('inventoryExpansion.expandSlots', { count: SLOT_EXPANSION_AMOUNT })}
       <span className={`inv-expand-cost${!canAfford ? ' inv-expand-cost--unaffordable' : ''}`}>
         {Object.entries(cost).map(([id, qty]) => (
           <span key={id}> {ITEM_DATABASE[id as keyof typeof ITEM_DATABASE]?.name ?? id}×{qty}</span>

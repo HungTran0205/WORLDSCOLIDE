@@ -4,6 +4,8 @@
  * Zero data-file changes required — all mapping lives here.
  */
 
+import { assetUrl } from '@/lib/asset-url';
+
 export type IconCategory =
   | 'stat' | 'skill' | 'item'
   | 'room' | 'furniture'
@@ -24,6 +26,8 @@ const ID_TO_FILENAME: Record<string, string> = {
   OFFICER: 'officer', COMMANDER: 'commander', MERCENARY: 'mercenary',
   // RoomType edge case: training-room → training (filename omits "-room")
   'training-room': 'training',
+  // FacilityType edge case: training-yard → training (shares the training icon)
+  'training-yard': 'training',
 };
 
 /** File prefix per category */
@@ -38,5 +42,5 @@ export function getIconPath(category: IconCategory, id: string): string {
   const override = ID_TO_FILENAME[id];
   // badge tier IDs (F, E, D...) keep original case; everything else lowercases
   const filename = override ?? (category === 'badge' ? id : id.toLowerCase());
-  return `/sprites/icons/${PREFIX[category]}-${filename}.png`;
+  return assetUrl(`/sprites/icons/${PREFIX[category]}-${filename}.png`);
 }

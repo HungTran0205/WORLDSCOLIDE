@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { expToNextLevel, gainExp, LEVEL_UP_BONUS_POINTS } from '@/game/systems/leveling-system';
-import { createEmptyStats, totalAllocated, distributeStatsByWeights, INITIAL_STAT_POINTS, STAT_KEYS } from '@/game/systems/stat-allocation';
+import { createEmptyStats, totalAllocated, distributeStatsByWeights, distributeStatsByWeightsRandom, INITIAL_STAT_POINTS, STAT_KEYS } from '@/game/systems/stat-allocation';
 import { createFounder, generateRecruit } from '@/game/systems/character-creation';
+import { mulberry32 } from '@/game/systems/seeded-rng';
 
 describe('Leveling System', () => {
   it('should return correct EXP for early levels', () => {
@@ -56,15 +57,48 @@ describe('Stat Allocation', () => {
   });
 });
 
+describe('Weighted-random stat distribution', () => {
+  const scoutWeights = { STR: 1, END: 1, INT: 0.5, DEX: 3, CHA: 0.5, LCK: 1, AGI: 2 };
+
+  it('distributes exactly `points` total, all non-negative', () => {
+    const stats = distributeStatsByWeightsRandom(70, scoutWeights, mulberry32(42));
+    expect(totalAllocated(stats)).toBe(70);
+    for (const key of STAT_KEYS) expect(stats[key]).toBeGreaterThanOrEqual(0);
+  });
+
+  it('is deterministic for the same seed (reload-safe)', () => {
+    const a = distributeStatsByWeightsRandom(70, scoutWeights, mulberry32(7));
+    const b = distributeStatsByWeightsRandom(70, scoutWeights, mulberry32(7));
+    expect(a).toEqual(b);
+  });
+
+  it('never assigns points to a zero-weight stat', () => {
+    const weights = { ...scoutWeights, INT: 0 };
+    const stats = distributeStatsByWeightsRandom(200, weights, mulberry32(99));
+    expect(stats.INT).toBe(0);
+  });
+
+  it('biases toward higher-weight stats over a large sample', () => {
+    // DEX (weight 3) should out-roll INT (weight 0.5) given enough points.
+    const stats = distributeStatsByWeightsRandom(1000, scoutWeights, mulberry32(123));
+    expect(stats.DEX).toBeGreaterThan(stats.INT);
+  });
+});
+
 describe('Character Creation', () => {
   it('should create founder with correct stats', () => {
     const stats = { STR: 10, END: 10, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 10 };
-    const founder = createFounder('TestHero', stats, 'LinhSon');
+    const founder = createFounder('TestHero', stats, 'LinhSon', 'sword', 'M', 'mask-01');
     expect(founder.name).toBe('TestHero');
     expect(founder.isFounder).toBe(true);
     expect(founder.level).toBe(1);
     expect(founder.civilization).toBe('LinhSon');
+    // Player-chosen identity is honored (new 6-arg contract).
+    expect(founder.archetype).toBe('sword');
+    expect(founder.gender).toBe('M');
+    expect(founder.maskSpriteId).toBe('mask-01');
     expect(founder.skill).not.toBeNull();
+    expect(founder.equipment?.weapon).toBeTruthy(); // starting weapon resolved from archetype
     // Civ bonuses apply: END*1.2=12, DEX*1.1=5, STR*1.1=11 → total > 50
     expect(totalAllocated(founder.stats)).toBeGreaterThanOrEqual(50);
   });

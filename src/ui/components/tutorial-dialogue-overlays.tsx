@@ -1,10 +1,19 @@
 /** Tutorial dialogue overlays — Kael rescue and reward splash, shown after tutorial quest completes. */
 
 import { useGameStore } from '@/game/state/store';
+import { tContent } from '@/i18n/content-localization';
 
-/** Shown at step 'tutorial-kael-rescue' — rescue narrative + confirm */
+/** Shown at step 'kael-rescue' — rescue narrative + confirm */
 export function KaelRescueDialogue() {
   const setTutorialStep = useGameStore((s) => s.setTutorialStep);
+
+  const title  = tContent('dialog', 'kael-rescue', 'title', 'Kael Rescued!');
+  const body   = tContent('dialog', 'kael-rescue', 'body',
+    'With the moonbear driven off, you pull a young LinhSon warrior from the wreckage — battered but alive.');
+  const quote  = tContent('dialog', 'kael-rescue', 'quote',
+    '"You saved my life. After that strange tremor, the beast gone wild and attacked the village, this never happened before.\nLet me repay you — I\'ll join your guild."');
+  const joined = tContent('dialog', 'kael-rescue', 'joined', 'Kael has joined your guild!');
+  const cta    = tContent('dialog', 'kael-rescue', 'cta', 'Welcome aboard');
 
   return (
     <div style={{
@@ -17,29 +26,35 @@ export function KaelRescueDialogue() {
         border: '2px solid rgba(255,215,0,0.3)', borderRadius: 12,
         color: '#e8d5b0', textAlign: 'center',
       }}>
-        <h3 style={{ color: '#ffd700' }}>Kael Rescued!</h3>
+        <h3 style={{ color: '#ffd700' }}>{title}</h3>
         <p style={{ lineHeight: 1.6, fontSize: '0.9rem', margin: '16px 0' }}>
-          Among the slime remains, you find a young LinhSon warrior — battered but alive.
+          {body}
         </p>
-        <p style={{ lineHeight: 1.6, fontSize: '0.9rem', fontStyle: 'italic', color: '#c8b080' }}>
-          "You saved my life. I was tracking something through here when that thing ambushed me.
-          Let me repay you — I'll join your guild."
+        <p style={{ lineHeight: 1.6, fontSize: '0.9rem', fontStyle: 'italic', color: '#c8b080', whiteSpace: 'pre-line' }}>
+          {quote}
         </p>
         <p style={{ fontSize: '0.85rem', color: '#aaa', marginTop: 12 }}>
-          Kael has joined your guild!
+          {joined}
         </p>
         <button className="panel-btn" style={{ marginTop: 16 }}
-          onClick={() => setTutorialStep('tutorial-reward')}>
-          Welcome aboard
+          onClick={() => setTutorialStep('reward-splash')}>
+          {cta}
         </button>
       </div>
     </div>
   );
 }
 
-/** Shown at step 'tutorial-reward' — displays LOGGING_SITE_ACCESS reward */
+/** Shown at step 'reward-splash' — displays LOGGING_SITE_ACCESS reward */
 export function TutorialRewardSplash() {
   const setTutorialStep = useGameStore((s) => s.setTutorialStep);
+
+  const title    = tContent('dialog', 'reward-splash', 'title', 'Reward Received');
+  const body     = tContent('dialog', 'reward-splash', 'body', 'Kael hands you a weathered document.');
+  const itemName = tContent('dialog', 'reward-splash', 'itemName', 'Logging Site Access');
+  const itemDesc = tContent('dialog', 'reward-splash', 'itemDesc',
+    "A worn permit from the Forester's Guild. Build a Logging Site for free.");
+  const cta      = tContent('dialog', 'reward-splash', 'cta', 'Continue');
 
   return (
     <div style={{
@@ -52,22 +67,22 @@ export function TutorialRewardSplash() {
         border: '2px solid rgba(255,215,0,0.3)', borderRadius: 12,
         color: '#e8d5b0', textAlign: 'center',
       }}>
-        <h3 style={{ color: '#ffd700' }}>Reward Received</h3>
+        <h3 style={{ color: '#ffd700' }}>{title}</h3>
         <p style={{ lineHeight: 1.6, fontSize: '0.9rem', margin: '16px 0' }}>
-          Kael hands you a weathered document.
+          {body}
         </p>
         <div style={{
           padding: 12, background: 'rgba(255,215,0,0.08)',
           border: '1px solid rgba(255,215,0,0.2)', borderRadius: 8, margin: '12px 0',
         }}>
-          <strong style={{ color: '#ffd700' }}>Logging Site Access</strong>
+          <strong style={{ color: '#ffd700' }}>{itemName}</strong>
           <div style={{ fontSize: '0.8rem', color: '#aaa', marginTop: 4 }}>
-            A worn permit from the Forester's Guild. Build a Logging Site for free.
+            {itemDesc}
           </div>
         </div>
         <button className="panel-btn" style={{ marginTop: 12 }}
           onClick={() => setTutorialStep('build-logging-site')}>
-          Continue
+          {cta}
         </button>
       </div>
     </div>

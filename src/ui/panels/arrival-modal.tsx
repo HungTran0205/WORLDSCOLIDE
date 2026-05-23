@@ -4,7 +4,11 @@
  * Parent (active-missions-list) wires onStartCombat to combat-panel-store.
  */
 
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { DialogLine } from '@/game/state/game-state';
 import { ENEMIES } from '@/game/data/enemies';
+import { StoryDialogOverlay } from '@/ui/components/story-dialog-overlay';
 import '@/ui/styles/panels.css';
 
 interface ArrivalModalProps {
@@ -12,6 +16,8 @@ interface ArrivalModalProps {
   missionName: string;
   zone: string;
   enemyIds: string[];
+  /** Story lines shown before the enemy list (main quests only). */
+  preArrivalDialog?: DialogLine[];
   onStartCombat: () => void;
   onClose: () => void;
 }
@@ -20,9 +26,13 @@ export function ArrivalModal({
   missionName,
   zone,
   enemyIds,
+  preArrivalDialog,
   onStartCombat,
   onClose,
 }: ArrivalModalProps) {
+  const { t } = useTranslation();
+  const [dialogDone, setDialogDone] = useState(false);
+  const hasDialog = (preArrivalDialog?.length ?? 0) > 0;
   // Deduplicate enemy names with counts
   const enemyCounts = enemyIds.reduce<Record<string, number>>((acc, id) => {
     acc[id] = (acc[id] ?? 0) + 1;
@@ -32,34 +42,42 @@ export function ArrivalModal({
   return (
     <div className="confirm-dialog-overlay" onClick={onClose}>
       <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
-        <h3 style={{ color: '#ffd700', marginBottom: 4 }}>⚔️ Party Arrived!</h3>
+        <h3 style={{ color: '#ffd700', marginBottom: 4 }}>{t('arrivalModal.title')}</h3>
         <div style={{ color: '#aaa', fontSize: '0.85rem', marginBottom: 12 }}>
           {missionName} — <span style={{ color: '#67b8e3' }}>{zone}</span>
         </div>
 
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: '0.8rem', color: '#aaa', marginBottom: 6 }}>Enemies encountered:</div>
-          {Object.entries(enemyCounts).map(([id, count]) => {
-            const enemy = ENEMIES[id];
-            return (
-              <div key={id} style={{ fontSize: '0.85rem', color: '#e0e0e0', padding: '2px 0' }}>
-                {count}× {enemy?.name ?? id}
-                {enemy && <span style={{ color: '#aaa', fontSize: '0.75rem' }}> (Lv.{enemy.level})</span>}
-              </div>
-            );
-          })}
-        </div>
+        {(!hasDialog || dialogDone) && (
+          <>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: '0.8rem', color: '#aaa', marginBottom: 6 }}>{t('arrivalModal.enemiesLabel')}</div>
+              {Object.entries(enemyCounts).map(([id, count]) => {
+                const enemy = ENEMIES[id];
+                return (
+                  <div key={id} style={{ fontSize: '0.85rem', color: '#e0e0e0', padding: '2px 0' }}>
+                    {count}× {enemy?.name ?? id}
+                    {enemy && <span style={{ color: '#aaa', fontSize: '0.75rem' }}> (Lv.{enemy.level})</span>}
+                  </div>
+                );
+              })}
+            </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            className="panel-btn"
-            style={{ flex: 1 }}
-            onClick={() => { onStartCombat(); onClose(); }}
-          >
-            ⚔️ Enter Battle
-          </button>
-        </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                className="panel-btn"
+                style={{ flex: 1 }}
+                onClick={() => { onStartCombat(); onClose(); }}
+              >
+                {t('arrivalModal.enterBattle')}
+              </button>
+            </div>
+          </>
+        )}
       </div>
+
+      {hasDialog && !dialogDone && (
+        <StoryDialogOverlay lines={preArrivalDialog!} onDone={() => setDialogDone(true)} />
+      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import { MemberCard } from '@/ui/components/member-card';
 import { CharacterDetailPanel } from './character-detail-panel';
@@ -6,6 +7,7 @@ import { EquipModePanel } from '@/ui/components/equip-mode-panel';
 import { ConfirmDialog } from '@/ui/components/confirm-dialog';
 import { CIVILIZATIONS, CIV_CONFIG } from '@/game/data/civilization-config';
 import { canPromote } from '@/game/data/ranks';
+import { tContent } from '@/i18n/content-localization';
 import type { MemberStatus, StatKey, SyringeLoadout } from '@/game/state/game-state';
 import type { EquipmentSlot } from '@/game/data/equipment-templates';
 import '@/ui/styles/guild-roster.css';
@@ -18,11 +20,12 @@ interface GuildRosterProps {
 type CivFilter = 'all' | string;
 type StatusFilter = 'all' | MemberStatus;
 
-const STATUS_LABELS: Record<string, string> = {
-  idle: 'Available', 'on-mission': 'On Quest', injured: 'Injured', training: 'Training', assigned: 'Assigned',
-};
+// Status filter pills are keyed off the MemberStatus union value so labels stay
+// in sync with the data; localized via t('roster.status.<value>').
+const STATUS_FILTERS: MemberStatus[] = ['idle', 'on-mission', 'injured', 'training', 'assigned'];
 
 export function GuildRoster({ onClose }: GuildRosterProps) {
+  const { t }            = useTranslation();
   const founder          = useGameStore(s => s.founder);
   const roster           = useGameStore(s => s.roster);
   const gold             = useGameStore(s => s.gold);
@@ -31,6 +34,7 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
   const inviteMercenary  = useGameStore(s => s.inviteMercenary);
   const promoteMember    = useGameStore(s => s.promoteMember);
   const removeMember     = useGameStore(s => s.removeMember);
+  const renameMember     = useGameStore(s => s.renameMember);
   const setSyringeLoadout = useGameStore(s => s.setSyringeLoadout);
   const equipGear        = useGameStore(s => s.equipGear);
   const unequipGear      = useGameStore(s => s.unequipGear);
@@ -100,6 +104,7 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
             onEquipGear={id => equipGear(selected.id, id)}
             onUnequipGear={slot => unequipGear(selected.id, slot as EquipmentSlot)}
             onOpenEquipMode={() => setView('equip')}
+            onRename={name => renameMember(selected.id, name)}
           />
           {!selected.isFounder && (
             <div style={{ padding: '8px 14px', borderTop: '1px solid var(--ink-gold-dim)', display: 'flex', justifyContent: 'flex-end' }}>
@@ -108,15 +113,15 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
                 style={{ color: 'var(--ink-status-bad)', borderColor: 'rgba(196,74,74,0.4)' }}
                 onClick={() => setReleaseTarget(selected.id)}
               >
-                Release
+                {t('roster.release')}
               </button>
             </div>
           )}
         </div>
         {releaseTarget && (
           <ConfirmDialog
-            message={`Release ${allMembers.find(m => m.id === releaseTarget)?.name ?? 'this member'}? This cannot be undone.`}
-            confirmLabel="Release"
+            message={t('roster.releaseConfirm', { name: allMembers.find(m => m.id === releaseTarget)?.name ?? t('roster.releaseConfirmFallback') })}
+            confirmLabel={t('roster.release')}
             danger
             onConfirm={() => { removeMember(releaseTarget); setReleaseTarget(null); setView('grid'); }}
             onCancel={() => setReleaseTarget(null)}
@@ -132,33 +137,33 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
         {/* Header */}
         <header className="roster-header">
           <span>
-            <span className="roster-title">MEMBERS</span>
+            <span className="roster-title">{t('roster.title')}</span>
             <span className="roster-count">{allMembers.length}</span>
           </span>
-          <button className="roster-close-btn" onClick={onClose} type="button">Close</button>
+          <button className="roster-close-btn" onClick={onClose} type="button">{t('roster.close')}</button>
         </header>
 
         {/* Controls */}
         <div className="roster-controls">
           <input
             className="roster-search"
-            placeholder="Search by name…"
+            placeholder={t('roster.searchPlaceholder')}
             value={query}
             onChange={e => setQuery(e.target.value)}
           />
           <div className="filter-group">
-            <button className={`filter-pill${civFilter === 'all' ? ' active' : ''}`} onClick={() => setCivFilter('all')}>All</button>
+            <button className={`filter-pill${civFilter === 'all' ? ' active' : ''}`} onClick={() => setCivFilter('all')}>{t('roster.filterAll')}</button>
             {CIVILIZATIONS.map(civ => (
               <button key={civ} className={`filter-pill${civFilter === civ ? ' active' : ''}`} onClick={() => setCivFilter(civ)}>
-                {CIV_CONFIG[civ].displayName}
+                {tContent('civ', civ, 'name', CIV_CONFIG[civ].displayName)}
               </button>
             ))}
           </div>
           <div className="filter-group">
-            <button className={`filter-pill${statusFilter === 'all' ? ' active' : ''}`} onClick={() => setStatusFilter('all')}>All Status</button>
-            {(Object.keys(STATUS_LABELS) as MemberStatus[]).map(s => (
+            <button className={`filter-pill${statusFilter === 'all' ? ' active' : ''}`} onClick={() => setStatusFilter('all')}>{t('roster.filterAllStatus')}</button>
+            {STATUS_FILTERS.map(s => (
               <button key={s} className={`filter-pill${statusFilter === s ? ' active' : ''}`} onClick={() => setStatusFilter(s)}>
-                {STATUS_LABELS[s]}
+                {t(`roster.status.${s}`)}
               </button>
             ))}
           </div>
@@ -167,7 +172,7 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
         {/* Grid */}
         <div className="member-grid">
           {visible.length === 0
-            ? <p className="roster-empty">No members match filters.</p>
+            ? <p className="roster-empty">{t('roster.empty')}</p>
             : visible.map(m => <MemberCard key={m.id} member={m} onClick={() => openDetail(m.id)} />)
           }
         </div>

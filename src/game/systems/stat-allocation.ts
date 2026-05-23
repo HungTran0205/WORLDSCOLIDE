@@ -1,4 +1,5 @@
 import type { Stats, StatKey, Member } from '@/game/state/game-state';
+import { weightedPick } from './seeded-rng';
 
 export const INITIAL_STAT_POINTS = 50;
 export const STAT_KEYS: StatKey[] = ['STR', 'END', 'INT', 'DEX', 'CHA', 'LCK', 'AGI'];
@@ -38,5 +39,27 @@ export function distributeStatsByWeights(
   // Distribute remainder to highest-weighted stat
   const sorted = [...STAT_KEYS].sort((a, b) => weights[b] - weights[a]);
   stats[sorted[0]] += remaining;
+  return stats;
+}
+
+/**
+ * Distribute stat points by archetype weights using a seeded RNG.
+ *
+ * Each point lands on a stat with probability proportional to its archetype
+ * weight, so the build keeps the archetype's identity (a scout still leans
+ * DEX/AGI) while varying from roll to roll. Deterministic for a given rng
+ * sequence — feeding the same seed always yields the same Stats, which keeps
+ * the tavern roster reload-safe.
+ */
+export function distributeStatsByWeightsRandom(
+  points: number,
+  weights: Record<StatKey, number>,
+  rng: () => number,
+): Stats {
+  const stats = createEmptyStats();
+  const entries = STAT_KEYS.map((key) => ({ value: key, weight: weights[key] }));
+  for (let i = 0; i < points; i++) {
+    stats[weightedPick(entries, rng)] += 1;
+  }
   return stats;
 }

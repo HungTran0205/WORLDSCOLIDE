@@ -1,6 +1,7 @@
 /** Floating active-missions widget — always visible below HUD top bar */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { MissionPhase } from '@/game/state/game-state';
 import { useGameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
@@ -9,10 +10,11 @@ import { GameIcon } from '@/ui/components/game-icon';
 import { ArrivalModal } from '@/ui/panels/arrival-modal';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 
-const PHASE_BADGE: Partial<Record<MissionPhase, string>> = {
-  traveling: 'Traveling...',
-  arrived: 'Arrived!',
-  'in-combat': 'In Combat',
+/** Phase badge i18n keys — resolved via t() at render time */
+const PHASE_BADGE_KEY: Partial<Record<MissionPhase, string>> = {
+  traveling: 'activeMissions.traveling',
+  arrived: 'activeMissions.arrived',
+  'in-combat': 'activeMissions.inCombat',
 };
 
 /** Floating container style — positioned top-right below HUD */
@@ -47,6 +49,7 @@ const CARD_STYLE: React.CSSProperties = {
 };
 
 export function ActiveMissionsList() {
+  const { t } = useTranslation();
   const activeMissions = useGameStore((s) => s.activeMissions);
   const [now, setNow] = useState(() => Date.now());
   const [arrivalModalFor, setArrivalModalFor] = useState<string | null>(null);
@@ -61,32 +64,35 @@ export function ActiveMissionsList() {
 
   if (activeMissions.length === 0) return null;
 
-  const openArrival = (missionId: string) => setArrivalModalFor(missionId);
+  // Track by unique instanceId so two parties on the SAME quest template open
+  // the correct party's modal/combat (not just the first match).
+  const openArrival = (instanceId: string) => setArrivalModalFor(instanceId);
   const closeArrival = () => setArrivalModalFor(null);
 
-  const handleStartCombat = (missionId: string) => {
+  const handleStartCombat = (am: { missionId: string; instanceId: string }) => {
     // Idle pattern (Phase 3 redesign): open the panel and seed the legacy
     // arena-slice formation. mission.phase stays 'arrived' until the player
     // explicitly presses Start Battle in the formation sub-phase — this avoids
     // the auto-resolve race when the player closes the panel mid-formation.
-    enterCombatPrep(missionId);
-    openCombatPanel(missionId);
+    enterCombatPrep(am.missionId, am.instanceId);
+    openCombatPanel(am.missionId, am.instanceId);
     closeArrival();
   };
 
   return (
     <div style={CONTAINER_STYLE}>
-      <div style={HEADER_STYLE}>Active Missions</div>
+      <div style={HEADER_STYLE}>{t('activeMissions.header')}</div>
       {activeMissions.map((am) => {
         const missionData = MISSIONS.find((m) => m.id === am.missionId);
-        const badge = PHASE_BADGE[am.phase];
+        const badgeKey = PHASE_BADGE_KEY[am.phase];
+        const badge = badgeKey ? t(badgeKey) : undefined;
         const isArrived = am.phase === 'arrived';
 
         return (
           <div
-            key={`${am.missionId}-${am.startTime}`}
+            key={am.instanceId}
             style={{ ...CARD_STYLE, cursor: isArrived ? 'pointer' : 'default' }}
-            onClick={isArrived ? () => openArrival(am.missionId) : undefined}
+            onClick={isArrived ? () => openArrival(am.instanceId) : undefined}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <strong style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -109,27 +115,30 @@ export function ActiveMissionsList() {
             )}
             {isArrived && (
               <div style={{ fontSize: '0.8rem', color: '#f39c12', marginTop: 4 }}>
-                ⚔️ Click to start combat
+                {t('activeMissions.clickToCombat')}
               </div>
             )}
             {am.phase === 'in-combat' && (
-              <div style={{ fontSize: '0.8rem', color: '#aaa', marginTop: 4 }}>Resolving...</div>
+              <div style={{ fontSize: '0.8rem', color: '#aaa', marginTop: 4 }}>{t('activeMissions.resolving')}</div>
             )}
           </div>
         );
       })}
 
       {arrivalModalFor && (() => {
-        const am = activeMissions.find((m) => m.missionId === arrivalModalFor);
-        const missionData = MISSIONS.find((m) => m.id === arrivalModalFor);
+        const am = activeMissions.find((m) => m.instanceId === arrivalModalFor);
+        const missionData = am && MISSIONS.find((m) => m.id === am.missionId);
         if (!am || !missionData || !am.arrivalTime) return null;
         return (
           <ArrivalModal
             missionId={am.missionId}
             missionName={missionData.name}
             zone={missionData.zone ?? ''}
-            enemyIds={missionData.enemyIds}
-            onStartCombat={() => handleStartCombat(am.missionId)}
+            // Wave missions carry no top-level enemyIds — flatten waves so the
+            // arrival preview isn't empty.
+            enemyIds={missionData.waves?.flatMap((w) => w.enemyIds) ?? missionData.enemyIds}
+            preArrivalDialog={missionData.preArrivalDialog}
+            onStartCombat={() => handleStartCombat(am)}
             onClose={closeArrival}
           />
         );

@@ -6,6 +6,9 @@
 import type { SaveEnvelope } from './save-types';
 import { SAVE_VERSION } from './save-types';
 import { FACILITY_DEFAULT_SLOTS } from '@/game/data/facility-slot-positions';
+import { RECRUITABLE_UNITS, CIV_CONFIG } from '@/game/data/civilization-config';
+import type { Civilization } from '@/game/data/civilization-config';
+import { hashSeed } from '@/game/systems/seeded-rng';
 
 export type MigrationFn = (envelope: SaveEnvelope) => SaveEnvelope;
 
@@ -554,6 +557,239 @@ function migrateV22toV23(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+/**
+ * v23→v24: Tavern Facility overhaul.
+ *  - Member: normalize `rarity` to required 1 (legacy default); ensure `traits: []`.
+ *  - TavernState: replace `{ lastRefreshTime, availableMercenaries }` with the new
+ *    recruitment-hub shape. `currentRoster` starts empty; next day-tick respawns it.
+ *  - ActiveMission: add parallel `mercContractIds: []` (AD1).
+ */
+// Game-day scale — gameTime is stored in game-milliseconds (see clock-slice).
+// Kept local to avoid cross-imports from state into save layer; value MUST match MS_PER_GAME_DAY.
+const MIGRATION_MS_PER_GAME_DAY = 86_400_000;
+
+function migrateV23toV24(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+
+  const normalizeMember = (m: AnyRecord): AnyRecord => ({
+    ...m,
+    rarity: typeof m.rarity === 'number' ? m.rarity : 1,
+    traits: Array.isArray(m.traits) ? m.traits : [],
+  });
+
+  const founder = gs.founder ? normalizeMember(gs.founder as AnyRecord) : null;
+  const roster = Array.isArray(gs.roster)
+    ? (gs.roster as AnyRecord[]).map(normalizeMember)
+    : [];
+
+  const currentDay = Math.floor(((gs.gameTime as number) ?? 0) / MIGRATION_MS_PER_GAME_DAY);
+
+  const tavern = {
+    level: 1 as const,
+    keeperId: null,
+    reputation: 0,
+    currentRoster: [],
+    rerolledToday: false,
+    factionBias: null,
+    rumor: null,
+    mercContracts: [],
+    pendingPrompts: [],
+    lastDayProcessed: currentDay,
+    reputationLastTickWeek: currentDay,
+    globalNegotiationDebuffUntilDay: null,
+    veteranPool: [],
+  };
+
+  const activeMissions = Array.isArray(gs.activeMissions)
+    ? (gs.activeMissions as AnyRecord[]).map((am) => ({
+        ...am,
+        mercContractIds: Array.isArray(am.mercContractIds) ? am.mercContractIds : [],
+      }))
+    : gs.activeMissions;
+
+  return {
+    ...envelope,
+    version: 24,
+    gameState: {
+      ...gs,
+      founder,
+      roster,
+      tavern,
+      activeMissions,
+    } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
+/**
+ * v24→v25: Phase 04 merc lifecycle adds `tavern.veteranPool: VeteranMercSummary[]`.
+ * In-flight v24 saves written before the field existed need backfill.
+ */
+function migrateV24toV25(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+  const tavern = (gs.tavern ?? {}) as AnyRecord;
+  const migratedTavern = {
+    ...tavern,
+    veteranPool: Array.isArray(tavern.veteranPool) ? tavern.veteranPool : [],
+  };
+  return {
+    ...envelope,
+    version: 25,
+    gameState: { ...gs, tavern: migratedTavern } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
+/**
+ * v25→v26: Tutorial redesign — 8-id sandbox flow → 14-beat "Bear the Bear" chain
+ * (see TutorialStep / TUTORIAL_STEPS). Remap legacy step ids forward to the nearest
+ * SAFE new beat (one whose prerequisites — Kael, permit, materials — already hold for
+ * that legacy state). Ambiguous combat-stage states collapse to 'open-quest-board' so
+ * the player simply re-dispatches the new quest. Unknown ids fall back to 'complete'
+ * (defensive, mirrors the v11→v12 OLD_STEPS rule). Also strips the deleted
+ * 'tutorial-into-the-clearing' mission and frees any members stuck on it.
+ */
+function migrateV25toV26(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+
+  // Legacy → new step remap. Targets verified against prerequisites (Phase 06 remap table).
+  const STEP_REMAP: Record<string, string> = {
+    'char-creation': 'char-creation',
+    'world-board': 'arrival-alarm',
+    'tutorial-quest-dispatch': 'open-quest-board',
+    'tutorial-quest-active': 'open-quest-board', // dead slime mission cleared below → re-dispatch
+    'tutorial-kael-rescue': 'kael-rescue',       // Kael + permit already granted pre-rescue
+    'tutorial-reward': 'reward-splash',          // permit already granted
+    'build-logging-site': 'build-logging-site',
+    'assign-kael': 'assign-kael',
+    'complete': 'complete',
+  };
+  const legacyStep = gs.tutorialStep as string;
+  const tutorialStep = STEP_REMAP[legacyStep] ?? 'complete';
+
+  // Drop the removed tutorial mission and reset its members to idle so they aren't
+  // stranded 'on-mission' forever (the mission no longer exists in MISSIONS).
+  const DEAD_MISSION = 'tutorial-into-the-clearing';
+  const activeMissions: AnyRecord[] = Array.isArray(gs.activeMissions) ? gs.activeMissions : [];
+  const strandedMemberIds = new Set<string>();
+  for (const am of activeMissions) {
+    if (am.missionId === DEAD_MISSION && Array.isArray(am.memberIds)) {
+      for (const id of am.memberIds) strandedMemberIds.add(id as string);
+    }
+  }
+  const cleanedMissions = activeMissions.filter((am) => am.missionId !== DEAD_MISSION);
+
+  const freeMember = (m: AnyRecord): AnyRecord =>
+    strandedMemberIds.has(m.id as string) && m.status === 'on-mission'
+      ? { ...m, status: 'idle' }
+      : m;
+  const founder = gs.founder ? freeMember(gs.founder as AnyRecord) : null;
+  const roster = Array.isArray(gs.roster) ? (gs.roster as AnyRecord[]).map(freeMember) : [];
+
+  return {
+    ...envelope,
+    version: 26,
+    gameState: {
+      ...gs,
+      tutorialStep,
+      activeMissions: cleanedMissions,
+      founder,
+      roster,
+    } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
+/**
+ * Backfill unique `instanceId` onto every active mission. Pre-instanceId missions were
+ * keyed only by the shared template `missionId`, so two parties on the same quest
+ * resolved as one (and the second party's members got stranded). Idempotent — skips any
+ * mission that already carries an id, so it is safe to re-run defensively.
+ */
+function backfillMissionInstanceIds(gs: AnyRecord): AnyRecord {
+  const activeMissions: AnyRecord[] = Array.isArray(gs.activeMissions) ? gs.activeMissions : [];
+  const migrated = activeMissions.map((am) =>
+    typeof am.instanceId === 'string' && am.instanceId
+      ? am
+      : { ...am, instanceId: crypto.randomUUID() },
+  );
+  return { ...gs, activeMissions: migrated };
+}
+
+/**
+ * v26→v27: Add unique `instanceId` to every active mission so same-template parties are
+ * independently addressable (see backfillMissionInstanceIds).
+ */
+function migrateV26toV27(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+  return {
+    ...envelope,
+    version: 27,
+    gameState: backfillMissionInstanceIds(gs) as unknown as SaveEnvelope['gameState'],
+  };
+}
+
+/**
+ * v27→v28: TavernVisitor gains required `name` + `gender` (assigned at spawn).
+ * Backfill embedded visitor snapshots in older saves so they load + render:
+ *   - gender from the civ's RECRUITABLE_UNITS archetype→gender map (fallback 'M')
+ *   - name from a stable hash over the visitor id (deterministic across reloads)
+ * Visitors live in tavern.currentRoster plus the visitorSnapshot inside
+ * mercContracts / pendingPrompts / veteranPool. The next day-tick respawns the
+ * roster fresh — this only keeps in-flight saves crash-free and readable.
+ */
+function migrateV27toV28(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+  const tavern = (gs.tavern ?? {}) as AnyRecord;
+
+  const backfillVisitor = (v: AnyRecord): AnyRecord => {
+    if (!v) return v;
+    const civ = v.civilization as Civilization;
+    const units = RECRUITABLE_UNITS[civ] ?? [];
+    const gender = v.gender === 'M' || v.gender === 'F'
+      ? v.gender
+      : (units.find((u) => u.archetype === v.archetype)?.gender ?? 'M');
+    const pool = CIV_CONFIG[civ]?.namePool ?? CIV_CONFIG.LinhSon.namePool;
+    const name = typeof v.name === 'string' && v.name
+      ? v.name
+      : pool[Math.abs(hashSeed(String(v.id ?? ''), 'visitor-name')) % pool.length];
+    return { ...v, name, gender };
+  };
+
+  const backfillSnapshot = (rec: AnyRecord): AnyRecord =>
+    rec && rec.visitorSnapshot
+      ? { ...rec, visitorSnapshot: backfillVisitor(rec.visitorSnapshot as AnyRecord) }
+      : rec;
+
+  const mapArr = (arr: unknown, fn: (r: AnyRecord) => AnyRecord) =>
+    Array.isArray(arr) ? (arr as AnyRecord[]).map(fn) : arr;
+
+  const migratedTavern = {
+    ...tavern,
+    currentRoster: mapArr(tavern.currentRoster, backfillVisitor),
+    mercContracts: mapArr(tavern.mercContracts, backfillSnapshot),
+    pendingPrompts: mapArr(tavern.pendingPrompts, backfillSnapshot),
+    veteranPool: mapArr(tavern.veteranPool, backfillSnapshot),
+  };
+
+  return {
+    ...envelope,
+    version: 28,
+    gameState: { ...gs, tavern: migratedTavern } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
+/**
+ * v28→v29: Add Arc 1 quest story fields to Mission (additive — all optional, no transform).
+ * Also re-runs the mission instanceId backfill defensively: saves created on the Arc 1
+ * branch reached v28 before the instanceId migration existed, so they may still lack it.
+ */
+function migrateV28toV29(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+  return {
+    ...envelope,
+    version: 29,
+    gameState: backfillMissionInstanceIds(gs) as unknown as SaveEnvelope['gameState'],
+  };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -572,6 +808,12 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   20: migrateV20toV21,
   21: migrateV21toV22,
   22: migrateV22toV23,
+  23: migrateV23toV24,
+  24: migrateV24toV25,
+  25: migrateV25toV26,
+  26: migrateV26toV27,
+  27: migrateV27toV28,
+  28: migrateV28toV29,
 };
 
 /**

@@ -6,13 +6,16 @@
  */
 
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import { EQUIPMENT_DATABASE } from '@/game/data/equipment-templates';
 import type { GuildFacility, EquipmentItem, Member } from '@/game/state/game-state';
+import { equipmentName } from '@/i18n/content-wrappers';
 
 interface Props { facility: GuildFacility; }
 
 export function WorkshopRepairTab({ facility }: Props) {
+  const { t } = useTranslation();
   const equipmentInventory = useGameStore((s) => s.inventory.equipmentInventory ?? []);
   const founder = useGameStore((s) => s.founder);
   const roster = useGameStore((s) => s.roster);
@@ -47,24 +50,38 @@ export function WorkshopRepairTab({ facility }: Props) {
   return (
     <div className="ws-tab-body">
       <div className="ws-section">
-        <div className="ws-section-title">Damaged Equipment</div>
-        {damaged.length === 0 && <div className="ws-empty">All equipment in good repair.</div>}
+        <div className="ws-section-title">{t('workshop.repair.damagedTitle')}</div>
+        {damaged.length === 0 && (
+          <div className="ws-empty">{t('workshop.repair.repairEmpty')}</div>
+        )}
         <div className="ws-eq-list">
-          {damaged.map(({ eq, tpl, pct, max, ownerName }) => (
+          {damaged.map(({ eq, pct, max, ownerName }) => (
             <div key={eq.id} className="ws-eq-row">
               <div className="ws-eq-info">
                 <span className="ws-eq-name">
-                  {tpl.name}{ownerName ? ` (equipped by ${ownerName})` : ''}
+                  {ownerName
+                    ? t('workshop.repair.equippedBy', {
+                        name: equipmentName(eq.templateId),
+                        owner: ownerName,
+                      })
+                    : equipmentName(eq.templateId)}
                 </span>
                 <span className="ws-eq-meta">
-                  {Math.floor(eq.durability)}/{max} dur · {Math.round(pct * 100)}% damaged
+                  {t('workshop.repair.durMeta', {
+                    cur: Math.floor(eq.durability),
+                    max,
+                    pct: Math.round(pct * 100),
+                  })}
                 </span>
                 <div className="ws-dur-bar">
                   <div className="ws-dur-bar-fill" style={{ width: `${(1 - pct) * 100}%` }} />
                 </div>
               </div>
-              <button className="ws-btn ws-btn-small ws-btn-primary" onClick={() => handleRepair(eq.id)}>
-                Repair
+              <button
+                className="ws-btn ws-btn-small ws-btn-primary"
+                onClick={() => handleRepair(eq.id)}
+              >
+                {t('workshop.repair.repairBtn')}
               </button>
             </div>
           ))}

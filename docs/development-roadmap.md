@@ -344,6 +344,7 @@
 | Phase 5 Milestone 17 | 2026-04-19 | ✅ Done | Combat Formation + ATB Timeline + Manual Mode (formation home slots, step-attack state machine, timeline bar, manual attack queue, target selection) |
 | Phase 5 Milestone 18 | 2026-04-19 | ✅ Done | Manual Mode ATB Pause Fix (unified timeline, engine freeze on ally turn, pause clears on action, 5 tests passing) |
 | Phase 5 Milestone 19 | 2026-04-27 | ✅ Done | Shadow & Bloom Settings Toggle (user-facing graphics toggles in Settings Panel, localStorage persistence, store-driven post-processing) |
+| Phase 5 Milestone 20 | 2026-05-21 | ✅ Done | New Game Flow — split-hero char-creation wizard (Civilization → Class → Mask → Identity), founder-only `sword`/Templar archetype + WOODEN_SWORD, 3 founder presets, live preview + mask overlay, locked civs (MVP-temp); 55 new tests + full suite 633 pass. Follow-up: unlock Đế Quốc/Thiên Lữ founder presets |
 | Phase 6 Milestone 1 | 2026-04-17 | ✅ Done | Map Playground Tool (Phases 1–10 complete, asset browser, R3F viewport, properties panel, code generator, undo/redo) |
 | Phase 6 Milestone 2 | 2026-05-02 | ✅ Done | VFX Sequencer Integration (Phases 1–7 complete, dual-mode architecture, DAW timeline, codegen, engine adapters) |
 | Phase 5 Complete | 2026-04-12 | 🟡 Expected | Performance optimization, accessibility, final polish, launch decision |
@@ -486,4 +487,4 @@ Documentation automatically updated when:
 - Significant scope changes
 - Resource allocation changes
 
-**Last Updated**: 2026-04-11 by project-manager (Milestone 14 Logging Site Finite Harvest v1.18.0 Complete)
+**Last Updated**: 2026-05-21 by docs-manager (Milestone 20 New Game Flow — split-hero char-creation wizard Complete)

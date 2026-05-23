@@ -1,0 +1,458 @@
+/* Tavern Panel — HD-2D Ink UI (hearth/lantern theme).
+   Token additions + .tv-* classes. Parchment skin reused from parchment.css. */
+
+:root {
+  /* Tavern-specific token additions (lantern/hearth/wax-seal palette) */
+  --tv-lantern-warm:    #e8a85c;
+  --tv-lantern-deep:    #a3601d;
+  --tv-hearth-amber:    rgba(232, 168, 92, 0.10);
+  --tv-tankard-bronze:  #6b4a2c;
+  --tv-rumor-blue:      #7a8db8;
+  --tv-rep-positive:    var(--ink-status-ok);
+  --tv-rep-negative:    var(--ink-status-bad);
+  --tv-veil:            rgba(7, 5, 13, 0.55);
+}
+
+/* ── Overlay + shell ─────────────────────────────────────────── */
+.tv-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 220;
+}
+.tv-panel {
+  width: min(840px, 94vw);
+  max-height: 90vh;
+  display: flex; flex-direction: column;
+  background: var(--ink-bg-panel);
+  border: var(--ink-border-w) solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-md);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), var(--ink-glow-gold);
+  overflow: hidden;
+  font-family: var(--ink-font-body);
+  color: var(--ink-text);
+}
+
+/* ── Header ───────────────────────────────────────────────────── */
+.tv-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ink-gold-dim);
+  background: var(--ink-bg-deep);
+  flex-shrink: 0;
+}
+.tv-header-info { display: flex; align-items: center; gap: 10px; }
+.tv-title {
+  font-family: var(--ink-font-title); font-size: 0.9rem;
+  letter-spacing: 0.08em; color: var(--ink-gold);
+}
+.tv-badge {
+  font-family: var(--ink-font-mono); font-size: 0.55rem;
+  color: var(--ink-text-dim);
+  border: 1px solid var(--ink-gold-dim); border-radius: var(--ink-radius-sm);
+  padding: 1px 5px;
+}
+.tv-visitors-badge {
+  font-family: var(--ink-font-mono); font-size: 0.6rem;
+  color: var(--ink-amber);
+  background: rgba(212, 168, 67, 0.08);
+  border: 1px solid var(--ink-gold-dim); border-radius: var(--ink-radius-sm);
+  padding: 2px 7px;
+}
+.tv-visitors-badge.is-full { color: var(--ink-status-ok); border-color: var(--ink-status-ok); }
+.tv-close {
+  background: none; border: 1px solid var(--ink-gold-dim);
+  color: var(--ink-text-muted); font-size: 0.7rem;
+  padding: 2px 8px; border-radius: var(--ink-radius-sm); cursor: pointer;
+}
+.tv-close:hover { color: var(--ink-gold); border-color: var(--ink-gold); }
+
+/* ── Keeper row ───────────────────────────────────────────────── */
+.tv-keeper-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px;
+  background: linear-gradient(180deg, var(--ink-bg-panel) 0%, var(--ink-bg-deep) 100%);
+  border-bottom: 1px solid var(--ink-gold-dim);
+}
+.tv-keeper-row.is-empty { box-shadow: inset 0 0 0 1px var(--ink-gold); }
+.tv-keeper-avatar {
+  width: 56px; height: 56px;
+  border: 1px dashed var(--ink-gold-dim); border-radius: var(--ink-radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.25); cursor: pointer; color: var(--ink-text-muted);
+  font-size: 1.6rem; image-rendering: pixelated;
+  flex-shrink: 0; overflow: hidden;
+}
+.tv-keeper-avatar.is-set { border-style: solid; border-color: var(--ink-gold-dim); }
+.tv-keeper-avatar img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.tv-keeper-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tv-keeper-name { font-family: var(--ink-font-body); font-size: 0.85rem; color: var(--ink-text); }
+.tv-keeper-stats {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  font-family: var(--ink-font-mono); font-size: 0.6rem; color: var(--ink-text-dim);
+}
+.tv-stat-chip {
+  border: 1px solid var(--ink-gold-dim); border-radius: var(--ink-radius-sm);
+  padding: 1px 5px;
+}
+.tv-keeper-dropdown {
+  position: relative;
+}
+.tv-keeper-dropdown-list {
+  position: absolute; right: 0; top: 100%; margin-top: 4px;
+  background: var(--ink-bg-panel); border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm); padding: 4px; min-width: 180px;
+  max-height: 240px; overflow-y: auto;
+  box-shadow: var(--ink-shadow-deep);
+  z-index: 5;
+}
+.tv-keeper-option {
+  display: flex; gap: 6px; padding: 4px 6px;
+  border-radius: var(--ink-radius-sm); cursor: pointer;
+  font-size: 0.7rem; color: var(--ink-text);
+  align-items: center; justify-content: space-between;
+}
+.tv-keeper-option:hover { background: var(--ink-bg-hover); color: var(--ink-gold); }
+.tv-keeper-option.is-empty {
+  color: var(--ink-text-muted); font-style: italic;
+}
+
+/* ── Rumor banner ─────────────────────────────────────────────── */
+.tv-rumor {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px;
+  background: linear-gradient(90deg, var(--tv-hearth-amber), transparent);
+  border-left: 3px solid var(--tv-lantern-warm);
+  border-bottom: 1px solid var(--ink-gold-dim);
+  font-style: italic; font-size: 0.75rem; color: var(--ink-text-dim);
+}
+.tv-rumor-icon {
+  display: inline-block; width: 14px; height: 14px;
+  animation: tv-lantern-flicker 2s ease-in-out infinite;
+}
+.tv-rumor-tag {
+  margin-left: auto; font-size: 0.6rem; color: var(--ink-text-muted);
+  font-family: var(--ink-font-mono); font-style: normal;
+}
+
+/* ── Status bar (rep + reroll) ────────────────────────────────── */
+.tv-status-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 14px;
+  background: var(--ink-bg-deep);
+  border-bottom: 1px solid var(--ink-gold-dim);
+}
+.tv-rep-indicator { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; color: var(--ink-text-dim); }
+.tv-rep-tankards { display: inline-flex; gap: 2px; font-family: var(--ink-font-mono); }
+.tv-rep-hint { font-style: italic; }
+.tv-rep-hint.is-positive { color: var(--tv-rep-positive); }
+.tv-rep-hint.is-negative { color: var(--tv-rep-negative); }
+.tv-rep-tankard { color: var(--ink-text-muted); }
+.tv-rep-tankard.is-filled { color: var(--tv-lantern-warm); }
+.tv-reroll-btn {
+  background: rgba(212, 168, 67, 0.05);
+  border: 1px solid var(--ink-gold-dim);
+  color: var(--ink-amber);
+  padding: 4px 10px; border-radius: var(--ink-radius-sm);
+  font-family: var(--ink-font-mono); font-size: 0.62rem;
+  cursor: pointer; transition: border-color 120ms, color 120ms;
+}
+.tv-reroll-btn:hover:not(:disabled) { color: var(--ink-gold); border-color: var(--ink-gold); }
+.tv-reroll-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.tv-reroll-cost.is-affordable { color: var(--ink-status-ok); }
+.tv-reroll-cost.is-broke { color: var(--ink-status-bad); }
+
+/* ── Visitor grid ─────────────────────────────────────────────── */
+.tv-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  padding: 14px;
+  overflow-y: auto;
+}
+.tv-empty-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 40px 20px; gap: 10px;
+  font-family: var(--ink-font-body); color: var(--ink-text-muted);
+  font-style: italic; text-align: center;
+}
+
+/* ── Visitor card ─────────────────────────────────────────────── */
+.tv-visitor-card {
+  width: 100%; min-height: 280px;
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 10px;
+  background: linear-gradient(180deg, var(--ink-bg-panel-alt), var(--ink-bg-panel));
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-md);
+  position: relative;
+  transition: border-color 120ms, transform 120ms, box-shadow 120ms;
+  animation: tv-card-enter 250ms var(--ink-ease-out) both;
+}
+.tv-visitor-card:hover {
+  border-color: var(--ink-gold);
+  box-shadow: var(--ink-glow-gold);
+}
+.tv-visitor-card.is-used { opacity: 0.55; }
+.tv-veteran-badge {
+  position: absolute; top: -4px; right: -4px;
+  width: 22px; height: 22px;
+  background: var(--tv-tankard-bronze);
+  color: var(--ink-text); font-family: var(--ink-font-title);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; font-size: 0.65rem;
+  transform: rotate(-8deg);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  border: 1px solid var(--ink-gold-dim);
+}
+.tv-card-portrait {
+  width: 80px; height: 80px; margin: 0 auto;
+  background: var(--ink-bg-deep);
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  overflow: hidden; image-rendering: pixelated;
+  display: flex; align-items: center; justify-content: center;
+}
+.tv-card-portrait img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.tv-card-name {
+  text-align: center;
+  font-family: var(--ink-font-title); font-size: 0.8rem; color: var(--ink-gold);
+}
+.tv-card-meta {
+  display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;
+  font-family: var(--ink-font-mono); font-size: 0.55rem; color: var(--ink-text-dim);
+}
+.tv-card-rarity { color: var(--ink-amber); letter-spacing: 0.1em; }
+.tv-stat-row {
+  display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+  font-family: var(--ink-font-mono); font-size: 0.55rem; color: var(--ink-text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.tv-stat-row.is-locked {
+  background: var(--tv-veil); color: var(--ink-text-muted); padding: 3px 5px;
+  border-radius: var(--ink-radius-sm); letter-spacing: 0.15em; cursor: help;
+}
+.tv-trait-chip {
+  display: inline-block; padding: 1px 5px;
+  border: 1px solid var(--ink-gold-dim); border-radius: 8px;
+  color: var(--ink-amber); font-family: var(--ink-font-mono); font-size: 0.55rem;
+}
+.tv-mood-line { text-align: center; font-style: italic; font-size: 0.6rem; color: var(--ink-text-muted); }
+.tv-demand-line {
+  text-align: center;
+  font-family: var(--ink-font-mono); font-size: 0.65rem; color: var(--ink-amber);
+  font-variant-numeric: tabular-nums;
+}
+.tv-card-actions {
+  margin-top: auto; display: flex; flex-direction: column; gap: 4px;
+}
+.tv-btn {
+  padding: 5px 10px;
+  background: rgba(212, 168, 67, 0.05);
+  border: 1px solid var(--ink-gold-dim);
+  color: var(--ink-text-dim);
+  font-family: var(--ink-font-mono); font-size: 0.6rem; letter-spacing: 0.06em;
+  border-radius: var(--ink-radius-sm); cursor: pointer;
+  transition: background 120ms, color 120ms, border-color 120ms;
+  text-align: center;
+}
+.tv-btn:hover:not(:disabled) { background: var(--ink-bg-hover); color: var(--ink-gold); border-color: var(--ink-gold); }
+.tv-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.tv-btn.is-primary { color: var(--ink-gold); border-color: var(--ink-gold); }
+.tv-btn.is-ghost { background: transparent; }
+.tv-btn.is-danger { color: var(--ink-status-bad); border-color: var(--ink-status-bad); }
+.tv-btn.is-small { padding: 3px 8px; font-size: 0.55rem; }
+
+/* ── Negotiate modal (parchment) ──────────────────────────────── */
+.tv-modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 260;
+}
+.tv-negotiate-modal {
+  width: min(640px, 92vw); max-height: 88vh;
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 18px;
+  border-radius: var(--ink-radius-md);
+  animation: tv-banner-slide-in 250ms var(--ink-ease-out) both;
+  overflow-y: auto;
+}
+.tv-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--parchment-burn); padding-bottom: 6px;
+}
+.tv-modal-title { font-size: 0.95rem; }
+.tv-negotiate-body {
+  display: grid;
+  grid-template-columns: 40% 60%;
+  gap: 14px;
+}
+@media (max-width: 767px) { .tv-negotiate-body { grid-template-columns: 1fr; } }
+
+.tv-mod-list { display: flex; flex-direction: column; gap: 4px; }
+.tv-mod-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 6px;
+  background: rgba(180, 140, 80, 0.10);
+  border-radius: var(--ink-radius-sm);
+  font-family: var(--font-body); font-size: 0.78rem;
+  color: var(--ink-dark);
+}
+.tv-mod-row.is-penalty { color: var(--ink-red); }
+.tv-mod-row.is-interactive { cursor: pointer; border: 1px dashed var(--parchment-burn); }
+.tv-mod-row.is-interactive:hover { background: rgba(180, 140, 80, 0.20); }
+.tv-mod-net {
+  border-top: 1px solid var(--parchment-aged);
+  padding-top: 4px; margin-top: 4px;
+  font-weight: 600;
+}
+
+.tv-rate-gauge {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--parchment-burn);
+  border-radius: var(--ink-radius-sm);
+  background: rgba(232, 217, 176, 0.40);
+}
+.tv-rate-bar {
+  width: 200px; height: 16px;
+  background: rgba(0,0,0,0.15);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--parchment-burn);
+}
+.tv-rate-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--ink-status-bad) 0%, var(--ink-status-warn) 50%, var(--ink-status-ok) 100%);
+  transition: width 300ms var(--ink-ease-out);
+}
+.tv-rate-pct {
+  font-family: var(--font-display); font-size: 1.4rem; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.tv-rate-pct.is-low  { color: var(--ink-red); }
+.tv-rate-pct.is-mid  { color: var(--ink-status-warn); }
+.tv-rate-pct.is-high { color: var(--ink-status-ok); }
+.tv-rate-locked {
+  font-family: var(--font-display); font-size: 1.4rem;
+  color: var(--ink-faded);
+}
+.tv-rate-hint { font-style: italic; font-size: 0.7rem; color: var(--ink-faded); text-align: center; }
+.tv-rate-meta {
+  font-family: var(--ink-font-mono); font-size: 0.65rem;
+  color: var(--ink-faded); font-variant-numeric: tabular-nums;
+}
+
+.tv-modal-footer {
+  display: flex; gap: 8px; justify-content: flex-end;
+  border-top: 1px solid var(--parchment-burn); padding-top: 6px;
+}
+.tv-modal-footer .tv-btn { color: var(--ink-dark); border-color: var(--parchment-burn); background: rgba(232, 217, 176, 0.45); }
+.tv-modal-footer .tv-btn.is-primary { color: var(--ink-red); border-color: var(--ink-red); }
+.tv-modal-footer .tv-btn:hover:not(:disabled) { background: rgba(180, 140, 80, 0.25); }
+
+/* ── Gift picker ──────────────────────────────────────────────── */
+.tv-gift-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 6px;
+  background: rgba(0,0,0,0.08);
+  border-radius: var(--ink-radius-sm);
+}
+.tv-gift-cell {
+  width: 64px; height: 64px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px dashed var(--parchment-burn);
+  border-radius: var(--ink-radius-sm);
+  cursor: pointer; padding: 4px;
+  font-family: var(--ink-font-mono); font-size: 0.55rem;
+  color: var(--ink-dark);
+  text-align: center;
+}
+.tv-gift-cell:hover { background: rgba(232, 168, 92, 0.25); }
+.tv-gift-cell.is-preferred {
+  box-shadow: inset 0 0 0 2px var(--tv-lantern-warm);
+}
+.tv-gift-cell.is-selected {
+  border-color: var(--gold-burnished); background: rgba(201, 161, 74, 0.30);
+}
+.tv-gift-empty {
+  padding: 20px; text-align: center; font-style: italic; color: var(--ink-faded);
+}
+
+/* ── Outcome banner (overlay top) ─────────────────────────────── */
+.tv-outcome-banner {
+  position: absolute; left: 0; right: 0; bottom: 60px;
+  padding: 12px 16px;
+  font-family: var(--ink-font-title); font-size: 1rem; letter-spacing: 0.1em;
+  text-align: center;
+  animation: tv-banner-slide-in 300ms var(--ink-ease-out) both;
+  border-top: 2px solid; border-bottom: 2px solid;
+}
+.tv-outcome-banner.kind-success      { background: linear-gradient(90deg, transparent, rgba(109,191,109,0.25), transparent); color: var(--ink-status-ok); border-color: var(--ink-status-ok); }
+.tv-outcome-banner.kind-counter      { background: linear-gradient(90deg, transparent, rgba(212,168,67,0.25), transparent); color: var(--ink-amber); border-color: var(--ink-amber); }
+.tv-outcome-banner.kind-soft-refuse  { background: linear-gradient(90deg, transparent, rgba(125,138,155,0.18), transparent); color: var(--ink-text-dim); border-color: var(--ink-text-muted); }
+.tv-outcome-banner.kind-hard-refuse  { background: linear-gradient(90deg, transparent, rgba(80,90,100,0.20), transparent); color: var(--ink-text-muted); border-color: var(--ink-text-muted); }
+.tv-outcome-banner.kind-insult       { background: linear-gradient(90deg, transparent, rgba(196,74,74,0.30), transparent); color: var(--ink-status-bad); border-color: var(--ink-status-bad); }
+
+/* ── Secondary modals (parchment shell, 360w) ─────────────────── */
+.tv-modal-secondary {
+  width: min(380px, 92vw);
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 18px;
+  border-radius: var(--ink-radius-md);
+  animation: tv-banner-slide-in 250ms var(--ink-ease-out) both;
+}
+.tv-modal-secondary.is-insult { animation: tv-shake 150ms ease-in-out; box-shadow: 0 0 18px rgba(196,74,74,0.5); }
+.tv-money { font-family: var(--font-display); color: var(--gold-burnished); font-weight: 600; font-variant-numeric: tabular-nums; }
+.tv-money.is-strike { text-decoration: line-through; color: var(--ink-faded); margin-right: 6px; }
+.tv-money.is-bumped { color: var(--ink-red); }
+.tv-modal-body { display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; }
+.tv-modal-line { display: flex; justify-content: space-between; font-family: var(--ink-font-mono); font-size: 0.75rem; color: var(--ink-faded); }
+.tv-slot-bar {
+  height: 6px; background: rgba(0,0,0,0.15); border-radius: 3px; overflow: hidden;
+  border: 1px solid var(--parchment-burn);
+}
+.tv-slot-bar-fill { height: 100%; background: var(--gold-burnished); }
+
+/* ── Animations ───────────────────────────────────────────────── */
+@keyframes tv-card-enter {
+  from { opacity: 0; transform: translateY(8px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+@keyframes tv-lantern-flicker {
+  0%,100% { opacity: 1;    }
+  45%     { opacity: 0.85; }
+  55%     { opacity: 0.92; }
+}
+@keyframes tv-banner-slide-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes tv-shake {
+  0%,100% { transform: translateX(0); }
+  25%     { transform: translateX(-3px); }
+  75%     { transform: translateX(3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tv-visitor-card, .tv-outcome-banner, .tv-negotiate-modal, .tv-modal-secondary {
+    animation: none !important;
+  }
+  .tv-rumor-icon { animation: none !important; }
+}
+
+/* ── Focus rings (keyboard a11y) ──────────────────────────────── */
+.tv-btn:focus-visible,
+.tv-close:focus-visible,
+.tv-reroll-btn:focus-visible,
+.tv-keeper-avatar:focus-visible,
+.tv-gift-cell:focus-visible,
+.tv-mod-row.is-interactive:focus-visible {
+  outline: 2px solid var(--ink-gold-bright); outline-offset: 2px;
+}

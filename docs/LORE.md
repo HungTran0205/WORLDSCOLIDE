@@ -39,7 +39,7 @@ Từ đó hình thành nên một nền văn minh kiểu **đế chế điện �
 
 Tham vọng: Muốn thống nhất lục địa dưới một chính thể duy nhất, coi công nghệ hơi nước và điện năng là đỉnh cao của sự tiến hóa.
 
-## Linh Sơn (The Khun) – Huyết Mạch Rồng Tiên
+## Linh Sơn (The LinhSon) – Huyết Mạch Rồng Tiên
 Cảm hứng: Người Việt cổ (Văn Lang - Âu Lạc) pha trộn với yếu tố huyền ảo núi rừng.
 
 Lối sống: Họ sống trong các hang động khổng lồ hoặc các thành phố treo trên vách núi đá vôi. Vũ khí của họ là những cây rìu, cung tên, nỏ đúc từ "Sắt Cổ" (thép phế liệu từ các tòa nhà chọc trời cũ) nhưng được rèn bằng lửa tâm linh.

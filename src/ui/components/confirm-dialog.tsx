@@ -3,6 +3,8 @@
  * Matches dark/gold theme.
  */
 
+import { useTranslation } from 'react-i18next';
+
 interface ConfirmDialogProps {
   message: string;
   onConfirm: () => void;
@@ -18,6 +20,7 @@ export function ConfirmDialog({
   confirmLabel = 'Confirm',
   danger = false,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation();
   return (
     <div className="confirm-dialog-overlay" onClick={onCancel}>
       <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
@@ -29,7 +32,7 @@ export function ConfirmDialog({
           >
             {confirmLabel}
           </button>
-          <button className="panel-btn" onClick={onCancel}>Cancel</button>
+          <button className="panel-btn" onClick={onCancel}>{t('confirmDialog.cancel')}</button>
         </div>
       </div>
     </div>

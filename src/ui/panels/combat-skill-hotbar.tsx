@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import type { ArenaEntitySnapshot } from '@/game/state/combat-arena-slice';
 
@@ -101,13 +102,20 @@ function SkillSlot({ ally, keyLabel, arenaTime }: {
         }} />
       )}
       {isReady && !isDead && (
-        <div style={{
-          position: 'absolute', bottom: 2, left: 0, right: 0,
-          textAlign: 'center', fontSize: '0.55rem',
-          color: '#2ecc71', fontWeight: 'bold',
-        }}>READY</div>
+        <ReadyLabel />
       )}
     </div>
+  );
+}
+
+function ReadyLabel() {
+  const { t } = useTranslation();
+  return (
+    <div style={{
+      position: 'absolute', bottom: 2, left: 0, right: 0,
+      textAlign: 'center', fontSize: '0.55rem',
+      color: '#2ecc71', fontWeight: 'bold',
+    }}>{t('combatSkillHotbar.ready')}</div>
   );
 }
 

@@ -12,10 +12,10 @@ import { FACILITY_DEFINITIONS, LOGGING_SITE_CONFIG, STONE_QUARRY_CONFIG } from '
 import { calcDerivedGuildStats } from './derived-guild-stats';
 import { calcMcLevel, type MiningXpGain } from './stone-quarry-production-system';
 
-// Real ticks per game-day. Online produces 1 cycle per real-second, and 1 game-day = 4 real hours,
-// so 14400 real ticks elapse per game-day. Offline catch-up must use the same scale to stay
-// consistent with online production rate (otherwise offline yields ~6x online).
-const TICKS_PER_DAY = 14400;
+// Real ticks per game-day. Online produces 1 cycle per real-second, and 1 game-day = 30 real minutes,
+// so 1800 real ticks elapse per game-day. Offline catch-up must use the same scale to stay
+// consistent with online production rate (otherwise offline yields differ).
+export const TICKS_PER_DAY = 1800;
 
 // --- Logging Site per-tick production types ---
 
@@ -120,8 +120,6 @@ export interface FacilityProductionResult {
   expGains: Record<string, number>;
   /** Item gains — Logging Site (WOOD), Stone Quarry (STONE) */
   itemGains: Partial<Record<ItemID, number>>;
-  /** Gold saved from upkeep reduction — Tavern CHA bonus */
-  upkeepSaved: number;
   /** Whether infirmary recovery multiplier was applied */
   recoveryApplied: boolean;
   /** Logging site only — wood reserve depletion result */
@@ -138,21 +136,6 @@ function calcTrainingYardExpPerDay(member: Member, level: number): number {
   const base = [12, 22, 40][level - 1];
   const { trainingEff } = calcDerivedGuildStats(member.stats, member.level);
   return Math.floor(base * (1 + trainingEff));
-}
-
-// --- Tavern ---
-
-function calcTavernUpkeepSavedPerDay(
-  assignedMembers: Member[],
-  level: number,
-  dailyUpkeep: number,
-): number {
-  const totalNegotiation = assignedMembers.reduce(
-    (s, m) => s + calcDerivedGuildStats(m.stats, m.level).negotiation,
-    0,
-  );
-  const pct = Math.min(0.10, totalNegotiation * 0.0001 * level);
-  return Math.floor(dailyUpkeep * pct);
 }
 
 // --- Infirmary ---
@@ -180,7 +163,6 @@ export function processFacilityProduction(
   facilities: GuildFacility[],
   allMembers: Member[],
   gameDays: number,
-  dailyUpkeep: number,
 ): FacilityProductionResult[] {
   if (gameDays <= 0) return [];
 
@@ -199,7 +181,6 @@ export function processFacilityProduction(
       facilityName: def.name,
       expGains: {},
       itemGains: {},
-      upkeepSaved: 0,
       recoveryApplied: false,
     };
 
@@ -209,10 +190,6 @@ export function processFacilityProduction(
           const expPerDay = calcTrainingYardExpPerDay(member, facility.level);
           result.expGains[member.id] = expPerDay * gameDays;
         }
-        break;
-
-      case 'tavern':
-        result.upkeepSaved = calcTavernUpkeepSavedPerDay(assignedMembers, facility.level, dailyUpkeep) * gameDays;
         break;
 
       case 'infirmary':
@@ -285,7 +262,7 @@ export function processFacilityProduction(
           const yieldMult = 1 + STONE_QUARRY_CONFIG.mcSkillYieldPct[currentLevel] / 100;
 
           // Per-day stone (skip vein strikes offline — those are event loot).
-          // TICKS_PER_DAY === STONE_QUARRY_CONFIG.ticksPerDay (14400) — the online tick path uses
+          // TICKS_PER_DAY === STONE_QUARRY_CONFIG.ticksPerDay (1800) — the online tick path uses
           // the same constant for strike probability, so online/offline rates stay in lockstep.
           const dailyStone =
             STONE_QUARRY_CONFIG.baseRate *

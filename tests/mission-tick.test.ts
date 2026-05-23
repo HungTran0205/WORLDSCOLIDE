@@ -18,8 +18,10 @@ function makeMember(id: string, status: Member['status'] = 'on-mission'): Member
 
 function makeMission(phase: ActiveMission['phase'], overrides: Partial<ActiveMission> = {}): ActiveMission {
   return {
+    instanceId: 'inst-1',
     missionId: 'slime-extermination',
     memberIds: ['m1'],
+    mercContractIds: [],
     startTime: 0,
     estimatedEndTime: 60_000,
     phase,
@@ -43,10 +45,13 @@ function makeStore(
     calls,
     gold: 100,
     realTimeLastTick: 0,
+    // Tavern merc dispatch integration reads store.tavern.mercContracts in the
+    // in-combat path; provide an empty hub so the mock matches the real store shape.
+    tavern: { mercContracts: [] },
 
     updateMissionPhase: vi.fn((id: string, phase: string, arrivalTime?: number) => {
       calls.push(`updatePhase:${id}:${phase}`);
-      const m = state.activeMissions.find((x) => x.missionId === id);
+      const m = state.activeMissions.find((x) => x.instanceId === id);
       if (m) {
         (m as ActiveMission).phase = phase as ActiveMission['phase'];
         if (arrivalTime !== undefined) (m as ActiveMission).arrivalTime = arrivalTime;
@@ -54,7 +59,7 @@ function makeStore(
     }),
     setTargetPriority: vi.fn((id: string, priority: string) => {
       calls.push(`setTargetPriority:${id}:${priority}`);
-      const m = state.activeMissions.find((x) => x.missionId === id);
+      const m = state.activeMissions.find((x) => x.instanceId === id);
       if (m) (m as ActiveMission).targetPriority = priority as ActiveMission['targetPriority'];
     }),
     setArrivedMissionId: vi.fn((id: string | null) => {
@@ -66,11 +71,11 @@ function makeStore(
     updateMemberStatus: vi.fn((id: string, s: string) => { calls.push(`setStatus:${id}:${s}`); }),
     completeMission: vi.fn((id: string) => {
       calls.push(`completeMission:${id}`);
-      state.activeMissions = state.activeMissions.filter((m) => m.missionId !== id);
+      state.activeMissions = state.activeMissions.filter((m) => m.instanceId !== id);
     }),
     failMission: vi.fn((id: string) => {
       calls.push(`failMission:${id}`);
-      state.activeMissions = state.activeMissions.filter((m) => m.missionId !== id);
+      state.activeMissions = state.activeMissions.filter((m) => m.instanceId !== id);
     }),
     setMemberInjuredUntil: vi.fn((id: string, until: number | null) => {
       calls.push(`setInjured:${id}:${until}`);
@@ -99,7 +104,7 @@ describe('processMissionTick — traveling phase', () => {
     const events = processMissionTick(store, 10_000);
     expect(events).toHaveLength(1);
     expect(events[0].type).toBe('arrival');
-    expect(store.calls).toContain('updatePhase:slime-extermination:arrived');
+    expect(store.calls).toContain('updatePhase:inst-1:arrived');
   });
 
   it('emits arrival event with mission name and zone', () => {
@@ -185,18 +190,20 @@ describe('processMissionTick — in-combat phase', () => {
 });
 
 describe('processMissionTick — edge cases', () => {
-  it('calls failMission for unknown missionId', () => {
-    const am = makeMission('traveling', { missionId: 'nonexistent-quest' });
+  it('calls failMission (by instanceId) for unknown missionId', () => {
+    const am = makeMission('traveling', { instanceId: 'inst-x', missionId: 'nonexistent-quest' });
     const store = makeStore([am]);
     processMissionTick(store, 99_999);
-    expect(store.calls).toContain('failMission:nonexistent-quest');
+    expect(store.calls).toContain('failMission:inst-x');
   });
 
   it('processes multiple missions in a single tick', () => {
-    const am1 = makeMission('traveling', { missionId: 'slime-extermination', startTime: 0 });
+    const am1 = makeMission('traveling', { instanceId: 'inst-a', missionId: 'slime-extermination', startTime: 0 });
     const am2: ActiveMission = {
+      instanceId: 'inst-b',
       missionId: 'slime-king-lair',
       memberIds: ['m1'],
+      mercContractIds: [],
       startTime: 0,
       estimatedEndTime: 120_000,
       phase: 'traveling',
@@ -208,6 +215,19 @@ describe('processMissionTick — edge cases', () => {
     // Both slime missions have travelTimeMs: 10_000, so both should arrive
     const arrivals = events.filter((e) => e.type === 'arrival');
     expect(arrivals.length).toBe(2);
+  });
+
+  it('resolves only the targeted instance when two parties share a quest template', () => {
+    // Regression: pre-fix completeMission/failMission filtered by template missionId,
+    // so finishing party A also removed party B and stranded B's members.
+    const partyA = makeMission('in-combat', { instanceId: 'inst-a', memberIds: ['m1'] });
+    const partyB = makeMission('arrived', { instanceId: 'inst-b', memberIds: ['m2'] });
+    const store = makeStore([partyA, partyB], [makeMember('m1'), makeMember('m2')]);
+    processMissionTick(store, 10_000);
+    // Party A's instance resolves (complete or fail); party B's is never touched.
+    const resolvedA = store.calls.some((c) => c === 'completeMission:inst-a' || c === 'failMission:inst-a');
+    expect(resolvedA).toBe(true);
+    expect(store.calls.some((c) => c.includes('inst-b'))).toBe(false);
   });
 });
 

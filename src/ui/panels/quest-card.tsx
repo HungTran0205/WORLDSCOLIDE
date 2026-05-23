@@ -4,9 +4,11 @@
  */
 
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Mission } from '@/game/state/game-state';
 import { ENEMIES } from '@/game/data/enemies';
 import { getItemInfo } from '@/game/data/items';
+import { tContent } from '@/i18n/content-localization';
 import { GameIcon } from '@/ui/components/game-icon';
 
 interface QuestCardProps {
@@ -18,6 +20,7 @@ interface QuestCardProps {
 }
 
 export function QuestCard({ mission, selected, onClick, onHover }: QuestCardProps) {
+  const { t } = useTranslation();
   const durationMin = Math.round(mission.durationMs / 60000);
 
   return (
@@ -30,26 +33,27 @@ export function QuestCard({ mission, selected, onClick, onHover }: QuestCardProp
       aria-pressed={selected}
     >
       <div className="quest-card__header">
-        <span className="quest-card__title">{mission.name}</span>
+        <span className="quest-card__title">{tContent('missions', mission.id, 'name', mission.name)}</span>
         <span className="quest-card__tier">
           <GameIcon
             category="badge"
             id={mission.tier}
             size={32}
             fallbackText={mission.tier}
-            alt={`Tier ${mission.tier}`}
+            alt={t('questBoard.card.tierAlt', { tier: mission.tier })}
           />
         </span>
       </div>
+      {mission.cardLore && <p className="quest-card__lore">{tContent('missions', mission.id, 'cardLore', mission.cardLore)}</p>}
       <div className="quest-card__badges">
-        {mission.isBossGate && <span className="quest-badge quest-badge--gate">GATE</span>}
-        {mission.chainId && <span className="quest-badge quest-badge--chain">Chain</span>}
+        {mission.isBossGate && <span className="quest-badge quest-badge--gate">{t('questBoard.card.gate')}</span>}
+        {mission.chainId && <span className="quest-badge quest-badge--chain">{t('questBoard.card.chain')}</span>}
       </div>
       <div className="quest-card__meta">
-        <span>⏱ {durationMin}min</span>
-        <span>💰 {mission.goldRewardMin}-{mission.goldRewardMax}</span>
-        <span>✦ {mission.expReward} XP</span>
-        <span>👥 {mission.requiredMembers}+ Lv.{mission.requiredLevel}+</span>
+        <span>⏱ {t('questBoard.card.duration', { mins: durationMin })}</span>
+        <span>💰 {t('questBoard.card.gold', { min: mission.goldRewardMin, max: mission.goldRewardMax })}</span>
+        <span>✦ {t('questBoard.card.exp', { exp: mission.expReward })}</span>
+        <span>👥 {t('questBoard.card.party', { members: mission.requiredMembers, level: mission.requiredLevel })}</span>
       </div>
       <DropPreview enemyIds={mission.enemyIds} />
     </button>
@@ -58,6 +62,7 @@ export function QuestCard({ mission, selected, onClick, onHover }: QuestCardProp
 
 /** Compact drop preview — unique item icons from enemy loot tables */
 function DropPreview({ enemyIds }: { enemyIds: string[] }) {
+  const { t } = useTranslation();
   const drops = useMemo(() => {
     const seen = new Set<string>();
     const result: { id: string; name: string }[] = [];
@@ -67,7 +72,8 @@ function DropPreview({ enemyIds }: { enemyIds: string[] }) {
       for (const rule of enemy.loot) {
         if (!seen.has(rule.itemId)) {
           seen.add(rule.itemId);
-          result.push({ id: rule.itemId, name: getItemInfo(rule.itemId).name });
+          const info = getItemInfo(rule.itemId);
+          result.push({ id: rule.itemId, name: tContent('items', rule.itemId, 'name', info.name) });
         }
       }
     }
@@ -77,13 +83,13 @@ function DropPreview({ enemyIds }: { enemyIds: string[] }) {
   if (drops.length === 0) return null;
   return (
     <div className="quest-card__drops">
-      <span className="quest-card__drops-label">Drops:</span>
+      <span className="quest-card__drops-label">{t('questBoard.card.drops')}</span>
       {drops.slice(0, 4).map((d) => (
         <span key={d.id} className="quest-card__drop">
           <GameIcon category="item" id={d.id} size={14} fallbackText={d.name.slice(0, 2)} />
         </span>
       ))}
-      {drops.length > 4 && <span className="quest-card__drops-more">+{drops.length - 4}</span>}
+      {drops.length > 4 && <span className="quest-card__drops-more">{t('questBoard.card.dropsMore', { count: drops.length - 4 })}</span>}
     </div>
   );
 }

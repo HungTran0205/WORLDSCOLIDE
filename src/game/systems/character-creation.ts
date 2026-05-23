@@ -12,10 +12,15 @@ function randomGender(): Gender {
   return Math.random() < 0.5 ? 'M' : 'F';
 }
 
-export function createFounder(name: string, stats: Stats, civilization: Civilization): Member {
+export function createFounder(
+  name: string,
+  stats: Stats,
+  civilization: Civilization,
+  archetype: CivArchetype,
+  gender: Gender,
+  maskSpriteId: string,
+): Member {
   const boostedStats = applyCivBonuses(stats, civilization);
-  const civConfig = CIV_CONFIG[civilization];
-  const archetype = civConfig.archetypes[0];
   const startingWeapon = getStartingWeapon(archetype);
   return {
     id: crypto.randomUUID(),
@@ -24,16 +29,19 @@ export function createFounder(name: string, stats: Stats, civilization: Civiliza
     exp: 0,
     stats: boostedStats,
     unallocatedPoints: 0,
-    skill: getDefaultSkill('warrior'), // founder always warrior (validated M2 decision)
+    skill: getDefaultSkill(archetype), // founder skill matches the player's chosen archetype
     status: 'idle',
     injuredUntil: null,
     civilization,
     archetype,
-    gender: randomGender(),
+    gender,
     isFounder: true,
     rank: 'COMMANDER',
     missionsCompleted: 0,
+    rarity: 1,
+    traits: [],
     equipment: startingWeapon ? { weapon: startingWeapon } : null,
+    maskSpriteId,
     medicineSlots: structuredClone(DEFAULT_MEDICINE_SLOTS),
   };
 }
@@ -68,6 +76,8 @@ export function generateRecruit(guildLevel: number): Member {
     isFounder: false,
     rank: 'RECRUIT',
     missionsCompleted: 0,
+    rarity: 1,
+    traits: [],
     equipment: startingWeapon ? { weapon: startingWeapon } : null,
     medicineSlots: structuredClone(DEFAULT_MEDICINE_SLOTS),
   };

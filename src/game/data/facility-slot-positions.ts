@@ -1,27 +1,27 @@
 /**
  * 12 placement slots in a Bát Quái (八卦) radial layout around the guild hall.
- * Each slot is a 7×7 building pad. Center (HALL) at [5, 0, 3.5]. Spacing = 14 units.
+ * Each slot is a 7×7 building pad. Center (HALL) at [5, 0, 3.5]. Spacing = 18 units.
  *
- * Inner cross  (slots 0–3):  14 units N/E/S/W from center.
- * Diagonal     (slots 5,7,9,11): 14 units on each axis.
- * Outer cardinal (slots 4,6,8,10): 28 units N/E/S/W from center.
+ * Inner cross  (slots 0–3):  18 units N/E/S/W from center.
+ * Diagonal     (slots 5,7,9,11): 18 units on each axis.
+ * Outer cardinal (slots 4,6,8,10): 36 units N/E/S/W from center.
  *
  * Slot map (image 1–12 → index 0–11):
  *   0=N, 1=E, 2=S, 3=W, 4=W-far, 5=NW, 6=N-far, 7=NE, 8=E-far, 9=SE, 10=S-far, 11=SW
  */
 export const FACILITY_SLOTS: [number, number, number][] = [
-  [5,   0, -10.5],  // slot 0  — North inner
-  [19,  0,   3.5],  // slot 1  — East inner
-  [5,   0,  17.5],  // slot 2  — South inner
-  [-9,  0,   3.5],  // slot 3  — West inner
-  [-23, 0,   3.5],  // slot 4  — West far
-  [-9,  0, -10.5],  // slot 5  — Northwest
-  [5,   0, -24.5],  // slot 6  — North far
-  [19,  0, -10.5],  // slot 7  — Northeast
-  [33,  0,   3.5],  // slot 8  — East far
-  [19,  0,  17.5],  // slot 9  — Southeast
-  [5,   0,  31.5],  // slot 10 — South far
-  [-9,  0,  17.5],  // slot 11 — Southwest
+  [5,   0, -14.5],  // slot 0  — North inner
+  [23,  0,   3.5],  // slot 1  — East inner
+  [5,   0,  21.5],  // slot 2  — South inner
+  [-13, 0,   3.5],  // slot 3  — West inner
+  [-31, 0,   3.5],  // slot 4  — West far
+  [-13, 0, -14.5],  // slot 5  — Northwest
+  [5,   0, -32.5],  // slot 6  — North far
+  [23,  0, -14.5],  // slot 7  — Northeast
+  [41,  0,   3.5],  // slot 8  — East far
+  [23,  0,  21.5],  // slot 9  — Southeast
+  [5,   0,  39.5],  // slot 10 — South far
+  [-13, 0,  21.5],  // slot 11 — Southwest
 ];
 
 /**

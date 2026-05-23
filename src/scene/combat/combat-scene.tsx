@@ -20,7 +20,10 @@
  * post FX) lives in <CombatSceneShell> and is reused by every map.
  */
 
+import { useEffect } from 'react';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
+import { preloadCombatMasks } from '@/scene/sprites/mask-pool';
+import { disposeCombatMaskCompositeAtlasCache } from './combat-mask-composite-atlas';
 import { resolveCombatMapId, getStageSpec } from './maps/combat-map-registry';
 import { StageRenderHost } from './maps/stage-render-host';
 
@@ -32,5 +35,9 @@ import { StageRenderHost } from './maps/stage-render-host';
 export function CombatScene() {
   const missionId = useCombatPanelStore((s) => s.missionId);
   const mapId = resolveCombatMapId(missionId);
+  useEffect(() => {
+    preloadCombatMasks();
+    return () => { disposeCombatMaskCompositeAtlasCache(); };
+  }, []);
   return <StageRenderHost spec={getStageSpec(mapId)} />;
 }

@@ -7,11 +7,13 @@
  */
 
 import { useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { MISSIONS } from '@/game/data/missions';
 import { ENEMIES } from '@/game/data/enemies';
 import { isRangedArchetype, DEFAULT_TARGET_PRIORITY } from '@/game/systems/combat-arena-types';
+import { tContent } from '@/i18n/content-localization';
 import type { Member } from '@/game/state/game-state';
 import type { Formation, TargetPriority } from '@/game/systems/combat-arena-types';
 
@@ -39,13 +41,16 @@ function autoSuggestFormation(members: Member[]): Formation {
 
 /** Display-order map: render rows as [back, front] to match in-game spawn positions */
 const GRID_ORDER = [3, 0, 4, 1, 5, 2] as const;
-const SLOT_LABELS: Record<number, string> = {
-  0: 'Front 1', 1: 'Front 2', 2: 'Front 3',
-  3: 'Back 1',  4: 'Back 2',  5: 'Back 3',
+// Slots 0-2 are front rank, 3-5 are back rank (1-indexed within each rank).
+const SLOT_SIDE: Record<number, 'front' | 'back'> = {
+  0: 'front', 1: 'front', 2: 'front',
+  3: 'back', 4: 'back', 5: 'back',
 };
 
 export function CombatPanelFormation() {
+  const { t } = useTranslation();
   const missionId = useCombatPanelStore((s) => s.missionId);
+  const instanceId = useCombatPanelStore((s) => s.instanceId);
   const setPhase = useCombatPanelStore((s) => s.setPhase);
 
   const formation = useGameStore((s) => s.formation);
@@ -56,7 +61,7 @@ export function CombatPanelFormation() {
   const setTargetPriority = useGameStore((s) => s.setTargetPriority);
   const updateMissionPhase = useGameStore((s) => s.updateMissionPhase);
 
-  const mission = activeMissions.find((m) => m.missionId === missionId);
+  const mission = activeMissions.find((m) => m.instanceId === instanceId);
   const missionData = MISSIONS.find((m) => m.id === missionId);
   const allMembers = useMemo(() => (founder ? [founder, ...roster] : roster), [founder, roster]);
   const partyMembers = useMemo(
@@ -82,13 +87,13 @@ export function CombatPanelFormation() {
   const handleStart = useCallback(() => {
     // Flip mission.phase to 'in-combat' here (not on Enter-Battle click) so a
     // mid-formation close leaves the mission resumable instead of auto-resolving.
-    if (missionId) updateMissionPhase(missionId, 'in-combat');
+    if (instanceId) updateMissionPhase(instanceId, 'in-combat');
     setPhase('battle');
-  }, [missionId, updateMissionPhase, setPhase]);
+  }, [instanceId, updateMissionPhase, setPhase]);
 
   const handlePriority = useCallback((priority: TargetPriority) => {
-    if (missionId) setTargetPriority(missionId, priority);
-  }, [missionId, setTargetPriority]);
+    if (instanceId) setTargetPriority(instanceId, priority);
+  }, [instanceId, setTargetPriority]);
 
   const onDragStart = (e: React.DragEvent, memberId: string) => {
     e.dataTransfer.setData('memberId', memberId);
@@ -108,7 +113,7 @@ export function CombatPanelFormation() {
       <div className="combat-panel-formation__columns">
         {/* Left: unplaced party */}
         <div>
-          <div className="combat-panel-formation__column-title">Party</div>
+          <div className="combat-panel-formation__column-title">{t('combatPanel.formation.party')}</div>
           <div className="combat-panel-formation__roster">
             {unplacedMembers.map((m) => (
               <div
@@ -119,13 +124,13 @@ export function CombatPanelFormation() {
               >
                 <div className="combat-panel-formation__member-name">{m.name}</div>
                 <div className="combat-panel-formation__member-meta">
-                  Lv.{m.level} {m.archetype ?? 'warrior'}
+                  {t('combatPanel.formation.memberMeta', { level: m.level, archetype: t(`archetype.${m.archetype ?? 'warrior'}`) })}
                 </div>
               </div>
             ))}
             {unplacedMembers.length === 0 && (
               <div className="combat-panel-formation__member combat-panel-formation__member--placed">
-                All placed
+                {t('combatPanel.formation.allPlaced')}
               </div>
             )}
           </div>
@@ -134,8 +139,8 @@ export function CombatPanelFormation() {
         {/* Center: 2×3 formation grid */}
         <div>
           <div className="combat-panel-formation__grid-headers">
-            <div className="combat-panel-formation__grid-header">Back</div>
-            <div className="combat-panel-formation__grid-header">Front</div>
+            <div className="combat-panel-formation__grid-header">{t('combatPanel.formation.back')}</div>
+            <div className="combat-panel-formation__grid-header">{t('combatPanel.formation.front')}</div>
           </div>
           <div className="combat-panel-formation__grid">
             {GRID_ORDER.map((slotIdx) => {
@@ -156,11 +161,14 @@ export function CombatPanelFormation() {
                   {member ? (
                     <>
                       <div className="combat-panel-formation__member-name">{member.name}</div>
-                      <div className="combat-panel-formation__member-meta">Lv.{member.level}</div>
+                      <div className="combat-panel-formation__member-meta">{t('combatPanel.formation.slotMeta', { level: member.level })}</div>
                     </>
                   ) : (
                     <div className="combat-panel-formation__slot--placeholder">
-                      {SLOT_LABELS[slotIdx]}
+                      {t('combatPanel.formation.slot', {
+                        side: t(`combatPanel.formation.${SLOT_SIDE[slotIdx]}`),
+                        index: (slotIdx % 3) + 1,
+                      })}
                     </div>
                   )}
                 </div>
@@ -172,12 +180,12 @@ export function CombatPanelFormation() {
         {/* Right: enemy preview */}
         <div>
           <div className="combat-panel-formation__column-title" style={{ color: 'var(--ink-status-bad)' }}>
-            Enemies
+            {t('combatPanel.formation.enemies')}
           </div>
           {enemies.map((enemy, i) => (
             <div key={`${enemy.id}-${i}`} className="combat-panel-formation__enemy">
-              <div className="combat-panel-formation__enemy-name">{enemy.name}</div>
-              <div className="combat-panel-formation__enemy-meta">Lv.{enemy.level}</div>
+              <div className="combat-panel-formation__enemy-name">{tContent('enemies', enemy.id, 'name', enemy.name)}</div>
+              <div className="combat-panel-formation__enemy-meta">{t('combatPanel.formation.enemyMeta', { level: enemy.level })}</div>
             </div>
           ))}
         </div>
@@ -193,7 +201,7 @@ export function CombatPanelFormation() {
           }
           onClick={() => handlePriority('focus')}
         >
-          🎯 Focus
+          🎯 {t('combatPanel.formation.focus')}
         </button>
         <button
           type="button"
@@ -203,13 +211,13 @@ export function CombatPanelFormation() {
           }
           onClick={() => handlePriority('balance')}
         >
-          ⚖️ Balance
+          ⚖️ {t('combatPanel.formation.balance')}
         </button>
       </div>
 
       <div className="combat-panel-formation__actions">
         <button type="button" className="combat-panel-btn" onClick={handleAutoSuggest}>
-          Auto-Place
+          {t('combatPanel.formation.autoPlace')}
         </button>
         <button
           type="button"
@@ -217,7 +225,7 @@ export function CombatPanelFormation() {
           onClick={handleStart}
           disabled={!canStart}
         >
-          Start Battle
+          {t('combatPanel.formation.start')}
         </button>
       </div>
     </div>

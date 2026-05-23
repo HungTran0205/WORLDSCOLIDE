@@ -9,8 +9,10 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
+import { MISSIONS } from '@/game/data/missions';
 import { COMBAT_CRIT_DOM_EVENT, COMBAT_SKIP_DOM_EVENT } from '@/scene/combat/combat-vfx-bridge';
 import { CombatPanelHud } from './combat-panel-hud';
 import { CombatPanelEnemyRoster, CombatPanelAllyRoster } from './combat-panel-roster';
@@ -19,14 +21,22 @@ import { CombatPanelSkillBar } from './combat-panel-skill-bar';
 const SHAKE_DURATION_MS = 220;
 
 export function CombatPanelBattle() {
+  const { t } = useTranslation();
+  const instanceId = useCombatPanelStore((s) => s.instanceId);
   const missionId = useCombatPanelStore((s) => s.missionId);
   const speedMultiplier = useGameStore((s) => s.speedMultiplier);
   const setSpeedMultiplier = useGameStore((s) => s.setSpeedMultiplier);
   const waveState = useGameStore((s) => s.waveState);
   const arenaTime = useGameStore((s) => s.arenaTime);
   const targetPriority = useGameStore((s) =>
-    s.activeMissions.find((m) => m.missionId === missionId)?.targetPriority ?? 'focus',
+    s.activeMissions.find((m) => m.instanceId === instanceId)?.targetPriority ?? 'focus',
   );
+
+  // Skip is allowed only for non-main, non-tutorial missions. This matches the
+  // quest board's expedition classification: `!isMainQuest && !id.startsWith('tutorial-')`.
+  // Legacy farm missions without `isExpedition` remain skippable under this rule.
+  const m = MISSIONS.find((x) => x.id === missionId);
+  const isSkippable = !!m && !m.isMainQuest && !m.id.startsWith('tutorial-');
 
   // Crit screen-shake listener — engine dispatches `combat-vfx-crit` window
   // events from inside the canvas; this hook applies a CSS class for ~220ms
@@ -82,7 +92,7 @@ export function CombatPanelBattle() {
   }, [togglePause]);
 
   const elapsed = formatElapsed(arenaTime);
-  const modeLabel = targetPriority === 'focus' ? 'FOCUS' : 'BALANCE';
+  const modeLabel = targetPriority === 'focus' ? t('combatPanel.battle.modeFocus') : t('combatPanel.battle.modeBalance');
   const modeIcon = targetPriority === 'focus' ? '🎯' : '⚖️';
 
   return (
@@ -103,13 +113,13 @@ export function CombatPanelBattle() {
 
       <div className="combat-panel-battle__footer">
         <div className="combat-panel-battle__meta">
-          <span className="combat-panel-battle__mode" title={`Target priority: ${modeLabel}`}>
-            {modeIcon} {modeLabel} MODE
+          <span className="combat-panel-battle__mode" title={t('combatPanel.battle.priorityTitle', { mode: modeLabel })}>
+            {modeIcon} {t('combatPanel.battle.modeLabel', { mode: modeLabel })}
           </span>
-          <span className="combat-panel-battle__elapsed">ELAPSED {elapsed}</span>
+          <span className="combat-panel-battle__elapsed">{t('combatPanel.battle.elapsed', { time: elapsed })}</span>
           {waveState.total > 1 && (
             <span className="combat-panel-battle__wave">
-              WAVE {waveState.current + 1}/{waveState.total}
+              {t('combatPanel.battle.wave', { current: waveState.current + 1, total: waveState.total })}
             </span>
           )}
         </div>
@@ -121,7 +131,7 @@ export function CombatPanelBattle() {
               (speedMultiplier === 0 ? ' combat-panel-btn--active' : '')
             }
             onClick={togglePause}
-            title={speedMultiplier === 0 ? 'Resume (Space)' : 'Pause (Space)'}
+            title={speedMultiplier === 0 ? t('combatPanel.battle.resume') : t('combatPanel.battle.pause')}
           >
             {speedMultiplier === 0 ? '▶' : '⏸'}
           </button>
@@ -134,19 +144,21 @@ export function CombatPanelBattle() {
                 (speedMultiplier === mult ? ' combat-panel-btn--active' : '')
               }
               onClick={() => setSpeedMultiplier(mult)}
-              title={`${mult}× speed`}
+              title={t('combatPanel.battle.speed', { mult })}
             >
               {mult}×
             </button>
           ))}
-          <button
-            type="button"
-            className="combat-panel-btn combat-panel-btn--primary"
-            onClick={handleSkip}
-            title="Skip remaining battle and resolve via simulator"
-          >
-            SKIP → RESOLVE
-          </button>
+          {isSkippable && (
+            <button
+              type="button"
+              className="combat-panel-btn combat-panel-btn--primary"
+              onClick={handleSkip}
+              title={t('combatPanel.battle.skipTitle')}
+            >
+              {t('combatPanel.battle.skip')}
+            </button>
+          )}
         </div>
       </div>
     </div>

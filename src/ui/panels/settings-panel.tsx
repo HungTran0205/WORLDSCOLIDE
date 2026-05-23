@@ -4,12 +4,15 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import { useUiStore } from '@/game/state/ui-store';
+import { graphicsTierFlags } from '@/game/state/guild-slice';
 import { setMusicVolume, setSFXVolume, setMute } from '@/audio/audio-manager';
 import { saveManager } from '@/game/save/save-manager';
 import { saveSlot } from '@/game/save/save-storage';
 import { deleteSlot } from '@/game/save/save-storage';
+import { useLanguage } from '@/i18n/use-language';
 import '@/ui/styles/panels.css';
 
 interface SettingsPanelProps {
@@ -18,27 +21,21 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) {
+  const { t } = useTranslation();
   const settings = useGameStore((s) => s.settings);
   const updateSettings = useGameStore((s) => s.updateSettings);
+  const { language, setLanguage } = useLanguage();
   const resetTutorials = useUiStore((s) => s.resetTutorials);
   const [confirmReset, setConfirmReset] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState(false);
   const [tutorialsReset, setTutorialsReset] = useState(false);
 
-  const handleShadows = (enabled: boolean) => {
-    if (enabled === settings.shadowsEnabled) return;
-    updateSettings({ shadowsEnabled: enabled });
-  };
-
-  const handleBloom = (enabled: boolean) => {
-    if (enabled === settings.bloomEnabled) return;
-    updateSettings({ bloomEnabled: enabled });
-  };
-
   const handleQuality = async (q: 'high' | 'low') => {
     if (q === settings.graphicsQuality) return;
-    updateSettings({ graphicsQuality: q });
+    // Cascade all dependent flags so the scene matches the tier without
+    // requiring separate toggles (also fixes title <-> in-game sync drift).
+    updateSettings(graphicsTierFlags(q));
     // Save first so progress isn't lost on reload
     await saveManager.save(() => useGameStore.getState() as unknown as Record<string, unknown>, true);
     window.location.reload();
@@ -102,13 +99,13 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
   return (
     <div className="panel-overlay">
       <h2>
-        Settings
-        <button className="panel-close-btn" onClick={onClose}>Close</button>
+        {t('settings.title')}
+        <button className="panel-close-btn" onClick={onClose}>{t('settings.close')}</button>
       </h2>
 
       <div className="panel-section">
         <label style={{ display: 'block', marginBottom: 8 }}>
-          Music: {Math.round(settings.musicVolume * 100)}%
+          {t('settings.music', { pct: Math.round(settings.musicVolume * 100) })}
           <input
             type="range" min="0" max="1" step="0.05"
             value={settings.musicVolume}
@@ -116,7 +113,7 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
           />
         </label>
         <label style={{ display: 'block' }}>
-          SFX: {Math.round(settings.sfxVolume * 100)}%
+          {t('settings.sfx', { pct: Math.round(settings.sfxVolume * 100) })}
           <input
             type="range" min="0" max="1" step="0.05"
             value={settings.sfxVolume}
@@ -124,12 +121,12 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
           />
         </label>
         <button className="panel-btn" onClick={() => setMute(true)} style={{ marginTop: 8 }}>
-          Mute All
+          {t('settings.muteAll')}
         </button>
       </div>
 
       <div className="panel-section">
-        <div style={{ marginBottom: 6 }}>Graphics Quality</div>
+        <div style={{ marginBottom: 6 }}>{t('settings.graphicsQuality')}</div>
         <div style={{ display: 'flex', gap: 8 }}>
           {(['high', 'low'] as const).map((q) => (
             <button
@@ -141,56 +138,44 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
               }}
               onClick={() => handleQuality(q)}
             >
-              {q === 'high' ? 'High' : 'Low'}
+              {q === 'high' ? t('settings.qualityHigh') : t('settings.qualityLow')}
             </button>
           ))}
         </div>
 
-        <div style={{ marginTop: 12, marginBottom: 6 }}>Shadows</div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {([true, false] as const).map((v) => (
-            <button
-              key={String(v)}
-              className="panel-btn"
-              style={{
-                borderColor: settings.shadowsEnabled === v ? '#4caf50' : undefined,
-                opacity: settings.shadowsEnabled === v ? 1 : 0.6,
-              }}
-              onClick={() => handleShadows(v)}
-            >
-              {v ? 'On' : 'Off'}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ marginTop: 12, marginBottom: 6 }}>Bloom</div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {([true, false] as const).map((v) => (
-            <button
-              key={String(v)}
-              className="panel-btn"
-              style={{
-                borderColor: settings.bloomEnabled === v ? '#4caf50' : undefined,
-                opacity: settings.bloomEnabled === v ? 1 : 0.6,
-              }}
-              onClick={() => handleBloom(v)}
-            >
-              {v ? 'On' : 'Off'}
-            </button>
-          ))}
-        </div>
-
+        {/* Shadows + Bloom controls removed: shadows crash the WebGPU pipeline
+            (samplers exceed per-stage limit) and bloom is now implicit in the
+            graphics tier above. Tier preset cascades both flags. */}
       </div>
 
       <div className="panel-section">
-        <button className="panel-btn" onClick={handleSave}>Save Game</button>
-        <button className="panel-btn" onClick={handleExport}>Export Save</button>
-        <button className="panel-btn" onClick={handleImport}>Import Save</button>
+        <div style={{ marginBottom: 6 }}>{t('settings.language')}</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {(['en', 'vi'] as const).map((lng) => (
+            <button
+              key={lng}
+              className="panel-btn"
+              style={{
+                borderColor: language === lng ? '#4caf50' : undefined,
+                opacity: language === lng ? 1 : 0.6,
+              }}
+              onClick={() => setLanguage(lng)}
+            >
+              {lng === 'en' ? t('settings.langEn') : t('settings.langVi')}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="panel-section">
+        <button className="panel-btn" onClick={handleSave}>{t('settings.saveGame')}</button>
+        <button className="panel-btn" onClick={handleExport}>{t('settings.exportSave')}</button>
+        <button className="panel-btn" onClick={handleImport}>{t('settings.importSave')}</button>
         {importError && (
           <div style={{ color: '#e74c3c', fontSize: '0.8rem', marginTop: 6 }}>{importError}</div>
         )}
         {importSuccess && (
-          <div style={{ color: '#4caf50', fontSize: '0.8rem', marginTop: 6 }}>Import successful</div>
+          <div style={{ color: '#4caf50', fontSize: '0.8rem', marginTop: 6 }}>{t('settings.importSuccess')}</div>
         )}
       </div>
 
@@ -199,23 +184,23 @@ export function SettingsPanel({ onClose, onReturnToTitle }: SettingsPanelProps) 
           className="panel-btn"
           onClick={() => { resetTutorials(); setTutorialsReset(true); }}
         >
-          Reset Tutorials
+          {t('settings.resetTutorials')}
         </button>
         {tutorialsReset && (
           <div style={{ color: '#4caf50', fontSize: '0.8rem', marginTop: 6 }}>
-            Tutorial hints will reappear on next visit.
+            {t('settings.tutorialsResetHint')}
           </div>
         )}
       </div>
 
       <div className="panel-section">
-        <button className="panel-btn" onClick={onReturnToTitle}>Return to Title</button>
+        <button className="panel-btn" onClick={onReturnToTitle}>{t('settings.returnToTitle')}</button>
         <button
           className="panel-btn"
           style={{ borderColor: confirmReset ? '#e74c3c' : undefined }}
           onClick={handleReset}
         >
-          {confirmReset ? 'Confirm Reset?' : 'Reset Game'}
+          {confirmReset ? t('settings.confirmReset') : t('settings.resetGame')}
         </button>
       </div>
     </div>

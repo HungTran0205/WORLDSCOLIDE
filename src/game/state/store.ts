@@ -43,7 +43,21 @@ export function resetGameState(): void {
     gold: 100,
     guildHall: createDefaultFloor(),
     settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high', shadowsEnabled: false, bloomEnabled: false, bloomThreshold: 0.85, atmosphericEnabled: true },
-    tavern: { lastRefreshTime: 0, availableMercenaries: [] },
+    tavern: {
+      level: 1,
+      keeperId: null,
+      reputation: 0,
+      currentRoster: [],
+      rerolledToday: false,
+      factionBias: null,
+      rumor: null,
+      mercContracts: [],
+      pendingPrompts: [],
+      lastDayProcessed: 0,
+      reputationLastTickWeek: 0,
+      globalNegotiationDebuffUntilDay: null,
+      veteranPool: [],
+    },
     facilities: [
       { id: 'tavern' as const,        type: 'tavern' as const,        level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
       { id: 'training-yard' as const, type: 'training-yard' as const, level: 0, assignedMemberIds: [], placedSlot: null, woodReserve: null },
@@ -68,6 +82,7 @@ export function resetGameState(): void {
     gameScene: 'guild-hall' as const,
     arenaPhase: 'idle' as const,
     arenaMissionId: null,
+    arenaInstanceId: null,
     formation: [null, null, null, null, null, null],
     arenaEntities: [],
     arenaTime: 0,
@@ -79,5 +94,7 @@ export function resetGameState(): void {
     cameraTarget: [5, 0, 3.5] as [number, number, number],
     cameraFocus: 'default' as const,
     pendingQuestPanel: false,
+    pendingFacilityFunctionPanel: null,
+    facilityFocusTarget: null,
   });
 }

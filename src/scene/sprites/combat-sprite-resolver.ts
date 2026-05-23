@@ -16,58 +16,91 @@
  * Add new civs/enemies here as their frames land.
  */
 
-export type CombatAnimState = 'idle' | 'attack' | 'death';
+import { assetUrl } from '@/lib/asset-url';
+
+export type CombatAnimState = 'idle' | 'attack' | 'blocking' | 'death';
 
 export const COMBAT_IDLE_FRAME_COUNT = 8;
 export const COMBAT_ATTACK_FRAME_COUNT = 8;
+export const COMBAT_BLOCKING_FRAME_COUNT = 4;
 export const COMBAT_DEATH_FRAME_COUNT = 8;
 
 /** Compile-time map of which entities have which combat-panel assets on disk. */
 export const COMBAT_SPRITE_MANIFEST = {
+  /**
+   * Char IDs whose `animations/working/` folder exists on disk.
+   * Used by hasWorkingAnim() to gate the tavern working-loop branch in
+   * room-member-sprites.tsx so members without the asset fall back to patrol
+   * instead of rendering nothing via Suspense fallback={null}.
+   *
+   * KEEP IN SYNC with on-disk `working/` folders under
+   * public/sprites/characters/<charId>/animations/working/.
+   * Update here whenever art adds or removes a working/ sprite sheet.
+   */
+  charsWithWorking: new Set<string>([
+    'LS-SCOUT-F', 'LS-SCOUT-M', 'LS-SWORD-M', 'LS-WARRIOR-M',
+  ]),
   /** Char IDs (e.g. 'LS-WARRIOR-M') with `animations/battle-idle/east/frame_0..7.png`. */
   charsWithBattleIdleEast: new Set<string>([
-    'LS-SCOUT-F', 'LS-SCOUT-M', 'LS-WARRIOR-F', 'LS-WARRIOR-M',
+    'LS-SCOUT-F', 'LS-SCOUT-M', 'LS-WARRIOR-F', 'LS-WARRIOR-M', 'LS-SWORD-M',
   ]),
   /** Char IDs with `animations/attack/east/frame_0..7.png`. */
   charsWithAttackEast: new Set<string>([
-    'LS-SCOUT-F', 'LS-SCOUT-M', 'LS-WARRIOR-F', 'LS-WARRIOR-M',
+    'LS-SCOUT-F', 'LS-SCOUT-M', 'LS-WARRIOR-F', 'LS-WARRIOR-M', 'LS-SWORD-M',
+  ]),
+  /** Char IDs with `animations/blocking/east/frame_0..3.png`. */
+  charsWithBlockingEast: new Set<string>([
+    'LS-SCOUT-F', 'LS-WARRIOR-M', 'LS-SWORD-M',
   ]),
   /** Char IDs with `animations/death/east/frame_0..7.png`. */
   charsWithDeathEast: new Set<string>([
-    'LS-SCOUT-F', 'LS-SCOUT-M', 'LS-WARRIOR-F', 'LS-WARRIOR-M',
+    'LS-SCOUT-F', 'LS-SCOUT-M', 'LS-WARRIOR-F', 'LS-WARRIOR-M', 'LS-SWORD-M',
   ]),
   /** Enemy IDs (e.g. 'slime-king') with `animations/idle/west/frame_0..7.png`. */
   enemiesWithIdleWest: new Set<string>([
-    'cave-bat', 'slime-king',
+    'cave-bat', 'slime-king', 'moonbear',
   ]),
   /** Enemy IDs with `animations/attack/west/frame_0..N.png`. */
   enemiesWithAttackWest: new Set<string>([
-    'cave-bat', 'forest-spider', 'slime', 'slime-king',
+    'cave-bat', 'forest-spider', 'slime', 'slime-king', 'moonbear', 'drone', 'dog-robot',
   ]),
   /** Enemy IDs with `animations/death/west/frame_0..N.png`. */
   enemiesWithDeathWest: new Set<string>([
-    'cave-bat', 'forest-spider', 'slime', 'slime-king',
+    'cave-bat', 'forest-spider', 'slime', 'slime-king', 'moonbear', 'drone', 'dog-robot',
   ]),
   /** Enemy IDs with `animations/walk/west/` (last-resort idle fallback when idle missing). */
   enemiesWithWalkWest: new Set<string>([
-    'cave-bat', 'forest-spider', 'slime', 'slime-king',
+    'cave-bat', 'forest-spider', 'slime', 'slime-king', 'drone', 'dog-robot',
   ]),
 } as const;
 
-/** Enemy IDs whose death animation has fewer than COMBAT_DEATH_FRAME_COUNT frames. */
+/** Enemy IDs whose death animation frame count differs from COMBAT_DEATH_FRAME_COUNT. */
 const ENEMY_DEATH_FRAME_OVERRIDES: Record<string, number> = {
   'forest-spider': 4,
+  'dog-robot': 9, // death/west has frame_000..008
 };
 
 /** Enemy IDs whose attack animation has fewer than COMBAT_ATTACK_FRAME_COUNT frames. */
 const ENEMY_ATTACK_FRAME_OVERRIDES: Record<string, number> = {
   'slime': 4,
+  'drone': 4,
+  'dog-robot': 4, // attack/west has frame_000..003
 };
 
 /** Extract char id (e.g. 'LS-WARRIOR-M') from a basePath like '/sprites/characters/LS-WARRIOR-M'. */
-function getCharIdFromBasePath(basePath: string): string {
+export function getCharIdFromBasePath(basePath: string): string {
   const parts = basePath.split('/').filter(Boolean);
   return parts[parts.length - 1] ?? '';
+}
+
+/**
+ * True when the character has an `animations/working/` folder on disk.
+ * Use this to gate the WorkingAnimator in facility rooms — characters that
+ * return false must fall to the patrol SpriteAnimator branch so they remain
+ * visible (WorkingAnimator on a missing folder triggers Suspense fallback={null}).
+ */
+export function hasWorkingAnim(basePath: string): boolean {
+  return COMBAT_SPRITE_MANIFEST.charsWithWorking.has(getCharIdFromBasePath(basePath));
 }
 
 /**
@@ -99,6 +132,13 @@ export function resolveAllyCombatSprite(
     return resolveAllyCombatSprite(basePath, 'idle', frame);
   }
 
+  if (state === 'blocking') {
+    if (COMBAT_SPRITE_MANIFEST.charsWithBlockingEast.has(charId)) {
+      return `${basePath}/animations/blocking/east/frame_${padded}.png`;
+    }
+    return resolveAllyCombatSprite(basePath, 'idle', frame);
+  }
+
   if (COMBAT_SPRITE_MANIFEST.charsWithBattleIdleEast.has(charId)) {
     return `${basePath}/animations/battle-idle/east/frame_${padded}.png`;
   }
@@ -121,20 +161,20 @@ export function resolveEnemyCombatSprite(
 
   if (state === 'death') {
     if (COMBAT_SPRITE_MANIFEST.enemiesWithDeathWest.has(spriteId)) {
-      return `/sprites/enemies/${spriteId}/animations/death/west/frame_${padded}.png`;
+      return assetUrl(`/sprites/enemies/${spriteId}/animations/death/west/frame_${padded}.png`);
     }
     if (COMBAT_SPRITE_MANIFEST.enemiesWithIdleWest.has(spriteId)) {
-      return `/sprites/enemies/${spriteId}/animations/idle/west/frame_000.png`;
+      return assetUrl(`/sprites/enemies/${spriteId}/animations/idle/west/frame_000.png`);
     }
     if (COMBAT_SPRITE_MANIFEST.enemiesWithWalkWest.has(spriteId)) {
-      return `/sprites/enemies/${spriteId}/animations/walk/west/frame_000.png`;
+      return assetUrl(`/sprites/enemies/${spriteId}/animations/walk/west/frame_000.png`);
     }
-    return `/sprites/enemies/${spriteId}/rotations/west.png`;
+    return assetUrl(`/sprites/enemies/${spriteId}/rotations/west.png`);
   }
 
   if (state === 'attack') {
     if (COMBAT_SPRITE_MANIFEST.enemiesWithAttackWest.has(spriteId)) {
-      return `/sprites/enemies/${spriteId}/animations/attack/west/frame_${padded}.png`;
+      return assetUrl(`/sprites/enemies/${spriteId}/animations/attack/west/frame_${padded}.png`);
     }
     // Fallback to idle (the sprite component shares the idle atlas so no
     // extra GPU canvas is allocated when an enemy has no attack frames).
@@ -142,13 +182,13 @@ export function resolveEnemyCombatSprite(
   }
 
   if (COMBAT_SPRITE_MANIFEST.enemiesWithIdleWest.has(spriteId)) {
-    return `/sprites/enemies/${spriteId}/animations/idle/west/frame_${padded}.png`;
+    return assetUrl(`/sprites/enemies/${spriteId}/animations/idle/west/frame_${padded}.png`);
   }
   if (COMBAT_SPRITE_MANIFEST.enemiesWithWalkWest.has(spriteId)) {
     // Use the full 8-frame walk loop as idle when no dedicated idle exists.
-    return `/sprites/enemies/${spriteId}/animations/walk/west/frame_${padded}.png`;
+    return assetUrl(`/sprites/enemies/${spriteId}/animations/walk/west/frame_${padded}.png`);
   }
-  return `/sprites/enemies/${spriteId}/rotations/west.png`;
+  return assetUrl(`/sprites/enemies/${spriteId}/rotations/west.png`);
 }
 
 /** Frame count to load for an ally combat animation (1 = static fallback). */
@@ -162,6 +202,10 @@ export function getAllyCombatFrameCount(basePath: string, state: CombatAnimState
   if (state === 'attack') {
     if (COMBAT_SPRITE_MANIFEST.charsWithAttackEast.has(charId)) return COMBAT_ATTACK_FRAME_COUNT;
     // No attack asset → caller reuses the idle atlas; mirror idle's frame count.
+    return getAllyCombatFrameCount(basePath, 'idle');
+  }
+  if (state === 'blocking') {
+    if (COMBAT_SPRITE_MANIFEST.charsWithBlockingEast.has(charId)) return COMBAT_BLOCKING_FRAME_COUNT;
     return getAllyCombatFrameCount(basePath, 'idle');
   }
   return COMBAT_SPRITE_MANIFEST.charsWithDeathEast.has(charId) ? COMBAT_DEATH_FRAME_COUNT : 1;
@@ -188,6 +232,10 @@ export function getEnemyCombatFrameCount(spriteId: string, state: CombatAnimStat
 /** True when the entity has dedicated attack frames on disk (not a fallback). */
 export function hasAllyAttackAnim(basePath: string): boolean {
   return COMBAT_SPRITE_MANIFEST.charsWithAttackEast.has(getCharIdFromBasePath(basePath));
+}
+/** True when the entity has dedicated blocking frames on disk (not a fallback). */
+export function hasAllyBlockingAnim(basePath: string): boolean {
+  return COMBAT_SPRITE_MANIFEST.charsWithBlockingEast.has(getCharIdFromBasePath(basePath));
 }
 export function hasEnemyAttackAnim(spriteId: string): boolean {
   return COMBAT_SPRITE_MANIFEST.enemiesWithAttackWest.has(spriteId);

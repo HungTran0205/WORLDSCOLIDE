@@ -23,6 +23,11 @@ import type { TslChainHolder } from './tsl/types';
 export interface AtmosphericWebGPUPassProps {
   preset: AtmospherePreset;
   overrides: { bloomStrength: number; bloomRadius: number };
+  /** Pixelation cell size in screen px fed to `pixelationNode`. `1` = off
+   *  (smooth, identity). Default `2` preserves the guild-hall look. Combat
+   *  passes `1` to keep the BG smooth and avoid double-pixelating already-
+   *  pixel-art sprites. */
+  pixelGranularity?: number;
 }
 
 /**
@@ -77,7 +82,11 @@ function applyPreset(
 
 let depthSpikeLogged = false;
 
-export function AtmosphericWebGPUPass({ preset, overrides }: AtmosphericWebGPUPassProps) {
+export function AtmosphericWebGPUPass({
+  preset,
+  overrides,
+  pixelGranularity = 2,
+}: AtmosphericWebGPUPassProps) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
@@ -88,8 +97,13 @@ export function AtmosphericWebGPUPass({ preset, overrides }: AtmosphericWebGPUPa
   // chain stuck on at-mount values.
   const presetRef = useRef(preset);
   const overridesRef = useRef(overrides);
+  // Pixelation is constant per consumer (guild=2, combat=1) and only read once
+  // at chain-build time; the ref keeps the async IIFE on the latest value
+  // without adding it to the build deps (which would thrash the GPU).
+  const pixelGranularityRef = useRef(pixelGranularity);
   presetRef.current = preset;
   overridesRef.current = overrides;
+  pixelGranularityRef.current = pixelGranularity;
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const setup = useMemo(() => {
@@ -112,6 +126,7 @@ export function AtmosphericWebGPUPass({ preset, overrides }: AtmosphericWebGPUPa
       const { chromaticAberrationNode } = await import('./tsl/chromatic-aberration-node');
       const { tiltShiftNode } = await import('./tsl/tilt-shift-node');
       const { heatHazeNode } = await import('./tsl/heat-haze-node');
+      const { pixelationNode } = await import('./tsl/pixelation-node');
       const { Vector2 } = await import('three');
       if (cancelled) return;
 
@@ -161,6 +176,11 @@ export function AtmosphericWebGPUPass({ preset, overrides }: AtmosphericWebGPUPa
       // from clock.elapsedTime in useFrame below.
       const heatHazeIntensityU = (uniform as any)(0);
       const heatHazeTimeU = (uniform as any)(0);
+      // Pixelation cell size — driven by the `pixelGranularity` prop (guild=2,
+      // combat=1=off). 1 = identity, 4 = chunky, 8 = retro. Read from the ref
+      // so the value reflects the prop even if it changed during the import
+      // window.
+      const pixelGranularityU = (uniform as any)(pixelGranularityRef.current);
 
       // Build chain via single mutable local. Each phase reassigns once.
       // WebGL stack order: DOF → TiltShift → Bloom → grade → Vignette → ChromAb → tonemap.
@@ -177,6 +197,12 @@ export function AtmosphericWebGPUPass({ preset, overrides }: AtmosphericWebGPUPa
       chain = colorGradeNode(chain, hueU, satU, brightU, contU);
       chain = vignetteNode(chain, vignetteOffsetU, vignetteDarknessU);
       chain = chromaticAberrationNode(chain, chromAbOffsetU);
+      // Pixelation pixelates EVERYTHING in the chain (3D + sprites + text), so
+      // guild-hall sprites/text are double-pixelated at granularity 2 — a known
+      // tradeoff pending a layer-split pass. Combat passes granularity 1 (off)
+      // to keep the BG smooth and sprites crisp. At 1 the node is an identity
+      // no-op (matches how tilt-shift/heat-haze stay in-chain at zero).
+      chain = pixelationNode(chain, pixelGranularityU);
       // === ACES MUST BE LAST. Insert new effects ABOVE this line. ===
       chain = acesTonemapNode(chain);
 

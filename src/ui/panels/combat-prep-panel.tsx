@@ -4,6 +4,7 @@
  */
 
 import { useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
 import { ENEMIES } from '@/game/data/enemies';
@@ -38,6 +39,7 @@ function autoSuggestFormation(members: Member[]): Formation {
 
 export function CombatPrepPanel() {
   const arenaMissionId = useGameStore(s => s.arenaMissionId);
+  const arenaInstanceId = useGameStore(s => s.arenaInstanceId);
   const formation = useGameStore(s => s.formation);
   const setFormationSlot = useGameStore(s => s.setFormationSlot);
   const startBattle = useGameStore(s => s.startBattle);
@@ -46,7 +48,7 @@ export function CombatPrepPanel() {
   const roster = useGameStore(s => s.roster);
   const activeMissions = useGameStore(s => s.activeMissions);
 
-  const mission = activeMissions.find(m => m.missionId === arenaMissionId);
+  const mission = activeMissions.find(m => m.instanceId === arenaInstanceId);
   const allMembers = useMemo(() => founder ? [founder, ...roster] : roster, [founder, roster]);
   const partyMembers = useMemo(
     () => allMembers.filter(m => mission?.memberIds.includes(m.id)),
@@ -82,22 +84,31 @@ export function CombatPrepPanel() {
 
   const getMember = (id: string | null) => id ? partyMembers.find(m => m.id === id) : null;
 
+  const { t } = useTranslation();
+
   /** Display order: each row is [back, front] to match in-game spawn positions */
   const GRID_ORDER = [3, 0, 4, 1, 5, 2];
-  const SLOT_LABELS = ['Front 1', 'Front 2', 'Front 3', 'Back 1', 'Back 2', 'Back 3'];
+  const SLOT_LABELS = [
+    t('combatPrepPanel.frontSlot', { n: 1 }),
+    t('combatPrepPanel.frontSlot', { n: 2 }),
+    t('combatPrepPanel.frontSlot', { n: 3 }),
+    t('combatPrepPanel.backSlot', { n: 1 }),
+    t('combatPrepPanel.backSlot', { n: 2 }),
+    t('combatPrepPanel.backSlot', { n: 3 }),
+  ];
 
   return (
     <div style={OVERLAY}>
       <div style={PANEL}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ color: '#ffd700', margin: 0, fontSize: '1.2rem' }}>Battle Preparation</h2>
-          <button onClick={exitArena} style={BTN_SECONDARY}>Retreat</button>
+          <h2 style={{ color: '#ffd700', margin: 0, fontSize: '1.2rem' }}>{t('combatPrepPanel.title')}</h2>
+          <button onClick={exitArena} style={BTN_SECONDARY}>{t('combatPrepPanel.retreat')}</button>
         </div>
 
         <div style={{ display: 'flex', gap: 16 }}>
           {/* Unplaced members sidebar */}
           <div style={{ minWidth: 120 }}>
-            <div style={{ color: '#aaa', fontSize: '0.75rem', marginBottom: 6 }}>Party</div>
+            <div style={{ color: '#aaa', fontSize: '0.75rem', marginBottom: 6 }}>{t('combatPrepPanel.party')}</div>
             {unplacedMembers.map(m => (
               <div
                 key={m.id}
@@ -112,15 +123,15 @@ export function CombatPrepPanel() {
               </div>
             ))}
             {unplacedMembers.length === 0 && (
-              <div style={{ color: '#666', fontSize: '0.75rem' }}>All placed</div>
+              <div style={{ color: '#666', fontSize: '0.75rem' }}>{t('combatPrepPanel.allPlaced')}</div>
             )}
           </div>
 
           {/* Formation grid — 2 columns × 3 rows */}
           <div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
-              <div style={{ color: '#aaa', fontSize: '0.75rem', textAlign: 'center' }}>Back</div>
-              <div style={{ color: '#aaa', fontSize: '0.75rem', textAlign: 'center' }}>Front</div>
+              <div style={{ color: '#aaa', fontSize: '0.75rem', textAlign: 'center' }}>{t('combatPrepPanel.back')}</div>
+              <div style={{ color: '#aaa', fontSize: '0.75rem', textAlign: 'center' }}>{t('combatPrepPanel.front')}</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
               {GRID_ORDER.map(slotIdx => {
@@ -155,7 +166,7 @@ export function CombatPrepPanel() {
 
           {/* Enemy preview */}
           <div style={{ minWidth: 120 }}>
-            <div style={{ color: '#e74c3c', fontSize: '0.75rem', marginBottom: 6 }}>Enemies</div>
+            <div style={{ color: '#e74c3c', fontSize: '0.75rem', marginBottom: 6 }}>{t('combatPrepPanel.enemies')}</div>
             {enemies.map((enemy, i) => (
               <div key={`${enemy.id}-${i}`} style={{ ...MEMBER_CARD, borderColor: 'rgba(231,76,60,0.3)' }}>
                 <div style={{ fontWeight: 'bold', fontSize: '0.8rem', color: '#e74c3c' }}>{enemy.name}</div>
@@ -166,13 +177,13 @@ export function CombatPrepPanel() {
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'center' }}>
-          <button onClick={handleAutoSuggest} style={BTN_SECONDARY}>Auto-Place</button>
+          <button onClick={handleAutoSuggest} style={BTN_SECONDARY}>{t('combatPrepPanel.autoPlace')}</button>
           <button onClick={startBattle} disabled={!canStart} style={{
             ...BTN_PRIMARY,
             opacity: canStart ? 1 : 0.4,
             cursor: canStart ? 'pointer' : 'default',
           }}>
-            Start Battle
+            {t('combatPrepPanel.startBattle')}
           </button>
         </div>
       </div>

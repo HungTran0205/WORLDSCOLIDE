@@ -2,7 +2,7 @@
 
 **Worlds Collide** — An HD-2D auto-RPG idle guild builder where civilizations collide. Build your guild hall, recruit members from different civilizations, dispatch quests, and watch your guild grow — even while you're away.
 
-**Last Updated**: 2026-05-03 (Combat Panel Idle Redesign Phase 6 - v1.27.4)
+**Last Updated**: 2026-05-23 (Arc 1 Quest Story: Narrative Gates + UI/Combat Fixes)
 
 ## Technology Stack
 
@@ -38,7 +38,7 @@
 │   │   ├── utils/           # Utility functions (icon-paths for convention-based icon resolution)
 │   │   └── styles/          # CSS for panels, HUD, and screens
 │   ├── audio/               # Howler.js audio manager + sound key enums (6 new keys)
-│   ├── i18n/                # i18next localization (Vietnamese default)
+│   ├── i18n/                # i18next bilingual (EN+VI) — See `docs/i18n.md` for full architecture
 │   └── main.tsx             # Application entry point
 │
 └── tools/                   # Companion development tools
@@ -97,10 +97,12 @@
 - **Notification Slice**: Ephemeral mission results (not persisted)
 
 ### Character System
-- **Founder**: Player-named guild leader with 7 stats
+- **Founder**: Player-named guild leader with 7 stats, created via the split-hero new-game wizard (Civilization → Class → Mask → Identity → Begin)
+- **Founder Classes** (founder-only): Templar (`sword`), Forester (`warrior`), Ranger (`scout`) — Linh Sơn MVP, defined in `founder-archetypes.ts`. `sword` is NOT recruitable (excluded from `CIV_CONFIG.LinhSon.archetypes`, still `['warrior','scout']`)
+- **`createFounder(name, stats, civilization, archetype, gender, maskSpriteId)`**: honors player class/gender/mask choice; founder skill is archetype-matched (sword/warrior→warrior kit, scout→scout kit). No SAVE_VERSION bump (fields already optional)
 - **Members**: Recruit from 3 civilizations, 80+ unique heroes
-- **Progression**: EXP curves (1.35x scaling), stat allocation, 100 levels
-- **Classes**: 3 archetypes per civilization
+- **Progression**: EXP curves (1.35x scaling), stat allocation (50 Talent Points), 100 levels
+- **Classes**: 2 recruitable archetypes per civilization (see `civilization-config.ts`)
 
 ### Guild Rank System (NEW - v1.8)
 - **5-Tier Hierarchy**: RECRUIT → MEMBER → VETERAN → OFFICER → COMMANDER (promotable)
@@ -186,7 +188,7 @@
 
 ### UI Architecture (Screen-Based Routing)
 - **Title Screen**: Save slot selection (continue/new/delete)
-- **Character Creation**: Stat allocation (50 points across 7 attributes)
+- **Character Creation**: Split-hero wizard — large live `CharacterPreview` (avatar + live mask overlay) pinned left; right panel steps through Civilization → Class → Mask → Identity. Components: `civ-selector` (locked civs dimmed), `archetype-selector`, `mask-selector`, `stat-allocator` (50 Talent Points). See `docs/feature/new-game-flow.md`
 - **Game Screen**: World scene + HUD + panels + mission tick loop + notification stack
 - **Panels**: Quest board (with progress bars), roster, build menu, combat log, settings
 - **Settings**: Audio/language toggle, import/export, return to title
@@ -197,6 +199,77 @@
 - **Keys**: Game UI, panel headers, button labels, system messages
 - **Title Screen**: Slot display, action buttons, messages
 - **Save/Import Dialogs**: User-facing feedback
+
+## Recent Changes (Arc 1 Quest Story — 2026-05-23)
+
+### i18n Quest Card Lore Routing (ENHANCEMENT)
+- **Quest `cardLore` field**: Now routed through i18n `tContent('missions', missionId, 'cardLore')` instead of hardcoded VN text
+- **Arc 1 Main Quests**: Each carries bilingual (EN inline, VN in content.vi.json) `cardLore` clue displayed italic/muted under quest title on quest-board
+- **Backward Compat**: Legacy missions without `cardLore` field render without clue line (no change to quest-card.tsx layout)
+- **Implementation**: `quest-card.tsx` renders `{mission.cardLore && <p>tContent(...)</p>}`
+
+### Combat Skip Button Gating (BEHAVIORAL)
+- **Skip restricted to expeditions**: Skip button hidden + DOM handler no-op for main-story quests (`isMainQuest: true`) and tutorial missions (`id.startsWith('tutorial-'`)
+- **Rule**: `const isSkippable = !!mission && !mission.isMainQuest && !mission.id.startsWith('tutorial-')`
+- **Expeditions + legacy missions**: Remain skippable; legacy flagless missions treated as expeditions (backward compat)
+- **Rationale**: Story missions have enforced combat resolution (no shortcut); expeditions are repeatable and allow skip
+
+### Quest Board MAIN/EXPEDITION Tab Split (UI REFACTOR)
+- **Two-tab layout**: MAIN (story quests) vs EXPEDITION (repeatable + legacy)
+- **MAIN tab**: `isMainQuest` quests with prerequisites met, not completed; tutorial excluded; no tier-filter pills
+- **EXPEDITION tab**: `isExpedition` quests + legacy flagless missions; tier-gated per existing logic; tier-filter pills shown
+- **Tutorial preservation**: During tutorial, board shows only tutorial quest (tabs hidden) so accept-quest beat stays intact
+- **UI component**: `.quest-board__tabs` segmented control (CSS new); `<QuestCard cardLore>` unchanged layout
+
+### Tavern Working Sprite Assets (NEW ANIMATION)
+- **4 characters with `working/` asset**: LS-SCOUT-F, LS-SCOUT-M, LS-SWORD-M, LS-WARRIOR-M (4 of 12 recruitable charIds)
+- **Assigned member behavior**: When assigned to Tavern facility, play `working` animation loop instead of patrol
+- **Fallback**: Members without `working/` asset (e.g., LS-WARRIOR-F) fall back to patrol loop (no 404 error)
+- **Implementation**: `combat-sprite-resolver.ts` maintains `charsWithWorking` Set; `hasWorkingAnim(basePath)` checks membership
+- **Asset path**: `public/sprites/characters/{charId}/animations/working/{west,east}/frame_XXX.png`
+
+### Multi-Wave Combat: Enemy Spawn Slide Animation (COSMETIC)
+- **New-wave enemies spawn off-screen**: Spawn at position + optional `spawnSlideFromX` constant (right edge, ~+14 units off-screen)
+- **Slide-in animation**: Renderer lerps enemy X from `spawnSlideFromX` to `position.x` over first few frames (smooth visual entry)
+- **Data layer**: Optional field `spawnSlideFromX?: number` on ArenaEntity + ArenaEntitySnapshot (cosmetic only, no engine logic change)
+- **Engine unchanged**: Combat AI, victory conditions, turn-lock unchanged; field only affects visual presentation
+- **Wave spawn path**: `CombatEngine.addEnemies()` sets `spawnSlideFromX ≥ +14 + formation.x` when wave > 0; initial-wave enemies have undefined (spawn in-place)
+- **Renderer**: `combat-idle-sprite.tsx` initializes group X to `entity.spawnSlideFromX ?? entity.position.x`, lerps to position.x over 400ms
+
+## Recent Changes (MVP Recruit Gating, VN Names & Roster Rename — 2026-05-22)
+
+### Recruitable Units Gating System (NEW)
+- **`RECRUITABLE_UNITS`**: Single source of truth in `civilization-config.ts` encoding recruitable (archetype, gender) pairs per civilization
+  - MVP Linh Sơn: Templar (`sword`+M), Forester (`warrior`+M), Ranger (`scout`+F)
+  - Non-recruitable sprite paths (e.g., `LS-SCOUT-M`, `LS-WARRIOR-F`) unspawnable by construction
+- **Spawn Layer Gating**: New `TavernVisitor` spawn engine (`tavern-spawn.ts`) enforces gating at visitor creation (not hire-time)
+- **Save Migration v26→v27**: `migrateV26toV27()` backfills `name` + `gender` onto persisted `tavern.mercContracts[]` visitors
+
+### TavernVisitor Deterministic Naming (NEW)
+- **Required Fields**: `name` + `gender` assigned at spawn time (single source of truth, not 3 hire sites)
+- **VN Name Pool**: ~44 Vietnamese names in `CIV_CONFIG.LinhSon.namePool`, distinct per game-day
+- **Removed Placeholders**: Deleted hardcoded gender 'M' and `Warrior #xxxx` generation from `tavern-visitor-card.tsx`, `tavern-panel.tsx`, `tavern-audition.ts`
+- **Deleted File**: `src/game/systems/mercenary-generator.ts` (no live callers; replaced by tavern-spawn.ts)
+
+**Key Files (New)**:
+- `src/game/systems/tavern-spawn.ts` — Deterministic visitor spawn engine; `spawnTavernVisitor(civ)` assigns name + gender + archetype from `RECRUITABLE_UNITS` + name pool
+
+**Key Files (Modified)**:
+- `src/game/data/civilization-config.ts` — +`RECRUITABLE_UNITS` (archetype×gender allowed list), +`namePool` (44 VN names)
+- `src/game/state/game-state.ts` — `TavernVisitor` interface: +`name`, +`gender` (required)
+- `src/game/save/save-types.ts` — `SAVE_VERSION: 27`
+- `src/game/save/save-migrations.ts` — `migrateV26toV27()` backfill
+
+### Roster Member Rename (NEW)
+- **UI**: Inline rename input in character detail panel (24-char max, trim, reject empty)
+- **Restrictions**: Founder + mercenary ranks cannot rename (structural/hired)
+- **Validation**: Basic (non-empty, whitespace trim, char limit) via `renameMember(id, name)` Zustand action
+- **No Schema Change**: `member.name` field already exists
+
+**Key Files (Modified)**:
+- `src/ui/components/member-book-detail-page.tsx` — +inline rename input
+- `src/ui/panels/character-detail-panel.tsx` — +rename button
+- `src/game/state/roster-slice.ts` — `renameMember(id, name)` action
 
 ## Recent Changes (Building System Refactor — v1.10)
 
@@ -301,7 +374,7 @@
 - `game-state.ts` — Member interface: added optional `archetype` and `gender` fields
 - `civilization-config.ts` — Added CivArchetype type (6 archetypes), Gender type, archetype arrays per civ — ENHANCED v1.11
 - `character-creation.ts` — Sets archetype + gender from civ selection
-- `mercenary-generator.ts` — Randomly assigns archetype + gender during recruitment
+- `tavern-spawn.ts` — Deterministic archetype + gender assignment at visitor spawn (live recruitment path)
 
 ### Zero Breaking Changes
 - Sprite system fully additive (visual enhancement only)

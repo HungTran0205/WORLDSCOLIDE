@@ -1,19 +1,19 @@
 /** Slide-up detail tray — shows built-room info or empty-slot build options. */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
-import type { GuildFacility, Member, FacilityType } from '@/game/state/game-state';
+import type { GuildFacility, Member } from '@/game/state/game-state';
 import { FACILITY_DEFINITIONS, LOGGING_SITE_CONFIG, STONE_QUARRY_CONFIG } from '@/game/data/facility-definitions';
 import { FACILITY_SLOTS, getSlotCameraOffset } from '@/game/data/facility-slot-positions';
-import { calcTotalUpkeep } from '@/game/systems/upkeep-system';
 import { calcMcLevel } from '@/game/systems/stone-quarry-production-system';
+import { handleFirstHaul } from '@/game/systems/tutorial-first-haul-handler';
+import { handleKeeperAssigned } from '@/game/systems/tutorial-keeper-handler';
 import { FacilityMemberAvatar } from './facility-member-avatar';
 import { InkConfirmDialog } from './ink-confirm-dialog';
 
-type FacilityDefVal = (typeof FACILITY_DEFINITIONS)[FacilityType];
-
 // ── Bonus preview (extracted from facility-card logic) ──────────────────────
-function getBonusPreview(facility: GuildFacility, members: Member[], dailyUpkeep: number): string {
+function getBonusPreview(facility: GuildFacility, members: Member[]): string {
   if (members.length === 0) return '';
   const lv = facility.level;
   switch (facility.type) {
@@ -26,10 +26,6 @@ function getBonusPreview(facility: GuildFacility, members: Member[], dailyUpkeep
       const totalW = members.reduce((s, m) => s + Math.floor([3, 5, 8][lv - 1] * (1 + m.stats.STR * 0.004)), 0);
       const totalS = members.reduce((s, m) => s + Math.floor([2, 3, 5][lv - 1] * (1 + m.stats.STR * 0.004)), 0);
       return `+${totalW} Wood, +${totalS} Stone/day`;
-    }
-    case 'tavern': {
-      const pct = Math.min(0.10, members.reduce((s, m) => s + m.stats.CHA, 0) * 0.0005 * lv);
-      return `-${(pct * 100).toFixed(1)}% upkeep (~${Math.floor(dailyUpkeep * pct)}g/day)`;
     }
     case 'infirmary': {
       const avgEnd = members.reduce((s, m) => s + m.stats.END, 0) / members.length;
@@ -72,6 +68,7 @@ export function getInstanceNumber(facility: GuildFacility, allFacilities: GuildF
 
 // ── Built room tray ─────────────────────────────────────────────────────────
 function BuiltRoomTray({ facility, onClose }: { facility: GuildFacility; onClose: () => void }) {
+  const { t } = useTranslation();
   const [upgradeConfirm, setUpgradeConfirm] = useState(false);
   const facilities     = useGameStore(s => s.facilities);
   const founder        = useGameStore(s => s.founder);
@@ -80,9 +77,14 @@ function BuiltRoomTray({ facility, onClose }: { facility: GuildFacility; onClose
   const unassignMember  = useGameStore(s => s.unassignMemberFromFacility);
   const upgradeFacility = useGameStore(s => s.upgradeFacility);
   const setCameraTarget = useGameStore(s => s.setCameraTarget);
+  const tutorialStep    = useGameStore(s => s.tutorialStep);
+
+  // Tutorial: pulse the assign slot when the player must put Kael on the Logging Site.
+  const highlightAssign =
+    (tutorialStep === 'assign-kael' && facility.type === 'logging-site') ||
+    (tutorialStep === 'assign-keeper' && facility.type === 'tavern');
 
   const allMembers     = founder ? [founder, ...roster] : roster;
-  const dailyUpkeep    = calcTotalUpkeep(allMembers);
   const def            = FACILITY_DEFINITIONS[facility.type];
   const maxSlots       = def.maxSlots[facility.level - 1];
   const assigned       = allMembers.filter(m => facility.assignedMemberIds.includes(m.id));
@@ -90,7 +92,7 @@ function BuiltRoomTray({ facility, onClose }: { facility: GuildFacility; onClose
   const emptyCount     = maxSlots - assigned.length;
   const canUpgrade     = facility.level < 3 && !!def.upgradeCosts;
   const upgradeCost    = canUpgrade ? def.upgradeCosts![facility.level - 1] : 0;
-  const bonus          = getBonusPreview(facility, assigned, dailyUpkeep);
+  const bonus          = getBonusPreview(facility, assigned);
   const instanceNum    = getInstanceNumber(facility, facilities);
   const displayName    = instanceNum ? `${def.name} #${instanceNum}` : def.name;
 
@@ -107,12 +109,12 @@ function BuiltRoomTray({ facility, onClose }: { facility: GuildFacility; onClose
         <div className="fp-tray-head">
           <div>
             <div className="fp-tray-name">{displayName}</div>
-            <div className="fp-tray-stat">{def.primaryStats} · {assigned.length}/{maxSlots}</div>
+            <div className="fp-tray-stat">{t('facilityTray.stat', { stats: def.primaryStats, assigned: assigned.length, max: maxSlots })}</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span className="fp-tray-level">Lv.{facility.level}</span>
+            <span className="fp-tray-level">{t('facilityTray.level', { level: facility.level })}</span>
             {canUpgrade && (
-              <button className="fp-upgrade-badge" onClick={() => setUpgradeConfirm(true)}>↑ {upgradeCost}g</button>
+              <button className="fp-upgrade-badge" onClick={() => setUpgradeConfirm(true)}>{t('facilityTray.upgradeBtn', { cost: upgradeCost })}</button>
             )}
           </div>
         </div>
@@ -122,11 +124,19 @@ function BuiltRoomTray({ facility, onClose }: { facility: GuildFacility; onClose
             <FacilityMemberAvatar key={m.id} member={m} onUnassign={mid => unassignMember(mid, facility.id)} />
           ))}
           {Array.from({ length: emptyCount }).map((_, i) => (
-            <div key={i} className="fp-assign-card">
+            <div key={i} className={`fp-assign-card${highlightAssign ? ' tutorial-highlight' : ''}`}>
               <span className="fp-assign-plus">＋</span>
-              <span className="fp-assign-label">Assign</span>
+              <span className="fp-assign-label">{t('facilityTray.assign')}</span>
               {eligible.length > 0 && (
-                <select value="" onChange={e => { if (e.target.value) assignMember(e.target.value, facility.id); }}>
+                <select value="" onChange={e => {
+                  if (!e.target.value) return;
+                  if (assignMember(e.target.value, facility.id)) {
+                    // Grant the scripted first haul (Kael → logging site) or spawn the
+                    // tutorial recruit (keeper → tavern), each gated to its tutorial step.
+                    handleFirstHaul(e.target.value, facility.id);
+                    handleKeeperAssigned(e.target.value, facility.id);
+                  }
+                }}>
                   <option value="">—</option>
                   {eligible.map(m => <option key={m.id} value={m.id}>{m.name} Lv.{m.level}</option>)}
                 </select>
@@ -136,16 +146,16 @@ function BuiltRoomTray({ facility, onClose }: { facility: GuildFacility; onClose
         </div>
         <div className="fp-tray-bottom">
           <span className={`fp-tray-bonus${bonus ? '' : ' fp-tray-bonus--inactive'}`}>
-            {bonus || 'Assign a member to activate'}
+            {bonus || t('facilityTray.bonus')}
           </span>
-          <button className="fp-btn-enter" onClick={handleEnterRoom}>Enter Room →</button>
+          <button className="fp-btn-enter" onClick={handleEnterRoom}>{t('facilityTray.enterRoom')}</button>
         </div>
       </div>
       {upgradeConfirm && (
         <InkConfirmDialog
-          title={`Upgrade ${def.name}`}
-          body={`Upgrade to Level ${facility.level + 1}? Cost: ${upgradeCost}g.`}
-          confirmLabel="Upgrade"
+          title={t('facilityTray.upgradeTitleFacility', { name: def.name })}
+          body={t('facilityTray.upgradeBodyFacility', { level: facility.level + 1, cost: upgradeCost })}
+          confirmLabel={t('facilityTray.upgradeConfirm')}
           onConfirm={() => { upgradeFacility(facility.id); setUpgradeConfirm(false); }}
           onCancel={() => setUpgradeConfirm(false)}
         />
@@ -154,85 +164,9 @@ function BuiltRoomTray({ facility, onClose }: { facility: GuildFacility; onClose
   );
 }
 
-// ── Empty slot tray ─────────────────────────────────────────────────────────
-function EmptySlotTray({ slotIdx, onBuildComplete }: { slotIdx: number; onBuildComplete: () => void }) {
-  const [selectedBp,  setSelectedBp]  = useState<FacilityType | null>(null);
-  const [buildConfirm, setBuildConfirm] = useState(false);
-  const facilities    = useGameStore(s => s.facilities);
-  const gold          = useGameStore(s => s.gold);
-  const inventory     = useGameStore(s => s.inventory);
-  const buildFacility = useGameStore(s => s.buildFacility);
-  const placeFacility = useGameStore(s => s.placeFacility);
-
-  const getActiveCount = (type: FacilityType) =>
-    facilities.filter(fac => fac.type === type && fac.level > 0).length;
-
-  const buildable = Object.values(FACILITY_DEFINITIONS).filter(def =>
-    getActiveCount(def.type) < 3
-  );
-
-  function canAfford(def: FacilityDefVal): boolean {
-    if (def.type === 'logging-site') return (inventory.items['LOGGING_SITE_ACCESS'] ?? 0) > 0;
-    return def.buildCost === 0 || gold >= def.buildCost;
-  }
-
-  function costLabel(def: FacilityDefVal): string {
-    if (def.type === 'logging-site') return 'Permit';
-    return def.buildCost === 0 ? 'Free' : `${def.buildCost}g`;
-  }
-
-  function handleConfirmBuild() {
-    if (!selectedBp) return;
-    const newId = buildFacility(selectedBp);
-    if (newId) placeFacility(newId, slotIdx);
-    setBuildConfirm(false);
-    onBuildComplete();
-  }
-
-  const selDef = selectedBp ? FACILITY_DEFINITIONS[selectedBp] : null;
-
-  return (
-    <>
-      <div className="fp-tray-content">
-        <div className="fp-slot-label">Slot {slotIdx + 1} — Choose a room to build</div>
-        <div className="fp-blueprint-list">
-          {buildable.length === 0 && <div className="fp-blueprint-empty">All available rooms are already built.</div>}
-          {buildable.map(def => {
-            const affordable = canAfford(def);
-            return (
-              <div
-                key={def.type}
-                className={`fp-blueprint-row${selectedBp === def.type ? ' selected' : ''}${!affordable ? ' unaffordable' : ''}`}
-                onClick={() => affordable && setSelectedBp(def.type)}
-              >
-                <span className="fp-bp-name">{def.name}</span>
-                <span className="fp-bp-stat">{def.primaryStats}</span>
-                {getActiveCount(def.type) > 0 && (
-                  <span className="fp-bp-instance-count">{getActiveCount(def.type)}/3</span>
-                )}
-                <span className="fp-bp-cost">{costLabel(def)}</span>
-              </div>
-            );
-          })}
-        </div>
-        <button className="fp-btn-build" disabled={!selectedBp} onClick={() => setBuildConfirm(true)}>
-          {selDef ? `Build ${selDef.name} — ${costLabel(selDef)}` : 'Select a blueprint'}
-        </button>
-      </div>
-      {buildConfirm && selDef && (
-        <InkConfirmDialog
-          title={`Build ${selDef.name}`}
-          body={`Build in Slot ${slotIdx + 1}? Cost: ${costLabel(selDef)}. Construction is permanent.`}
-          confirmLabel="Build"
-          onConfirm={handleConfirmBuild}
-          onCancel={() => setBuildConfirm(false)}
-        />
-      )}
-    </>
-  );
-}
-
 // ── Exported tray shell ─────────────────────────────────────────────────────
+// Empty slots open the left-docked FacilityBuildPicker (in facilities-panel);
+// this bottom tray now only shows built-room detail.
 interface FacilityDetailTrayProps {
   selectedSlot: number | null;
   slotMap: Map<number, GuildFacility>;
@@ -241,13 +175,10 @@ interface FacilityDetailTrayProps {
 
 export function FacilityDetailTray({ selectedSlot, slotMap, onClose }: FacilityDetailTrayProps) {
   const isBuilt = selectedSlot !== null && slotMap.has(selectedSlot);
-  const isEmpty = selectedSlot !== null && !slotMap.has(selectedSlot);
-  const isOpen  = isBuilt || isEmpty;
 
   return (
-    <div className={`fp-tray${isOpen ? ' fp-tray--open' : ''}`}>
+    <div className={`fp-tray${isBuilt ? ' fp-tray--open' : ''}`}>
       {isBuilt && <BuiltRoomTray facility={slotMap.get(selectedSlot!)!} onClose={onClose} />}
-      {isEmpty && <EmptySlotTray slotIdx={selectedSlot!} onBuildComplete={onClose} />}
     </div>
   );
 }

@@ -1,14 +1,18 @@
 /**
- * Combat-panel single-entity sprite — idle loop + death animation + hit flash.
+ * Combat-panel single-entity sprite — idle loop + attack + blocking + death animation + hit flash.
  *
  * Uses a per-entity NodeMaterial/ShaderMaterial with uniform-driven UV remap
  * (see idle-sprite-material.ts) to bypass WebGPU NodeMaterial's texture.matrix
  * dedupe behavior across pipeline cache. Each entity has its own uvRect uniform
  * → animation advances independently for every sprite.
  *
- * Atlas swap (idle/attack/death) updates the map node's value; UV update happens
+ * Atlas swap (idle/attack/blocking/death) updates the map node's value; UV update happens
  * every frame via handle.setUvRect(...). Tint (flash/dim/normal) routed through
  * handle.setTint instead of mutating material.color.
+ *
+ * Allies with a maskId render through composite atlases (body + identity mask baked into
+ * each frame via combat-mask-composite-atlas.ts). Enemies and death always use plain body
+ * atlases. No extra mesh for the mask.
  *
  * Pre-conditions:
  * - Camera + lighting are mounted by `<CombatScene>` (parent fragment).
@@ -16,18 +20,21 @@
  *   throw on missing assets (graceful degrade to walking-frame-0 fallback).
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useFrame, useLoader, useThree } from '@react-three/fiber';
-import { TextureLoader, Mesh, type Texture } from 'three';
+import { TextureLoader, Mesh, Group, type Texture } from 'three';
 import type { ArenaEntitySnapshot } from '@/game/state/combat-arena-slice';
 import { COMBAT_CAM_TILT_RAD, getCombatSpriteScale } from './combat-camera-config';
+import { resolveMemberMaskId, getMaskAssetPath } from '@/scene/sprites/mask-pool';
 import {
   COMBAT_ATTACK_FRAME_COUNT,
+  COMBAT_BLOCKING_FRAME_COUNT,
   COMBAT_DEATH_FRAME_COUNT,
   COMBAT_IDLE_FRAME_COUNT,
   getAllyCombatFrameCount,
   getEnemyCombatFrameCount,
   hasAllyAttackAnim,
+  hasAllyBlockingAnim,
   hasEnemyAttackAnim,
   resolveAllyCombatSprite,
   resolveEnemyCombatSprite,
@@ -36,9 +43,15 @@ import { getSpritePath } from '@/scene/sprites/sprite-path-resolver';
 import { buildAtlasFromTextures, getAtlasFrameUv } from '@/scene/sprites/sprite-atlas';
 import type { SpriteAtlas } from '@/scene/sprites/sprite-atlas';
 import { createIdleSpriteMaterial, type IdleSpriteMaterialHandle } from './idle-sprite-material';
+import {
+  buildCombatMaskCompositeAtlas,
+  subscribeToAtlasInvalidations,
+  getAtlasInvalidationVersion,
+} from './combat-mask-composite-atlas';
 
-const IDLE_FPS = 6.5;        // ~150ms per frame per spec
-const ATTACK_FPS = 12;       // ~83ms per frame — full 8-frame swing fits ~667ms ANIM_ATTACK_DURATION window
+const IDLE_FPS = 6.5;
+const ATTACK_FPS = 12;
+const BLOCKING_FPS = 10;  // 4 frames / 400ms blocking window → 10 fps
 const DEATH_FPS = 8;
 const FLASH_DURATION_MS = 110;
 
@@ -46,15 +59,46 @@ const FLASH_DURATION_MS = 110;
 // multiplies sampled texture by tint; >1 brightens (flash), <1 dims (dead), 1 = normal.
 const FLASH_R = 2.4, FLASH_G = 2.4, FLASH_B = 2.4;
 const DEAD_R = 0.7, DEAD_G = 0.7, DEAD_B = 0.7;
-const NORMAL_R = 1, NORMAL_G = 1, NORMAL_B = 1;
+// NORMAL baseline is a subtle scene-integration tint (slightly < 1, faint cool
+// bias) so full-bright pixel sprites sit inside the combat color-grade palette
+// instead of popping out of the muted BG. Flash/dead are absolute setTint
+// values (independent of this), so their read is unaffected.
+const NORMAL_R = 0.97, NORMAL_G = 0.98, NORMAL_B = 1.0;
+
+// Sentinel mask path for non-masked entities (enemies / no maskSpriteId).
+// mask-01 is preloaded on app boot via preloadCombatMasks() → cache hit, no extra fetch.
+// Required because useLoader must be called unconditionally (React hook rules).
+const SENTINEL_MASK_PATH = getMaskAssetPath('mask-01', 'east');
 
 interface CombatIdleSpriteProps {
   entity: ArenaEntitySnapshot;
 }
 
+/** Lerp constant for the spawn slide-in (k≈8 → ~0.3–0.4s settle time).
+ *  Driven by real frame dt, independent of the 5Hz snapshot sync rate and
+ *  speedMultiplier — so the slide is smooth at 1×/2×/4×. */
+const SLIDE_LERP_K = 8;
+
 export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
   const meshRef = useRef<Mesh>(null);
+  const groupRef = useRef<Group>(null);
+  /** Current display X (cosmetic only). Initialized lazily in useFrame on first
+   *  call so it reads the latest entity snapshot (entity may update before
+   *  the first frame runs). Starts at spawnSlideFromX for new-wave enemies,
+   *  or at position.x for wave-1 entities and allies (no visible motion). */
+  const dispXRef = useRef<number | null>(null);
   const { gl } = useThree();
+
+  // Allies-only identity mask. Enemies render via spriteId and skip composite logic.
+  const maskId = useMemo(() => {
+    if (entity.spriteId || !entity.isAlly) return null;
+    return resolveMemberMaskId({ id: entity.id, maskSpriteId: entity.maskSpriteId });
+  }, [entity.id, entity.maskSpriteId, entity.spriteId, entity.isAlly]);
+
+  // Increments whenever the dev tuner invalidates a char's composite atlas cache,
+  // forcing composite atlas memos to re-run and pick up new anchor values.
+  const atlasVersion = useSyncExternalStore(subscribeToAtlasInvalidations, getAtlasInvalidationVersion);
+
   // Material handle is async-loaded (WebGPU TSL imports). Render placeholder
   // mesh-without-material until ready; parent <Suspense> covers texture load.
   const [handle, setHandle] = useState<IdleSpriteMaterialHandle | null>(null);
@@ -64,23 +108,16 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
   const lastHpRef = useRef(entity.currentHp);
   const flashUntilRef = useRef(0);
   const wasDeadRef = useRef(entity.currentHp <= 0);
-  // Track last atlas texture set on the handle to skip redundant TextureNode
-  // swaps. mapNode.value writes are cheap but avoiding them when possible
-  // keeps the WebGPU bind cache stable.
+  // Track last atlas texture set on the handle to skip redundant TextureNode swaps.
   const lastMapRef = useRef<Texture | null>(null);
-  // Track which animation state was active last frame so we can reset frame
-  // counters on transitions (e.g. idle → attack should restart at frame 0
-  // instead of inheriting the idle cycle position).
-  const lastAnimStateRef = useRef<'idle' | 'attack' | 'death'>('idle');
+  // Track last anim to reset frame counter on state transitions.
+  const lastAnimStateRef = useRef<'idle' | 'attack' | 'blocking' | 'death'>('idle');
 
-  // Build the path lists once per entity identity. Resolver always returns a
-  // valid path so useLoader never sees a 404. Extracted into helper so the
-  // memo dep list matches the helper's parameters (compiler memoization plays
-  // poorly with reading multiple fields off a single object inside useMemo).
   const {
-    idlePaths, attackPaths, deathPaths,
-    idleFrames, attackFrames, deathFrames,
-    hasDedicatedAttack,
+    charId,
+    idlePaths, attackPaths, blockingPaths, deathPaths,
+    idleFrames, attackFrames, blockingFrames, deathFrames,
+    hasDedicatedAttack, hasDedicatedBlocking,
   } = useCombatSpritePaths(
     entity.isAlly,
     entity.archetype,
@@ -90,13 +127,17 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
   );
 
   const idleTextures = useLoader(TextureLoader, idlePaths);
-  // When the entity has no dedicated attack frames, attackPaths === idlePaths
-  // so this useLoader call hits the texture cache (no extra fetch). The atlas
-  // build below is also short-circuited to reuse idleAtlas — zero extra GPU
-  // canvas allocated for entities without attack anims.
+  // When no dedicated attack, attackPaths === idlePaths content → Three.js cache hit.
   const attackTextures = useLoader(TextureLoader, attackPaths);
+  // When no dedicated blocking, blockingPaths === idlePaths content → Three.js cache hit.
+  const blockingTextures = useLoader(TextureLoader, blockingPaths);
   const deathTextures = useLoader(TextureLoader, deathPaths);
 
+  // Mask texture — always load (React hook rules); sentinel for non-masked entities.
+  const maskPath = maskId ? getMaskAssetPath(maskId, 'east') : SENTINEL_MASK_PATH;
+  const maskTexture = useLoader(TextureLoader, maskPath);
+
+  // Body atlases — same as before.
   const idleAtlas = useMemo<SpriteAtlas>(
     () => buildAtlasFromTextures(idleTextures, Math.max(1, COMBAT_IDLE_FRAME_COUNT)),
     [idleTextures],
@@ -108,9 +149,44 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
     [attackTextures, hasDedicatedAttack],
   );
   const attackAtlas = dedicatedAttackAtlas ?? idleAtlas;
+  const dedicatedBlockingAtlas = useMemo<SpriteAtlas | null>(
+    () => hasDedicatedBlocking
+      ? buildAtlasFromTextures(blockingTextures, Math.max(1, COMBAT_BLOCKING_FRAME_COUNT))
+      : null,
+    [blockingTextures, hasDedicatedBlocking],
+  );
+  const blockingAtlas = dedicatedBlockingAtlas ?? idleAtlas;
   const deathAtlas = useMemo<SpriteAtlas>(
     () => buildAtlasFromTextures(deathTextures, Math.max(1, COMBAT_DEATH_FRAME_COUNT)),
     [deathTextures],
+  );
+
+  // Composite masked atlases — built for live ally non-death animations only.
+  // buildCombatMaskCompositeAtlas is cached by charId|maskId|anim|frameCount,
+  // so repeated useMemo calls (same deps) are O(1) cache hits.
+  // Death is always unmasked: entity hides on death, mask logic on death branch is unneeded.
+  const maskedIdleAtlas = useMemo<SpriteAtlas | null>(
+    () => (maskId && charId)
+      ? buildCombatMaskCompositeAtlas({ charId, anim: 'idle', maskId, bodyTextures: Array.from(idleTextures), maskTexture, cols: Math.max(1, COMBAT_IDLE_FRAME_COUNT) })
+      : null,
+    // Use texture count as proxy: same paths → same count, composite cache handles the rest.
+    // atlasVersion bumps when dev tuner invalidates cache → forces rebuild with new anchors.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [maskId, charId, maskTexture, idleTextures.length, atlasVersion],
+  );
+  const maskedAttackAtlas = useMemo<SpriteAtlas | null>(
+    () => (maskId && charId)
+      ? buildCombatMaskCompositeAtlas({ charId, anim: 'attack', maskId, bodyTextures: Array.from(attackTextures), maskTexture, cols: Math.max(1, COMBAT_ATTACK_FRAME_COUNT) })
+      : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [maskId, charId, maskTexture, attackTextures.length, atlasVersion],
+  );
+  const maskedBlockingAtlas = useMemo<SpriteAtlas | null>(
+    () => (maskId && charId)
+      ? buildCombatMaskCompositeAtlas({ charId, anim: 'blocking', maskId, bodyTextures: Array.from(blockingTextures), maskTexture, cols: Math.max(1, COMBAT_BLOCKING_FRAME_COUNT) })
+      : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [maskId, charId, maskTexture, blockingTextures.length, atlasVersion],
   );
 
   // Trigger hit flash whenever current HP drops (not on heals or revives).
@@ -123,16 +199,11 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
 
   // Build the per-entity material handle once when the idle atlas is ready.
   // Async because the WebGPU path imports three/tsl + three/webgpu lazily.
-  // Atlas SWAPS (idle→attack→death) reuse the same handle via setMap; only the
-  // initial atlas seed binding requires this effect.
   useEffect(() => {
     let cancelled = false;
     let createdHandle: IdleSpriteMaterialHandle | null = null;
     createIdleSpriteMaterial(idleAtlas.texture, gl).then((h) => {
-      if (cancelled) {
-        h.dispose();
-        return;
-      }
+      if (cancelled) { h.dispose(); return; }
       createdHandle = h;
       lastMapRef.current = idleAtlas.texture;
       setHandle(h);
@@ -145,16 +216,29 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
 
   useFrame((_, dt) => {
     const mesh = meshRef.current;
-    if (!handle || !mesh) return;
+    const group = groupRef.current;
+    if (!handle || !mesh || !group) return;
+
+    // Cosmetic slide-in: lerp display X toward the entity's logic home X.
+    // Lazy-init dispX on the first frame so we read the current snapshot value
+    // (spawnSlideFromX is only present on the first snapshot after wave spawn).
+    if (dispXRef.current === null) {
+      dispXRef.current = entity.spawnSlideFromX ?? entity.position.x;
+    }
+    const targetX = entity.position.x;
+    const dispX = dispXRef.current + (targetX - dispXRef.current) * Math.min(1, dt * SLIDE_LERP_K);
+    dispXRef.current = dispX;
+    group.position.x = dispX;
 
     const isDead = entity.currentHp <= 0;
-    // Engine sets animState to 'attacking' for autos and 'skill' for skill
-    // casts; both should play the attack animation. Anything else (battle-idle,
-    // hit, blocking) keeps the idle loop. Dead overrides everything.
     const isAttackingState = entity.animState === 'attacking' || entity.animState === 'skill';
-    const currentAnim: 'idle' | 'attack' | 'death' = isDead
+    const isBlockingState = entity.animState === 'blocking';
+
+    const currentAnim: 'idle' | 'attack' | 'blocking' | 'death' = isDead
       ? 'death'
-      : isAttackingState ? 'attack' : 'idle';
+      : isAttackingState ? 'attack'
+      : isBlockingState ? 'blocking'
+      : 'idle';
 
     // Death enter: reset frame counter so animation plays from start.
     if (isDead && !wasDeadRef.current) {
@@ -170,31 +254,20 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
       wasDeadRef.current = false;
     }
 
-    // Animation transition (idle ↔ attack) — restart frame counter so the
-    // attack swing starts from frame 0 instead of mid-cycle.
+    // Animation transition — restart frame counter so each clip starts from frame 0.
+    // (death enter is handled above; skip re-reset here for death.)
     if (currentAnim !== lastAnimStateRef.current && currentAnim !== 'death') {
       frameIndexRef.current = 0;
       elapsedRef.current = 0;
     }
     lastAnimStateRef.current = currentAnim;
 
-    // No mirroring needed — ally assets ship as east-facing (look right toward
-    // enemies on the right) and enemy assets ship as west-facing (look left
-    // toward allies on the left). Both sides keep positive scale.x so they
-    // face each other naturally.
-    // Scale incorporates fake foreshortening from lane z (see
-    // getCombatSpriteScale): front-row entities appear larger, back-row smaller.
     const liveScale = getCombatSpriteScale(entity.position.z, !!entity.isBoss);
     mesh.scale.x = liveScale;
     mesh.scale.y = liveScale;
-    // Anchor stays on the platform top — lift mesh center by half scaled
-    // height above platform.y so the sprite's bottom edge sits on the
-    // platform surface regardless of foreshortening factor. x/z come from
-    // the prop binding (snapshot rerender every 200ms is sufficient given
-    // the engine no longer step-attacks in idle-panel mode).
     mesh.position.y = (entity.position.y ?? 0) + liveScale * 0.5;
 
-    // Pick atlas + advance frame.
+    // Atlas selection: masked composite for live ally non-death; body atlas otherwise.
     let atlas: SpriteAtlas;
     let frameCount: number;
     let fps: number;
@@ -203,17 +276,20 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
       frameCount = deathFrames;
       fps = DEATH_FPS;
     } else if (isAttackingState) {
-      atlas = attackAtlas;
+      atlas = maskedAttackAtlas ?? attackAtlas;
       frameCount = attackFrames;
       fps = ATTACK_FPS;
+    } else if (isBlockingState) {
+      atlas = maskedBlockingAtlas ?? blockingAtlas;
+      frameCount = blockingFrames;
+      fps = BLOCKING_FPS;
     } else {
-      atlas = idleAtlas;
+      atlas = maskedIdleAtlas ?? idleAtlas;
       frameCount = idleFrames;
       fps = IDLE_FPS;
     }
 
-    // Atlas swap (idle ↔ attack ↔ death) — only call setMap when the texture
-    // actually changes to avoid unnecessary TextureNode value writes.
+    // Atlas swap — only call setMap when texture actually changes.
     if (lastMapRef.current !== atlas.texture) {
       handle.setMap(atlas.texture);
       lastMapRef.current = atlas.texture;
@@ -242,10 +318,7 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
     } else {
       frameIndexRef.current = 0;
     }
-    // Drive UV via uniform — every entity has its own uvRect uniform on its
-    // own material instance, so this update is isolated per sprite (the bug
-    // we're fixing comes from texture.matrix being shared/cached at the
-    // WebGPU pipeline level when materials look identical).
+
     const uvFrame = getAtlasFrameUv(atlas, frameIndexRef.current);
     handle.setUvRect(uvFrame.u, uvFrame.v, uvFrame.w, uvFrame.h);
 
@@ -260,31 +333,28 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
     }
   });
 
-  // Initial anchor — useFrame overrides position.y + scale on first tick using
-  // getCombatSpriteScale. Initial values use base scale so the mesh isn't
-  // mounted at scale 1×1 (avoids a one-frame size pop). Y baseline includes
-  // platform top (entity.position.y) so raised-platform spawns mount at the
-  // correct height instead of snapping up from y=0 on first frame.
   const initialScale = getCombatSpriteScale(entity.position.z, !!entity.isBoss);
   const initialY = (entity.position.y ?? 0) + initialScale * 0.5;
-  // Billboard the plane around X by -COMBAT_CAM_TILT_RAD so its +Z normal
-  // tips UP toward the down-tilted camera ray. (Positive rotation around X
-  // tips the normal toward -Y; we need toward +Y to face the camera that
-  // sits high looking down.)
+  // Initial group X: start at spawnSlideFromX (off-screen) for new-wave enemies,
+  // or at the home slot for wave-1 entities and allies. The useFrame lerp drives
+  // group.position.x every frame so this value is immediately overwritten.
+  const initialGroupX = entity.spawnSlideFromX ?? entity.position.x;
+
   return (
-    <mesh
-      ref={meshRef}
-      position={[entity.position.x, initialY, entity.position.z]}
-      rotation={[-COMBAT_CAM_TILT_RAD, 0, 0]}
-      scale={[initialScale, initialScale, 1]}
-    >
-      <planeGeometry args={[1, 1]} />
-      {/* Material handle is async-loaded by createIdleSpriteMaterial (WebGPU
-          path lazy-imports three/tsl + three/webgpu). Until ready, the mesh
-          renders without a material — parent <Suspense> + Three.js default
-          fallback covers the brief window without a flash. */}
-      {handle && <primitive object={handle.material} attach="material" />}
-    </mesh>
+    <group ref={groupRef} position={[initialGroupX, 0, entity.position.z]}>
+      <mesh
+        ref={meshRef}
+        position={[0, initialY, 0]}
+        rotation={[-COMBAT_CAM_TILT_RAD, 0, 0]}
+        scale={[initialScale, initialScale, 1]}
+      >
+        <planeGeometry args={[1, 1]} />
+        {/* Material handle is async-loaded by createIdleSpriteMaterial (WebGPU
+            path lazy-imports three/tsl + three/webgpu). Until ready, the mesh
+            renders without a material — parent <Suspense> covers the window. */}
+        {handle && <primitive object={handle.material} attach="material" />}
+      </mesh>
+    </group>
   );
 }
 
@@ -293,18 +363,24 @@ function range(n: number): number[] {
 }
 
 interface SpritePathSet {
+  /** Last path segment of the basePath — used as charId for composite atlas keying. */
+  charId: string;
   idlePaths: string[];
   attackPaths: string[];
+  /** Blocking frames for allies; falls back to idle paths for enemies / chars without blocking. */
+  blockingPaths: string[];
   deathPaths: string[];
   idleFrames: number;
   attackFrames: number;
+  blockingFrames: number;
   deathFrames: number;
-  /** False when attack falls back to idle paths — sprite component then
-   *  reuses idleAtlas instead of allocating a separate canvas texture. */
+  /** False when attack falls back to idle paths — sprite component reuses idleAtlas. */
   hasDedicatedAttack: boolean;
+  /** False when blocking falls back to idle paths — sprite component reuses idleAtlas. */
+  hasDedicatedBlocking: boolean;
 }
 
-/** Resolve idle + attack + death paths for an entity. Stable across snapshot syncs. */
+/** Resolve all animation paths for an entity. Stable across snapshot syncs. */
 function useCombatSpritePaths(
   isAlly: boolean,
   archetype: string | undefined,
@@ -315,31 +391,44 @@ function useCombatSpritePaths(
   return useMemo(() => {
     if (isAlly) {
       const base = getSpritePath(civilization ?? 'LinhSon', archetype ?? 'warrior', gender ?? 'M');
+      const parts = base.split('/').filter(Boolean);
+      const charId = parts[parts.length - 1] ?? '';
       const ic = getAllyCombatFrameCount(base, 'idle');
       const ac = getAllyCombatFrameCount(base, 'attack');
+      const bc = getAllyCombatFrameCount(base, 'blocking');
       const dc = getAllyCombatFrameCount(base, 'death');
       return {
+        charId,
         idlePaths: range(ic).map((i) => resolveAllyCombatSprite(base, 'idle', i)),
         attackPaths: range(ac).map((i) => resolveAllyCombatSprite(base, 'attack', i)),
+        blockingPaths: range(bc).map((i) => resolveAllyCombatSprite(base, 'blocking', i)),
         deathPaths: range(dc).map((i) => resolveAllyCombatSprite(base, 'death', i)),
         idleFrames: ic,
         attackFrames: ac,
+        blockingFrames: bc,
         deathFrames: dc,
         hasDedicatedAttack: hasAllyAttackAnim(base),
+        hasDedicatedBlocking: hasAllyBlockingAnim(base),
       };
     }
     const sid = spriteId ?? 'slime';
     const ic = getEnemyCombatFrameCount(sid, 'idle');
     const ac = getEnemyCombatFrameCount(sid, 'attack');
     const dc = getEnemyCombatFrameCount(sid, 'death');
+    const idlePaths = range(ic).map((i) => resolveEnemyCombatSprite(sid, 'idle', i));
     return {
-      idlePaths: range(ic).map((i) => resolveEnemyCombatSprite(sid, 'idle', i)),
+      charId: '',
+      idlePaths,
       attackPaths: range(ac).map((i) => resolveEnemyCombatSprite(sid, 'attack', i)),
+      // Enemies never block; reuse idle paths so Three.js returns cached textures.
+      blockingPaths: range(ic).map((i) => resolveEnemyCombatSprite(sid, 'idle', i)),
       deathPaths: range(dc).map((i) => resolveEnemyCombatSprite(sid, 'death', i)),
       idleFrames: ic,
       attackFrames: ac,
+      blockingFrames: ic,
       deathFrames: dc,
       hasDedicatedAttack: hasEnemyAttackAnim(sid),
+      hasDedicatedBlocking: false,
     };
   }, [isAlly, archetype, civilization, gender, spriteId]);
 }

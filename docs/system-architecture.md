@@ -272,6 +272,9 @@ Combat rendering overhauled from per-entity React components to 1-draw-call GPU 
 - HP bars rendered via InstancedMesh (one bar per entity)
 - Red fill = current HP, grey background
 
+**CombatMaskOverlay** (`combat-mask-overlay.tsx`)
+- Per-ally identity mask sprite (R3F plane inside Billboard) using deterministic mask from pool; tracks animation state with per-state offset table and frame lerp
+
 **CombatVfxSpawner** (`combat-vfx-spawner.tsx`)
 - VFX layer for combat effects (particle emitters, visual polish)
 
@@ -637,11 +640,21 @@ Shifted from isometric (20°) to beat-em-up sidescroller:
 - **Zoom**: 80 (was 114)
 - **Parallax**: Background Y offsets raised for 35° angle
 
+#### Spawn Slide Animation (v1.28 — Cosmetic Wave Entry Visual)
+
+New-wave enemies (wave > 0) spawn off-screen and slide in from the right edge for visual polish:
+- **Field**: `ArenaEntity.spawnSlideFromX?: number` (optional, cosmetic only)
+- **Set by engine**: `CombatEngine.addEnemies()` calculates `spawnSlideFromX ≥ +14 + formation.x` (off-screen right edge)
+- **Initial wave**: Wave 0 enemies + allies have `spawnSlideFromX` undefined (spawn in-place, no slide)
+- **Renderer**: `combat-idle-sprite.tsx` initializes group X to `spawnSlideFromX ?? position.x`, lerps to `position.x` over 400ms
+- **Logic unaffected**: Combat AI, turn locks, victory checks unchanged; field is renderer-only
+
 #### Backward Compatibility
 
 - Missions without `waves` field default to single-wave mode (all enemies at once)
 - Existing formation positions preserved for non-wave combat
 - Post-processing additive (new DoF layers on top of existing vignette)
+- `spawnSlideFromX` optional; missions without it render enemies at `position.x` immediately
 
 ## Combat Formation Movement (Phase 1 — Positional Attacks)
 
@@ -1620,6 +1633,7 @@ calcGearBonuses(equipment): GearBonuses
 ### Starting Equipment
 
 LinhSon civilization archetype members receive starting weapons at character creation:
+- **Sword** (founder-only Templar) → WOODEN_SWORD (10 damage)
 - **Warrior** → WOODEN_AXE (10 damage)
 - **Scout** → WOODEN_CROSSBOW (10 damage)
 - **Other archetypes/civilizations** → No starting gear
@@ -1905,6 +1919,37 @@ interface Member {
 - No data loss; backward compatible
 - Old saves load with slots initialized but empty
 
+### Save Migration v25 → v26 (Phase 06 Tutorial State Machine Integration)
+
+**`migrateV25toV26()`** (`src/game/save/save-migrations.ts`):
+- **TutorialStep Remap** (`STEP_REMAP` table): Remaps legacy 8-step IDs forward to 14-beat narrative flow
+  - 'char-creation' → 'char-creation' (unchanged)
+  - 'world-board' → 'arrival-alarm' (prerequisites met; no blocking items)
+  - 'tutorial-quest-dispatch', 'tutorial-quest-active' → 'open-quest-board' (dead mission strips below; player re-dispatches)
+  - 'tutorial-kael-rescue' → 'kael-rescue' (Kael + permit already pre-granted)
+  - 'tutorial-reward' → 'reward-splash' (permit already granted)
+  - 'build-logging-site' → 'build-logging-site' (unchanged, new beat exists)
+  - 'assign-kael' → 'assign-kael' (unchanged)
+  - Unknown legacy IDs → 'complete' (defensive fallback)
+- **Stranded Member Cleanup**: Removes 'tutorial-into-the-clearing' mission from `activeMissions[]`
+  - Any members stuck 'on-mission' for that mission reset to 'idle' status (frees them so they're available for new tutorial flow)
+  - The deleted mission no longer exists in MISSIONS registry, so members would be stranded if not cleaned up
+- **Data Preservation**: Transparent migration; auto-triggered on load, no player interaction required
+- **Backward Compat**: Old saves load seamlessly with 14-beat flow; player simply continues from remapped beat
+
+### Save Migration v26 → v27 (MVP Recruit Gating, VN Names & Roster Rename)
+
+**`migrateV26toV27()`** (`src/game/save/save-migrations.ts`):
+- **TavernVisitor Schema Change**: `TavernVisitor` adds required `name` + `gender` fields
+  - Backfill existing `tavern.mercContracts[]` visitors (persisted active/pending contracts)
+  - Founder visitors: assign name as `'Founder'`
+  - Recruited visitors: deterministically assign from `CIV_CONFIG[civ].namePool` (same logic as new spawn)
+  - All visitors get gender from archetype→gender mapping in `RECRUITABLE_UNITS`
+- **Backward Compat**: Old saves load with proper names; no player interaction required
+- **Archetype Gating**: New `RECRUITABLE_UNITS` config gates recruitable units per civilization (MVP: Linh Sơn only)
+  - Non-recruitable archetypes (e.g., `LS-SCOUT-M`, `LS-WARRIOR-F`) never spawn in tavern or through recruitment system
+  - Existing saves' members unaffected (loaded members keep archetype/gender as-is)
+
 ### Inventory Panel Updates (v1.26)
 
 **Changes**:
@@ -1963,8 +2008,9 @@ Character.civId = civId (founder or new member)
 CIV_CONFIG[civId] lookup:
   - name: "Linh Sơn" | "Đế Quốc" | "Thiên Lữ"
   - statBonuses: { STR: +X, ... }
-  - archetypes: ['Warrior', 'Mage', 'Rogue']
-  - heroes: { 'Warrior': [...], 'Mage': [...], 'Rogue': [...] }
+  - archetypes: 2 recruitable per civ (e.g. LinhSon ['warrior','scout'])
+    NOTE: founder-only 'sword' (Templar) is excluded here so recruits/tavern never roll it
+  - heroes: { archetype: [...] }
     ↓
 applyCivBonuses(character, civId):
   1. Get CIV_CONFIG[civId].statBonuses
@@ -2204,6 +2250,8 @@ getRoomBounds(room: Room):
 | File | Purpose |
 |------|---------|
 | `title-screen.tsx` | Save slot selection UI, continue/new/delete actions |
+| `title-screen-settings.tsx` | Settings overlay: BGM/SFX volume, language (en/vi), graphics quality (low/med/high) — NEW v1.29 Phase 5 |
+| `title-screen-credits.tsx` | Credits overlay: scrollable credits list with role/name pairs — NEW v1.29 Phase 5 |
 | `save-slot-card.tsx` | Individual slot card (metadata, buttons) |
 | `game-screen.tsx` | Game world + HUD + panels + tick loop (extracted from App.tsx) |
 
@@ -2233,6 +2281,8 @@ getRoomBounds(room: Room):
 | `mission-notification.tsx` | Individual toast notification |
 | `stat-bar.tsx` | Character stat bar with icon display |
 | `rank-badge.tsx` | Rank display with icon + color coding |
+| `retro-speech-bubble.tsx` | JRPG-style narrative dialogue bubble with typewriter reveal + click-through (world-anchored via coachmark bridge or fixed-bottom fallback) — NEW v1.28, Phase 05 tutorial-quest-redesign |
+| `npc-alarm.tsx` | Beat-2 narrative driver mounting RetroSpeechBubble (messenger alarm scene) — NEW v1.28, Phase 05 |
 | Other UI components | Stat bars, cards, buttons |
 
 ### `/ui/panels/` — Collapsible Panels
@@ -2241,12 +2291,14 @@ getRoomBounds(room: Room):
 | `quest-board.tsx` | Unified split-pane dispatch UI (desktop 55/45 list/detail; mobile single-pane swap). Parchment skin, "Return to Guild" close, wax-seal dispatch button. — REWRITTEN v1.28 |
 | `quest-card.tsx` | List-item card component for mission entries — NEW v1.28 |
 | `quest-detail-pane.tsx` | Right-side detail panel with empty state + party selection — NEW v1.28 |
-| `party-select-list.tsx` | Checkbox member selector for quest dispatch — NEW v1.28 |
+| `quest-party-slots.tsx` | Facility-style square party slots (filled avatar tile + empty/add slots), required+expandable up to soft cap — NEW |
+| `quest-roster-picker.tsx` | Right-anchored roster flyout of `MemberCard`s for filling a party slot (Esc/outside-click close) — NEW |
+| `member-avatar.css` | Shared `.fp-avatar-*` member tile styles (facility tray + quest party slots) — NEW |
 | `guild-roster.tsx` | Compact member list with character detail panel (NEW v1.6), civ badges, civilization filtering |
 | `character-detail-panel.tsx` | Left-side detail panel (avatar, equipment, auto-cast toggle, stats, civ info, passives) — NEW v1.6, ENHANCED v1.9 |
 | `build-menu.tsx` | Room selection UI (enter placement mode instead of direct placement) |
 | `combat-view.tsx` | Combat log + tick-by-tick simulation details |
-| `char-creation.tsx` | Stat allocation (50 points), civilization selector — ENHANCED v1.9 |
+| `char-creation.tsx` | Split-hero new-game wizard orchestrator (Civilization → Class → Mask → Identity → Begin); pinned live preview + per-step rail — REBUILT (New Game Flow, 2026-05-21) |
 | `settings-panel.tsx` | Audio/lang toggle, import/export, return to title |
 
 ### `/ui/components/roster/` — Roster Components (NEW - v1.6, v1.8)
@@ -2338,17 +2390,35 @@ getRoomBounds(room: Room):
 |------|---------|
 | `use-game-tick-loop.ts` | Initialize Web Worker, handle ticks, process missions/injuries, offline catch-up |
 
-### `/i18n/` — Localization
+### `/i18n/` — Bilingual Localization (EN + VI)
+
+i18next + react-i18next with device-level language preference. **Two-namespace architecture**: `ui` (interface chrome, 708 keys each language) and `content` (game-data display + narrative, with asymmetric source-language resolution).
+
+**Key concepts**:
+- **Source-language asymmetry**: EN-authored data (missions, items, enemies) has EN inline + VI overlay; VN-authored data (civ, skills) has VN inline + EN overlay.
+- **`fallbackLng: false` for content namespace**: Critical for correct fallback behavior when resolving VN-authored entities.
+- **`useLanguage()` hook**: Centralizes device-level preference (localStorage), one language across all save slots.
+- **Typed wrappers** (`missionName`, `itemName`, `civName`, etc.): Never call data fields directly; use wrappers for automatic localization.
+- **Coverage + parity guards**: `ui-parity.test.ts` (708 keys each), `content-coverage.test.ts` (entity field completeness).
+
+**See** `docs/i18n.md` for full architecture, contributor guide, and testing details.
+
 | File | Purpose |
 |------|---------|
-| `vi.json` | Vietnamese translations (default locale), includes Milestone 2 strings (civilizations, passives, new missions) |
-| `index.ts` | i18next setup |
+| `index.ts` | i18next init, lang storage, dev helpers (saveMissing for ui namespace) |
+| `content-localization.ts` | `tContent(category, id, field, fallback)` resolver with `fallbackLng: false` |
+| `content-wrappers.ts` | Typed per-category helpers: `missionName()`, `itemName()`, `civName()`, `skillName()`, etc. |
+| `use-language.ts` | `useLanguage()` hook for device-level preference (localStorage + i18n) |
+| `ui.en.json`, `ui.vi.json` | UI namespace (708 keys each, parity enforced) |
+| `content.en.json`, `content.vi.json` | Content namespace (overlays per source-language direction) |
+| `ui-parity.test.ts` | Guard: ensures ui.en.json ↔ ui.vi.json key alignment (708 keys each) |
+| `content-coverage.test.ts` | Guard: ensures all entity fields have required overlay entries |
 
 ### `/audio/` — Audio Management
 | File | Purpose |
 |------|---------|
-| `audio-manager.ts` | Audio key registry + Howler.js management, includes 6 new keys (v1.9): BGM_COMBAT, SFX_CRIT, SFX_DODGE, SFX_DEATH, SFX_SKILL, SFX_RECRUIT |
-| `audio-keys.ts` | Enum of all audio keys |
+| `audio-manager.ts` | Audio key registry + Howler.js management, includes 6 new keys (v1.9): BGM_COMBAT, SFX_CRIT, SFX_DODGE, SFX_DEATH, SFX_SKILL, SFX_RECRUIT; `crossfadeBGM(key, durationMs=1500)` for smooth BGM transitions (Phase 6 Title Screen 2000s A.C.) |
+| `audio-keys.ts` | Enum of all audio keys (includes BGM_TITLE for title screen BGM) |
 
 ## Diegetic UI Pattern (Quest Board v1.28+)
 

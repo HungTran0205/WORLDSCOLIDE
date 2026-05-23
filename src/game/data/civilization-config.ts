@@ -4,12 +4,13 @@
  */
 
 import type { Stats, StatKey } from '@/game/state/game-state';
+import { tContent } from '@/i18n/content-localization';
 
 export type Civilization = 'LinhSon' | 'DeQuoc' | 'ThienLu';
 
 /** Civ-specific archetype identifiers matching sprite folder names */
 export type CivArchetype =
-  | 'warrior' | 'scout'         // LinhSon
+  | 'warrior' | 'scout' | 'sword' // LinhSon ('sword' = Templar; recruitable via RECRUITABLE_UNITS, not the legacy archetypes array)
   | 'engineer' | 'scholar'      // DeQuoc
   | 'dualblade' | 'philosopher'; // ThienLu
 
@@ -72,6 +73,9 @@ export const CIV_CONFIG: Record<Civilization, CivConfig> = {
     namePool: [
       'Minh', 'Lan', 'Đức', 'Hoa', 'Tuấn', 'Mai', 'An', 'Bảo', 'Chi', 'Đào',
       'Giang', 'Hà', 'Khánh', 'Linh', 'Nam', 'Phúc', 'Quang', 'Sơn', 'Thảo', 'Vân',
+      'Hùng', 'Dũng', 'Trung', 'Hải', 'Long', 'Phong', 'Việt', 'Thắng', 'Cường', 'Tâm',
+      'Ngọc', 'Hương', 'Trang', 'Nhung', 'Yến', 'Hạnh', 'Diệp', 'Loan', 'Thu', 'Hiền',
+      'Kiên', 'Nghĩa', 'Tài', 'Lộc',
     ],
   },
   DeQuoc: {
@@ -132,6 +136,29 @@ export const CIV_CONFIG: Record<Civilization, CivConfig> = {
   },
 };
 
+/** A single recruitable unit: an (archetype, gender) pair → a unique sprite folder. */
+export interface RecruitableUnit {
+  archetype: CivArchetype;
+  gender: Gender;
+}
+
+/**
+ * Single source of truth for tavern recruitment gating.
+ * Each pair fully determines the sprite via getSpritePath → `{PREFIX}-{ARCH}-{GENDER}`,
+ * so only the listed sprites can ever spawn. Any (archetype,gender) combo NOT listed
+ * (e.g. scout+M, warrior+F for Linh Sơn) is unspawnable by construction.
+ * MVP: only Linh Sơn recruits; other civs ship empty until their archetypes are playable.
+ */
+export const RECRUITABLE_UNITS: Record<Civilization, RecruitableUnit[]> = {
+  LinhSon: [
+    { archetype: 'sword',   gender: 'M' }, // Templar  → LS-SWORD-M
+    { archetype: 'warrior', gender: 'M' }, // Forester → LS-WARRIOR-M
+    { archetype: 'scout',   gender: 'F' }, // Ranger   → LS-SCOUT-F
+  ],
+  DeQuoc: [],
+  ThienLu: [],
+};
+
 /** Apply civilization stat bonuses to a stats object (one-time at creation) */
 export function applyCivBonuses(stats: Stats, civ: Civilization): Stats {
   const config = CIV_CONFIG[civ];
@@ -148,8 +175,14 @@ export function getCivColor(civilization: string): string {
   return config?.colors.secondary ?? '#666';
 }
 
-/** Safe display name lookup with fallback */
+/**
+ * Safe display name lookup — routes through the i18n content resolver so
+ * EN players see the canon English name (e.g. "The LinhSon") rather than
+ * the VN-source inline value (e.g. "Linh Sơn").
+ * The inline displayName is VN (source); EN is overlaid from content.en.json.
+ */
 export function getCivDisplayName(civilization: string): string {
   const config = CIV_CONFIG[civilization as Civilization];
-  return config?.displayName ?? civilization;
+  if (!config) return civilization;
+  return tContent('civ', civilization, 'name', config.displayName);
 }

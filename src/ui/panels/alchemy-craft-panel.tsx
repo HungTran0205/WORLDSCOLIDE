@@ -5,6 +5,7 @@
  */
 
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import { ITEM_DATABASE, type ItemID } from '@/game/data/items';
 import { ALCHEMY_CONFIG } from '@/game/data/facility-definitions';
@@ -23,6 +24,7 @@ const RARITY_BORDER: Record<string, string> = {
 };
 
 export function AlchemyCraftPanel({ facility, onClose }: AlchemyCraftPanelProps) {
+  const { t } = useTranslation();
   const items = useGameStore((s) => s.inventory.items);
   const founder = useGameStore((s) => s.founder);
   const roster = useGameStore((s) => s.roster);
@@ -106,7 +108,7 @@ export function AlchemyCraftPanel({ facility, onClose }: AlchemyCraftPanelProps)
 
         {/* ── Left: Inventory ── */}
         <div style={{ minWidth: 270 }}>
-          <div style={S.sectionTitle}>Inventory</div>
+          <div style={S.sectionTitle}>{t('alchemy.inventoryTitle')}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 50px)', gap: 4 }}>
             {inventoryItems.map((id) => {
               const def = ITEM_DATABASE[id];
@@ -130,7 +132,7 @@ export function AlchemyCraftPanel({ facility, onClose }: AlchemyCraftPanelProps)
             })}
           </div>
           {inventoryItems.length === 0 && (
-            <div style={{ color: '#555', fontSize: 12, marginTop: 8 }}>Inventory empty</div>
+            <div style={{ color: '#555', fontSize: 12, marginTop: 8 }}>{t('alchemy.inventoryEmpty')}</div>
           )}
         </div>
 
@@ -139,12 +141,12 @@ export function AlchemyCraftPanel({ facility, onClose }: AlchemyCraftPanelProps)
 
         {/* ── Right: Alchemy ── */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, minWidth: 320 }}>
-          <div style={S.sectionTitle}>Alchemy</div>
+          <div style={S.sectionTitle}>{t('alchemy.title')}</div>
 
           {/* Ingredient slots → output */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
             <div>
-              <div style={{ color: '#666', fontSize: 11, textAlign: 'center', marginBottom: 8 }}>Ingredients</div>
+              <div style={{ color: '#666', fontSize: 11, textAlign: 'center', marginBottom: 8 }}>{t('alchemy.ingredients')}</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 60px)', gap: 8 }}>
                 {Array.from({ length: 4 }).map((_, i) => {
                   const visible = i < visibleSlots;
@@ -156,9 +158,9 @@ export function AlchemyCraftPanel({ facility, onClose }: AlchemyCraftPanelProps)
                       onDrop={() => visible && dropToSlot(i)}
                       onClick={() => slotItem && clearSlot(i)}
                       title={
-                        slotItem ? `${ITEM_DATABASE[slotItem].name} — click to remove`
-                          : visible ? 'Drag ingredient here'
-                          : `Unlocks at Alchemy Lv.${i + 1}`
+                        slotItem ? t('alchemy.removeHint', { name: ITEM_DATABASE[slotItem].name })
+                          : visible ? t('alchemy.dropHint')
+                          : t('alchemy.lockedHint', { level: i + 1 })
                       }
                       style={{
                         ...S.slot,
@@ -176,7 +178,7 @@ export function AlchemyCraftPanel({ facility, onClose }: AlchemyCraftPanelProps)
                         <GameIcon category="item" id={slotItem} size={34}
                           fallbackText={ITEM_DATABASE[slotItem].name.slice(0, 3)} />
                       ) : visible ? (
-                        <span style={{ color: '#444', fontSize: 11 }}>drop</span>
+                        <span style={{ color: '#444', fontSize: 11 }}>{t('alchemy.dragHere')}</span>
                       ) : (
                         <span style={{ color: '#333', fontSize: 10 }}>Lv.{i + 1}</span>
                       )}
@@ -189,7 +191,7 @@ export function AlchemyCraftPanel({ facility, onClose }: AlchemyCraftPanelProps)
             <span style={{ color: '#a78bfa', fontSize: 28, fontWeight: 'bold', lineHeight: 1 }}>→</span>
 
             <div>
-              <div style={{ color: '#666', fontSize: 11, textAlign: 'center', marginBottom: 8 }}>Output</div>
+              <div style={{ color: '#666', fontSize: 11, textAlign: 'center', marginBottom: 8 }}>{t('alchemy.output')}</div>
               <div style={{
                 ...S.slot,
                 width: 68, height: 68,
@@ -218,7 +220,7 @@ export function AlchemyCraftPanel({ facility, onClose }: AlchemyCraftPanelProps)
 
           {/* Quantity */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: '#888', fontSize: 12 }}>Quantity:</span>
+            <span style={{ color: '#888', fontSize: 12 }}>{t('alchemy.quantity')}</span>
             <input
               type="number" min={1} value={qty}
               onChange={(e) => setQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
@@ -239,15 +241,15 @@ export function AlchemyCraftPanel({ facility, onClose }: AlchemyCraftPanelProps)
                 cursor: canCraft ? 'pointer' : 'not-allowed',
               }}
             >
-              Craft
+              {t('alchemy.craft')}
             </button>
             <button onClick={onClose} style={{ ...S.btn, background: 'rgba(200,60,60,0.15)', border: '1px solid rgba(200,60,60,0.5)', color: '#f87171', cursor: 'pointer' }}>
-              Cancel
+              {t('alchemy.cancel')}
             </button>
           </div>
 
           <div style={{ color: '#444', fontSize: 10 }}>
-            Alchemy Lv.{maxAcLevel} — {visibleSlots}/4 ingredient slots
+            {t('alchemy.levelSlots', { level: maxAcLevel, visible: visibleSlots })}
           </div>
         </div>
 

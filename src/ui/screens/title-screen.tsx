@@ -1,13 +1,29 @@
 /**
- * Title screen — game entry point with save slot selection.
- * Displays 3 save slots, Continue/New Game/Delete actions.
+ * Title screen — game entry point.
+ * Renders the full-bleed R3F diorama as background and a floating menu panel
+ * (with main / save-picker / settings / credits sub-views) as overlay.
+ *
+ * State machine for the menu panel:
+ *   'main'      → TitleScreenMainMenu
+ *   'new-game'  → TitleScreenSavePicker (mode=new)
+ *   'load-game' → TitleScreenSavePicker (mode=load)
+ *   'settings'  → TitleScreenSettings
+ *   'credits'   → TitleScreenCredits
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { listSlots } from '@/game/save/save-storage';
-import { SaveSlotCard } from './save-slot-card';
+import { TitleScene } from '@/scene/title/title-scene';
+import { TitleScreenLogo } from './title-screen-logo';
+import { TitleScreenMainMenu } from './title-screen-main-menu';
+import { TitleScreenSavePicker } from './title-screen-save-picker';
+import { TitleScreenSettings } from './title-screen-settings';
+import { TitleScreenCredits } from './title-screen-credits';
 import type { SaveSlotMetadata } from '@/game/save/save-types';
 import '@/ui/styles/title-screen.css';
+
+type MenuMode = 'main' | 'new-game' | 'load-game' | 'settings' | 'credits';
 
 interface TitleScreenProps {
   onContinue: (slotId: number) => void;
@@ -16,126 +32,107 @@ interface TitleScreenProps {
 }
 
 export function TitleScreen({ onContinue, onNewGame, onDeleteSlot }: TitleScreenProps) {
+  const { t } = useTranslation();
   const [slots, setSlots] = useState<(SaveSlotMetadata | null)[]>([null, null, null]);
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
-  const [message, setMessage] = useState<{ text: string; type: 'error' | 'info' } | null>(null);
+  const [mode, setMode] = useState<MenuMode>('main');
+  const [error, setError] = useState<string | null>(null);
 
   const refreshSlots = useCallback(async () => {
-    setLoading(true);
     const result = await listSlots().catch(() => null);
     if (result) {
       setSlots(result);
+      setError(null);
     } else {
-      setMessage({ text: 'Failed to load save slots', type: 'error' });
+      setError(t('titleScreen.loadFailed'));
     }
-    setLoading(false);
   }, []);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetch on mount is standard pattern
-  useEffect(() => { refreshSlots(); }, [refreshSlots]);
+  useEffect(() => { void refreshSlots(); }, [refreshSlots]);
 
-  const selected = selectedIdx !== null ? slots[selectedIdx] : undefined;
-  const slotId = selectedIdx !== null ? selectedIdx + 1 : 0;
-  const isPopulated = !!selected;
+  /** Latest populated slot id (1-3) by updatedAt, or null if all empty. */
+  const latestSlotId = useMemo(() => {
+    let best: { id: number; updatedAt: number } | null = null;
+    slots.forEach((slot, idx) => {
+      if (!slot) return;
+      if (!best || slot.updatedAt > best.updatedAt) {
+        best = { id: idx + 1, updatedAt: slot.updatedAt };
+      }
+    });
+    return best !== null ? (best as { id: number; updatedAt: number }).id : null;
+  }, [slots]);
+
+  const hasAnySave = latestSlotId !== null;
 
   const handleContinue = () => {
-    if (isPopulated) onContinue(slotId);
+    if (latestSlotId !== null) onContinue(latestSlotId);
   };
 
-  const handleNewGame = () => {
-    if (selectedIdx === null) return;
-    if (isPopulated) {
-      setShowOverwriteConfirm(true);
-      return;
-    }
-    onNewGame(slotId);
-  };
+  const handleNewGameSelect = (slotId: number) => onNewGame(slotId);
 
-  const confirmOverwrite = async () => {
-    setShowOverwriteConfirm(false);
+  const handleLoadSelect = (slotId: number) => onContinue(slotId);
+
+  const handleDelete = async (slotId: number) => {
     await onDeleteSlot(slotId);
-    onNewGame(slotId);
+    await refreshSlots();
   };
 
-  const handleDelete = async () => {
-    if (!isPopulated) return;
-    if (!showDeleteConfirm) {
-      setShowDeleteConfirm(true);
-      return;
-    }
-    setShowDeleteConfirm(false);
-    await onDeleteSlot(slotId);
-    refreshSlots();
-  };
+  const backToMain = () => setMode('main');
 
-  // Reset confirms when slot selection changes
-  const selectSlot = (idx: number) => {
-    setSelectedIdx(idx);
-    setShowDeleteConfirm(false);
-    setShowOverwriteConfirm(false);
-    setMessage(null);
-  };
-
-  if (loading) {
-    return (
-      <div className="title-screen">
-        <div className="title-logo">Worlds Collide</div>
-        <div className="title-subtitle">Loading...</div>
-      </div>
-    );
-  }
+  // Submenu modes expand the panel to center for a wider workspace.
+  const isSubmenu = mode !== 'main';
+  const panelClass = `title-screen__panel${isSubmenu ? ' title-screen__panel--wide' : ''}`;
 
   return (
     <div className="title-screen">
-      <div className="title-logo">Worlds Collide</div>
-      <div className="title-subtitle">RPG Idle Guild Builder</div>
+      {/* Full-bleed diorama background */}
+      <TitleScene />
 
-      <div className="save-slot-list">
-        {slots.map((meta, idx) => (
-          <SaveSlotCard
-            key={idx}
-            slotIndex={idx}
-            metadata={meta}
-            selected={selectedIdx === idx}
-            onClick={() => selectSlot(idx)}
+      {/* Brand logo — standalone, top-center of the screen, sized between the
+       *  splash and the old in-panel variant. Sits above the menu panel so it
+       *  reads as the title of the whole composition, not a panel header. */}
+      <div className="title-screen__brand">
+        <TitleScreenLogo size="brand" animate={false} />
+      </div>
+
+      {/* Floating menu panel — overlays the diorama */}
+      <aside className={panelClass} aria-label={t('titleScreen.panelAria')}>
+        {mode === 'main' && (
+          <TitleScreenMainMenu
+            hasContinue={hasAnySave}
+            onContinue={handleContinue}
+            onNewGame={() => setMode('new-game')}
+            onLoadGame={() => setMode('load-game')}
+            onSettings={() => setMode('settings')}
+            onCredits={() => setMode('credits')}
           />
-        ))}
-      </div>
+        )}
 
-      <div className="title-actions">
-        <button className="title-btn" disabled={!isPopulated} onClick={handleContinue}>
-          Continue
-        </button>
-        <button className="title-btn" disabled={selectedIdx === null} onClick={handleNewGame}>
-          New Game
-        </button>
-        <button
-          className="title-btn title-btn--danger"
-          disabled={!isPopulated}
-          onClick={handleDelete}
-        >
-          {showDeleteConfirm ? 'Confirm Delete?' : 'Delete Save'}
-        </button>
-      </div>
+        {mode === 'new-game' && (
+          <TitleScreenSavePicker
+            mode="new"
+            slots={slots}
+            onSelect={handleNewGameSelect}
+            onDelete={handleDelete}
+            onBack={backToMain}
+          />
+        )}
 
-      {showOverwriteConfirm && (
-        <div className="title-message title-message--error">
-          This slot has data. Overwrite?{' '}
-          <button className="title-btn title-btn--danger" onClick={confirmOverwrite}>
-            Yes, overwrite
-          </button>{' '}
-          <button className="title-btn" onClick={() => setShowOverwriteConfirm(false)}>
-            Cancel
-          </button>
-        </div>
-      )}
+        {mode === 'load-game' && (
+          <TitleScreenSavePicker
+            mode="load"
+            slots={slots}
+            onSelect={handleLoadSelect}
+            onBack={backToMain}
+          />
+        )}
 
-      {message && (
-        <div className={`title-message title-message--${message.type}`}>{message.text}</div>
-      )}
+        {mode === 'settings' && <TitleScreenSettings onBack={backToMain} />}
+
+        {mode === 'credits' && <TitleScreenCredits onBack={backToMain} />}
+
+        {error && <p className="title-menu__error" role="alert">{error}</p>}
+      </aside>
     </div>
   );
 }

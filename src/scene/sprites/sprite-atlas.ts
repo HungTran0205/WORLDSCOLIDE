@@ -7,6 +7,7 @@
  */
 
 import * as THREE from 'three';
+import { assetUrl } from '@/lib/asset-url';
 
 export interface SpriteAtlas {
   /** Single CanvasTexture containing all frames in a grid */
@@ -127,7 +128,7 @@ export async function buildAtlasFromUrls(
             img.crossOrigin = 'anonymous';
             img.onload = () => resolve(img);
             img.onerror = reject;
-            img.src = url;
+            img.src = assetUrl(url);
           }),
       ),
     );

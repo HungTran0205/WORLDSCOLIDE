@@ -24,6 +24,15 @@ export interface ArenaEntity extends CombatEntity {
    *  land mid-air after the reset. */
   homeY: number;
   homeZ: number;
+  /**
+   * Cosmetic-only renderer hint: the X world position from which the sprite
+   * should slide in when this entity first mounts (new-wave spawn). The renderer
+   * lerps its display X from this value to entity.position.x over ~0.3s.
+   * - Set only by addEnemies (wave 2+) — undefined for wave-1 enemies and all
+   *   allies → renderer starts dispX at position.x (no visible motion).
+   * - Never read by engine/AI/victory logic; ignored by cloneCombatEntity.
+   */
+  spawnSlideFromX?: number;
   /** Summoner Wars step-attack state machine */
   attackMoveState: AttackMoveState;
   /** Where the entity is stepping toward for this attack */

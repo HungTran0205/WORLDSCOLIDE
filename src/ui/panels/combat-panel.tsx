@@ -8,19 +8,25 @@
  */
 
 import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { useGameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
+import { tContent } from '@/i18n/content-localization';
 import { CombatPanelHeader } from '@/ui/panels/combat-panel-header';
 import { CombatPanelFormation } from '@/ui/panels/combat-panel-formation';
 import { CombatPanelBattle } from '@/ui/panels/combat-panel-battle';
 import { CombatPanelResult } from '@/ui/panels/combat-panel-result';
+import { StoryDialogOverlay } from '@/ui/components/story-dialog-overlay';
 import '@/ui/styles/combat-panel.css';
 
 export function CombatPanel() {
+  const { t } = useTranslation();
   const isOpen = useCombatPanelStore((s) => s.isOpen);
   const phase = useCombatPanelStore((s) => s.phase);
   const missionId = useCombatPanelStore((s) => s.missionId);
+  const dialogLines = useCombatPanelStore((s) => s.dialogLines);
+  const confirmStoryDialog = useCombatPanelStore((s) => s.confirmStoryDialog);
   const closeCombatPanel = useCombatPanelStore((s) => s.closeCombatPanel);
   const exitArena = useGameStore((s) => s.exitArena);
 
@@ -28,9 +34,16 @@ export function CombatPanel() {
 
   /** Close handler — also unwinds legacy arena-slice state until Phase 7 cleanup */
   const handleClose = useCallback(() => {
+    // Guard: if a close is triggered while the post-combat dialog is up, the
+    // earned result is still held in the store. Reveal it instead of silently
+    // discarding the reward splash the player already won.
+    if (useCombatPanelStore.getState().phase === 'story-dialog') {
+      confirmStoryDialog();
+      return;
+    }
     closeCombatPanel();
     exitArena();
-  }, [closeCombatPanel, exitArena]);
+  }, [closeCombatPanel, exitArena, confirmStoryDialog]);
 
   if (!isOpen) return null;
 
@@ -42,13 +55,16 @@ export function CombatPanel() {
     <div className={overlayClass} role="dialog" aria-modal="true">
       <div className={panelClass}>
         <CombatPanelHeader
-          missionName={missionData?.name ?? 'Combat'}
-          zone={missionData?.zone}
+          missionName={missionData ? tContent('missions', missionData.id, 'name', missionData.name) : t('combatPanel.fallbackName')}
+          zone={missionData ? tContent('missions', missionData.id, 'zone', missionData.zone ?? '') : undefined}
           onClose={handleClose}
         />
         <div className="combat-panel-body">
           {phase === 'formation' && <CombatPanelFormation />}
           {phase === 'battle' && <CombatPanelBattle />}
+          {phase === 'story-dialog' && dialogLines && (
+            <StoryDialogOverlay lines={dialogLines} onDone={confirmStoryDialog} />
+          )}
           {phase === 'result' && <CombatPanelResult onClose={handleClose} />}
         </div>
       </div>

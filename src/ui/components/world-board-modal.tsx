@@ -1,32 +1,23 @@
-/** World Board modal — 2-page lore intro shown at the start of every new game. */
+/** World Board modal — single trimmed lore page shown at the start of every new game.
+ *  Long lore moves to a codex later (GDD §12.2). Rendered during the 'arrival-alarm'
+ *  beat; "Begin" hands off (via onBegin) to the messenger alarm in game-screen. */
 
-import { useState } from 'react';
-import { useGameStore } from '@/game/state/store';
+import { tContent } from '@/i18n/content-localization';
 
-const PAGES = [
-  {
-    title: 'A World Divided',
-    body: `Three great civilizations carve this land in uneasy silence.\n\nLinh Sơn — ancient mountain warriors, unyielding as stone, loyal to their ancestors above all else.\n\nĐế Quốc — a reborn empire of steel, steam, and electric ambition, always reaching for more.\n\nThiên Lữ — nomadic mystics who read the stars as maps, as swift and untethered as the wind.\n\nThey do not trust each other. But a darkness stirs below — and none can face it alone.`,
-  },
-  {
-    title: 'Your Guild',
-    body: `You have been granted a charter to found a guild — a neutral ground, open to warriors of every civilization.\n\nRecruit fighters, dispatch them into a fractured world, expand your hall, and forge bonds across old borders.\n\nSomeone has to build the bridge. That begins with you.`,
-  },
-];
+interface WorldBoardModalProps {
+  /** Called when the player presses "Begin" — game-screen then shows the NPC alarm. */
+  onBegin: () => void;
+}
 
-export function WorldBoardModal() {
-  const [page, setPage] = useState(0);
-  const setTutorialStep = useGameStore((s) => s.setTutorialStep);
+const EN_TITLE = 'A World Divided';
+const EN_BODY =
+  `Civilizations carve this land in uneasy silence — the mountain warriors of Linh Sơn, The Republic Empire of steel-and-steam, the star-reading nomads of Astopia, and The holy state of Eliza. They trust no one but their own.\n\nYou hold a charter to found a guild on neutral ground, open to fighters of every banner. Someone has to build the bridge. That begins with you.`;
+const EN_BEGIN = 'Begin';
 
-  const isLast = page === PAGES.length - 1;
-
-  const handleNext = () => {
-    if (isLast) {
-      setTutorialStep('tutorial-quest-dispatch');
-    } else {
-      setPage((p) => p + 1);
-    }
-  };
+export function WorldBoardModal({ onBegin }: WorldBoardModalProps) {
+  const title = tContent('dialog', 'world-board', 'title', EN_TITLE);
+  const body = tContent('dialog', 'world-board', 'body', EN_BODY);
+  const beginLabel = tContent('dialog', 'world-board', 'begin', EN_BEGIN);
 
   return (
     <div style={{
@@ -39,20 +30,12 @@ export function WorldBoardModal() {
         border: '2px solid rgba(255,215,0,0.3)', borderRadius: 12,
         color: '#e8d5b0', textAlign: 'center',
       }}>
-        <h2 style={{ color: '#ffd700', marginBottom: 16 }}>{PAGES[page].title}</h2>
+        <h2 style={{ color: '#ffd700', marginBottom: 16 }}>{title}</h2>
         <p style={{ whiteSpace: 'pre-line', lineHeight: 1.6, fontSize: '0.95rem' }}>
-          {PAGES[page].body}
+          {body}
         </p>
-        <div style={{ marginTop: 24, display: 'flex', justifyContent: 'center', gap: 12 }}>
-          {page > 0 && (
-            <button className="panel-btn" onClick={() => setPage((p) => p - 1)}>Back</button>
-          )}
-          <button className="panel-btn" onClick={handleNext}>
-            {isLast ? 'Begin' : 'Next'}
-          </button>
-        </div>
-        <div style={{ marginTop: 12, fontSize: '0.75rem', color: '#888' }}>
-          {page + 1} / {PAGES.length}
+        <div style={{ marginTop: 24, display: 'flex', justifyContent: 'center' }}>
+          <button className="panel-btn" onClick={onBegin}>{beginLabel}</button>
         </div>
       </div>
     </div>

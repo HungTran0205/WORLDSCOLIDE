@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Member, SyringeLoadout } from '@/game/state/game-state';
 import type { StatKey } from '@/game/state/game-state';
 import { getSpritePath } from '@/scene/sprites/sprite-path-resolver';
@@ -13,6 +14,7 @@ import { StatsTab } from '@/ui/components/character-tabs/stats-tab';
 import { DEFAULT_MEDICINE_SLOTS } from '@/game/state/guild-slice';
 import { ITEM_DATABASE } from '@/game/data/items';
 import type { ItemID } from '@/game/data/items';
+import { tContent } from '@/i18n/content-localization';
 import '@/ui/styles/character-detail.css';
 
 type TabKey = 'stats' | 'equipment' | 'skills' | 'bio';
@@ -34,6 +36,8 @@ export interface CharacterDetailPanelProps {
   onEquipGear?: (id: string) => void;
   onUnequipGear?: (slot: EquipmentSlot) => void;
   onOpenEquipMode?: () => void; // wired in phase 04
+  /** Rename this member. Omit to disable renaming (e.g. founder / mercenaries). */
+  onRename?: (name: string) => void;
 }
 
 export function CharacterDetailPanel({
@@ -41,10 +45,20 @@ export function CharacterDetailPanel({
   onInviteMercenary, inviteCost, canAffordInvite,
   onPromote, canAffordPromote, onClose,
   syringeCount = 0, onSetSyringeLoadout,
-  onUnequipGear, onOpenEquipMode,
+  onUnequipGear, onOpenEquipMode, onRename,
 }: CharacterDetailPanelProps) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<TabKey>('stats');
   const [imgFailed, setImgFailed] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+
+  const canRename = Boolean(onRename) && !member.isFounder && member.rank !== 'MERCENARY';
+  const commitRename = () => {
+    const next = nameDraft.trim();
+    if (next && onRename) onRename(next);
+    setEditingName(false);
+  };
 
   const expNeeded = expToNextLevel(member.level);
   const expPct    = Math.min(100, Math.floor((member.exp / expNeeded) * 100));
@@ -56,11 +70,13 @@ export function CharacterDetailPanel({
     ? `${getSpritePath(member.civilization, member.archetype, member.gender)}/animations/avatar/frame_000.png`
     : '';
 
+  const civName = civConfig ? tContent('civ', member.civilization, 'name', civConfig.displayName) : member.civilization;
+
   const TABS: { key: TabKey; label: string }[] = [
-    { key: 'stats',     label: 'Stats' },
-    { key: 'equipment', label: 'Equipment' },
-    { key: 'skills',    label: 'Skills' },
-    { key: 'bio',       label: 'Bio' },
+    { key: 'stats',     label: t('characterDetail.tab.stats') },
+    { key: 'equipment', label: t('characterDetail.tab.equipment') },
+    { key: 'skills',    label: t('characterDetail.tab.skills') },
+    { key: 'bio',       label: t('characterDetail.tab.bio') },
   ];
 
   return (
@@ -74,20 +90,52 @@ export function CharacterDetailPanel({
           }
         </div>
         <div className="char-identity">
-          <div className="char-name">{member.name || '???'}</div>
-          <div className="char-sub">{member.rank} · Lv.{member.level} · {civConfig?.displayName ?? member.civilization}</div>
+          <div className="char-name">
+            {editingName ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <input
+                  type="text"
+                  value={nameDraft}
+                  maxLength={24}
+                  autoFocus
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') commitRename();
+                    else if (e.key === 'Escape') setEditingName(false);
+                  }}
+                  style={{ font: 'inherit', maxWidth: '10rem', background: 'var(--ink-bg, #1a1a1a)', color: 'inherit', border: '1px solid var(--ink-gold-dim)', borderRadius: 4, padding: '2px 6px' }}
+                />
+                <button className="char-btn" type="button" onClick={commitRename} title={t('roster.renameSave')}>✓</button>
+                <button className="char-btn" type="button" onClick={() => setEditingName(false)} title={t('roster.renameCancel')}>✕</button>
+              </span>
+            ) : (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {member.name || t('characterDetail.unknownName')}
+                {canRename && (
+                  <button
+                    className="char-btn"
+                    type="button"
+                    style={{ fontSize: '0.7rem', padding: '2px 6px' }}
+                    onClick={() => { setNameDraft(member.name); setEditingName(true); }}
+                    title={t('roster.rename')}
+                  >✎</button>
+                )}
+              </span>
+            )}
+          </div>
+          <div className="char-sub">{t('characterDetail.subline', { rank: member.rank, level: member.level, civ: civName })}</div>
           <div className="char-bar-row">
             <div>
-              <div className="char-bar-label"><span>HP</span><span>{maxHp}</span></div>
+              <div className="char-bar-label"><span>{t('characterDetail.barHp')}</span><span>{maxHp}</span></div>
               <div className="ink-bar-track"><div className="ink-bar-fill ink-bar-hp" style={{ width: '100%' }} /></div>
             </div>
             <div>
-              <div className="char-bar-label"><span>EXP</span><span>{expPct}%</span></div>
+              <div className="char-bar-label"><span>{t('characterDetail.barExp')}</span><span>{expPct}%</span></div>
               <div className="ink-bar-track"><div className="ink-bar-fill ink-bar-exp" style={{ width: `${expPct}%` }} /></div>
             </div>
           </div>
         </div>
-        <button className="char-btn" onClick={onClose} type="button">← Back</button>
+        <button className="char-btn" onClick={onClose} type="button">{t('characterDetail.back')}</button>
       </div>
 
       {/* ── Tab Bar ── */}
@@ -113,52 +161,54 @@ export function CharacterDetailPanel({
 
         {tab === 'equipment' && (
           <>
-            <p className="char-section-title">Gear</p>
+            <p className="char-section-title">{t('characterDetail.gear')}</p>
             {(['weapon', 'armor', 'headgear'] as const).map(slot => {
               const equipped = member.equipment?.[slot] ?? null;
               const tpl = equipped ? getEquipmentTemplate(equipped.templateId) : null;
               return (
                 <div key={slot} className="equip-slot-row">
-                  <span className="equip-slot-label">{slot}</span>
-                  {tpl ? (
+                  <span className="equip-slot-label">{t(`characterDetail.slot.${slot}`)}</span>
+                  {tpl && equipped ? (
                     <>
-                      <span className="equip-slot-name">{tpl.name}</span>
+                      <span className="equip-slot-name">{tContent('equipment', equipped.templateId, 'name', tpl.name)}</span>
                       <span className="equip-stat-hint">
                         {tpl.damage ? `⚔${tpl.damage}` : ''}{tpl.defense ? ` 🛡${tpl.defense}` : ''}{tpl.hp ? ` ❤+${tpl.hp}` : ''}
                       </span>
                       {onUnequipGear && (
-                        <button className="char-btn" style={{ fontSize: '0.6rem', padding: '2px 8px' }} onClick={() => onUnequipGear(slot)}>Remove</button>
+                        <button className="char-btn" style={{ fontSize: '0.6rem', padding: '2px 8px' }} onClick={() => onUnequipGear(slot)}>{t('characterDetail.remove')}</button>
                       )}
                     </>
                   ) : (
-                    <span className="equip-slot-empty">—</span>
+                    <span className="equip-slot-empty">{t('characterDetail.slot.empty')}</span>
                   )}
                 </div>
               );
             })}
             {(member.medicineSlots ?? DEFAULT_MEDICINE_SLOTS).map((ms, idx) => {
-              const itemName = ms.itemId ? (ITEM_DATABASE[ms.itemId as ItemID]?.name ?? ms.itemId) : null;
+              const itemName = ms.itemId
+                ? tContent('items', ms.itemId, 'name', ITEM_DATABASE[ms.itemId as ItemID]?.name ?? ms.itemId)
+                : null;
               return (
                 <div key={idx} className="med-slot-row">
-                  <span className="equip-slot-label">Med {idx + 1}</span>
+                  <span className="equip-slot-label">{t('characterDetail.medSlot', { index: idx + 1 })}</span>
                   {itemName
-                    ? <span className="equip-slot-name">{itemName} <span style={{ color: 'var(--ink-text-muted)', fontSize: '0.65rem' }}>({ms.condition})</span></span>
-                    : <span className="equip-slot-empty">—</span>
+                    ? <span className="equip-slot-name">{itemName} <span style={{ color: 'var(--ink-text-muted)', fontSize: '0.65rem' }}>({t(`characterDetail.medCondition.${ms.condition}`)})</span></span>
+                    : <span className="equip-slot-empty">{t('characterDetail.slot.empty')}</span>
                   }
                 </div>
               );
             })}
             <button className="char-btn primary" style={{ marginTop: 8 }} onClick={onOpenEquipMode} type="button">
-              Equip
+              {t('characterDetail.equip')}
             </button>
             {/* Syringe loadout */}
             {onSetSyringeLoadout && (
               <>
-                <p className="char-section-title" style={{ marginTop: 10 }}>Healing Syringe <span style={{ color: syringeCount > 0 ? 'var(--ink-status-ok)' : 'var(--ink-status-bad)' }}>×{syringeCount}</span></p>
+                <p className="char-section-title" style={{ marginTop: 10 }}>{t('characterDetail.healingSyringe')} <span style={{ color: syringeCount > 0 ? 'var(--ink-status-ok)' : 'var(--ink-status-bad)' }}>×{syringeCount}</span></p>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                   {member.syringeLoadout
-                    ? <button className="char-btn" onClick={() => onSetSyringeLoadout(null)}>Unequip</button>
-                    : <button className="char-btn primary" disabled={syringeCount === 0} onClick={() => onSetSyringeLoadout({ autoUseThresholdPct: 0.30 })}>Equip</button>
+                    ? <button className="char-btn" onClick={() => onSetSyringeLoadout(null)}>{t('characterDetail.unequip')}</button>
+                    : <button className="char-btn primary" disabled={syringeCount === 0} onClick={() => onSetSyringeLoadout({ autoUseThresholdPct: 0.30 })}>{t('characterDetail.equip')}</button>
                   }
                   {member.syringeLoadout && THRESHOLD_OPTIONS.map(pct => (
                     <button key={pct} className={`char-btn${member.syringeLoadout?.autoUseThresholdPct === pct ? ' primary' : ''}`}
@@ -175,27 +225,27 @@ export function CharacterDetailPanel({
         {tab === 'skills' && (
           member.skill ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ color: 'var(--ink-text)', fontSize: '0.9rem', fontFamily: 'var(--ink-font-body)' }}>{member.skill.name}</div>
-              <div className="char-sub">{member.skill.damageMultiplier}× damage · {Math.round(member.skill.cooldownMs / 1000)}s cooldown</div>
+              <div style={{ color: 'var(--ink-text)', fontSize: '0.9rem', fontFamily: 'var(--ink-font-body)' }}>{tContent('skills', member.skill.id, 'name', member.skill.name)}</div>
+              <div className="char-sub">{t('characterDetail.skillMeta', { mult: member.skill.damageMultiplier, cooldown: Math.round(member.skill.cooldownMs / 1000) })}</div>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                 <input type="checkbox" checked={member.skill.autoEnabled} onChange={onToggleAutoCast} style={{ accentColor: 'var(--ink-gold)' }} />
-                <span className="ink-stat">Auto Cast</span>
+                <span className="ink-stat">{t('characterDetail.autoCast')}</span>
               </label>
             </div>
-          ) : <p className="ink-stat">Skill unlocks at Lv.5</p>
+          ) : <p className="ink-stat">{t('characterDetail.skillLocked')}</p>
         )}
 
         {tab === 'bio' && (
           <>
             {civConfig && (
               <>
-                <p className="char-section-title">{civConfig.passive.name}</p>
-                <p style={{ fontSize: '0.78rem', color: 'var(--ink-text-dim)', lineHeight: 1.6 }}>{civConfig.passive.description}</p>
+                <p className="char-section-title">{tContent('civ', member.civilization, 'passiveName', civConfig.passive.name)}</p>
+                <p style={{ fontSize: '0.78rem', color: 'var(--ink-text-dim)', lineHeight: 1.6 }}>{tContent('civ', member.civilization, 'passiveDescription', civConfig.passive.description)}</p>
               </>
             )}
-            <p className="char-section-title" style={{ marginTop: 12 }}>Biography</p>
+            <p className="char-section-title" style={{ marginTop: 12 }}>{t('characterDetail.biography')}</p>
             <p style={{ fontSize: '0.8rem', fontStyle: 'italic', color: 'var(--ink-text-muted)', lineHeight: 1.6 }}>
-              This warrior's tale is yet unwritten.
+              {t('characterDetail.biographyEmpty')}
             </p>
           </>
         )}
@@ -205,7 +255,7 @@ export function CharacterDetailPanel({
       {isMerc && onInviteMercenary && (
         <div className="char-detail-footer">
           <button className="char-btn primary" disabled={!canAffordInvite} onClick={onInviteMercenary}>
-            Invite to Guild ({inviteCost}g)
+            {t('characterDetail.inviteToGuild', { cost: inviteCost })}
           </button>
         </div>
       )}

@@ -4,8 +4,12 @@
  */
 
 import type { Civilization } from '@/game/data/civilization-config';
+import { assetUrl } from '@/lib/asset-url';
 
 export type SpriteDirection = 'north' | 'south' | 'east' | 'west';
+
+/** Guild hall members walk in east/west only (idle faces south separately). */
+export type HorizontalDirection = 'east' | 'west';
 
 /** Sprite folder prefix per civilization — matches CIV_CONFIG.shortName. */
 const CIV_SPRITE_PREFIX: Record<Civilization, string> = {
@@ -18,7 +22,7 @@ const CIV_SPRITE_PREFIX: Record<Civilization, string> = {
 export function getSpritePath(civilization: string, archetype: string, gender: 'M' | 'F'): string {
   const prefix = CIV_SPRITE_PREFIX[civilization as Civilization] ?? 'LS';
   const arch = archetype.toUpperCase();
-  return `/sprites/characters/${prefix}-${arch}-${gender}`;
+  return assetUrl(`/sprites/characters/${prefix}-${arch}-${gender}`);
 }
 
 /** Build path to a specific walking animation frame */
@@ -72,7 +76,7 @@ export function getBackFramePath(basePath: string, direction: SpriteDirection, f
 /** Build path to an enemy animation frame (west direction only on disk) */
 export function getEnemyAnimFramePath(spriteId: string, anim: string, frame: number): string {
   const padded = String(frame).padStart(3, '0');
-  return `/sprites/enemies/${spriteId}/animations/${anim}/west/frame_${padded}.png`;
+  return assetUrl(`/sprites/enemies/${spriteId}/animations/${anim}/west/frame_${padded}.png`);
 }
 
 /** @deprecated Use getEnemyAnimFramePath(spriteId, 'walk', frame) */
@@ -92,4 +96,26 @@ export function getDirectionFromMovement(dx: number, dz: number): SpriteDirectio
     return screenRight > 0 ? 'east' : 'west';
   }
   return screenDown > 0 ? 'south' : 'north';
+}
+
+/** Idle frame for guild hall members — south frame_000 from their own folder. */
+export function getGuildHallIdleFramePath(basePath: string): string {
+  return getWalkingFramePath(basePath, 'south', 0);
+}
+
+/** Horizontal facing from movement on the tilted (~45°) iso floor.
+ *  Facing comes from the screen-horizontal projection `screenRight = dx - dz`:
+ *  moving toward -Z reads as moving right (east), toward +Z as left (west).
+ *  Only hold the previous facing when movement is almost purely screen-vertical
+ *  (dx ≈ dz, so screenRight ≈ 0), where east/west is genuinely ambiguous —
+ *  otherwise the sprite "moonwalks" (faces opposite its travel) on Z-dominant
+ *  paths, because |screenRight| ties |screenDown| there. */
+export function getHorizontalDirectionFromMovement(
+  dx: number,
+  dz: number,
+  previous: HorizontalDirection,
+): HorizontalDirection {
+  const screenRight = dx - dz;
+  if (Math.abs(screenRight) < 1e-3) return previous;
+  return screenRight > 0 ? 'east' : 'west';
 }

@@ -27,6 +27,8 @@ export interface ArenaEntitySnapshot {
   archetype?: string;
   civilization?: string;
   gender?: 'M' | 'F';
+  /** Ally identity mask id used by the R3F combat overlay */
+  maskSpriteId?: string;
   spriteId?: string;
   /** Flying enemy — sprite renders elevated above ground */
   flying?: boolean;
@@ -35,6 +37,13 @@ export interface ArenaEntitySnapshot {
   attackIntervalMs: number;
   isBoss?: boolean;
   attackMoveState?: string;
+  /**
+   * Cosmetic renderer hint — X world position from which the sprite slides in
+   * on first mount (new-wave enemies only). Undefined for wave-1 and allies.
+   * The renderer lerps display X from this value to position.x over ~0.3s.
+   * Never read by engine or AI logic.
+   */
+  spawnSlideFromX?: number;
 }
 
 export interface CombatArenaSlice {
@@ -43,7 +52,10 @@ export interface CombatArenaSlice {
 
   // Arena state
   arenaPhase: ArenaPhase;
+  /** Template id (MISSIONS lookup / display). Shared across same-template parties. */
   arenaMissionId: string | null;
+  /** Unique active-mission instance id — which party's run is in the arena. */
+  arenaInstanceId: string | null;
   formation: Formation;
   arenaEntities: ArenaEntitySnapshot[];
   arenaTime: number;
@@ -56,7 +68,7 @@ export interface CombatArenaSlice {
 
   // Actions
   setGameScene: (scene: GameScene) => void;
-  enterCombatPrep: (missionId: string) => void;
+  enterCombatPrep: (missionId: string, instanceId: string) => void;
   setFormationSlot: (slotIndex: number, memberId: string | null) => void;
   clearFormation: () => void;
   startBattle: () => void;
@@ -73,6 +85,7 @@ export const createCombatArenaSlice: StateCreator<CombatArenaSlice> = (set) => (
   gameScene: 'guild-hall',
   arenaPhase: 'idle',
   arenaMissionId: null,
+  arenaInstanceId: null,
   formation: [...EMPTY_FORMATION],
   arenaEntities: [],
   arenaTime: 0,
@@ -83,10 +96,11 @@ export const createCombatArenaSlice: StateCreator<CombatArenaSlice> = (set) => (
 
   setGameScene: (scene) => set({ gameScene: scene }),
 
-  enterCombatPrep: (missionId) => set({
+  enterCombatPrep: (missionId, instanceId) => set({
     gameScene: 'combat-arena',
     arenaPhase: 'prep',
     arenaMissionId: missionId,
+    arenaInstanceId: instanceId,
     formation: [...EMPTY_FORMATION],
     arenaEntities: [],
     arenaTime: 0,
@@ -128,6 +142,7 @@ export const createCombatArenaSlice: StateCreator<CombatArenaSlice> = (set) => (
     gameScene: 'guild-hall',
     arenaPhase: 'idle',
     arenaMissionId: null,
+    arenaInstanceId: null,
     formation: [...EMPTY_FORMATION],
     arenaEntities: [],
     arenaTime: 0,

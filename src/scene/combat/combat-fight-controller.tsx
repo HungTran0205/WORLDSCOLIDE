@@ -19,18 +19,24 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useLoader } from '@react-three/fiber';
 import { useVFXEmitter } from 'r3f-vfx';
+import { TextureLoader } from 'three';
 import { CombatEngine } from '@/game/systems/combat-engine';
 import { useGameStore } from '@/game/state/store';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { MISSIONS } from '@/game/data/missions';
 import { ENEMIES } from '@/game/data/enemies';
+import { TUTORIAL_BEAR_MISSION_ID } from '@/game/data/tutorial-data';
 import { WaveManager, legacyToWaves } from '@/game/systems/combat-wave-manager';
 import { applyMissionResultSideEffects } from '@/game/systems/arena-result-handler';
 import { simulateCombatFromSnapshot, cloneCombatEntity } from '@/game/systems/combat-simulator';
 import { resolveCombatMapId, getStageSpec } from './maps/combat-map-registry';
 import { useCombatProjectionStore } from './combat-projection-store';
+import {
+  getEnemyCombatFrameCount,
+  resolveEnemyCombatSprite,
+} from '@/scene/sprites/combat-sprite-resolver';
 import {
   COMBAT_VFX_PRESETS, COMBAT_VFX_COUNTS,
   COMBAT_CRIT_DOM_EVENT, COMBAT_SKIP_DOM_EVENT,
@@ -65,10 +71,17 @@ export function CombatFightController() {
   const lastSnapshotRef = useRef(0);
   const waveTransitioningRef = useRef(false);
   const waveTransitionUntilRef = useRef(0);
+  // Engine-bound mission id — stashed at init so the skip handler always checks
+  // the mission THIS engine instance was started for, not the live store value.
+  // The store's missionId can update before the engine tears down on rapid
+  // open/close, which would cause a stale-closure race in the skip handler.
+  const engineBoundMissionIdRef = useRef<string | null>(null);
 
   const phase = useCombatPanelStore((s) => s.phase);
   const missionId = useCombatPanelStore((s) => s.missionId);
+  const instanceId = useCombatPanelStore((s) => s.instanceId);
   const setPanelResult = useCombatPanelStore((s) => s.setResult);
+  const showStoryDialog = useCombatPanelStore((s) => s.showStoryDialog);
 
   // Emitter handles for each combat VFX event. Resolved once per Canvas
   // lifetime — useVFXEmitter returns a stable closure tied to the preset
@@ -88,7 +101,7 @@ export function CombatFightController() {
   const formation = useGameStore((s) => s.formation);
   const speedMultiplier = useGameStore((s) => s.speedMultiplier);
   const targetPriority = useGameStore((s) =>
-    s.activeMissions.find((m) => m.missionId === missionId)?.targetPriority ?? 'focus',
+    s.activeMissions.find((m) => m.instanceId === instanceId)?.targetPriority ?? 'focus',
   );
   const syncArenaState = useGameStore((s) => s.syncArenaState);
   const syncWaveState = useGameStore((s) => s.syncWaveState);
@@ -101,12 +114,13 @@ export function CombatFightController() {
 
   // (Re)initialize engine when the battle phase starts.
   useEffect(() => {
-    if (phase !== 'battle' || !missionId) {
+    if (phase !== 'battle' || !missionId || !instanceId) {
       engineRef.current = null;
       waveManagerRef.current = null;
       waveTransitioningRef.current = false;
       lastSyncRef.current = 0;
       lastSnapshotRef.current = 0;
+      engineBoundMissionIdRef.current = null;
       return;
     }
 
@@ -132,13 +146,20 @@ export function CombatFightController() {
     engine.init(members, formation, enemyTemplates, firstWave.hpMultiplier ?? 1, inventory, stageSpec);
     engine.onWaveCheck = () => waveManagerRef.current?.hasNext() ?? false;
     engine.setTargetPriority(targetPriority);
+    // Tutorial HP-floor (Phase 04): the Moonbear fight must be a guaranteed win.
+    // Scoped to this one mission so all other combat is unaffected.
+    engine.hpFloorActive = missionId === TUTORIAL_BEAR_MISSION_ID;
     engineRef.current = engine;
+    // Stash the mission id that this engine was bound to. The skip handler reads
+    // this ref (not getState().missionId) to avoid a close/re-open race where
+    // the store updates before the old engine tears down.
+    engineBoundMissionIdRef.current = missionId;
 
     syncWaveState(0, waveManager.totalWaves());
     syncArenaState(buildSnapshots(engine), 0, []);
     useCombatProjectionStore.getState().clear();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, missionId]);
+  }, [phase, instanceId]);
 
   // Sync targetPriority changes to running engine (player toggles in panel).
   useEffect(() => {
@@ -162,8 +183,19 @@ export function CombatFightController() {
     const handler = () => {
       const engine = engineRef.current;
       if (!engine || engine.isFinished()) return;
+
+      // Defense-in-depth: gate on the engine-bound mission id (stashed at init)
+      // rather than the live store value to avoid a close/re-open race where the
+      // store's missionId updates before this engine's useEffect cleanup runs.
+      const boundId = engineBoundMissionIdRef.current;
+      const boundMission = boundId ? MISSIONS.find((x) => x.id === boundId) : null;
+      if (!boundMission || boundMission.isMainQuest || boundMission.id.startsWith('tutorial-')) return;
+
       const snapshot = engine.entities.map((e) => cloneCombatEntity(e));
-      const skippedResult = simulateCombatFromSnapshot(snapshot, engine.time);
+      // Read missionId from the store (effect deps are [] → no stale closure) so
+      // the Skip→simulate path honours the tutorial HP-floor too.
+      const isTutorial = useCombatPanelStore.getState().missionId === TUTORIAL_BEAR_MISSION_ID;
+      const skippedResult = simulateCombatFromSnapshot(snapshot, engine.time, isTutorial);
       finalizeCombat(engine, skippedResult);
     };
     window.addEventListener(COMBAT_SKIP_DOM_EVENT, handler);
@@ -206,6 +238,10 @@ export function CombatFightController() {
     if (events.some((e) => e.type === 'wave-cleared') && waveManagerRef.current?.hasNext()) {
       waveTransitioningRef.current = true;
       waveTransitionUntilRef.current = now + WAVE_TRANSITION_MS;
+      // Preload next wave's enemy textures during the transition pause so the
+      // subsequent CombatIdleSprite mounts are cache hits and cannot blank the
+      // shared Suspense fallback (finding C from the red-team review).
+      preloadNextWaveTextures(waveManagerRef.current);
     }
 
     const shouldSync = events.length > 0 || engine.time - lastSyncRef.current >= SYNC_INTERVAL_MS;
@@ -216,10 +252,10 @@ export function CombatFightController() {
 
     // Autosave entity snapshot to active mission — supports mid-fight reload
     // (D12). Throttled to 2s to keep IndexedDB writes cheap.
-    if (missionId && engine.time - lastSnapshotRef.current >= SNAPSHOT_INTERVAL_MS) {
+    if (instanceId && engine.time - lastSnapshotRef.current >= SNAPSHOT_INTERVAL_MS) {
       lastSnapshotRef.current = engine.time;
       saveCombatSnapshot(
-        missionId,
+        instanceId,
         engine.entities.map((e) => cloneCombatEntity(e)),
         engine.time,
       );
@@ -237,20 +273,22 @@ export function CombatFightController() {
    *  When a `resultOverride` is supplied (e.g. from the Skip path), it replaces
    *  the engine's natural getResult() outcome. */
   function finalizeCombat(engine: CombatEngineType, resultOverride?: CombatResult) {
-    const id = useCombatPanelStore.getState().missionId;
-    if (!id) return;
+    const panel = useCombatPanelStore.getState();
+    const id = panel.missionId;       // template id (MISSIONS lookup)
+    const instId = panel.instanceId;  // unique active-mission id (identity)
+    if (!id || !instId) return;
 
     const result = resultOverride ?? engine.getResult();
     if (engine.syringesConsumed > 0) removeItem('HEALING_SYRINGE', engine.syringesConsumed);
 
     // Combat resolved — drop snapshot so reload doesn't re-resolve from stale state.
-    saveCombatSnapshot(id, null, 0);
+    saveCombatSnapshot(instId, null, 0);
     syncArenaState(buildSnapshots(engine), engine.time, []);
     endCombat(result);
 
     const store = useGameStore.getState();
     const mission = MISSIONS.find((m) => m.id === id);
-    const active = store.activeMissions.find((m) => m.missionId === id);
+    const active = store.activeMissions.find((m) => m.instanceId === instId);
     if (!mission || !active) {
       engineRef.current = null;
       return;
@@ -259,7 +297,14 @@ export function CombatFightController() {
     const members = allMembers.filter((m) => active.memberIds.includes(m.id));
 
     const missionResult = applyMissionResultSideEffects(mission, active, members, result);
-    setPanelResult(missionResult);
+    // Story beat: main quests with post-combat dialog play it before the
+    // result splash (success only — no dialog on a full wipe). The result is
+    // held in the panel store and revealed when the player dismisses it.
+    if (mission.postCombatDialog?.length && result.outcome !== 'full-wipe') {
+      showStoryDialog(mission.postCombatDialog, missionResult);
+    } else {
+      setPanelResult(missionResult);
+    }
     engineRef.current = null;
   }
 
@@ -284,12 +329,16 @@ function buildSnapshots(engine: CombatEngineType): ArenaEntitySnapshot[] {
     archetype: e.archetype,
     civilization: e.civilization,
     gender: e.gender,
+    maskSpriteId: e.maskSpriteId,
     spriteId: e.spriteId,
     flying: e.flying,
     nextAttackAt: e.nextAttackAt,
     attackIntervalMs: e.attackIntervalMs,
     isBoss: e.isBoss,
     attackMoveState: e.attackMoveState,
+    // Cosmetic slide hint — carried once (on the wave-spawn sync); subsequent
+    // syncs overwrite with the same undefined (entity is already on-screen).
+    spawnSlideFromX: e.spawnSlideFromX,
   }));
 }
 
@@ -323,6 +372,43 @@ function emitVfxFromEvents(
       const dead = engine.entities.find((e) => e.id === event.entityId);
       if (dead) vfx.death([dead.position.x, 1.0, dead.position.z]);
     }
+  }
+}
+
+/**
+ * Kick texture preloads for the next wave's enemy sprites into the Three.js
+ * loader cache (same cache useLoader reads) so that when CombatIdleSprite
+ * mounts new entities, all textures are already resolved — no Suspense fallback
+ * blank on the shared <Suspense fallback={null}> in combat-scene-shell.tsx.
+ *
+ * Called once when wave-cleared is detected, at the start of WAVE_TRANSITION_MS,
+ * giving ~1000ms for the network/disk load before sprites mount.
+ */
+function preloadNextWaveTextures(wm: WaveManager): void {
+  const nextWave = wm.peekNext();
+  if (!nextWave) return;
+
+  // Collect unique spriteIds from the next wave's enemy templates.
+  const spriteIds = new Set<string>();
+  for (const id of nextWave.enemyIds) {
+    const tmpl = ENEMIES[id];
+    if (tmpl) spriteIds.add(tmpl.spriteId ?? 'slime');
+  }
+
+  for (const spriteId of spriteIds) {
+    // Preload idle frames — the primary animation; attack/death are warm on first use.
+    const idleCount = getEnemyCombatFrameCount(spriteId, 'idle');
+    const idlePaths = Array.from({ length: Math.max(1, idleCount) }, (_, i) =>
+      resolveEnemyCombatSprite(spriteId, 'idle', i),
+    );
+    useLoader.preload(TextureLoader, idlePaths);
+
+    // Preload attack frames to avoid a second suspend on first attack animation.
+    const attackCount = getEnemyCombatFrameCount(spriteId, 'attack');
+    const attackPaths = Array.from({ length: Math.max(1, attackCount) }, (_, i) =>
+      resolveEnemyCombatSprite(spriteId, 'attack', i),
+    );
+    useLoader.preload(TextureLoader, attackPaths);
   }
 }
 

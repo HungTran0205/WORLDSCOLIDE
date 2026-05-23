@@ -2,8 +2,10 @@ import '@/ui/styles/member-card.css';
 import { useState } from 'react';
 import type { Member } from '@/game/state/game-state';
 import { getSpritePath } from '@/scene/sprites/sprite-path-resolver';
+import { resolveMemberMaskId, getMaskAssetPath } from '@/scene/sprites/mask-pool';
 import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
+import { civName } from '@/i18n/content-wrappers';
 import { GameIcon } from './game-icon';
 
 const STATUS_COLOR: Record<string, string> = {
@@ -28,12 +30,18 @@ function topTwoStats(member: Member): [string, number][] {
 interface MemberCardProps {
   member: Member;
   onClick: () => void;
+  /** Dim + block selection (kept focusable for a11y; click is guarded). */
+  disabled?: boolean;
+  /** Reason shown when disabled (e.g. underleveled). */
+  reason?: string;
 }
 
 /** Grid card for the member browser — avatar, name, rank, civ, top stats, status dot */
-export function MemberCard({ member, onClick }: MemberCardProps) {
+export function MemberCard({ member, onClick, disabled = false, reason }: MemberCardProps) {
   const [imgFailed, setImgFailed] = useState(false);
+  const [maskFailed, setMaskFailed] = useState(false);
   const avatarUrl = getAvatarUrl(member);
+  const maskUrl = getMaskAssetPath(resolveMemberMaskId(member), 'front');
   const civConfig = CIV_CONFIG[member.civilization as Civilization];
   const top2 = topTwoStats(member);
   const statusColor = STATUS_COLOR[member.status] ?? 'var(--ink-text-muted)';
@@ -42,9 +50,15 @@ export function MemberCard({ member, onClick }: MemberCardProps) {
 
   return (
     <button
-      className={`member-card member-card--${rankLc} ink-pixelated`}
+      className={`member-card member-card--${rankLc} ink-pixelated${disabled ? ' member-card--disabled' : ''}`}
       data-status={member.status}
-      onClick={onClick}
+      aria-disabled={disabled || undefined}
+      onClick={() => {
+        // Click-guard keeps disabled cards in the tab order (no native disabled)
+        // so a screen reader can still announce the reason below.
+        if (disabled) return;
+        onClick();
+      }}
       type="button"
     >
       <span className="corner-bl" />
@@ -59,13 +73,22 @@ export function MemberCard({ member, onClick }: MemberCardProps) {
         ) : (
           <div className="card-avatar-initials">{initials}</div>
         )}
+        {!maskFailed && (
+          <img
+            className="card-mask-overlay"
+            src={maskUrl}
+            alt=""
+            aria-hidden
+            onError={() => setMaskFailed(true)}
+          />
+        )}
       </div>
 
       <div className="card-info">
         <div className="card-name">{member.name || '???'}</div>
         <div className="card-meta">
           <span className="card-rank">{member.rank}</span>
-          {civConfig && <span className="card-civ">{civConfig.displayName}</span>}
+          {civConfig && <span className="card-civ">{civName(member.civilization as Civilization)}</span>}
         </div>
         <div className="card-stats">
           {top2.map(([key, val]) => (
@@ -75,6 +98,8 @@ export function MemberCard({ member, onClick }: MemberCardProps) {
       </div>
 
       <span className="status-dot" style={{ background: statusColor }} />
+
+      {disabled && reason && <span className="member-card__reason">{reason}</span>}
     </button>
   );
 }

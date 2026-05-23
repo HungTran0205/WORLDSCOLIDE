@@ -1,6 +1,7 @@
 /** Inventory panel — tabs, search, rarity filter, sort, 8-col grid, detail panel. */
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import { useUiStore } from '@/game/state/ui-store';
 import {
@@ -21,13 +22,8 @@ import '@/ui/styles/equip-mode.css';
 
 type TabId = 'all' | InventoryCategory;
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'all',        label: 'All'         },
-  { id: 'weapon',     label: 'Weapons'     },
-  { id: 'armor',      label: 'Armor'       },
-  { id: 'material',   label: 'Materials'   },
-  { id: 'consumable', label: 'Consumables' },
-];
+// Tab IDs mapped to i18n keys under inventory.tabs.*
+const TAB_IDS: TabId[] = ['all', 'weapon', 'armor', 'material', 'consumable'];
 
 const RARITIES: Array<ItemRarity | 'all'> = ['all', 'COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY'];
 
@@ -167,6 +163,8 @@ export function InventoryPanel({ onClose }: { onClose: () => void }) {
     saveManager.save(() => useGameStore.getState() as unknown as Record<string, unknown>, true);
   }, [selectedEntry, removeItem, removeEquipmentFromInventory]);
 
+  const { t } = useTranslation();
+
   // Equip mode — kept intact, rendered after all hooks
   if (inventoryMode === 'equip' && equipModeMemberId) {
     return (
@@ -187,26 +185,26 @@ export function InventoryPanel({ onClose }: { onClose: () => void }) {
       <div className="inventory-panel inventory-panel--wide" onClick={e => e.stopPropagation()}>
         <div className="inv-main-col">
           <div className="inventory-panel__header">
-            <h2 className="inventory-panel__title">Guild Inventory</h2>
-            <button className="inventory-panel__close" onClick={onClose}>✕</button>
+            <h2 className="inventory-panel__title">{t('inventory.title')}</h2>
+            <button className="inventory-panel__close" onClick={onClose}>{t('inventory.close')}</button>
           </div>
 
           <div className="inv-tabs">
-            {TABS.map(t => (
-              <button key={t.id} className={`inv-tab${activeTab === t.id ? ' inv-tab--active' : ''}`}
-                onClick={() => { setActiveTab(t.id); setSelectedEntry(null); }}>
-                {t.label}<span className="inv-tab__count">{tabCounts[t.id]}</span>
+            {TAB_IDS.map(id => (
+              <button key={id} className={`inv-tab${activeTab === id ? ' inv-tab--active' : ''}`}
+                onClick={() => { setActiveTab(id); setSelectedEntry(null); }}>
+                {t(`inventory.tabs.${id}`)}<span className="inv-tab__count">{tabCounts[id]}</span>
               </button>
             ))}
           </div>
 
           <div className="inv-controls">
-            <input className="inv-search" type="text" placeholder="Search items..."
+            <input className="inv-search" type="text" placeholder={t('inventory.searchPlaceholder')}
               value={search} onChange={e => setSearch(e.target.value)} />
             <select className="inv-sort" value={sort} onChange={e => setSort(e.target.value as typeof sort)}>
-              <option value="rarity">Rarity ↓</option>
-              <option value="name">Name A–Z</option>
-              <option value="qty">Qty ↓</option>
+              <option value="rarity">{t('inventory.sort.rarity')}</option>
+              <option value="name">{t('inventory.sort.name')}</option>
+              <option value="qty">{t('inventory.sort.qty')}</option>
             </select>
           </div>
 
@@ -215,7 +213,7 @@ export function InventoryPanel({ onClose }: { onClose: () => void }) {
               <button key={r}
                 className={`inv-rarity-pill inv-rarity-pill--${r.toLowerCase()}${rarityFilter === r ? ' inv-rarity-pill--active' : ''}`}
                 onClick={() => setRarityFilter(r)}>
-                {r === 'all' ? 'All' : r[0] + r.slice(1).toLowerCase()}
+                {r === 'all' ? t('inventory.rarityAll') : r[0] + r.slice(1).toLowerCase()}
               </button>
             ))}
           </div>
@@ -237,7 +235,7 @@ export function InventoryPanel({ onClose }: { onClose: () => void }) {
                   className={cls} onClick={() => handleSlotClick(entry)} title={name}>
                   <GameIcon category="item" id={iconId} size={34} fallbackText={name.slice(0, 3)} />
                   {isItem && entry.quantity > 1 && <span className="inventory-slot__qty">{entry.quantity}</span>}
-                  {!isItem && equippedByMap.has(entry.item.id) && <span className="inventory-slot__equipped">EQ</span>}
+                  {!isItem && equippedByMap.has(entry.item.id) && <span className="inventory-slot__equipped">{t('inventory.equippedBadge')}</span>}
                 </div>
               );
             })}
@@ -247,10 +245,12 @@ export function InventoryPanel({ onClose }: { onClose: () => void }) {
           </div>
 
           <div className="inv-footer">
-            <span className="inv-footer-hints">[I] Close · [↑↓←→] Navigate · [Enter] Select</span>
+            <span className="inv-footer-hints">{t('inventory.footer.hints')}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span className="inv-footer-slots">
-                {activeTab === 'all' ? `${allEntries.length} items total` : `${filteredEntries.length} / ${maxSlots} slots`}
+                {activeTab === 'all'
+                  ? t('inventory.footer.totalItems', { count: allEntries.length })
+                  : t('inventory.footer.slots', { used: filteredEntries.length, max: maxSlots })}
               </span>
               {activeTab !== 'all' && (
                 <InventorySlotExpansion category={activeTab} currentSlots={maxSlots} maxSlots={200} />

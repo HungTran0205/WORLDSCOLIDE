@@ -11,14 +11,11 @@
 
 export type CombatVfxEvent = 'hit' | 'crit' | 'heal' | 'death';
 
-// All combat VFX use LinhSon presets so we mount a single civ's particle
-// kit (~6 presets) instead of mixing generics + DeQuoc — keeps sampler
-// budget low on adapters that cap maxSamplersPerShaderStage at 16.
 export const COMBAT_VFX_PRESETS: Record<CombatVfxEvent, string> = {
-  hit: 'ls-earth-slam', // ground-impact debris burst on auto-attack contact
-  crit: 'ls-fire',      // bright fire burst — pairs with screen shake
-  heal: 'ls-heal',      // green/gold particle bloom on healed entity
-  death: 'ls-smoke',    // dense earthy smoke when entity HP hits zero
+  hit: 'gen-hit',    // red-orange debris burst on auto-attack contact
+  crit: 'gen-burst', // bright radial burst — pairs with screen shake
+  heal: 'ls-heal',   // green/gold particle bloom on healed entity
+  death: 'ls-smoke', // dense earthy smoke when entity HP hits zero
 };
 
 /** Per-event emit count (most presets emit 1 unit but bursts read better with more). */

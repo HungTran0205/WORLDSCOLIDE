@@ -1,5 +1,7 @@
 import type { TutorialStep } from '@/game/state/game-state';
 import type { GameStore } from '@/game/state/store';
+import type { CoachConfig } from '@/ui/coachmark/coachmark-config';
+import { TUTORIAL_BEAR_MISSION_ID } from '@/game/data/tutorial-data';
 
 export interface TutorialStepConfig {
   step: TutorialStep;
@@ -7,58 +9,154 @@ export interface TutorialStepConfig {
   highlightPanel?: string;
   autoAdvance: boolean;
   advanceCondition?: (state: GameStore) => boolean;
+  /** Coachmark guidance for this beat (GDD §6). Absent when guidance lives in a
+   *  dedicated overlay/panel (modals, combat panel, facilities inline hints). */
+  coach?: CoachConfig;
 }
 
+/**
+ * 14-beat onboarding flow (GDD §5). Order MUST match the TutorialStep union so
+ * getNextStep walks it linearly. Each beat advances either via an autoAdvance
+ * predicate (store-observable signal, evaluated in the tick loop) OR a UI/handler
+ * callback (modals, quest-board selection, combat handler, first-haul handler).
+ */
 export const TUTORIAL_STEPS: TutorialStepConfig[] = [
   {
+    // Founder creation — the char-creation panel advances to 'arrival-alarm' on confirm.
     step: 'char-creation',
     message: 'Create your character. Distribute 50 stat points.',
     autoAdvance: false,
   },
   {
-    step: 'world-board',
-    message: '', // Modal handles its own content
+    // World-board lore page → messenger alarm. Both modals advance via callbacks in game-screen.
+    step: 'arrival-alarm',
+    message: '', // WorldBoardModal + NpcAlarm handle their own content
     autoAdvance: false,
   },
   {
-    step: 'tutorial-quest-dispatch',
-    message: 'A traveler needs help! Open the Quest Board and dispatch "Into the Clearing".',
+    // Beat the war drum to open the Quest Board. The drum coachmark (DrumTooltipArrow,
+    // world-target) guides this; advance fires when the quest panel opens (cameraFocus).
+    step: 'open-quest-board',
+    message: 'Beat the war drum in the hall to open the Quest Board.',
+    // No highlightPanel: guidance is the world-target drum coachmark (DrumTooltipArrow),
+    // NOT the HUD Quests button — pointing at the button is the old flow.
+    autoAdvance: true,
+    advanceCondition: (state) => state.cameraFocus === 'quest-board',
+  },
+  {
+    // Pick the tutorial quest. Quest-board selection advances to 'assign-and-dispatch'.
+    step: 'accept-bear-quest',
+    message: "Select the 'Bear the Bear' quest.",
+    autoAdvance: false,
+    coach: {
+      targetType: 'dom',
+      target: '.quest-card',
+      caption: "Select 'Bear the Bear'",
+      spotlight: true,
+      arrow: true,
+      pulse: true,
+      advanceOn: 'quest-selected',
+    },
+  },
+  {
+    // Add the founder to the party and Dispatch. Advance when the mission goes active.
+    step: 'assign-and-dispatch',
+    message: 'Add your founder to the party, then Dispatch.',
     highlightPanel: 'quests',
     autoAdvance: true,
     advanceCondition: (state) =>
-      state.activeMissions.some((m) => m.missionId === 'tutorial-into-the-clearing'),
+      state.activeMissions.some((m) => m.missionId === TUTORIAL_BEAR_MISSION_ID),
+    coach: {
+      targetType: 'dom',
+      target: '.dispatch-button',
+      caption: 'Add your founder, then Dispatch',
+      arrow: true,
+      pulse: true,
+      advanceOn: 'mission-dispatched',
+    },
   },
   {
-    step: 'tutorial-quest-active',
-    message: 'Your founder is on the way. Wait for the quest to complete.',
-    autoAdvance: false, // Advanced by tutorial-quest-handler after combat resolves
+    // Compressed travel (~4s). Advance the moment the party arrives.
+    step: 'quest-travel',
+    message: 'Your party is on the way to the village.',
+    autoAdvance: true,
+    advanceCondition: (state) =>
+      state.activeMissions.some(
+        (m) => m.missionId === TUTORIAL_BEAR_MISSION_ID && m.phase !== 'traveling',
+      ),
   },
   {
-    step: 'tutorial-kael-rescue',
-    message: '', // Dialogue modal handles content
+    // Playable Moonbear fight (guaranteed win via Phase 04 HP-floor). The combat panel
+    // hosts its own skill-bar coaching; tutorial-quest-handler advances on victory.
+    step: 'moonbear-combat',
+    message: 'Open the mission and defeat the Moonbear!',
     autoAdvance: false,
   },
   {
-    step: 'tutorial-reward',
-    message: '', // Reward splash handles content
+    step: 'kael-rescue',
+    message: '', // KaelRescueDialogue handles content
+    autoAdvance: false,
+  },
+  {
+    step: 'reward-splash',
+    message: '', // TutorialRewardSplash handles content
     autoAdvance: false,
   },
   {
     step: 'build-logging-site',
-    message: 'Open the Build menu → Facilities tab to build your Logging Site.',
-    highlightPanel: 'build',
+    message: 'Open the Facilities panel and build a Logging Site (uses your permit).',
+    highlightPanel: 'facilities',
     autoAdvance: true,
     advanceCondition: (state) =>
       state.facilities.some((f) => f.type === 'logging-site' && f.level > 0),
   },
   {
+    // Assign Kael → tutorial-first-haul-handler grants the scripted haul and advances.
     step: 'assign-kael',
     message: 'Assign Kael to the Logging Site to begin harvesting wood.',
     highlightPanel: 'facilities',
+    autoAdvance: false, // handleFirstHaul advances after granting +200 wood / +200 gold
+  },
+  {
+    step: 'first-haul-reward',
+    message: '', // TutorialFirstHaulSplash handles content
+    autoAdvance: false,
+  },
+  {
+    step: 'build-tavern',
+    message: 'Use your 200 Wood to build the Tavern.',
+    highlightPanel: 'facilities',
     autoAdvance: true,
-    advanceCondition: (state) => {
-      const ls = state.facilities.find((f) => f.type === 'logging-site');
-      return (ls?.assignedMemberIds.length ?? 0) > 0;
+    advanceCondition: (state) =>
+      state.facilities.some((f) => f.type === 'tavern' && f.level > 0),
+  },
+  {
+    // Assign any guild member as Tavern Keeper. handleKeeperAssigned spawns the
+    // scripted guaranteed visitor immediately (no next-day wait) and advances.
+    step: 'assign-keeper',
+    message: 'Assign a guild member as your Tavern Keeper to draw in a visitor.',
+    highlightPanel: 'facilities',
+    autoAdvance: false,
+  },
+  {
+    // Negotiate to recruit the scripted visitor (guaranteedRecruit → 100%).
+    // Advances once that visitor leaves the roster (i.e. is recruited).
+    step: 'recruit-first-member',
+    message: 'Open the Tavern and negotiate to recruit your first guild member.',
+    autoAdvance: true,
+    advanceCondition: (state) =>
+      !state.tavern.currentRoster.some((v) => v.guaranteedRecruit),
+    // Two-phase guidance: while the panel is CLOSED, the (tutorial-forced)
+    // FacilityHintCoachmark points at the counter so the player knows to click
+    // it — see game-screen forceShow. Once the panel opens, this dom coach
+    // points at the Negotiate button. It auto-hides while the panel is closed
+    // (target absent), so the two never overlap.
+    coach: {
+      targetType: 'dom',
+      target: '.tv-visitor-card .tv-btn.is-primary',
+      caption: 'Negotiate to recruit your visitor.',
+      arrow: true,
+      pulse: true,
     },
   },
   {

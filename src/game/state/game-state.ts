@@ -9,6 +9,8 @@ import type {
   WorkshopTask,
   WorkshopBlueprint,
 } from '@/game/data/workshop-types';
+import type { TraitId } from '@/game/data/traits';
+import type { Civilization, CivArchetype, Gender } from '@/game/data/civilization-config';
 
 export interface EquipmentItem {
   /** Unique instance ID — uuid */
@@ -144,17 +146,118 @@ export interface Member {
   equipment?: MemberEquipment | null;
   /** Pre-loaded medicine slots for auto-use in combat (intent stored here; consumption is separate) */
   medicineSlots?: [MedicineSlot, MedicineSlot];
+  /** Tavern rarity tier (1–5). v24 migration backfills legacy members to 1. */
+  rarity: 1 | 2 | 3 | 4 | 5;
+  /** Personality traits — optional; default [] in v24 migration. */
+  traits?: TraitId[];
+  /** Identity mask ID from MASK_POOL (optional; lazy hash-resolved if absent) */
+  maskSpriteId?: string;
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Tavern (v24)
+// ──────────────────────────────────────────────────────────────────────────
+
+export type AttemptOutcome = 'success' | 'counter' | 'soft-refuse' | 'hard-refuse' | 'insult';
+
+export interface AttemptRecord {
+  day: number;            // game day at attempt time
+  margin: number;         // resolved negotiation margin
+  outcome: AttemptOutcome;
+}
+
+export interface TavernVisitor {
+  id: string;
+  name: string;                          // VN name assigned at spawn (from civ namePool)
+  archetype: CivArchetype;
+  civilization: Civilization;
+  gender: Gender;                        // from RECRUITABLE_UNITS — drives sprite folder
+  rarity: 1 | 2 | 3 | 4 | 5;
+  level: number;
+  stats: Stats;                          // talent stats
+  derivedDemand: number;
+  dailyMoodBias: number;                 // [-5, +5]
+  traits: TraitId[];
+  preferredGiftCategory: 'consumable' | 'material' | 'equipable';
+  attemptHistory: AttemptRecord[];
+  veteranTag: boolean;
+  spawnedDay: number;
+  /** Tutorial-only: forces a 100% negotiation success (scripted first recruit). */
+  guaranteedRecruit?: boolean;
+}
+
+export type MercContractStatus = 'available' | 'on-quest' | 'completed' | 'defeated';
+
+export interface MercContract {
+  id: string;                            // contract id
+  visitorSnapshot: TavernVisitor;        // frozen at hire time
+  hireCost: number;
+  hireDay: number;
+  questId: string | null;
+  relationshipPoints: number;
+  status: MercContractStatus;
+}
+
+export type RumorTier = 'vague' | 'class' | 'specific';
+
+export interface RumorEntry {
+  forDay: number;                        // next-day reveal target
+  tier: RumorTier;
+  archetype?: CivArchetype;
+  civilization?: Civilization;
+}
+
+export interface TavernPendingPrompt {
+  kind: 'reinvite';
+  contractId: string;
+  visitorSnapshot: TavernVisitor;
+  bonusModifier: number;                 // +25 for re-invite (AD reinviteBonus)
+  createdDay: number;
+}
+
+/** Compact veteran-merc record for re-appearance pool. Cap 20, FIFO eviction. */
+export interface VeteranMercSummary {
+  /** Source contract id at time of survival (kept for de-dup). */
+  contractId: string;
+  /** Frozen visitor snapshot at hire time — used by materializeVisitorFromVeteran. */
+  visitorSnapshot: TavernVisitor;
+  /** Final RP at completion time. */
+  relationshipPoints: number;
+  /** Game-day when added to pool. */
+  addedDay: number;
 }
 
 export interface TavernState {
-  lastRefreshTime: number; // Unix ms timestamp
-  availableMercenaries: Member[];
+  level: 1 | 2 | 3;                      // MVP cap Lv3 (Lv4-5 deferred)
+  keeperId: string | null;
+  reputation: number;                    // [-5, +5]
+  currentRoster: TavernVisitor[];        // 3-5 visitors by level/buffs
+  rerolledToday: boolean;
+  factionBias: Civilization | null;      // DEFERRED — always null in MVP
+  rumor: RumorEntry | null;
+  mercContracts: MercContract[];         // active hired mercs
+  pendingPrompts: TavernPendingPrompt[]; // queued re-invite prompts (AD7)
+  lastDayProcessed: number;              // floor(gameTime / TICKS_PER_DAY) snapshot
+  reputationLastTickWeek: number;        // passive recovery tracker (game-day)
+  globalNegotiationDebuffUntilDay: number | null;  // 24h post-insult global debuff
+  /** Phase 04: veteran-merc pool for 5%/day re-appear (cap 20, FIFO). */
+  veteranPool: VeteranMercSummary[];
 }
 
 export type QuestTier = 'F' | 'E' | 'D' | 'C' | 'B' | 'A' | 'S';
 
 /** Phase of an active mission in the state machine */
 export type MissionPhase = 'traveling' | 'arrived' | 'in-combat' | 'completed' | 'failed';
+
+export type DialogSpeakerId = 'ba-nguyet' | 'kael' | 'mai' | 'system' | 'founder';
+
+export interface DialogLine {
+  speakerId: DialogSpeakerId;
+  speakerNameVN: string;
+  speakerNameEN: string;
+  textVN: string;
+  textEN: string;
+}
 
 export interface Mission {
   id: string;
@@ -178,11 +281,32 @@ export interface Mission {
   isBossGate?: boolean;
   /** Per-item conditional drops rolled on mission success */
   conditionalDrops?: Array<{ itemId: ItemID; chance: number; quantity: number }>;
+  /** Arc 1+: shown in MAIN tab only (not EXPEDITION) */
+  isMainQuest?: boolean;
+  /** Arc 1+: repeatable; shown in EXPEDITION tab */
+  isExpedition?: boolean;
+  /** For expeditions spawned by a main quest — parent quest ID */
+  spawnedFromQuestId?: string;
+  /** Narrative clue displayed on the quest card; localized via tContent('missions', id, 'cardLore') */
+  cardLore?: string;
+  /** 1–3 dialog lines shown in arrival modal before "Enter Battle" */
+  preArrivalDialog?: DialogLine[];
+  /** 1–2 dialog lines shown after combat victory, before reward splash */
+  postCombatDialog?: DialogLine[];
 }
 
 export interface ActiveMission {
+  /** Unique per-dispatch id (uuid). Identifies THIS party's run so two parties
+   *  on the same quest template don't resolve/mutate as one. Distinct from
+   *  `missionId` (the shared template id used for MISSIONS lookups). */
+  instanceId: string;
+  /** Template id from MISSIONS (e.g. 'slime-extermination'). NOT unique —
+   *  multiple active missions can share it. Use for template/data lookups only. */
   missionId: string;
   memberIds: string[];
+  /** Parallel list of merc contract ids participating in this mission (AD1).
+   *  Mercs are adapted to Member-shape at quest dispatch via memberFromMercContract. */
+  mercContractIds: string[];
   startTime: number;
   estimatedEndTime: number;
   phase: MissionPhase;
@@ -258,15 +382,27 @@ export interface GuildHall {
 
 export type GameScene = 'guild-hall' | 'combat-arena';
 
+/**
+ * Guided onboarding state machine (GDD §5 — "The First Tremor / Bear the Bear").
+ * 14 ordered beats; order in TUTORIAL_STEPS must match this list so getNextStep walks it.
+ * Legacy 8-id saves are remapped forward by save migration v25→v26.
+ */
 export type TutorialStep =
   | 'char-creation'
-  | 'world-board'
-  | 'tutorial-quest-dispatch'
-  | 'tutorial-quest-active'
-  | 'tutorial-kael-rescue'
-  | 'tutorial-reward'
+  | 'arrival-alarm'
+  | 'open-quest-board'
+  | 'accept-bear-quest'
+  | 'assign-and-dispatch'
+  | 'quest-travel'
+  | 'moonbear-combat'
+  | 'kael-rescue'
+  | 'reward-splash'
   | 'build-logging-site'
   | 'assign-kael'
+  | 'first-haul-reward'
+  | 'build-tavern'
+  | 'assign-keeper'
+  | 'recruit-first-member'
   | 'complete';
 
 export interface InventoryState {

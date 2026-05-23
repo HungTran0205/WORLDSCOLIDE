@@ -3,7 +3,7 @@
  * Extracted from CombatEngine to keep it under 200 lines.
  */
 
-import type { Member } from '@/game/state/game-state';
+import type { Member, MercContract } from '@/game/state/game-state';
 import type { EnemyTemplate } from '@/game/data/enemies';
 import type { ArenaEntity } from './combat-arena-types';
 import { getAttackRange, DEFAULT_MOVE_SPEED } from './combat-arena-types';
@@ -44,6 +44,7 @@ export function memberToArenaEntity(
     civilization: member.civilization,
     archetype: member.archetype,
     gender: member.gender,
+    maskSpriteId: member.maskSpriteId,
     gearFlatDamage: gear.flatDamage,
     gearFlatDefense: gear.flatDefense,
     baseStats: snapshotBaseStats(member.stats),
@@ -69,6 +70,47 @@ export function memberToArenaEntity(
   };
   applyPassiveOnInit(entity);
   return entity;
+}
+
+/**
+ * Phase 04: adapt a hired merc contract into a transient Member shape so the
+ * existing combat path (memberToArenaEntity, mission-resolver, etc.) can run
+ * unchanged. The merc id is preserved as Member.id so the post-combat
+ * survivors[] list lets us route results back to the contract.
+ *
+ * Mercs have NO equipment, NO syringe loadout, NO learned skill — combat
+ * power comes purely from the visitorSnapshot stats/level/archetype/civ.
+ */
+export function memberFromMercContract(contract: MercContract): Member {
+  const v = contract.visitorSnapshot;
+  return {
+    id: contract.id,
+    name: `Merc-${contract.id.slice(-4)}`,
+    level: v.level,
+    exp: 0,
+    stats: { ...v.stats },
+    unallocatedPoints: 0,
+    skill: null,
+    status: 'on-mission',
+    injuredUntil: null,
+    civilization: v.civilization,
+    archetype: v.archetype,
+    isFounder: false,
+    rank: 'MERCENARY',
+    missionsCompleted: 0,
+    rarity: v.rarity,
+    traits: v.traits,
+    equipment: null,
+    syringeLoadout: null,
+  };
+}
+
+/** Convert a hired merc directly into an ArenaEntity. Wrapper over memberToArenaEntity. */
+export function mercContractToArenaEntity(
+  contract: MercContract,
+  pos: ArenaSpawnPos,
+): ArenaEntity {
+  return memberToArenaEntity(memberFromMercContract(contract), pos, 0);
 }
 
 /** Convert an EnemyTemplate into an ArenaEntity at the given position */
