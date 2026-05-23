@@ -11,7 +11,7 @@ interface WorldBoardModalProps {
 
 const EN_TITLE = 'A World Divided';
 const EN_BODY =
-  `New civilizations carve this land in uneasy silence — the mountain warriors of Linh Sơn, The Republic Empire of steel-and-steam, the star-reading nomads of Astopia, and The holy state of Eliza. They trust no one but their own.\n\nYou hold a charter to found a guild on neutral ground, open to fighters of every banner. Someone has to build the bridge. That begins with you.`;
+  `Civilizations carve this land in uneasy silence — the mountain warriors of Linh Sơn, The Republic Empire of steel-and-steam, the star-reading nomads of Astopia, and The holy state of Eliza. They trust no one but their own.\n\nYou hold a charter to found a guild on neutral ground, open to fighters of every banner. Someone has to build the bridge. That begins with you.`;
 const EN_BEGIN = 'Begin';
 
 export function WorldBoardModal({ onBegin }: WorldBoardModalProps) {
