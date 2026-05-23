@@ -213,7 +213,7 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
                   key={tab}
                   type="button"
                   role="tab"
-                  className={`tier-pill${activeTab === tab ? ' tier-pill--active' : ''}`}
+                  className={`quest-board__tab${activeTab === tab ? ' quest-board__tab--active' : ''}`}
                   aria-selected={activeTab === tab}
                   onClick={() => setActiveTab(tab)}
                 >

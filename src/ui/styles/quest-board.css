@@ -73,7 +73,53 @@
 
 .quest-board__tabs {
   display: flex;
+  gap: 0;
+  /* Segmented control container — connected buttons share a single border */
+  border: 1px solid var(--gold-burnished);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+/* ─── Tab segmented control (MAIN / EXPEDITION nav) ────────────────────────
+   Deliberately distinct from .tier-pill (tier filter chips). Larger hit area,
+   display font, filled active state so the active tab is unmistakable against
+   the parchment header. */
+.quest-board__tab {
+  background: rgba(232, 217, 176, 0.25);
+  border: none;
+  /* Vertical separator between sibling tabs */
+  border-right: 1px solid var(--gold-burnished);
+  color: var(--ink-dark);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 8px 18px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
+  transition: background 0.15s ease, color 0.15s ease;
+  /* Ensure contrast: minimum WCAG AA ratio against parchment header */
+  opacity: 1;
+}
+.quest-board__tab:last-child {
+  border-right: none;
+}
+.quest-board__tab:hover:not(.quest-board__tab--active) {
+  background: rgba(201, 161, 74, 0.22);
+}
+.quest-board__tab:focus-visible {
+  outline: 2px solid var(--ink-red);
+  outline-offset: -2px;
+  z-index: 1;
+}
+/* Active tab: filled gold-burnished background — option (a) segmented control */
+.quest-board__tab--active {
+  background: var(--gold-burnished);
+  color: var(--parchment-base, #f5e6c8);
+  cursor: default;
 }
 
 .tier-pill {
@@ -361,21 +407,76 @@
   max-height: 200px;
   overflow-y: auto;
   scrollbar-width: thin;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
-.party-select__row { padding: 2px 0; }
-.party-select__label {
+.party-select__row { padding: 0; }
+
+/* ─── Member card button ────────────────────────────────────────────────────
+   Replaces the old <label><input checkbox> pattern. The whole card is the hit
+   target. aria-pressed reflects selection state; aria-disabled + click-guard
+   handles underleveled members without removing them from the tab order. */
+.party-select__card {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 3px 4px;
+  width: 100%;
+  padding: 6px 8px;
+  background: rgba(232, 217, 176, 0.3);
+  border: 1px solid var(--parchment-aged);
+  border-radius: 3px;
   cursor: pointer;
+  font-family: inherit;
   font-size: 0.88rem;
+  color: var(--ink-dark);
+  text-align: left;
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.1s ease;
 }
-.party-select__label--disabled {
+.party-select__card:hover:not(.party-select__card--disabled) {
+  background: rgba(201, 161, 74, 0.15);
+  border-color: var(--gold-burnished);
+  transform: translateY(-1px);
+}
+.party-select__card:focus-visible {
+  outline: 2px solid var(--gold-burnished);
+  outline-offset: 2px;
+}
+
+/* Selected state: gold border + faint fill + visible check glyph */
+.party-select__card--selected {
+  background: rgba(201, 161, 74, 0.22);
+  border-color: var(--gold-burnished);
+  box-shadow: inset 0 0 0 1px var(--gold-burnished);
+}
+.party-select__card--selected:hover {
+  background: rgba(201, 161, 74, 0.28);
+}
+
+/* Disabled state (underleveled): dimmed + not-allowed cursor.
+   No native disabled — card stays in tab order so screen reader announces why. */
+.party-select__card--disabled {
+  opacity: 0.55;
   cursor: not-allowed;
-  opacity: 0.7;
 }
-.party-select__name { color: var(--ink-dark); }
+.party-select__card--disabled:hover {
+  background: rgba(232, 217, 176, 0.3);
+  border-color: var(--parchment-aged);
+  transform: none;
+}
+
+/* Check indicator — fixed-width slot so content doesn't shift on toggle */
+.party-select__card-check {
+  flex: 0 0 14px;
+  width: 14px;
+  font-size: 0.85rem;
+  color: var(--gold-burnished);
+  font-weight: 700;
+  text-align: center;
+  line-height: 1;
+}
+
+.party-select__name { color: var(--ink-dark); flex: 1 1 auto; }
 .party-select__lv { color: var(--ink-faded); }
 .party-select__warn {
   margin-left: auto;
