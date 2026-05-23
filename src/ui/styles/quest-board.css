@@ -399,96 +399,176 @@
   color: var(--ink-red);
 }
 
-/* ─── Party select list ─────────────────────────────────────────────────────*/
-.party-select {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  max-height: 200px;
-  overflow-y: auto;
-  scrollbar-width: thin;
+/* ─── Party slot row (facility-style square assign slots) ───────────────────
+   Filled slots reuse .fp-avatar-card (member-avatar.css). Empty/add slots are
+   parchment-skinned to sit on the quest board while matching the slot shape. */
+.quest-party-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}
+.quest-party-slot {
+  width: 48px;
+  height: 60px;
+  /* tile (60) + the 3px gap + name line (~14) so empty slots align with avatar cards */
+  margin-bottom: 17px;
+  background: rgba(232, 217, 176, 0.25);
+  border: 1px dashed var(--parchment-aged);
+  border-radius: 3px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-}
-.party-select__row { padding: 0; }
-
-/* ─── Member card button ────────────────────────────────────────────────────
-   Replaces the old <label><input checkbox> pattern. The whole card is the hit
-   target. aria-pressed reflects selection state; aria-disabled + click-guard
-   handles underleveled members without removing them from the tab order. */
-.party-select__card {
-  display: flex;
   align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 6px 8px;
-  background: rgba(232, 217, 176, 0.3);
-  border: 1px solid var(--parchment-aged);
-  border-radius: 3px;
+  justify-content: center;
+  gap: 3px;
   cursor: pointer;
-  font-family: inherit;
-  font-size: 0.88rem;
-  color: var(--ink-dark);
-  text-align: left;
-  transition: background 0.12s ease, border-color 0.12s ease, transform 0.1s ease;
+  transition: border-color 0.12s ease, background 0.12s ease, transform 0.1s ease;
+  padding: 0;
+  color: var(--ink-faded);
 }
-.party-select__card:hover:not(.party-select__card--disabled) {
-  background: rgba(201, 161, 74, 0.15);
+.quest-party-slot:hover {
+  border-style: solid;
   border-color: var(--gold-burnished);
+  background: rgba(201, 161, 74, 0.15);
   transform: translateY(-1px);
+  color: var(--ink-dark);
 }
-.party-select__card:focus-visible {
+.quest-party-slot:focus-visible {
   outline: 2px solid var(--gold-burnished);
   outline-offset: 2px;
 }
-
-/* Selected state: gold border + faint fill + visible check glyph */
-.party-select__card--selected {
-  background: rgba(201, 161, 74, 0.22);
-  border-color: var(--gold-burnished);
-  box-shadow: inset 0 0 0 1px var(--gold-burnished);
+.quest-party-slot--add {
+  border-color: rgba(201, 161, 74, 0.55);
 }
-.party-select__card--selected:hover {
-  background: rgba(201, 161, 74, 0.28);
-}
-
-/* Disabled state (underleveled): dimmed + not-allowed cursor.
-   No native disabled — card stays in tab order so screen reader announces why. */
-.party-select__card--disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-.party-select__card--disabled:hover {
-  background: rgba(232, 217, 176, 0.3);
-  border-color: var(--parchment-aged);
-  transform: none;
-}
-
-/* Check indicator — fixed-width slot so content doesn't shift on toggle */
-.party-select__card-check {
-  flex: 0 0 14px;
-  width: 14px;
-  font-size: 0.85rem;
-  color: var(--gold-burnished);
-  font-weight: 700;
-  text-align: center;
+.quest-party-slot__plus {
+  font-size: 1.1rem;
   line-height: 1;
 }
-
-.party-select__name { color: var(--ink-dark); flex: 1 1 auto; }
-.party-select__lv { color: var(--ink-faded); }
-.party-select__warn {
-  margin-left: auto;
-  font-size: 0.72rem;
-  color: var(--ink-red);
-  font-style: italic;
+.quest-party-slot__label {
+  font-family: var(--font-display);
+  font-size: 0.5rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
-.party-select__empty {
-  font-size: 0.85rem;
+
+/* ─── Roster picker flyout (opens right of the slots) ──────────────────────*/
+/* ─── Stage: board + roster picker side by side ─────────────────────────────
+   The picker is its own panel beside the board (not embedded in the detail
+   pane). When closed it renders nothing, so the board stays centered. */
+.quest-board-stage {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 14px;
+  max-width: 96vw;
+  max-height: 92vh;
+}
+.quest-board-stage .quest-board {
+  /* Allow the board to shrink when the picker is open so both fit in 96vw. */
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* ─── Roster picker side panel ──────────────────────────────────────────────*/
+.quest-roster-picker {
+  flex: 0 0 340px;
+  min-width: 0;
+  /* Match the board's height cap so a long roster scrolls inside the panel
+     instead of the panel growing taller than the board (which would defeat the
+     grid's internal scroll). */
+  max-height: min(760px, 92vh);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  overflow: hidden;
+  color: var(--ink-dark);
+  animation: quest-picker-in 160ms ease-out;
+}
+@keyframes quest-picker-in {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.quest-roster-picker__head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--parchment-aged);
+}
+.quest-roster-picker__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-dark);
+}
+.quest-roster-picker__close {
+  background: transparent;
+  border: 1px solid var(--parchment-aged);
+  border-radius: 2px;
   color: var(--ink-faded);
+  font-size: 1.1rem;
+  line-height: 1;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.quest-roster-picker__close:hover {
+  color: var(--ink-red);
+  border-color: var(--gold-burnished);
+}
+.quest-roster-picker__grid {
+  /* flex:1 + min-height:0 lets the grid take the leftover column height and
+     scroll internally instead of expanding past the panel (clipped) when the
+     roster is long. align-content:start keeps rows top-aligned while scrolling. */
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-deep) transparent;
+}
+.quest-roster-picker__grid::-webkit-scrollbar { width: 6px; }
+.quest-roster-picker__grid::-webkit-scrollbar-thumb {
+  background: var(--gold-deep);
+  border-radius: 3px;
+}
+.quest-roster-picker__empty {
+  padding: 24px 12px;
+  text-align: center;
   font-style: italic;
-  padding: 6px 0;
+  font-size: 0.9rem;
+  color: var(--ink-faded);
+}
+@media (prefers-reduced-motion: reduce) {
+  .quest-roster-picker { animation: none; }
+}
+/* Narrow screens: board is single-pane — float the picker as a bottom sheet
+   instead of a side panel so it doesn't squeeze the board off-screen. */
+@media (max-width: 1023px) {
+  .quest-roster-picker {
+    position: fixed;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    flex: none;
+    width: min(460px, 94vw);
+    max-height: 60vh;
+    z-index: 120;
+  }
+  .quest-roster-picker__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 /* ─── Action buttons ────────────────────────────────────────────────────────*/

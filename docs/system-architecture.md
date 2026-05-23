@@ -2291,7 +2291,9 @@ getRoomBounds(room: Room):
 | `quest-board.tsx` | Unified split-pane dispatch UI (desktop 55/45 list/detail; mobile single-pane swap). Parchment skin, "Return to Guild" close, wax-seal dispatch button. — REWRITTEN v1.28 |
 | `quest-card.tsx` | List-item card component for mission entries — NEW v1.28 |
 | `quest-detail-pane.tsx` | Right-side detail panel with empty state + party selection — NEW v1.28 |
-| `party-select-list.tsx` | Checkbox member selector for quest dispatch — NEW v1.28 |
+| `quest-party-slots.tsx` | Facility-style square party slots (filled avatar tile + empty/add slots), required+expandable up to soft cap — NEW |
+| `quest-roster-picker.tsx` | Right-anchored roster flyout of `MemberCard`s for filling a party slot (Esc/outside-click close) — NEW |
+| `member-avatar.css` | Shared `.fp-avatar-*` member tile styles (facility tray + quest party slots) — NEW |
 | `guild-roster.tsx` | Compact member list with character detail panel (NEW v1.6), civ badges, civilization filtering |
 | `character-detail-panel.tsx` | Left-side detail panel (avatar, equipment, auto-cast toggle, stats, civ info, passives) — NEW v1.6, ENHANCED v1.9 |
 | `build-menu.tsx` | Room selection UI (enter placement mode instead of direct placement) |

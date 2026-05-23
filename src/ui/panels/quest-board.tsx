@@ -10,12 +10,14 @@ import type { QuestTier, Mission } from '@/game/state/game-state';
 import { useGameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
 import { validateDispatch, createActiveMission } from '@/game/systems/mission-dispatch';
+import { autoAssignMembers } from '@/game/utils/auto-assign-members';
 import { QUEST_BOARD_TIER_BY_LEVEL } from '@/game/data/buildings';
 import { GameIcon } from '@/ui/components/game-icon';
 import { playSFX } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
 import { QuestCard } from './quest-card';
 import { QuestDetailPane } from './quest-detail-pane';
+import { QuestRosterPicker } from './quest-roster-picker';
 import '@/ui/styles/panels.css';
 import '@/ui/styles/quest-board.css';
 
@@ -39,8 +41,6 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
   const completedMissions = useGameStore((s) => s.completedMissions);
   const tutorialStep = useGameStore((s) => s.tutorialStep);
   const setTutorialStep = useGameStore((s) => s.setTutorialStep);
-  const mercContracts = useGameStore((s) => s.tavern.mercContracts);
-  const markMercsOnQuest = useGameStore((s) => s.markMercsOnQuest);
 
   const availableMembers = useMemo(() => {
     const all = founder ? [founder, ...roster] : roster;
@@ -59,6 +59,21 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
   const [activeTab, setActiveTab] = useState<'main' | 'expedition'>('main');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
+  // Party selection lives here (not in the detail pane) so the roster picker can
+  // render as a sibling panel beside the board instead of cramped inside it.
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  // Roster picker open state: the empty/add slot index that opened it (null = closed).
+  const [pickerSlot, setPickerSlot] = useState<number | null>(null);
+
+  // Reset party + close the picker when the selected quest changes. Done during
+  // render (React's "adjust state on prop change" pattern) rather than in an
+  // effect, so the stale party never paints for a frame after switching quests.
+  const [prevSelectedId, setPrevSelectedId] = useState<string | null>(selectedId);
+  if (selectedId !== prevSelectedId) {
+    setPrevSelectedId(selectedId);
+    setSelectedMemberIds([]);
+    setPickerSlot(null);
+  }
 
   // Paper-unroll on open / seal-break on close. The cleanup fires after the
   // store flips activePanel back to null (panel unmount) which matches the
@@ -92,9 +107,20 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
     playSFX(AUDIO.SFX_PAPER_FLIP);
   }, []);
 
-  const handleMemberToggleSfx = useCallback(() => {
+  const toggleMember = useCallback((id: string) => {
+    setSelectedMemberIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
     playSFX(AUDIO.SFX_WOOD_CLINK);
   }, []);
+
+  const handlePickMember = useCallback((id: string) => {
+    setSelectedMemberIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    setPickerSlot(null);
+    playSFX(AUDIO.SFX_WOOD_CLINK);
+  }, []);
+
+  const closePicker = useCallback(() => setPickerSlot(null), []);
 
   // During the tutorial only tutorial quests appear (drives the accept-quest
   // beat); after completion the board splits into MAIN (story) + EXPEDITION
@@ -159,6 +185,11 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
     }
   }, [displayedMissions, selectedId]);
 
+  const handleAutoAssign = useCallback(() => {
+    if (!selectedMission) return;
+    setSelectedMemberIds(autoAssignMembers(availableMembers, selectedMission));
+  }, [selectedMission, availableMembers]);
+
   const handleSelect = (id: string) => {
     setSelectedId(id);
     setMobileView('detail');
@@ -168,18 +199,22 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
     }
   };
 
-  const handleDispatch = (memberIds: string[], mercContractIds: string[] = []) => {
+  const handleDispatch = () => {
     if (!selectedMission) return;
+    const memberIds = selectedMemberIds;
+    // Tavern mercs are not surfaced in the quest-board party UI today, so the
+    // party is members-only. Kept as an empty list for createActiveMission.
+    const mercContractIds: string[] = [];
     const allMembers = [...(founder ? [founder] : []), ...roster];
     const party = allMembers.filter((m) => memberIds.includes(m.id));
-    const mercs = mercContracts.filter((c) => mercContractIds.includes(c.id));
-    const validation = validateDispatch(selectedMission, party, mercs, gold);
+    const validation = validateDispatch(selectedMission, party, [], gold);
     if (!validation.valid) return;
     const now = Date.now();
     dispatchMission(createActiveMission(selectedMission, memberIds, mercContractIds, now));
     memberIds.forEach((id) => updateMemberStatus(id, 'on-mission'));
-    if (mercContractIds.length > 0) markMercsOnQuest(mercContractIds, selectedMission.id);
     setSelectedId(null);
+    setSelectedMemberIds([]);
+    setPickerSlot(null);
     setMobileView('list');
     playSFX(AUDIO.SFX_INK_STAMP);
     playSFX(AUDIO.SFX_DISPATCH);
@@ -197,12 +232,16 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
       onClick={onClose}
     >
       <div
+        className="quest-board-stage"
+        data-picker-open={pickerSlot !== null ? '' : undefined}
+        onClick={(e) => e.stopPropagation()}
+      >
+      <div
         className="quest-board parchment-surface parchment-frame parchment-rivets parchment-anim-unroll"
         role="dialog"
         aria-label={t('questBoard.ariaLabel')}
         aria-modal="true"
         data-mobile-view={isMobile ? mobileView : undefined}
-        onClick={(e) => e.stopPropagation()}
       >
         <header className="quest-board__header">
           <h2 className="quest-board__title parchment-title">{t('questBoard.title')}</h2>
@@ -273,8 +312,11 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
             mission={selectedMission}
             availableMembers={availableMembers}
             gold={gold}
+            selectedMemberIds={selectedMemberIds}
+            onToggleMember={toggleMember}
+            onOpenPicker={setPickerSlot}
+            onAutoAssign={handleAutoAssign}
             onDispatch={handleDispatch}
-            onMemberToggle={handleMemberToggleSfx}
             onBack={isMobile ? () => setMobileView('list') : undefined}
           />
         </div>
@@ -288,6 +330,16 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
           <span className="quest-board__return-icon" aria-hidden="true">⮌</span>
           {t('questBoard.return')}
         </button>
+      </div>
+
+        <QuestRosterPicker
+          open={pickerSlot !== null}
+          mission={selectedMission}
+          availableMembers={availableMembers}
+          selectedMemberIds={selectedMemberIds}
+          onPick={handlePickMember}
+          onClose={closePicker}
+        />
       </div>
     </div>
   );

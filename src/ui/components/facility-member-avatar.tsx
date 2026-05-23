@@ -1,5 +1,6 @@
-/** Avatar card showing member sprite + unassign button, used in facility detail tray. */
+/** Avatar card showing member sprite + unassign button — facility tray + quest party slots. */
 
+import '@/ui/styles/member-avatar.css';
 import type { Member } from '@/game/state/game-state';
 import { getSpritePath, getBattleIdleFramePath } from '@/scene/sprites/sprite-path-resolver';
 
