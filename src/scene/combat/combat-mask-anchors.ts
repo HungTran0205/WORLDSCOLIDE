@@ -21,14 +21,6 @@ export interface CombatMaskAnchor {
   size: number;
 }
 
-// Rough head-center seed — all frames start here; tune in Phase 4.
-const HEAD: CombatMaskAnchor = { x: 64, y: 40, size: 38 };
-
-/** Build an array of N copies of a seed anchor. */
-function seed(n: number, s: CombatMaskAnchor = HEAD): CombatMaskAnchor[] {
-  return Array.from({ length: n }, () => ({ ...s }));
-}
-
 type AnchorTable = Record<CombatMaskAnim, CombatMaskAnchor[]>;
 
 const ANCHOR_TABLE: Record<string, AnchorTable> = {
