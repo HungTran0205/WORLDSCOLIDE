@@ -24,6 +24,8 @@ const ID_TO_FILENAME: Record<string, string> = {
   OFFICER: 'officer', COMMANDER: 'commander', MERCENARY: 'mercenary',
   // RoomType edge case: training-room → training (filename omits "-room")
   'training-room': 'training',
+  // FacilityType edge case: training-yard → training (shares the training icon)
+  'training-yard': 'training',
 };
 
 /** File prefix per category */

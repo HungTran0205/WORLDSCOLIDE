@@ -7,6 +7,27 @@ All notable changes to Worlds Collide are documented in this file. The format fo
 
 ---
 
+## [Unreleased] — 2026-05-23 (Facilities Build Picker — Icon Panel)
+
+### feat(ui): replace facility build text-list with left-docked icon picker
+
+**Game-style build picker** (`plans/260523-1105-facilities-build-picker-icon-panel/`). Selecting an empty facility slot now opens a left-docked **icon-card panel** instead of the bottom slide-up text list. Each card shows the room PNG icon (`icon-room-*.png`), name, primary stat, and cost; states cover affordable / unaffordable (grayscale + red cost) / quest-locked (🔒 overlay) / selected / x-of-3 instance count. A footer "Build" button opens the existing confirm dialog. Built-room flow (assign/upgrade) is unchanged.
+
+**Key Files**:
+- `src/ui/components/facility-build-picker.tsx` — NEW icon-card picker (logic lifted from old `EmptySlotTray`)
+- `src/ui/components/facility-detail-tray.tsx` — removed `EmptySlotTray`; tray now opens only for built rooms
+- `src/ui/panels/facilities-panel.tsx` — renders picker as left sibling of the panel when an empty slot is selected
+- `src/ui/utils/icon-paths.ts` — `training-yard → training` icon override (load-bearing; avoids 404)
+- `src/ui/styles/facilities-panel.css` — `.fp-build-picker` / `.fp-bp-*` styles + responsive @820px; removed dead `.fp-blueprint-*` / `.fp-btn-build` CSS
+- `src/i18n/ui.en.json` + `ui.vi.json` — removed now-orphaned `facilityTray.needMaterials` (red cost label already names materials)
+- `src/ui/components/ink-confirm-dialog.tsx` — now `createPortal`s to `<body>` so the modal escapes the facilities overlay's `pointer-events:none` (build-confirm clicks were falling through to the scene) and any zoomed ancestor; affects all 6 confirm-dialog call sites (modal-only, no visual change)
+
+**Post-verify fixes**: (1) Build-confirm dialog clicks did nothing — the dialog rendered inside the picker which lives in the `pointer-events:none` `.fp-overlay`; fixed by portaling the dialog to `<body>` + `pointer-events:auto` on `.fp-dialog-overlay`. (2) Facilities panel + build picker scaled up 20% (`zoom: 1.2`, `max-height` divided by zoom) for readability on large displays.
+
+**Verification**: `tsc -b` + `vite build` clean; 730/730 game tests pass (3 pre-existing infra-noise unchanged); code review 8.5/10, 0 critical/high. Tutorial build beats (`build-logging-site` / `build-tavern`) preserved — highlight re-pointed from blueprint row to icon-card + Build button. Manual visual re-verify pending after post-verify fixes.
+
+---
+
 ## [Unreleased] — 2026-05-23 (Arc 1 Narrative Unlock Gates)
 
 ### feat(arc1): gate facilities behind story quests

@@ -21,6 +21,7 @@ import { AUDIO } from '@/audio/audio-keys';
 export function useGameTickLoop() {
   const workerRef = useRef<Worker | null>(null);
   const stoneAccumulatorRef = useRef(0);
+  const woodAccumulatorRef = useRef(0);
 
   const handleTick = useCallback((now: number) => {
     const store = useGameStore.getState();
@@ -69,8 +70,13 @@ export function useGameTickLoop() {
     const loggingResult = processLoggingSiteTick(store.facilities, allMembersForTick);
     if (loggingResult.woodProduced > 0 || loggingResult.reserveUpdates.length > 0) {
       store.applyLoggingProduction(loggingResult);
-      if (loggingResult.woodProduced > 0) {
-        store.addItem('WOOD', loggingResult.woodProduced);
+      // Accumulate fractional wood; addItem floors so we batch until we have >= 1
+      // (~0.016 wood/tick at 29/gameday ÷ 1800 ticks — without this it floors to 0 every tick)
+      woodAccumulatorRef.current += loggingResult.woodProduced;
+      const woodToAdd = Math.floor(woodAccumulatorRef.current);
+      if (woodToAdd > 0) {
+        store.addItem('WOOD', woodToAdd);
+        woodAccumulatorRef.current -= woodToAdd;
       }
     }
 

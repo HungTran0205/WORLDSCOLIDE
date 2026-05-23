@@ -3,9 +3,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
-import type { GuildFacility, Member, FacilityType } from '@/game/state/game-state';
-import type { ItemID } from '@/game/data/items';
-import { ITEM_DATABASE } from '@/game/data/items';
+import type { GuildFacility, Member } from '@/game/state/game-state';
 import { FACILITY_DEFINITIONS, LOGGING_SITE_CONFIG, STONE_QUARRY_CONFIG } from '@/game/data/facility-definitions';
 import { FACILITY_SLOTS, getSlotCameraOffset } from '@/game/data/facility-slot-positions';
 import { calcMcLevel } from '@/game/systems/stone-quarry-production-system';
@@ -13,22 +11,6 @@ import { handleFirstHaul } from '@/game/systems/tutorial-first-haul-handler';
 import { handleKeeperAssigned } from '@/game/systems/tutorial-keeper-handler';
 import { FacilityMemberAvatar } from './facility-member-avatar';
 import { InkConfirmDialog } from './ink-confirm-dialog';
-
-type FacilityDefVal = (typeof FACILITY_DEFINITIONS)[FacilityType];
-
-// ── Material build-cost helpers ──────────────────────────────────────────────
-/** "200 Oak Wood" or "200 Oak Wood, 50 Stone" — uses canonical item names. */
-function materialCostLabel(cost: Partial<Record<ItemID, number>>): string {
-  return Object.entries(cost)
-    .filter(([, qty]) => qty && qty > 0)
-    .map(([id, qty]) => `${qty} ${ITEM_DATABASE[id as ItemID].name}`)
-    .join(', ');
-}
-
-/** True if inventory holds every material in the cost. */
-function hasMaterials(cost: Partial<Record<ItemID, number>>, items: Partial<Record<ItemID, number>>): boolean {
-  return Object.entries(cost).every(([id, qty]) => !qty || (items[id as ItemID] ?? 0) >= qty);
-}
 
 // ── Bonus preview (extracted from facility-card logic) ──────────────────────
 function getBonusPreview(facility: GuildFacility, members: Member[]): string {
@@ -182,117 +164,9 @@ function BuiltRoomTray({ facility, onClose }: { facility: GuildFacility; onClose
   );
 }
 
-// ── Empty slot tray ─────────────────────────────────────────────────────────
-function EmptySlotTray({ slotIdx, onBuildComplete }: { slotIdx: number; onBuildComplete: () => void }) {
-  const { t } = useTranslation();
-  const [selectedBp,  setSelectedBp]  = useState<FacilityType | null>(null);
-  const [buildConfirm, setBuildConfirm] = useState(false);
-  const facilities    = useGameStore(s => s.facilities);
-  const gold          = useGameStore(s => s.gold);
-  const inventory     = useGameStore(s => s.inventory);
-  const completedMissions = useGameStore(s => s.completedMissions);
-  const buildFacility = useGameStore(s => s.buildFacility);
-  const placeFacility = useGameStore(s => s.placeFacility);
-  const tutorialStep  = useGameStore(s => s.tutorialStep);
-
-  // Narrative gate: facilities tied to a story quest stay locked until that quest is completed.
-  const isQuestLocked = (def: FacilityDefVal) =>
-    !!(def.unlockQuestId && !completedMissions.includes(def.unlockQuestId));
-
-  // Tutorial in-panel guidance: which blueprint should the player pick on this build beat.
-  const tutorialTarget: FacilityType | null =
-    tutorialStep === 'build-logging-site' ? 'logging-site'
-    : tutorialStep === 'build-tavern' ? 'tavern'
-    : null;
-
-  const getActiveCount = (type: FacilityType) =>
-    facilities.filter(fac => fac.type === type && fac.level > 0).length;
-
-  const buildable = Object.values(FACILITY_DEFINITIONS).filter(def =>
-    getActiveCount(def.type) < 3
-  );
-
-  function canAfford(def: FacilityDefVal): boolean {
-    if (def.type === 'logging-site') return (inventory.items['LOGGING_SITE_ACCESS'] ?? 0) > 0;
-    if (def.buildMaterialCost && !hasMaterials(def.buildMaterialCost, inventory.items)) return false;
-    return def.buildCost === 0 || gold >= def.buildCost;
-  }
-
-  function costLabel(def: FacilityDefVal): string {
-    if (def.type === 'logging-site') return t('facilityTray.costPermit');
-    // Material cost takes the label; assumes no facility charges both gold AND materials
-    // (tavern's gold buildCost is 0). Revisit if a mixed-cost facility is ever added.
-    if (def.buildMaterialCost) return materialCostLabel(def.buildMaterialCost);
-    return def.buildCost === 0 ? t('facilityTray.costFree') : `${def.buildCost}g`;
-  }
-
-  function handleConfirmBuild() {
-    if (!selectedBp) return;
-    const newId = buildFacility(selectedBp);
-    if (newId) placeFacility(newId, slotIdx);
-    setBuildConfirm(false);
-    onBuildComplete();
-  }
-
-  const selDef = selectedBp ? FACILITY_DEFINITIONS[selectedBp] : null;
-
-  return (
-    <>
-      <div className="fp-tray-content">
-        <div className="fp-slot-label">{t('facilityTray.slotLabel', { number: slotIdx + 1 })}</div>
-        <div className="fp-blueprint-list">
-          {buildable.length === 0 && <div className="fp-blueprint-empty">{t('facilityTray.allBuilt')}</div>}
-          {buildable.map(def => {
-            const locked     = isQuestLocked(def);
-            const affordable = canAfford(def);
-            const selectable = affordable && !locked;
-            return (
-              <div
-                key={def.type}
-                className={`fp-blueprint-row${selectedBp === def.type ? ' selected' : ''}${!selectable ? ' unaffordable' : ''}${tutorialTarget === def.type && selectedBp !== def.type ? ' tutorial-highlight' : ''}`}
-                onClick={() => selectable && setSelectedBp(def.type)}
-              >
-                <span className="fp-bp-name">{def.name}</span>
-                <span className="fp-bp-stat">{def.primaryStats}</span>
-                {getActiveCount(def.type) > 0 && (
-                  <span className="fp-bp-instance-count">{getActiveCount(def.type)}/3</span>
-                )}
-                <span className="fp-bp-cost">{costLabel(def)}</span>
-                {locked ? (
-                  <span style={{ fontSize: '0.65rem', color: '#888', fontStyle: 'italic', marginLeft: 6 }}>
-                    {t('facilityTray.lockedByQuest')}
-                  </span>
-                ) : def.buildMaterialCost && !affordable && (
-                  <span style={{ fontSize: '0.65rem', color: '#d9534f', marginLeft: 6 }}>
-                    {t('facilityTray.needMaterials', { materials: materialCostLabel(def.buildMaterialCost) })}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <button
-          className={`fp-btn-build${tutorialTarget && selectedBp === tutorialTarget ? ' tutorial-highlight' : ''}`}
-          disabled={!selectedBp}
-          onClick={() => setBuildConfirm(true)}
-        >
-          {selDef ? t('facilityTray.buildBtnWithName', { name: selDef.name, cost: costLabel(selDef) }) : t('facilityTray.buildBtn')}
-        </button>
-      </div>
-      {buildConfirm && selDef && (
-        <InkConfirmDialog
-          title={t('facilityTray.buildConfirmTitle', { name: selDef.name })}
-          body={t('facilityTray.buildConfirmBody', { number: slotIdx + 1, cost: costLabel(selDef) })}
-          confirmLabel={t('facilityTray.buildConfirmBtn')}
-          onConfirm={handleConfirmBuild}
-          onCancel={() => setBuildConfirm(false)}
-        />
-      )}
-    </>
-  );
-}
-
 // ── Exported tray shell ─────────────────────────────────────────────────────
+// Empty slots open the left-docked FacilityBuildPicker (in facilities-panel);
+// this bottom tray now only shows built-room detail.
 interface FacilityDetailTrayProps {
   selectedSlot: number | null;
   slotMap: Map<number, GuildFacility>;
@@ -301,13 +175,10 @@ interface FacilityDetailTrayProps {
 
 export function FacilityDetailTray({ selectedSlot, slotMap, onClose }: FacilityDetailTrayProps) {
   const isBuilt = selectedSlot !== null && slotMap.has(selectedSlot);
-  const isEmpty = selectedSlot !== null && !slotMap.has(selectedSlot);
-  const isOpen  = isBuilt || isEmpty;
 
   return (
-    <div className={`fp-tray${isOpen ? ' fp-tray--open' : ''}`}>
+    <div className={`fp-tray${isBuilt ? ' fp-tray--open' : ''}`}>
       {isBuilt && <BuiltRoomTray facility={slotMap.get(selectedSlot!)!} onClose={onClose} />}
-      {isEmpty && <EmptySlotTray slotIdx={selectedSlot!} onBuildComplete={onClose} />}
     </div>
   );
 }

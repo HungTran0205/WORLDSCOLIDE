@@ -10,6 +10,7 @@ import { FACILITY_SLOTS, getSlotCameraOffset } from '@/game/data/facility-slot-p
 import { GUILD_HALL_CAMERA_TARGET } from '@/game/state/camera-slice';
 import { getUpgradeCost } from '@/game/systems/guild-upgrade-system';
 import { FacilityDetailTray, getInstanceNumber } from '@/ui/components/facility-detail-tray';
+import { FacilityBuildPicker } from '@/ui/components/facility-build-picker';
 import { InkConfirmDialog } from '@/ui/components/ink-confirm-dialog';
 import '@/ui/styles/game-ui-tokens.css';
 import '@/ui/styles/facilities-panel.css';
@@ -167,8 +168,18 @@ export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
   const isBuildStep = tutorialStep === 'build-logging-site' || tutorialStep === 'build-tavern';
   const highlightEmptySlots = isBuildStep && selectedSlot === null;
 
+  // Empty slot selected → show the left-docked build picker (built slots use the bottom tray).
+  const buildSlot = selectedSlot !== null && !slotMap.has(selectedSlot) ? selectedSlot : null;
+
   return (
     <div className="fp-overlay">
+      {buildSlot !== null && (
+        <FacilityBuildPicker
+          slotIdx={buildSlot}
+          onBuildComplete={() => setSelectedSlot(null)}
+          onClose={() => setSelectedSlot(null)}
+        />
+      )}
       <div className="ink-panel fp-panel ink-enter">
 
         {/* Header */}

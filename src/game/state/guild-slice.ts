@@ -565,6 +565,8 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
         const completed = (s as unknown as { completedMissions: string[] }).completedMissions ?? [];
         if (!completed.includes(def.unlockQuestId)) return s;
       }
+      // Guild-level gate: facility stays unbuildable until the guild reaches the required level.
+      if (def.requiredGuildLevel && s.guildLevel < def.requiredGuildLevel) return s;
       const cost = def.buildCost;
       if (cost > 0 && s.guildLevel < 2) return s;
       if (s.gold < cost) return s;

@@ -160,8 +160,8 @@ describe('buildFacility — tavern material cost (200 WOOD)', () => {
 // ─── buildFacility — non-material facility (training-yard) ───────────────────
 
 describe('buildFacility — training-yard (no material cost, gold only)', () => {
-  it('builds successfully when gold >= 250 and guildLevel >= 2; no WOOD required', () => {
-    setupBuildState({ wood: 0, gold: 500, guildLevel: 2 });
+  it('builds successfully when gold >= 250 and guildLevel >= 3; no WOOD required', () => {
+    setupBuildState({ wood: 0, gold: 500, guildLevel: 3 });
 
     const result = useGameStore.getState().buildFacility('training-yard');
 
@@ -174,7 +174,7 @@ describe('buildFacility — training-yard (no material cost, gold only)', () => 
   });
 
   it('returns null when gold < 250', () => {
-    setupBuildState({ wood: 500, gold: 100, guildLevel: 2 });
+    setupBuildState({ wood: 500, gold: 100, guildLevel: 3 });
 
     const result = useGameStore.getState().buildFacility('training-yard');
 
@@ -182,8 +182,8 @@ describe('buildFacility — training-yard (no material cost, gold only)', () => 
     expect(useGameStore.getState().gold).toBe(100);
   });
 
-  it('returns null when guildLevel < 2 (even with enough gold)', () => {
-    setupBuildState({ wood: 500, gold: 1000, guildLevel: 1 });
+  it('returns null when guildLevel < 3 (even with enough gold)', () => {
+    setupBuildState({ wood: 500, gold: 1000, guildLevel: 2 });
 
     const result = useGameStore.getState().buildFacility('training-yard');
 

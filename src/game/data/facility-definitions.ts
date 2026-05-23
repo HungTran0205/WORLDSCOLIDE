@@ -23,6 +23,8 @@ export interface FacilityDef {
   tileFootprint: [number, number];
   /** Quest ID that must be completed before this facility can be built. Absent = no narrative gate. */
   unlockQuestId?: string;
+  /** Min guild level required before this facility appears in the build picker. Absent = available from Lv.1. */
+  requiredGuildLevel?: number;
 }
 
 export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
@@ -48,6 +50,7 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     primaryStats: 'DEX + AGI',
     zonePosition: [2, 0, 2.5],
     tileFootprint: [3, 3],
+    requiredGuildLevel: 3,
   },
   infirmary: {
     type: 'infirmary',
@@ -59,6 +62,7 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
     primaryStats: 'END + INT',
     zonePosition: [2, 0, 5],
     tileFootprint: [3, 3],
+    requiredGuildLevel: 3,
   },
   workshop: {
     type: 'workshop',
