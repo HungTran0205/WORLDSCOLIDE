@@ -22,7 +22,7 @@ export function WorkshopFurniture({ cx, cz }: { cx: number; cz: number }) {
       <RoomProp path="/models/furnitures/red_workbend_2.glb" position={[cx - 1, 0, cz + 3]} targetHeight={1.4} rotY={3.15} />
       <RoomProp path="/models/furnitures/Cozy_Brick_Fireplace.glb" position={[cx - 0.5, 0, cz - 2.55]} targetHeight={3.5} rotY={0} />
       <RoomProp path="/models/furnitures/Wooden_Crates_and_Bar.glb" position={[cx - 2.4, 0, cz - 2.6]} targetHeight={1} rotY={0} />
-      <RoomProp path="/models/furnitures/Barrels_and_Crates.glb" position={[cx + 2.7, 0, cz + 2.5]} targetHeight={1} rotY={1.5} />
+      <RoomProp path="/models/furnitures/WeaponRack.glb" position={[cx + 2.6, 0, cz + 2.9]} targetHeight={1.8} rotY={0} />
       <RoomProp path="/models/furnitures/Crimson_Ember_Flask.glb" position={[cx + 3, 2.5, cz - 3]} targetHeight={1} rotY={1.5} />
       <RoomProp path="/models/furnitures/Crimson_Ember_Flask.glb" position={[cx + 3, 2.5, cz + 2.5]} targetHeight={1} rotY={1.5} />
     </group>
