@@ -42,7 +42,9 @@ const FACILITY_SPOTS: Record<FacilityType, SpotDef[]> = {
     { offset: [ 0.5,  1.2], facing: 'south' },
   ],
   tavern: [
-    { offset: [-0.5,  0.8], facing: 'north' }, // behind bar counter
+    // Keeper stands in the open floor in front of the bar (+Z = toward camera),
+    // clear of the tall counter shelf (cx-2.8, cz+1.2) that was occluding it.
+    { offset: [-2,  2.2], facing: 'north' },
     { offset: [ 1.2,  0.5], facing: 'west'  },
     { offset: [-1.5,  0.0], facing: 'east'  },
     { offset: [ 0.0, -0.5], facing: 'north' },
