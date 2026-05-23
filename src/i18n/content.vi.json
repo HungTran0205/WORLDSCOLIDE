@@ -440,12 +440,12 @@
   "dialog": {
     "world-board": {
       "title": "Thế Giới Chia Cắt",
-      "body": "Các nền văn minh khắc tạc mảnh đất này trong im lặng bất ổn — những chiến binh núi cao của Linh Sơn, đế chế sắt và hơi nước Đế Quốc, và những du mục đọc sao của Thiên Lữ, thánh quốc Eliza cai trị bằng đức tin qua nhiều thế hệ. Họ không tin tưởng ai ngoài đồng tộc mình.\n\nBạn nắm trong tay một hiến chương để lập hội đoàn trên vùng đất trung lập, mở cửa cho chiến binh của mọi chiến tuyến. Phải có ai đó bắc nhịp cầu. Và điều đó bắt đầu từ bạn.",
+      "body": "Các nền văn minh khắc tạc mảnh đất này trong im lặng bất ổn — những chiến binh núi cao của Linh Sơn, Đế Quốc của sắt và hơi nước , những kẻ du mục đọc sao Thiên Lữ, và thánh quốc Eliza cai trị bằng đức tin qua nhiều thế hệ. Họ không tin tưởng ai ngoài đồng tộc mình.\n\nBạn nắm trong tay một cơ hội để lập nên một thế lực mới trên vùng đất trung lập, mở cửa cho chiến binh của mọi chiến tuyến. Phải có ai đó tạo nên nhịp cầu kết nối. Và điều đó bắt đầu từ bạn.",
       "begin": "Bắt Đầu"
     },
     "npc-alarm": {
       "text": "Một con Gấu Trăng khổng lồ đang tàn phá ngôi làng dưới kia —\nvẫn còn người bị mắc kẹt ở đó!",
-      "speaker": "Sứ Giả"
+      "speaker": "Dân làng"
     },
     "kael-rescue": {
       "title": "Đã Giải Cứu Kael!",
