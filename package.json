@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "deploy": "node scripts/deploy-itch.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "vfx": "cd tools/vfx-playground && npm run dev",
