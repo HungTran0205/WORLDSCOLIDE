@@ -30,14 +30,14 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
   // --- Level 1 ---
   slime: {
     id: 'slime', name: 'Slime', level: 1,
-    stats: { STR: 3, END: 2, INT: 1, DEX: 1, CHA: 0, LCK: 1, AGI: 2 },
+    stats: { STR: 3, END: 5, INT: 1, DEX: 1, CHA: 0, LCK: 1, AGI: 2 },
     skill: null, abilities: [],
     loot: [{ itemId: 'SLIME_GEL', chance: 0.75, min: 1, max: 2 }, { itemId: 'WOOD', chance: 0.15, min: 1, max: 2 }],
     spriteId: 'slime',
   },
   'forest-spider': {
     id: 'forest-spider', name: 'Forest Spider', level: 1,
-    stats: { STR: 4, END: 2, INT: 1, DEX: 3, CHA: 0, LCK: 1, AGI: 4 },
+    stats: { STR: 4, END: 2, INT: 1, DEX: 3, CHA: 0, LCK: 1, AGI: 5 },
     skill: null, abilities: [{ type: 'poison-attack', chance: 0.10 }],
     loot: [{ itemId: 'SLIME_GEL', chance: 0.5, min: 1, max: 1 }],
     spriteId: 'forest-spider',
@@ -99,7 +99,7 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
   },
   'slime-king': {
     id: 'slime-king', name: 'Slime King', level: 3,
-    stats: { STR: 8, END: 20, INT: 3, DEX: 2, CHA: 0, LCK: 5, AGI: 2 },
+    stats: { STR: 10, END: 25, INT: 3, DEX: 5, CHA: 0, LCK: 5, AGI: 5 },
     skill: null, abilities: [],
     loot: [
       { itemId: 'SLIME_GEL', chance: 1.0, min: 2, max: 4 },
@@ -113,7 +113,7 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
   // --- Arc 1: machine enemies ---
   'flying-drone': {
     id: 'flying-drone', name: 'Flying Drone', level: 2,
-    stats: { STR: 4, END: 3, INT: 2, DEX: 7, CHA: 0, LCK: 1, AGI: 10 },
+    stats: { STR: 4, END: 3, INT: 2, DEX: 10, CHA: 0, LCK: 1, AGI: 20 },
     skill: null, abilities: [{ type: 'stun-attack', chance: 0.15 }],
     loot: [
       { itemId: 'DRONE_SENSOR', chance: 0.80, min: 1, max: 1 },
@@ -124,7 +124,7 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
   },
   'dog-robot': {
     id: 'dog-robot', name: 'Dog Robot', level: 3,
-    stats: { STR: 8, END: 8, INT: 2, DEX: 5, CHA: 0, LCK: 1, AGI: 6 },
+    stats: { STR: 15, END: 15, INT: 2, DEX: 5, CHA: 0, LCK: 1, AGI: 10 },
     skill: null, abilities: [{ type: 'enrage', chance: 0.20 }],
     loot: [
       { itemId: 'METAL_PLATE',  chance: 0.75, min: 1, max: 2 },
