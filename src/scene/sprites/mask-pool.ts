@@ -1,10 +1,12 @@
 import { TextureLoader, NearestFilter, SRGBColorSpace, type Texture } from 'three';
 
-/** 15 curated identity masks, located in public/sprites/mask/pick/{id}/{view}.png */
+/** 21 curated identity masks, located in public/sprites/mask/pick/{id}/{view}.png */
 export const MASK_POOL = [
   'mask-01', 'mask-02', 'mask-03', 'mask-04', 'mask-05',
   'mask-06', 'mask-07', 'mask-08', 'mask-09', 'mask-10',
   'mask-11', 'mask-12', 'mask-13', 'mask-14', 'mask-15',
+  'mask-16', 'mask-17', 'mask-18', 'mask-19', 'mask-20',
+  'mask-21',
 ] as const;
 
 export type MaskId = typeof MASK_POOL[number];
@@ -52,7 +54,7 @@ export function loadMaskTexture(id: string, view: MaskView): Texture {
   return tex;
 }
 
-/** Preload all 15 east textures on app boot — eliminate combat pop-in. ~120KB total. */
+/** Preload all 21 east textures on app boot — eliminate combat pop-in. ~170KB total. */
 export function preloadCombatMasks(): void {
   MASK_POOL.forEach(id => loadMaskTexture(id, 'east'));
 }
