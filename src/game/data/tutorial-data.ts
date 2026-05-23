@@ -1,6 +1,10 @@
 /** Tutorial-specific static data — Kael NPC template and the intro quest definition. */
 
 import type { Member, Mission, TavernVisitor } from '@/game/state/game-state';
+import { mulberry32, hashSeed } from '@/game/systems/seeded-rng';
+import { distributeStatsByWeightsRandom, INITIAL_STAT_POINTS } from '@/game/systems/stat-allocation';
+import { CIV_ARCHETYPE_PROFILES } from '@/game/data/characters';
+import { applyCivBonuses } from '@/game/data/civilization-config';
 
 /** Single source of truth for the tutorial Moonbear mission id. Used by the
  *  HP-floor wiring (Phase 04) so the engine + every auto-resolve simulator path
@@ -15,7 +19,7 @@ export const KAEL_TEMPLATE: Omit<Member, 'id'> = {
   gender: 'M',
   level: 1,
   exp: 0,
-  stats: { STR: 8, END: 7, DEX: 5, AGI: 5, INT: 3, CHA: 4, LCK: 3 },
+  stats: { STR: 8, END: 15, DEX: 5, AGI: 5, INT: 3, CHA: 4, LCK: 10 },
   unallocatedPoints: 0,
   skill: null,
   status: 'idle',
@@ -43,15 +47,35 @@ export const KAEL_TEMPLATE: Omit<Member, 'id'> = {
  * forces a 100% negotiation success (see rollNegotiation) so the closing beat always
  * lands. Stable id keeps the spawn idempotent across re-assigns.
  */
+const MAI_RARITY = 2 as const;
+
+/**
+ * Mai's stats — the baseline 50-pt budget distributed by scout archetype weights,
+ * then boosted by LinhSon civ bonuses. Mai stays rarity-2 for display, but her budget
+ * is intentionally pinned to INITIAL_STAT_POINTS (not the rarity-2 budget of 70) to
+ * keep the scripted tutorial recruit balanced. A FIXED seed (derived from her stable
+ * id) makes the roll deterministic: every playthrough gets the same Ranger build, so
+ * tutorial combat balance stays predictable and tests stay stable. Same weighted-random
+ * path as live tavern visitors (see generateTavernVisitor).
+ */
+const MAI_STATS = applyCivBonuses(
+  distributeStatsByWeightsRandom(
+    INITIAL_STAT_POINTS,
+    CIV_ARCHETYPE_PROFILES.scout.weights,
+    mulberry32(hashSeed('tutorial-recruit-ranger')),
+  ),
+  'LinhSon',
+);
+
 export const TUTORIAL_RECRUIT_VISITOR: TavernVisitor = {
   id: 'tutorial-recruit-ranger',
   name: 'Mai',
   archetype: 'scout',
   civilization: 'LinhSon',
   gender: 'F',
-  rarity: 2,
+  rarity: MAI_RARITY,
   level: 1,
-  stats: { STR: 5, END: 5, INT: 4, DEX: 8, CHA: 4, LCK: 5, AGI: 7 },
+  stats: MAI_STATS,
   derivedDemand: 20,
   dailyMoodBias: 0,
   traits: [],

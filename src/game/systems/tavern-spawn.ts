@@ -13,7 +13,7 @@ import { TRAIT_POOL } from '@/game/data/traits';
 import { CIV_CONFIG, applyCivBonuses, CIVILIZATIONS, RECRUITABLE_UNITS } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
 import { CIV_ARCHETYPE_PROFILES } from '@/game/data/characters';
-import { distributeStatsByWeights } from './stat-allocation';
+import { distributeStatsByWeightsRandom } from './stat-allocation';
 import { mulberry32, hashSeed, pickFromList, pickDistinct, weightedPick } from './seeded-rng';
 import { targetDemand } from './tavern-negotiation';
 
@@ -143,7 +143,7 @@ function generateTavernVisitor(args: GenerateVisitorArgs): TavernVisitor {
   const talentBudget = talentBudgetForRarity(rarity);
   const profile = CIV_ARCHETYPE_PROFILES[archetype];
 
-  const rawStats = distributeStatsByWeights(talentBudget, profile.weights);
+  const rawStats = distributeStatsByWeightsRandom(talentBudget, profile.weights, rng);
   const stats = applyCivBonuses(rawStats, civ);
 
   const dailyMoodBias = Math.floor(rng() * 11) - 5; // [-5, +5]
