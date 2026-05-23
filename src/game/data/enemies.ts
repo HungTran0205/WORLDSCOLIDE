@@ -113,7 +113,7 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
   // --- Arc 1: machine enemies ---
   'flying-drone': {
     id: 'flying-drone', name: 'Flying Drone', level: 2,
-    stats: { STR: 4, END: 3, INT: 2, DEX: 10, CHA: 0, LCK: 1, AGI: 20 },
+    stats: { STR: 5, END: 3, INT: 2, DEX: 15, CHA: 0, LCK: 1, AGI: 25 },
     skill: null, abilities: [{ type: 'stun-attack', chance: 0.15 }],
     loot: [
       { itemId: 'DRONE_SENSOR', chance: 0.80, min: 1, max: 1 },
@@ -130,7 +130,7 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
       { itemId: 'METAL_PLATE',  chance: 0.75, min: 1, max: 2 },
       { itemId: 'DRONE_SENSOR', chance: 0.30, min: 1, max: 1 },
     ],
-    spriteId: 'slime', // placeholder — Arc 1 sprite pending
+    spriteId: 'dog-robot', // walk-as-idle (no idle frames on disk), 9-frame death, 4-frame attack
   },
 
   // --- Level 4 (boss: queen-spider) ---
