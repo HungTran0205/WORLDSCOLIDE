@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { assetUrl } from '@/lib/asset-url';
 
 /** PNG assets — loaded via Image() */
 const ASSETS_PNG = [
@@ -74,12 +75,12 @@ export function useTitlePreloader(): TitlePreloaderState {
           // Resolve on both load + error so a single 404 cannot block forever.
           img.onload = () => { bump(`PNG ok ${src}`); resolve(); };
           img.onerror = () => { bump(`PNG err ${src}`); resolve(); };
-          img.src = src;
+          img.src = assetUrl(src);
         }),
     );
 
     const glbPromises = ASSETS_GLB.map((src) =>
-      fetch(src)
+      fetch(assetUrl(src))
         .catch(() => undefined)
         .finally(() => { bump(`GLB ${src}`); }),
     );

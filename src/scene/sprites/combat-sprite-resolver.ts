@@ -16,6 +16,8 @@
  * Add new civs/enemies here as their frames land.
  */
 
+import { assetUrl } from '@/lib/asset-url';
+
 export type CombatAnimState = 'idle' | 'attack' | 'blocking' | 'death';
 
 export const COMBAT_IDLE_FRAME_COUNT = 8;
@@ -159,20 +161,20 @@ export function resolveEnemyCombatSprite(
 
   if (state === 'death') {
     if (COMBAT_SPRITE_MANIFEST.enemiesWithDeathWest.has(spriteId)) {
-      return `/sprites/enemies/${spriteId}/animations/death/west/frame_${padded}.png`;
+      return assetUrl(`/sprites/enemies/${spriteId}/animations/death/west/frame_${padded}.png`);
     }
     if (COMBAT_SPRITE_MANIFEST.enemiesWithIdleWest.has(spriteId)) {
-      return `/sprites/enemies/${spriteId}/animations/idle/west/frame_000.png`;
+      return assetUrl(`/sprites/enemies/${spriteId}/animations/idle/west/frame_000.png`);
     }
     if (COMBAT_SPRITE_MANIFEST.enemiesWithWalkWest.has(spriteId)) {
-      return `/sprites/enemies/${spriteId}/animations/walk/west/frame_000.png`;
+      return assetUrl(`/sprites/enemies/${spriteId}/animations/walk/west/frame_000.png`);
     }
-    return `/sprites/enemies/${spriteId}/rotations/west.png`;
+    return assetUrl(`/sprites/enemies/${spriteId}/rotations/west.png`);
   }
 
   if (state === 'attack') {
     if (COMBAT_SPRITE_MANIFEST.enemiesWithAttackWest.has(spriteId)) {
-      return `/sprites/enemies/${spriteId}/animations/attack/west/frame_${padded}.png`;
+      return assetUrl(`/sprites/enemies/${spriteId}/animations/attack/west/frame_${padded}.png`);
     }
     // Fallback to idle (the sprite component shares the idle atlas so no
     // extra GPU canvas is allocated when an enemy has no attack frames).
@@ -180,13 +182,13 @@ export function resolveEnemyCombatSprite(
   }
 
   if (COMBAT_SPRITE_MANIFEST.enemiesWithIdleWest.has(spriteId)) {
-    return `/sprites/enemies/${spriteId}/animations/idle/west/frame_${padded}.png`;
+    return assetUrl(`/sprites/enemies/${spriteId}/animations/idle/west/frame_${padded}.png`);
   }
   if (COMBAT_SPRITE_MANIFEST.enemiesWithWalkWest.has(spriteId)) {
     // Use the full 8-frame walk loop as idle when no dedicated idle exists.
-    return `/sprites/enemies/${spriteId}/animations/walk/west/frame_${padded}.png`;
+    return assetUrl(`/sprites/enemies/${spriteId}/animations/walk/west/frame_${padded}.png`);
   }
-  return `/sprites/enemies/${spriteId}/rotations/west.png`;
+  return assetUrl(`/sprites/enemies/${spriteId}/rotations/west.png`);
 }
 
 /** Frame count to load for an ally combat animation (1 = static fallback). */

@@ -4,6 +4,7 @@
  */
 
 import type { Civilization } from '@/game/data/civilization-config';
+import { assetUrl } from '@/lib/asset-url';
 
 export type SpriteDirection = 'north' | 'south' | 'east' | 'west';
 
@@ -21,7 +22,7 @@ const CIV_SPRITE_PREFIX: Record<Civilization, string> = {
 export function getSpritePath(civilization: string, archetype: string, gender: 'M' | 'F'): string {
   const prefix = CIV_SPRITE_PREFIX[civilization as Civilization] ?? 'LS';
   const arch = archetype.toUpperCase();
-  return `/sprites/characters/${prefix}-${arch}-${gender}`;
+  return assetUrl(`/sprites/characters/${prefix}-${arch}-${gender}`);
 }
 
 /** Build path to a specific walking animation frame */
@@ -75,7 +76,7 @@ export function getBackFramePath(basePath: string, direction: SpriteDirection, f
 /** Build path to an enemy animation frame (west direction only on disk) */
 export function getEnemyAnimFramePath(spriteId: string, anim: string, frame: number): string {
   const padded = String(frame).padStart(3, '0');
-  return `/sprites/enemies/${spriteId}/animations/${anim}/west/frame_${padded}.png`;
+  return assetUrl(`/sprites/enemies/${spriteId}/animations/${anim}/west/frame_${padded}.png`);
 }
 
 /** @deprecated Use getEnemyAnimFramePath(spriteId, 'walk', frame) */

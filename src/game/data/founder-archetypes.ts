@@ -6,6 +6,7 @@
  */
 
 import type { CivArchetype, Gender, Civilization } from './civilization-config';
+import { assetUrl } from '@/lib/asset-url';
 
 export interface FounderArchetypeChoice {
   id: 'templar' | 'forester' | 'ranger';
@@ -21,11 +22,11 @@ export interface FounderArchetypeChoice {
 
 export const LINH_SON_FOUNDER_CHOICES: FounderArchetypeChoice[] = [
   { id: 'templar',  displayName: 'Templar',  archetype: 'sword',   gender: 'M', weaponLabel: 'Sword',
-    iconPath: '/ui/icons/founder/sword.png',    portraitPath: '/sprites/characters/LS-SWORD-M/animations/avatar/frame_000.png',    tagline: 'Sword Vanguard',  description: 'A disciplined blade-bearer, balanced in might and footwork.' },
+    iconPath: assetUrl('/ui/icons/founder/sword.png'),    portraitPath: assetUrl('/sprites/characters/LS-SWORD-M/animations/avatar/frame_000.png'),    tagline: 'Sword Vanguard',  description: 'A disciplined blade-bearer, balanced in might and footwork.' },
   { id: 'forester', displayName: 'Forester', archetype: 'warrior', gender: 'M', weaponLabel: 'Axe',
-    iconPath: '/ui/icons/founder/axe.png',      portraitPath: '/sprites/characters/LS-WARRIOR-M/animations/avatar/frame_000.png',  tagline: 'Axe Bulwark',     description: 'A hardy mountain warrior who fells foes like timber.' },
+    iconPath: assetUrl('/ui/icons/founder/axe.png'),      portraitPath: assetUrl('/sprites/characters/LS-WARRIOR-M/animations/avatar/frame_000.png'),  tagline: 'Axe Bulwark',     description: 'A hardy mountain warrior who fells foes like timber.' },
   { id: 'ranger',   displayName: 'Ranger',   archetype: 'scout',   gender: 'F', weaponLabel: 'Crossbow',
-    iconPath: '/ui/icons/founder/crossbow.png', portraitPath: '/sprites/characters/LS-SCOUT-F/animations/avatar/frame_000.png',    tagline: 'Crossbow Tracker', description: 'A swift markswoman who strikes from the treeline.' },
+    iconPath: assetUrl('/ui/icons/founder/crossbow.png'), portraitPath: assetUrl('/sprites/characters/LS-SCOUT-F/animations/avatar/frame_000.png'),    tagline: 'Crossbow Tracker', description: 'A swift markswoman who strikes from the treeline.' },
 ];
 
 /** Founder choices keyed by civ (only Linh Sơn in MVP). */

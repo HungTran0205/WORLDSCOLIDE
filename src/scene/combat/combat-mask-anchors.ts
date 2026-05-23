@@ -53,7 +53,12 @@ const ANCHOR_TABLE: Record<string, AnchorTable> = {
       { x: 75, y: 63, size: 38 },
       { x: 77, y: 63, size: 38 },
     ],
-    blocking: seed(4),
+    blocking: [
+      { x: 68, y: 66, size: 38 },
+      { x: 70, y: 65, size: 38 },
+      { x: 74, y: 67, size: 38 },
+      { x: 74, y: 68, size: 38 }
+    ],
   },
   'LS-WARRIOR-M': {
     idle: [
@@ -76,7 +81,12 @@ const ANCHOR_TABLE: Record<string, AnchorTable> = {
       { x: 76, y: 70, size: 38 },
       { x: 76, y: 70, size: 38 },
     ],
-    blocking: seed(4),
+    blocking: [
+      { x: 63, y: 59, size: 38 },
+      { x: 62, y: 58, size: 38 },
+      { x: 62, y: 59, size: 38 },
+      { x: 61, y: 59, size: 38 }
+    ],
   },
   'LS-SCOUT-F': {
     idle: [
@@ -99,7 +109,12 @@ const ANCHOR_TABLE: Record<string, AnchorTable> = {
       { x: 69, y: 53, size: 38 },
       { x: 69, y: 53, size: 38 },
     ],
-    blocking: seed(4),
+    blocking: [
+      { x: 64, y: 50, size: 38 },
+      { x: 64, y: 50, size: 38 },
+      { x: 66, y: 52, size: 38 },
+      { x: 68, y: 53, size: 38 }
+    ],
   },
 };
 

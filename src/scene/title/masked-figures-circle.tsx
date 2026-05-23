@@ -113,12 +113,12 @@ const FIGURES: MaskedFigureSpec[] = [
   },
   // Back-left, dimmer + smaller
   {
-    avatar: '/sprites/characters/LS-WARRIOR-F/animations/walking-8-frames/south/frame_000.png',
+    avatar: '/sprites/characters/LS-WARRIOR-F/animations/avatar/frame_000.png',
     mask: '/sprites/mask/gasf-mask64.png',
     position: [-2.1, 0.9, -2.3],
     scale: 0.85,
     maskOffsetX: 0.01,
-    maskOffsetY: -0.05,
+    maskOffsetY: 0.12,
     maskScale: 0.25,
     tint: SHADOW_TINT_DEEP,
   },

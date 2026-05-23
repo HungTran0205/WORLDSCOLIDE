@@ -61,12 +61,14 @@ describe('founder archetype/gender mapping', () => {
 
 describe('getSpritePath resolves each founder choice to its sprite folder', () => {
   it.each([
-    ['templar', '/sprites/characters/LS-SWORD-M'],
-    ['forester', '/sprites/characters/LS-WARRIOR-M'],
-    ['ranger', '/sprites/characters/LS-SCOUT-F'],
-  ] as const)('%s → %s', (id, expectedPath) => {
+    ['templar', 'LS-SWORD-M'],
+    ['forester', 'LS-WARRIOR-M'],
+    ['ranger', 'LS-SCOUT-F'],
+  ] as const)('%s → sprite folder ending with %s', (id, charId) => {
     const c = choiceById(id);
-    expect(getSpritePath('LinhSon', c.archetype, c.gender)).toBe(expectedPath);
+    const resolved = getSpritePath('LinhSon', c.archetype, c.gender);
+    // Path is BASE_URL-relative so we check the meaningful suffix, not the leading host/base.
+    expect(resolved).toBe(`${import.meta.env.BASE_URL}sprites/characters/${charId}`);
   });
 });
 
@@ -86,10 +88,11 @@ describe('recruit-safety — RECRUITABLE_UNITS gates tavern spawns to playable s
   });
 
   it('every recruitable unit resolves to a playable sprite folder', () => {
+    const base = import.meta.env.BASE_URL;
     const allowed = new Set([
-      '/sprites/characters/LS-SWORD-M',
-      '/sprites/characters/LS-WARRIOR-M',
-      '/sprites/characters/LS-SCOUT-F',
+      `${base}sprites/characters/LS-SWORD-M`,
+      `${base}sprites/characters/LS-WARRIOR-M`,
+      `${base}sprites/characters/LS-SCOUT-F`,
     ]);
     for (const u of RECRUITABLE_UNITS.LinhSon) {
       expect(allowed.has(getSpritePath('LinhSon', u.archetype, u.gender))).toBe(true);

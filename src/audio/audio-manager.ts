@@ -1,4 +1,5 @@
 import { Howl, Howler } from 'howler';
+import { assetUrl } from '@/lib/asset-url';
 
 const sounds: Record<string, Howl> = {};
 let bgmKey: string | null = null;
@@ -21,29 +22,29 @@ export function initAudio() {
   // BGM — bgm-title file may be missing pre-Phase-7-asset-source;
   // Howl silently fails on 404 so the title screen just renders without music.
   sounds['bgm-title'] = new Howl({
-    src: ['/audio/bgm-title.ogg', '/audio/bgm-title.mp3'],
+    src: ['/audio/bgm-title.ogg', '/audio/bgm-title.mp3'].map(assetUrl),
     loop: true, volume: 0.3,
   });
   sounds['bgm-guild'] = new Howl({
-    src: ['/audio/bgm-guild.ogg', '/audio/bgm-guild.mp3'],
+    src: ['/audio/bgm-guild.ogg', '/audio/bgm-guild.mp3'].map(assetUrl),
     loop: true, volume: 0.3,
   });
   sounds['bgm-combat'] = new Howl({
-    src: ['/audio/bgm-combat.ogg', '/audio/bgm-combat.mp3'],
+    src: ['/audio/bgm-combat.ogg', '/audio/bgm-combat.mp3'].map(assetUrl),
     loop: true, volume: 0.3,
   });
 
   // SFX
-  sounds['sfx-click'] = new Howl({ src: ['/audio/sfx-click.ogg'], volume: 0.5 });
-  sounds['sfx-dispatch'] = new Howl({ src: ['/audio/sfx-dispatch.ogg'], volume: 0.5 });
-  sounds['sfx-reward'] = new Howl({ src: ['/audio/sfx-reward.ogg'], volume: 0.6 });
-  sounds['sfx-levelup'] = new Howl({ src: ['/audio/sfx-levelup.ogg'], volume: 0.7 });
-  sounds['sfx-hit'] = new Howl({ src: ['/audio/sfx-hit.ogg'], volume: 0.4 });
-  sounds['sfx-crit'] = new Howl({ src: ['/audio/sfx-crit.ogg'], volume: 0.5 });
-  sounds['sfx-dodge'] = new Howl({ src: ['/audio/sfx-dodge.ogg'], volume: 0.4 });
-  sounds['sfx-death'] = new Howl({ src: ['/audio/sfx-death.ogg'], volume: 0.5 });
-  sounds['sfx-skill'] = new Howl({ src: ['/audio/sfx-skill.ogg'], volume: 0.5 });
-  sounds['sfx-recruit'] = new Howl({ src: ['/audio/sfx-recruit.ogg'], volume: 0.6 });
+  sounds['sfx-click'] = new Howl({ src: ['/audio/sfx-click.ogg'].map(assetUrl), volume: 0.5 });
+  sounds['sfx-dispatch'] = new Howl({ src: ['/audio/sfx-dispatch.ogg'].map(assetUrl), volume: 0.5 });
+  sounds['sfx-reward'] = new Howl({ src: ['/audio/sfx-reward.ogg'].map(assetUrl), volume: 0.6 });
+  sounds['sfx-levelup'] = new Howl({ src: ['/audio/sfx-levelup.ogg'].map(assetUrl), volume: 0.7 });
+  sounds['sfx-hit'] = new Howl({ src: ['/audio/sfx-hit.ogg'].map(assetUrl), volume: 0.4 });
+  sounds['sfx-crit'] = new Howl({ src: ['/audio/sfx-crit.ogg'].map(assetUrl), volume: 0.5 });
+  sounds['sfx-dodge'] = new Howl({ src: ['/audio/sfx-dodge.ogg'].map(assetUrl), volume: 0.4 });
+  sounds['sfx-death'] = new Howl({ src: ['/audio/sfx-death.ogg'].map(assetUrl), volume: 0.5 });
+  sounds['sfx-skill'] = new Howl({ src: ['/audio/sfx-skill.ogg'].map(assetUrl), volume: 0.5 });
+  sounds['sfx-recruit'] = new Howl({ src: ['/audio/sfx-recruit.ogg'].map(assetUrl), volume: 0.6 });
 }
 
 export function playBGM(key: string) {

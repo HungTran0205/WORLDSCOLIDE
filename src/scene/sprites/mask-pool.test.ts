@@ -4,7 +4,7 @@
  * Covers:
  *  - FOUNDER_MASK_CHOICES length === 10.
  *  - every founder mask id ∈ MASK_POOL.
- *  - getMaskAssetPath(id,'front') returns '/sprites/mask/pick/{id}/front.png'.
+ *  - getMaskAssetPath(id,'front') returns a path rooted at BASE_URL (relative deploy base).
  */
 
 import { describe, it, expect } from 'vitest';
@@ -33,10 +33,14 @@ describe('FOUNDER_MASK_CHOICES', () => {
 
 describe('getMaskAssetPath', () => {
   it.each(FOUNDER_MASK_CHOICES)('%s → resolvable front.png path', (id) => {
-    expect(getMaskAssetPath(id, 'front')).toBe(`/sprites/mask/pick/${id}/front.png`);
+    expect(getMaskAssetPath(id, 'front')).toBe(
+      `${import.meta.env.BASE_URL}sprites/mask/pick/${id}/front.png`,
+    );
   });
 
   it('resolves east view for combat profile', () => {
-    expect(getMaskAssetPath('mask-03', 'east')).toBe('/sprites/mask/pick/mask-03/east.png');
+    expect(getMaskAssetPath('mask-03', 'east')).toBe(
+      `${import.meta.env.BASE_URL}sprites/mask/pick/mask-03/east.png`,
+    );
   });
 });

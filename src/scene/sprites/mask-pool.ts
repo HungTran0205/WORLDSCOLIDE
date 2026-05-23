@@ -1,4 +1,5 @@
 import { TextureLoader, NearestFilter, SRGBColorSpace, type Texture } from 'three';
+import { assetUrl } from '@/lib/asset-url';
 
 /** 21 curated identity masks, located in public/sprites/mask/pick/{id}/{view}.png */
 export const MASK_POOL = [
@@ -21,7 +22,7 @@ export const FOUNDER_MASK_NARRATIVE =
 
 /** Asset path resolver. `front` for roster portrait, `east` for combat profile (source is east-facing; mirror via scale.x for west). */
 export function getMaskAssetPath(id: string, view: MaskView): string {
-  return `/sprites/mask/pick/${id}/${view}.png`;
+  return assetUrl(`/sprites/mask/pick/${id}/${view}.png`);
 }
 
 /** Deterministic hash-based selector — same memberId → same mask */
