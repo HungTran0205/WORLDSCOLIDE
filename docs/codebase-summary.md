@@ -2,7 +2,7 @@
 
 **Worlds Collide** — An HD-2D auto-RPG idle guild builder where civilizations collide. Build your guild hall, recruit members from different civilizations, dispatch quests, and watch your guild grow — even while you're away.
 
-**Last Updated**: 2026-05-23 (Arc 1 Quest Story: Narrative Gates + UI/Combat Fixes)
+**Last Updated**: 2026-05-23 (Deploy Pipeline + Sprite Sheets + Itch Asset Paths)
 
 ## Technology Stack
 
@@ -142,12 +142,20 @@
 - **Formation Grid**: 2×3 layout (3 allies + 3 enemies per row), range-based AI targeting
 - **Wave System**: Multi-wave missions with atlas pre-loading of all enemy templates
 
+### Sprite Sheet System (NEW — Asset Count Reduction)
+
+**Pre-packing**: `scripts/pack-sprite-sheets.py` consolidates per-frame PNG files into sheet PNGs (one sheet per entity+animation). Auto-generates `src/scene/sprites/sprite-sheet-manifest.ts` with geometry (cols, rows, dirRows[], frameCounts).
+
+**Runtime Loading**: `buildAtlasFromSheet()` loads ONE sheet PNG and extracts UV coords per direction+frame via manifest. Direction row resolved via `dirRows.indexOf(dir)`. All world-layer animators (guild-hall-sprite-animator, working-animator, woodcutting-animator) load sheets. Combat animators also use sheets; combat-mask-composite-atlas slices body frames to composite masks.
+
+**Impact**: ~480 individual frame PNGs deleted, 57 sheet PNGs added. Reduced itch.io file count from 1097 entries (874 files + 223 dirs) to 489 (389 files + 100 dirs) — under itch's 1000-entry limit.
+
 ### Combat Rendering (v1.19 — GPU Instancing, WebGPU-Compatible)
 
-**Architecture**: Single draw call for ALL sprites via InstancedMesh. All sprite frames packed into shared mega-atlas. Animation/position state in Float32Array (imperative, non-React).
+**Architecture**: Single draw call for ALL sprites via InstancedMesh. Sprite sheets pre-loaded via manifest. Animation/position state in Float32Array (imperative, non-React).
 
 **Core Modules** (`src/scene/combat/`):
-- **MegaAtlasBuilder** — Loads walk/attack/death frames for all characters + all waves → packs into shared CanvasTexture (flipY=false for WebGPU)
+- **MegaAtlasBuilder** — Loads sheet PNGs for all characters + all waves → packs into shared CanvasTexture (flipY=false for WebGPU)
 - **SpriteRegistry** — Maps (typeId, animState, frameIndex) → UV coords in atlas (O(1) cached lookups)
 - **AnimationStateBuffer** — 18 floats per entity (pos, animState, frameIndex, hp%, alive, tint, scale); zero React overhead
 - **CombatStateBridge** — Syncs CombatEngine → AnimationStateBuffer every frame; derives typeId from entity
@@ -1224,6 +1232,11 @@
 | `npm run test` | Run tests once |
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run lint` | ESLint code quality check |
+| `npm run deploy` | Build + push to itch.io via butler (target `hungtran0205/2000sac:html5`); flags: `--no-build` (skip build), `--status` (show upload progress) |
+
+**Deploy script** (`scripts/deploy-itch.mjs`): Auto-locates butler.exe on PATH; override via `BUTLER_PATH` / `ITCH_TARGET` / `ITCH_CHANNEL` env vars.
+
+**Sprite sheet packer** (`scripts/pack-sprite-sheets.py`): Pre-packs animation frames into sheets; requires Python 3.8+ + Pillow. Auto-generates `src/scene/sprites/sprite-sheet-manifest.ts`.
 
 See `docs/map-playground-guide.md` for editor usage and workflow.
 

@@ -7,6 +7,23 @@ All notable changes to Worlds Collide are documented in this file. The format fo
 
 ---
 
+## [Unreleased] — 2026-05-23 (Deploy Pipeline + Sprite Sheets + Itch Asset Paths)
+
+### chore(deploy): add itch.io butler deploy pipeline
+**Build artifact distribution**. New `scripts/deploy-itch.mjs` + npm script `npm run deploy` (builds + pushes via butler CLI to itch.io `hungtran0205/2000sac:html5`). Flags: `--no-build` (push existing dist), `--status`. Auto-locates butler.exe on PATH; override via `BUTLER_PATH`/`ITCH_TARGET`/`ITCH_CHANNEL` env vars.
+
+### feat(sprites): pre-pack animation frames into sprite sheets
+**Asset count reduction + sprite-sheet packing**. New Python/Pillow packer `scripts/pack-sprite-sheets.py` consolidates per-frame PNGs (`public/sprites/<entity>/animations/<anim>/<dir>/frame_NNN.png`) into ONE sheet PNG per (entity, animation). Emits `src/scene/sprites/sprite-sheet-manifest.ts` with geometry (path, cols, rows, dirRows[], frameCounts). Runtime: new `buildAtlasFromSheet()` in `sprite-atlas.ts` loads one sheet per animation + CLONEs texture per instance (shared three.js Source, independent UV offset). All animators updated (sprite-animator, guild-hall-sprite-animator, enemy-sprite-animator, working-animator, woodcutting-animator, combat-idle-sprite). Combat keeps mask compositing working. Direction row resolved via `dirRows.indexOf(dir)`. COMBAT_SPRITE_MANIFEST still gates anim availability.
+
+**Migration impact**: ~480 individual frame PNGs deleted, 57 sheet PNGs added (from `public/sprites/`). UI portraits (tavern cards, facility avatar) now use static `avatar/frame_000.png`. Title masked-figures crop walking-sheet south-row frame 0. Vite config `stripUnwantedFiles` now also strips `.aseprite` / `.gitkeep` and prunes empty dirs.
+
+**File count win**: itch.io rejects zips with >1000 entries (files + dirs). Build was 1097 (874 files + 223 dirs) → now 489 (389 files + 100 dirs).
+
+### fix(assets): resolve public asset paths via assetUrl for itch subpath
+**Asset path resolution for itch.io subpath**. Wrapped ~60 loader call sites across 29 files (useGLTF/useTexture/useLoader/preload for GLB furniture, VFX/wall/floor textures, title flags/drum) in `assetUrl()`. Root-absolute `/models/...` paths 403 on itch because game is served from subpath; sprites + audio already used assetUrl. Note: `main.tsx`'s `THREE.DefaultLoadingManager.setURLModifier` does NOT reliably catch drei useGLTF, so per-site wrapping is the real fix.
+
+---
+
 ## [Unreleased] — 2026-05-23 (Facilities Build Picker — Icon Panel)
 
 ### feat(ui): replace facility build text-list with left-docked icon picker

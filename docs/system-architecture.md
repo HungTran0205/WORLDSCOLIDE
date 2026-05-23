@@ -223,8 +223,16 @@ Combat rendering overhauled from per-entity React components to 1-draw-call GPU 
 
 ### Core Modules (src/scene/combat/)
 
+**Sprite-Sheet Loading** (`sprite-atlas.ts`, `sprite-sheet-manifest.ts`)
+- Animation frames pre-packed: `scripts/pack-sprite-sheets.py` consolidates per-frame PNGs into sheet PNGs (one sheet per entity+animation, geometry auto-generated into manifest)
+- Runtime: `buildAtlasFromSheet()` loads ONE sheet PNG and extracts UV coords per direction+frame via manifest geometry (cols, rows, dirRows[], frameCounts)
+- Direction row resolved via `dirRows.indexOf(dir)` (no hardcoded maps); per-instance UV offset independent across different character sprites (shared three.js Texture, cloned per AnimationState)
+- All world-layer animators (guild-hall-sprite-animator, working-animator, woodcutting-animator) load sheets via manifest
+- Combat animators also use sheets; combat-mask-composite-atlas slices body frames from the sheet to composite masks at runtime
+
 **MegaAtlasBuilder** (`mega-atlas-builder.ts`)
-- Loads ALL sprite frames (walk, attack, death) for all character templates + all enemy waves
+- ⚠️ **Legacy path (combat-only)**: Still pre-builds single mega-atlas for combat with ALL enemy spriteIds from ALL mission waves
+- Loads sheet PNGs (not individual frames) for each enemy template + all allies
 - Packs into shared CanvasTexture atlas (8 cols × N rows, max 4096×4096)
 - Single atlas per sprite-size group (e.g. 128×128, 256×256)
 - Critical: `flipY = false` (WebGPU UV convention; `flipY = true` breaks formula)
@@ -277,6 +285,24 @@ Combat rendering overhauled from per-entity React components to 1-draw-call GPU 
 
 **CombatVfxSpawner** (`combat-vfx-spawner.tsx`)
 - VFX layer for combat effects (particle emitters, visual polish)
+
+---
+
+## Asset Path Resolution (Subpath Deployment Support)
+
+**Critical for itch.io subpath deploys**: All public-asset loaders (GLB models, textures, audio, sprites) MUST wrap paths via `assetUrl()` utility.
+
+| Path Type | Example | Wrapped | Issue | Solution |
+|-----------|---------|---------|-------|----------|
+| Root-absolute (`/models/...`) | `/models/tavern.glb` | `assetUrl('/models/tavern.glb')` | 403 on itch subpath (served from `hungtran0205/2000sac`, not domain root) | Always use `assetUrl()` |
+| Relative | `sprites/avatar.png` | (OK as-is) | Works with current vite asset resolve | OK |
+| Imported modules | `import deco from '@/assets/deco.png'` | (OK as-is) | Vite handles at build time | OK |
+
+**Implementation**: `assetUrl(path)` in `src/lib/asset-url.ts` prepends base path from `import.meta.env.BASE_URL` (set by vite to deployment root).
+
+**Coverage**: ~60 call sites across 29 files (drei useGLTF, useTexture, GLTFLoader, TextureLoader, AudioListener, preload for title flags, tavern decorations, all VFX/wall/floor textures). Note: `THREE.DefaultLoadingManager.setURLModifier` in `main.tsx` does NOT reliably intercept drei useGLTF hooks — per-site wrapping is the reliable fix.
+
+---
 
 ### Combat Lifecycle (Phase 3+ Redesign)
 
