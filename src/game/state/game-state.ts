@@ -287,7 +287,7 @@ export interface Mission {
   isExpedition?: boolean;
   /** For expeditions spawned by a main quest — parent quest ID */
   spawnedFromQuestId?: string;
-  /** Narrative clue displayed on the quest card — VN-only for Arc 1 MVP */
+  /** Narrative clue displayed on the quest card; localized via tContent('missions', id, 'cardLore') */
   cardLore?: string;
   /** 1–3 dialog lines shown in arrival modal before "Enter Battle" */
   preArrivalDialog?: DialogLine[];

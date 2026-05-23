@@ -28,7 +28,7 @@ export const ARC1_MISSIONS: Mission[] = [
       { enemyIds: ['cave-bat', 'cave-bat'], spawnXOffset: 8, hpMultiplier: 0.5 },
     ],
     conditionalDrops: [{ itemId: 'BAT_WING', chance: 1.0, quantity: 3 }],
-    cardLore: 'Đàn thú rừng kéo nhau bỏ lãnh địa. Dơi hang — loài chỉ sống sâu trong núi — đang tấn công người dân ở bìa rừng.',
+    cardLore: 'The forest beasts are abandoning their territory. Cave bats — creatures that only live deep in the mountains — are attacking the people at the forest edge.',
     preArrivalDialog: [{
       speakerId: 'ba-nguyet', speakerNameVN: 'Bà Nguyệt', speakerNameEN: 'Elder Nguyet',
       textVN: 'Dơi hang chưa bao giờ rời khỏi núi. Có điều gì đó... đang xua đuổi chúng ra ngoài.',
@@ -57,7 +57,7 @@ export const ARC1_MISSIONS: Mission[] = [
       { enemyIds: ['slime', 'slime', 'slime'], spawnXOffset: 8, hpMultiplier: 0.4 },
     ],
     conditionalDrops: [{ itemId: 'SLIME_GEL', chance: 1.0, quantity: 5 }],
-    cardLore: 'Tiếng vọng kỳ lạ lan khắp núi rừng. Guild cử người tiến sâu vào rừng — hướng về cửa hang cổ đại nghìn năm tuổi.',
+    cardLore: 'A strange tremor echoes across the mountains. The guild sends scouts deeper into the forest — toward the thousand-year-old cave entrance.',
     preArrivalDialog: [{
       speakerId: 'mai', speakerNameVN: 'Mai', speakerNameEN: 'Mai',
       textVN: 'Trên đường vào rừng sâu... những sinh vật này. Tôi chưa từng thấy chúng ở đây bao giờ.',
@@ -87,7 +87,7 @@ export const ARC1_MISSIONS: Mission[] = [
       { enemyIds: ['flying-drone'], spawnXOffset: 10, hpMultiplier: 1.0 },
     ],
     conditionalDrops: [{ itemId: 'STONE', chance: 1.0, quantity: 10 }],
-    cardLore: 'Cửa hang cổ đại dẫn xuống lòng đất. Những âm thanh cơ khí vang vọng từ bên trong — di tích của một nền văn minh đã khuất hơn 2000 năm.',
+    cardLore: 'An ancient gateway descends into the earth. Mechanical sounds echo from within — relics of a civilization lost over 2000 years ago.',
     preArrivalDialog: [{
       speakerId: 'founder', speakerNameVN: 'Thủ lĩnh', speakerNameEN: 'Guild Master',
       textVN: 'Cỗ máy... chúng còn hoạt động được sau 2000 năm. Không phải kỹ thuật của bất kỳ nền văn minh nào tôi từng biết.',
@@ -119,7 +119,7 @@ export const ARC1_MISSIONS: Mission[] = [
       { itemId: 'METAL_PLATE', chance: 1.0, quantity: 6 },
       { itemId: 'DRONE_SENSOR', chance: 1.0, quantity: 2 },
     ],
-    cardLore: 'Di tích trải dài xuống tầng sâu nhất. Hàng trăm cỗ máy ngủ yên từ thời tiền sử đang tỉnh giấc — và chúng đang bảo vệ điều gì đó.',
+    cardLore: 'The ruins stretch down to the deepest level. Hundreds of machines, dormant since prehistory, are waking — and they are guarding something.',
     preArrivalDialog: [{
       speakerId: 'ba-nguyet', speakerNameVN: 'Bà Nguyệt', speakerNameEN: 'Elder Nguyet',
       textVN: 'Truyền thuyết làng tôi... kể về ánh sáng từ lòng đất, về những tiếng động hàng đêm từ thời xa xưa. Đây là nơi đó.',
@@ -152,7 +152,7 @@ export const ARC1_MISSIONS: Mission[] = [
       { itemId: 'SLIME_KING_CORE', chance: 1.0, quantity: 1 },
       { itemId: 'SLIME_GEL', chance: 1.0, quantity: 6 },
     ],
-    cardLore: 'Không phải máy móc. Không phải sinh vật bình thường. Slime King hình thành từ thứ chất lỏng đen trào lên từ khe nứt sâu nhất, thấm đẫm ether của 2000 năm di tích — chui lên từ lòng đất.',
+    cardLore: 'Not a machine. Not an ordinary creature. The Slime King formed from a black fluid welling up through the deepest crack, steeped in 2000 years of ruin-ether — risen from beneath the earth.',
     preArrivalDialog: [{
       speakerId: 'kael', speakerNameVN: 'Kael', speakerNameEN: 'Kael',
       textVN: 'Không ai tạo ra nó. Nó tự hình thành — từ thứ chất lỏng đen rỉ ra theo khe nứt, và 2000 năm ether từ di tích thấm vào. Đây là nguồn gốc của tất cả.',
