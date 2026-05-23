@@ -7,6 +7,27 @@ All notable changes to Worlds Collide are documented in this file. The format fo
 
 ---
 
+## [Unreleased] — 2026-05-23 (Quest Board Party Slot Assign)
+
+### feat(quest): facility-style party slots + roster card picker
+
+Replaced the quest board's flat name+level member list (`PartySelectList`) with a **facility-style square slot row**. Filled slots show a member avatar tile (reuses `FacilityMemberAvatar`); empty/add slots open a **roster flyout anchored to the right** showing rich `MemberCard`s — click a card to add the member. Slots are **required + expandable**: `requiredMembers` mandatory slots plus a trailing add-slot up to a soft cap (6), preserving over-stacking. Goal: read as game UI, not a web form.
+
+- `quest-party-slots.tsx` (NEW) — slot row + `QUEST_PARTY_SOFT_CAP`; add-slot only when committed slots full, below cap, and idle members remain; required is never clipped if `requiredMembers > cap`.
+- `quest-roster-picker.tsx` (NEW) — right-anchored flyout, excludes already-selected, disables underleveled (with reason), Esc + outside-click close, focus save/restore; mobile (<1024px) falls back to a bottom sheet.
+- `MemberCard` gains optional `disabled`/`reason` (click-guard + `aria-disabled`, kept focusable); default unchanged so the member browser is unaffected.
+- `.fp-avatar-*` styles relocated from `facilities-panel.css` → shared `member-avatar.css` (decouples load order).
+- `PartySelectList` + its `.party-select*` CSS + orphaned `partySelect.empty` key removed.
+
+**Key Files**:
+- NEW: `src/ui/panels/quest-party-slots.tsx`, `src/ui/panels/quest-roster-picker.tsx`, `src/ui/styles/member-avatar.css`
+- Modified: `src/ui/panels/quest-detail-pane.tsx`, `src/ui/components/member-card.tsx`, `src/ui/components/facility-member-avatar.tsx`, `src/ui/styles/quest-board.css`, `src/ui/styles/facilities-panel.css`, `src/ui/styles/member-card.css`, `src/i18n/ui.{en,vi}.json`
+- Deleted: `src/ui/panels/party-select-list.tsx`
+
+**Verification**: 605/605 vitest pass (incl. ui-parity, content-coverage); `tsc -b` + `vite build` clean. Code review: 0 critical/high; one latent count/tile divergence (selected member leaving idle mid-modal) documented as currently non-triggerable. Interactive in-browser slot→picker flow pending manual confirmation.
+
+---
+
 ## [Unreleased] — 2026-05-23 (Arc 1 Narrative Unlock Gates)
 
 ### feat(arc1): gate facilities behind story quests

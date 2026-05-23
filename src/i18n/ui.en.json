@@ -379,6 +379,16 @@
       "mercFeeInsufficient": "Mercenary fee: {{fee}}g (insufficient gold)",
       "autoAssign": "Auto Assign",
       "dispatch": "Dispatch ({{selected}}/{{required}}+)"
+    },
+    "party": {
+      "slotsAria": "Party slots",
+      "assign": "Assign",
+      "assignAria": "Assign a member to this slot",
+      "add": "Add",
+      "addAria": "Add another member to the party",
+      "pickerTitle": "Choose Member",
+      "pickerEmpty": "No idle members available",
+      "pickerCloseAria": "Close member list"
     }
   },
   "roster": {
@@ -902,7 +912,6 @@
     "remaining": "{{count}} remaining"
   },
   "partySelect": {
-    "empty": "No idle members available",
     "underleveled": "Underleveled"
   },
   "confirmDialog": {

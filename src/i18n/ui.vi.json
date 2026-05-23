@@ -379,6 +379,16 @@
       "mercFeeInsufficient": "Phí lính đánh thuê: {{fee}}g (không đủ vàng)",
       "autoAssign": "Tự Chọn",
       "dispatch": "Xuất Phát ({{selected}}/{{required}}+)"
+    },
+    "party": {
+      "slotsAria": "Khe đội hình",
+      "assign": "Phân Công",
+      "assignAria": "Phân công thành viên vào khe",
+      "add": "Thêm",
+      "addAria": "Thêm thành viên vào đội",
+      "pickerTitle": "Chọn Thành Viên",
+      "pickerEmpty": "Không có thành viên rảnh",
+      "pickerCloseAria": "Đóng danh sách thành viên"
     }
   },
   "roster": {
@@ -902,7 +912,6 @@
     "remaining": "còn {{count}}"
   },
   "partySelect": {
-    "empty": "Không có thành viên rảnh",
     "underleveled": "Cấp Thấp"
   },
   "confirmDialog": {

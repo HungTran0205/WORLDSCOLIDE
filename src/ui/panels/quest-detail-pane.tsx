@@ -4,23 +4,28 @@
  * Empty state when no quest is selected.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Member, Mission } from '@/game/state/game-state';
 import { ENEMIES } from '@/game/data/enemies';
-import { autoAssignMembers } from '@/game/utils/auto-assign-members';
 import { tContent } from '@/i18n/content-localization';
 import { GameIcon } from '@/ui/components/game-icon';
-import { PartySelectList } from './party-select-list';
+import { QuestPartySlots } from './quest-party-slots';
 
 interface QuestDetailPaneProps {
   mission: Mission | null;
   availableMembers: Member[];
   gold: number;
-  /** Trigger dispatch with selected member IDs */
-  onDispatch: (memberIds: string[]) => void;
-  /** Fires every time a party slot is toggled — parent plays wood-clink SFX. */
-  onMemberToggle?: (id: string) => void;
+  /** Party selection (owned by QuestBoard so the roster picker can sit beside the board). */
+  selectedMemberIds: string[];
+  /** Toggle a member in/out of the party (also drives the slot × remove). */
+  onToggleMember: (id: string) => void;
+  /** Open the roster picker for the given empty/add slot index. */
+  onOpenPicker: (slotIndex: number) => void;
+  /** Fill the party with auto-picked best-fit members. */
+  onAutoAssign: () => void;
+  /** Dispatch the current party. */
+  onDispatch: () => void;
   /** Mobile-only: show back-to-list button */
   onBack?: () => void;
 }
@@ -38,30 +43,14 @@ export function QuestDetailPane({
   mission,
   availableMembers,
   gold,
+  selectedMemberIds,
+  onToggleMember,
+  onOpenPicker,
+  onAutoAssign,
   onDispatch,
-  onMemberToggle,
   onBack,
 }: QuestDetailPaneProps) {
   const { t } = useTranslation();
-  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
-
-  // Reset selection when switching missions
-  const missionKey = mission?.id ?? null;
-  useEffect(() => {
-    setSelectedMemberIds([]);
-  }, [missionKey]);
-
-  const toggleMember = (id: string) => {
-    setSelectedMemberIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-    onMemberToggle?.(id);
-  };
-
-  const handleAutoAssign = () => {
-    if (!mission) return;
-    setSelectedMemberIds(autoAssignMembers(availableMembers, mission));
-  };
 
   // Mercenary fee preview
   const mercFee = useMemo(() => {
@@ -134,11 +123,12 @@ export function QuestDetailPane({
         <h4 className="quest-detail-pane__section-title">
           {t('questBoard.detail.party')} <span className="quest-detail-pane__party-count">{t('questBoard.detail.partyCount', { selected: selectedMemberIds.length, required: mission.requiredMembers })}</span>
         </h4>
-        <PartySelectList
+        <QuestPartySlots
           availableMembers={availableMembers}
           selectedMemberIds={selectedMemberIds}
           mission={mission}
-          onToggleMember={toggleMember}
+          onRemove={onToggleMember}
+          onOpenPicker={onOpenPicker}
         />
         {mercFee > 0 && (
           <div className={`quest-detail-pane__merc-fee${canAffordFee ? '' : ' quest-detail-pane__merc-fee--insufficient'}`}>
@@ -153,7 +143,7 @@ export function QuestDetailPane({
         <button
           type="button"
           className="parchment-btn parchment-btn--ghost"
-          onClick={handleAutoAssign}
+          onClick={onAutoAssign}
         >
           {t('questBoard.detail.autoAssign')}
         </button>
@@ -161,7 +151,7 @@ export function QuestDetailPane({
           type="button"
           className="parchment-btn parchment-btn--primary dispatch-button"
           disabled={!canDispatch || (mercFee > 0 && !canAffordFee)}
-          onClick={() => onDispatch(selectedMemberIds)}
+          onClick={onDispatch}
         >
           <span className="dispatch-button__seal" aria-hidden="true" />
           {t('questBoard.detail.dispatch', { selected: selectedMemberIds.length, required: mission.requiredMembers })}

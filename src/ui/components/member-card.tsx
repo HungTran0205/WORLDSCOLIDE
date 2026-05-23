@@ -30,10 +30,14 @@ function topTwoStats(member: Member): [string, number][] {
 interface MemberCardProps {
   member: Member;
   onClick: () => void;
+  /** Dim + block selection (kept focusable for a11y; click is guarded). */
+  disabled?: boolean;
+  /** Reason shown when disabled (e.g. underleveled). */
+  reason?: string;
 }
 
 /** Grid card for the member browser — avatar, name, rank, civ, top stats, status dot */
-export function MemberCard({ member, onClick }: MemberCardProps) {
+export function MemberCard({ member, onClick, disabled = false, reason }: MemberCardProps) {
   const [imgFailed, setImgFailed] = useState(false);
   const [maskFailed, setMaskFailed] = useState(false);
   const avatarUrl = getAvatarUrl(member);
@@ -46,9 +50,15 @@ export function MemberCard({ member, onClick }: MemberCardProps) {
 
   return (
     <button
-      className={`member-card member-card--${rankLc} ink-pixelated`}
+      className={`member-card member-card--${rankLc} ink-pixelated${disabled ? ' member-card--disabled' : ''}`}
       data-status={member.status}
-      onClick={onClick}
+      aria-disabled={disabled || undefined}
+      onClick={() => {
+        // Click-guard keeps disabled cards in the tab order (no native disabled)
+        // so a screen reader can still announce the reason below.
+        if (disabled) return;
+        onClick();
+      }}
       type="button"
     >
       <span className="corner-bl" />
@@ -88,6 +98,8 @@ export function MemberCard({ member, onClick }: MemberCardProps) {
       </div>
 
       <span className="status-dot" style={{ background: statusColor }} />
+
+      {disabled && reason && <span className="member-card__reason">{reason}</span>}
     </button>
   );
 }
