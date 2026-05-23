@@ -25,9 +25,9 @@ describe('FOUNDER_MASK_CHOICES', () => {
     expect(new Set(FOUNDER_MASK_CHOICES).size).toBe(FOUNDER_MASK_CHOICES.length);
   });
 
-  it('is the first 10 of the 15-mask pool (DRY slice)', () => {
+  it('is the first 10 of the 21-mask pool (DRY slice)', () => {
     expect(FOUNDER_MASK_CHOICES).toEqual([...MASK_POOL].slice(0, 10));
-    expect(MASK_POOL).toHaveLength(15);
+    expect(MASK_POOL).toHaveLength(21);
   });
 });
 
