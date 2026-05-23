@@ -1,16 +1,18 @@
 import type { StateCreator } from 'zustand';
 
-/** 1 real second = 6 game seconds */
-export const GAME_TIME_MULTIPLIER = 6;
+/** 1 real second = 48 game seconds */
+export const GAME_TIME_MULTIPLIER = 48;
 
 /**
- * `gameTime` is stored in game-milliseconds and advances 6× faster than wall-clock.
- *   1 real second  →  6,000 game-ms
- *   1 game day     →  86,400,000 game-ms  =  14,400 real seconds  =  4 real hours
+ * `gameTime` is stored in game-milliseconds and advances 48× faster than wall-clock.
+ *   1 real second  →  48,000 game-ms
+ *   1 game day     →  86,400,000 game-ms  =  1,800 real seconds  =  30 real minutes
  *
- * Any code computing the current game-day from `gameTime` MUST use this constant
- * (NOT facility-production-system's `TICKS_PER_DAY = 1800`, which counts
- * 1-tick-per-real-second cadence and is a different unit).
+ * This 30-min/game-day cadence is the single source of truth for the day counter and
+ * tavern refresh, and it matches the production systems (facility-production-system's
+ * `TICKS_PER_DAY = 1800` at 1 tick/real-second, and offline catch-up's GAME_DAY_REAL_MS
+ * = 30 min). Keep all three in sync — previously the clock ran at 6× (4 real hours/day),
+ * 8× slower than production, so days/tavern lagged far behind resource yields.
  */
 export const MS_PER_GAME_DAY = 86_400_000;
 

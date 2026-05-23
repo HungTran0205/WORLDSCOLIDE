@@ -25,13 +25,13 @@ describe('Game State Store', () => {
   });
 
   describe('ClockSlice', () => {
-    it('should advance game time with 6x multiplier', () => {
+    it('should advance game time with 48x multiplier (1 game-day = 30 real min)', () => {
       const store = useGameStore.getState();
       const now = store.realTimeLastTick + 1000; // 1 second later
       store.tickClock(now);
 
       const state = useGameStore.getState();
-      expect(state.gameTime).toBe(6000); // 1s * 6 = 6s game time
+      expect(state.gameTime).toBe(48000); // 1s * 48 = 48s game time
       expect(state.realTimeLastTick).toBe(now);
     });
   });
