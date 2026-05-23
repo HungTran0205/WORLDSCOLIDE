@@ -60,15 +60,15 @@ export const COMBAT_SPRITE_MANIFEST = {
   ]),
   /** Enemy IDs with `animations/attack/west/frame_0..N.png`. */
   enemiesWithAttackWest: new Set<string>([
-    'cave-bat', 'forest-spider', 'slime', 'slime-king', 'moonbear',
+    'cave-bat', 'forest-spider', 'slime', 'slime-king', 'moonbear', 'drone',
   ]),
   /** Enemy IDs with `animations/death/west/frame_0..N.png`. */
   enemiesWithDeathWest: new Set<string>([
-    'cave-bat', 'forest-spider', 'slime', 'slime-king', 'moonbear',
+    'cave-bat', 'forest-spider', 'slime', 'slime-king', 'moonbear', 'drone',
   ]),
   /** Enemy IDs with `animations/walk/west/` (last-resort idle fallback when idle missing). */
   enemiesWithWalkWest: new Set<string>([
-    'cave-bat', 'forest-spider', 'slime', 'slime-king',
+    'cave-bat', 'forest-spider', 'slime', 'slime-king', 'drone',
   ]),
 } as const;
 
@@ -80,6 +80,7 @@ const ENEMY_DEATH_FRAME_OVERRIDES: Record<string, number> = {
 /** Enemy IDs whose attack animation has fewer than COMBAT_ATTACK_FRAME_COUNT frames. */
 const ENEMY_ATTACK_FRAME_OVERRIDES: Record<string, number> = {
   'slime': 4,
+  'drone': 4,
 };
 
 /** Extract char id (e.g. 'LS-WARRIOR-M') from a basePath like '/sprites/characters/LS-WARRIOR-M'. */

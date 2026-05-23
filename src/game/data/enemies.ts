@@ -119,7 +119,7 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
       { itemId: 'DRONE_SENSOR', chance: 0.80, min: 1, max: 1 },
       { itemId: 'METAL_PLATE',  chance: 0.20, min: 1, max: 1 },
     ],
-    spriteId: 'slime', // placeholder — Arc 1 sprite pending
+    spriteId: 'drone', // walk-as-idle (no idle frames on disk), 4-frame attack
     flying: true,
   },
   'dog-robot': {
