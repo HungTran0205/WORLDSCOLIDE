@@ -37,6 +37,13 @@ export interface ArenaEntitySnapshot {
   attackIntervalMs: number;
   isBoss?: boolean;
   attackMoveState?: string;
+  /**
+   * Cosmetic renderer hint — X world position from which the sprite slides in
+   * on first mount (new-wave enemies only). Undefined for wave-1 and allies.
+   * The renderer lerps display X from this value to position.x over ~0.3s.
+   * Never read by engine or AI logic.
+   */
+  spawnSlideFromX?: number;
 }
 
 export interface CombatArenaSlice {

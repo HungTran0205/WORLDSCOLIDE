@@ -25,6 +25,10 @@ import { memberToArenaEntity, enemyToArenaEntity } from './combat-entity-factory
 
 const LOGIC_TICK_MS = 100;
 const MAX_COMBAT_MS = 120_000; // 2 min hard cap
+/** Minimum screen-X from which new-wave enemies slide in (just off the right
+ *  edge of the visible arena ≈ +12 at zoom 64/1536px). Renderer-only — no
+ *  engine logic reads this value; it is stored as the cosmetic spawnSlideFromX. */
+const OFFSCREEN_SLIDE_MIN_X = 14;
 // 8 frames @ 12fps = 667ms. With strict-> expiry check, animState persists one
 // extra tick (100ms) past this value, so effective display = 600 + 100 = 700ms.
 const ANIM_ATTACK_DURATION = 600;
@@ -120,13 +124,23 @@ export class CombatEngine {
     }
   }
 
-  /** Spawn new enemies mid-combat (wave transition) */
+  /** Spawn new enemies mid-combat (wave transition).
+   *
+   *  Logic position = on-screen home slot (pos.x is NOT shifted off-screen).
+   *  The cosmetic spawnSlideFromX is set so the renderer slides the sprite in
+   *  from off the right edge (≥ OFFSCREEN_SLIDE_MIN_X) to the home slot.
+   *  AI, victory, turn-lock, and nextAttackAt are untouched — new enemies can
+   *  act and be targeted immediately (accepted cosmetic trade-off). */
   addEnemies(templates: EnemyTemplate[], xOffset: number, hpMultiplier: number): void {
     templates.forEach((tmpl, i) => {
       const slotIndex = i % 6;
       const pos = this.resolveSpawn(slotIndex, 'enemy');
-      pos.x += xOffset;
-      this.entities.push(enemyToArenaEntity(tmpl, this.nextEnemyIndex++, pos, hpMultiplier));
+      // pos.x is the on-screen home slot — do NOT offset it for logic placement.
+      const entity = enemyToArenaEntity(tmpl, this.nextEnemyIndex++, pos, hpMultiplier);
+      // Cosmetic slide hint: start off the right edge, clamped to OFFSCREEN_SLIDE_MIN_X.
+      entity.spawnSlideFromX = Math.max(pos.x + Math.max(xOffset, 6), OFFSCREEN_SLIDE_MIN_X);
+      entity.animState = 'battle-idle';
+      this.entities.push(entity);
     });
   }
 
