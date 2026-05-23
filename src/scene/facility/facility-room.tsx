@@ -196,6 +196,11 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
       {isWorkshop && (
         <ambientLight color="#2a3040" intensity={isActive ? 0.25 : 0} />
       )}
+      {/* Tavern ambient — warm dim fill lifting the cave-stone walls out of
+          shadow while the god beam + bar lights remain the visible key sources */}
+      {isTavern && (
+        <ambientLight color="#4a3826" intensity={isActive ? 0.45 : 0} />
+      )}
       {/* Workshop forge + window rim: always MOUNTED for stable WebGPU buffer
           lifecycle (VFXParticles' TSL compute pipeline crashes if unmounted
           while submits are pending). Intensity is gated by isActive instead. */}

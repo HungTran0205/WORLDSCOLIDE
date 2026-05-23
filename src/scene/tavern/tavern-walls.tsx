@@ -28,7 +28,7 @@ import {
 } from 'three';
 
 const ROOM_SIZE = 7;
-const WALL_HEIGHT = 3;
+const WALL_HEIGHT = 5;
 const WALL_THICKNESS = 0.2;
 const STONE_TEX = '/tiles/2d/64px/cracked-stone-wall_0001.png';
 /** Linh Son wall decals — Bronze Dong Son drum (hero prop, §13.2 art rules) +
@@ -67,9 +67,17 @@ const BACKDROP_DISTANCE = 1.6;
 const BACKDROP_WIDTH = 4.2;
 const BACKDROP_HEIGHT = 3.4;
 
-/** Warm god beam pouring through the cave mouth into the room. */
-const BEAM_WIDTH = 2.2;
-const BEAM_LENGTH = 5.0;
+/** Warm god beam pouring through the cave mouth into the room. Widened toward
+ *  the opening span (2.8) now that the side edges feather softly — fills the
+ *  cave mouth as the room's primary light shaft without a hard rim. */
+const BEAM_WIDTH = 2.6;
+/** Length is tuned so the bottom (black) edge lands at the floor (y≈0) given
+ *  the origin at OPENING_HEIGHT and the ~24° tilt: 2.3 / cos(24°) ≈ 2.5. The
+ *  tavern floor is a platform floating in void, so any beam extending below the
+ *  floor would dangle visibly against the dark background ("shining through the
+ *  floor"). Fading to black at the floor avoids that with no depth/clipping
+ *  tricks (the WebGPU renderer makes WebGL clipping planes unreliable). */
+const BEAM_LENGTH = 2.5;
 /** Beam tilts down-into-room. Rotation around X axis tips the beam in YZ plane,
  *  so it leans from the back wall toward the room interior. */
 const BEAM_ROT_X = -Math.atan2(0.4, 0.92); // ≈ -24° (negative tilts +Z direction)
@@ -117,18 +125,30 @@ function makeForestBackdropGeometry(): PlaneGeometry {
   return g;
 }
 
-/** Build a plane geometry with vertex-color fade from top (white) to bottom
- *  (black) — under additive blending this acts like alpha gradient for free.
- *  Cloned from workshop-walls.tsx GodBeam pattern. */
+/** Build a soft-edged god-beam plane via per-vertex brightness = vertical
+ *  fade × horizontal bell. Under additive blending the brightness acts as a
+ *  free alpha gradient, so feathering ALL four edges (not just top→bottom)
+ *  removes the hard left/right "viền" the flat 1×1 quad produced. Subdivided
+ *  16×8 so the bell curve is smooth rather than faceted.
+ *  - Vertical: 1 at the opening (top) → 0 at the floor (bottom).
+ *  - Horizontal: cos bell, 1 at the centre → 0 at both side edges (^1.6 to
+ *    keep a bright core while the rims dissolve gently). */
 function makeBeamGeometry(): PlaneGeometry {
-  const g = new PlaneGeometry(BEAM_WIDTH, BEAM_LENGTH, 1, 1);
+  const g = new PlaneGeometry(BEAM_WIDTH, BEAM_LENGTH, 16, 8);
   g.translate(0, -BEAM_LENGTH / 2, 0);
-  const colors = new Float32Array([
-    1, 1, 1,
-    1, 1, 1,
-    0, 0, 0,
-    0, 0, 0,
-  ]);
+  const pos = g.attributes.position;
+  const colors = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i); // -W/2 .. +W/2
+    const y = pos.getY(i); // -BEAM_LENGTH (floor) .. 0 (opening)
+    const vFade = Math.max(0, 1 + y / BEAM_LENGTH); // 0 at floor → 1 at top
+    const u = x / (BEAM_WIDTH / 2); // -1 .. 1
+    const hBell = Math.pow(Math.max(0, Math.cos((u * Math.PI) / 2)), 1.6);
+    const c = vFade * hBell;
+    colors[i * 3] = c;
+    colors[i * 3 + 1] = c;
+    colors[i * 3 + 2] = c;
+  }
   g.setAttribute('color', new BufferAttribute(colors, 3));
   return g;
 }
@@ -192,10 +212,10 @@ export function TavernWalls({ cx, cz }: { cx: number; cz: number }) {
         <boxGeometry args={[WALL_THICKNESS, WALL_HEIGHT, ROOM_SIZE]} />
         <meshStandardMaterial
           map={leftTex}
-          color="#6a5a52"
-          emissive="#1a2228"
+          color="#7d6a5e"
+          emissive="#2a2118"
           emissiveMap={leftTex}
-          emissiveIntensity={0.3}
+          emissiveIntensity={0.55}
           roughness={0.95}
           metalness={0}
         />
@@ -245,10 +265,10 @@ export function TavernWalls({ cx, cz }: { cx: number; cz: number }) {
         <boxGeometry args={[sideChunkSpanX, WALL_HEIGHT, WALL_THICKNESS]} />
         <meshStandardMaterial
           map={sideChunkTex}
-          color="#6a5a52"
-          emissive="#1a2228"
+          color="#7d6a5e"
+          emissive="#2a2118"
           emissiveMap={sideChunkTex}
-          emissiveIntensity={0.3}
+          emissiveIntensity={0.55}
           roughness={0.95}
           metalness={0}
         />
@@ -258,10 +278,10 @@ export function TavernWalls({ cx, cz }: { cx: number; cz: number }) {
         <boxGeometry args={[sideChunkSpanX, WALL_HEIGHT, WALL_THICKNESS]} />
         <meshStandardMaterial
           map={sideChunkTex}
-          color="#6a5a52"
-          emissive="#1a2228"
+          color="#7d6a5e"
+          emissive="#2a2118"
           emissiveMap={sideChunkTex}
-          emissiveIntensity={0.3}
+          emissiveIntensity={0.55}
           roughness={0.95}
           metalness={0}
         />
@@ -271,10 +291,10 @@ export function TavernWalls({ cx, cz }: { cx: number; cz: number }) {
         <boxGeometry args={[OPENING_WIDTH, lintelHeight, WALL_THICKNESS]} />
         <meshStandardMaterial
           map={lintelTex}
-          color="#6a5a52"
-          emissive="#1a2228"
+          color="#7d6a5e"
+          emissive="#2a2118"
           emissiveMap={lintelTex}
-          emissiveIntensity={0.3}
+          emissiveIntensity={0.55}
           roughness={0.95}
           metalness={0}
         />
@@ -349,7 +369,9 @@ export function TavernWalls({ cx, cz }: { cx: number; cz: number }) {
       </mesh>
 
       {/* ── Warm god beam pouring from cave mouth into the room ────────────── */}
-      <ForestGodBeam x={cx} y={OPENING_HEIGHT * 0.65} z={oz + WALL_THICKNESS / 2 + 0.05} />
+      {/* Origin at the top of the opening; BEAM_LENGTH fades it to black at the
+          floor so it never dangles below the platform (see BEAM_LENGTH note). */}
+      <ForestGodBeam x={cx} y={OPENING_HEIGHT} z={oz + WALL_THICKNESS / 2 + 0.05} />
 
       {/* TEMP DISABLED — drum + food-strip PNGs lack alpha, render as white
           boxes. Re-enable once art delivers proper transparent textures.
@@ -377,14 +399,36 @@ export function TavernWalls({ cx, cz }: { cx: number; cz: number }) {
       </mesh>
       */}
 
-      {/* ── Warm directional light leaking through the opening ─────────────── */}
+      {/* ── Warm directional light leaking through the opening ─────────────────
+          This is the diegetic illumination behind the god beam, so it carries
+          the room as the primary key light — aimed from outside the cave mouth
+          down into the interior. */}
       <directionalLight
         position={[cx, 4, oz - 4]}
-        color="#e8c878"
-        intensity={1.1}
+        color="#f0cf86"
+        intensity={1.6}
       >
         <object3D attach="target" position={[cx, 0, cz]} />
       </directionalLight>
+
+      {/* ── Bar-counter glow — secondary warm key from the apothecary bar ──────
+          Two amber point lights hugging the counter (left wall, runs along Z)
+          so the bar reads as its own light source: lit bottles, warm pool on
+          the counter + floor, gentle bounce onto the stone behind. */}
+      <pointLight
+        position={[ox + 1.1, 1.25, cz + 0.1]}
+        color="#ffb05a"
+        intensity={3.4}
+        distance={4.5}
+        decay={2}
+      />
+      <pointLight
+        position={[ox + 1.1, 1.25, cz + 1.9]}
+        color="#ffb866"
+        intensity={3.2}
+        distance={4.5}
+        decay={2}
+      />
     </group>
   );
 }
@@ -472,7 +516,7 @@ function ForestGodBeam({ x, y, z }: { x: number; y: number; z: number }) {
           depthWrite={false}
           side={DoubleSide}
           toneMapped={false}
-          opacity={0.5}
+          opacity={0.6}
         />
       </mesh>
       <mesh geometry={geo} rotation={[0, Math.PI / 2, 0]}>
@@ -484,7 +528,7 @@ function ForestGodBeam({ x, y, z }: { x: number; y: number; z: number }) {
           depthWrite={false}
           side={DoubleSide}
           toneMapped={false}
-          opacity={0.5}
+          opacity={0.6}
         />
       </mesh>
     </group>
