@@ -82,6 +82,7 @@ export function resetGameState(): void {
     gameScene: 'guild-hall' as const,
     arenaPhase: 'idle' as const,
     arenaMissionId: null,
+    arenaInstanceId: null,
     formation: [null, null, null, null, null, null],
     arenaEntities: [],
     arenaTime: 0,

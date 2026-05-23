@@ -338,7 +338,7 @@ describe('migrateSave', () => {
     expect((result.gameState as any).founder.status).toBe('idle');
   });
 
-  // v26→v27: TavernVisitor gains name + gender. Backfill embedded visitor snapshots
+  // v27→v28: TavernVisitor gains name + gender. Backfill embedded visitor snapshots
   // (currentRoster + visitorSnapshot inside mercContracts / pendingPrompts / veteranPool).
   function makeV26TavernEnvelope(tavern: Record<string, unknown>) {
     return {
@@ -359,7 +359,7 @@ describe('migrateSave', () => {
     stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 },
     derivedDemand: 0, dailyMoodBias: 0, traits: [],
     preferredGiftCategory: 'consumable', attemptHistory: [], veteranTag: false, spawnedDay: 0,
-    // name + gender intentionally absent (pre-v27 shape)
+    // name + gender intentionally absent (pre-name/gender shape)
   });
 
   const baseTavern = (extra: Record<string, unknown>) => ({
@@ -369,7 +369,7 @@ describe('migrateSave', () => {
     ...extra,
   });
 
-  it('migrates v26→v27: backfills currentRoster gender from archetype + VN name from pool', () => {
+  it('migrates tavern visitors: backfills currentRoster gender from archetype + VN name from pool', () => {
     const env = makeV26TavernEnvelope(baseTavern({
       currentRoster: [staleVisitor('tav-1-0', 'scout'), staleVisitor('tav-1-1', 'warrior')],
     }));
@@ -385,7 +385,7 @@ describe('migrateSave', () => {
     }
   });
 
-  it('migrates v26→v27: backfills visitorSnapshot in mercContracts / pendingPrompts / veteranPool', () => {
+  it('migrates tavern visitors: backfills visitorSnapshot in mercContracts / pendingPrompts / veteranPool', () => {
     const env = makeV26TavernEnvelope(baseTavern({
       mercContracts: [{ id: 'c1', visitorSnapshot: staleVisitor('v-c1', 'warrior'), hireCost: 0, hireDay: 0, questId: null, relationshipPoints: 0, status: 'available' }],
       pendingPrompts: [{ kind: 'reinvite', contractId: 'c1', visitorSnapshot: staleVisitor('v-p1', 'scout'), bonusModifier: 25, createdDay: 0 }],
@@ -398,11 +398,42 @@ describe('migrateSave', () => {
     expect(tavern.veteranPool[0].visitorSnapshot.gender).toBe('F');
   });
 
-  it('migrates v26→v27: name backfill is deterministic across runs (hash by id)', () => {
+  it('migrates tavern visitors: name backfill is deterministic across runs (hash by id)', () => {
     const make = () => makeV26TavernEnvelope(baseTavern({ currentRoster: [staleVisitor('tav-X-0', 'scout')] }));
     const a = migrateSave(make() as any);
     const b = migrateSave(make() as any);
     expect((a.gameState as any).tavern.currentRoster[0].name).toBe((b.gameState as any).tavern.currentRoster[0].name);
+  });
+
+  it('migrates v26→v27: backfills distinct instanceId on same-template parties', () => {
+    const envelope = {
+      version: 26,
+      savedAt: Date.now(),
+      metadata: { slotId: 1, guildName: 'Test', guildLevel: 1, playTimeMs: 0, founderName: 'F', createdAt: 0, updatedAt: 0 },
+      gameState: {
+        gameTime: 0, realTimeLastTick: 0, guildName: 'Test', guildLevel: 1, gold: 100,
+        guildHall: { level: 1, floorTiles: [{ x: 0, z: 0, color: '#DAA520' }], furniture: [] },
+        settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high', shadowsEnabled: false, bloomEnabled: false, bloomThreshold: 0.85, atmosphericEnabled: true },
+        founder: null, roster: [], completedMissions: [], tutorialStep: 'complete',
+        tavern: {
+          level: 1, keeperId: null, reputation: 0, currentRoster: [], rerolledToday: false,
+          factionBias: null, rumor: null, mercContracts: [], pendingPrompts: [],
+          lastDayProcessed: 0, reputationLastTickWeek: 0, globalNegotiationDebuffUntilDay: null, veteranPool: [],
+        },
+        inventory: { items: {} }, facilities: [],
+        activeMissions: [
+          { missionId: 'slime-extermination', memberIds: ['a'], mercContractIds: [], startTime: 0, estimatedEndTime: 0, phase: 'arrived', arrivalTime: 0, targetPriority: 'focus' },
+          { missionId: 'slime-extermination', memberIds: ['b'], mercContractIds: [], startTime: 0, estimatedEndTime: 0, phase: 'arrived', arrivalTime: 0, targetPriority: 'focus' },
+        ],
+      },
+    };
+    const result = migrateSave(envelope as any);
+    expect(result.version).toBe(SAVE_VERSION);
+    const ams = (result.gameState as any).activeMissions;
+    expect(ams).toHaveLength(2);
+    expect(typeof ams[0].instanceId).toBe('string');
+    expect(ams[0].instanceId).not.toBe('');
+    expect(ams[0].instanceId).not.toBe(ams[1].instanceId);
   });
 
   it('throws for version higher than SAVE_VERSION', () => {

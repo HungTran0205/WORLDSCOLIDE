@@ -17,7 +17,10 @@ export type CombatPanelPhase = 'formation' | 'battle' | 'story-dialog' | 'result
 interface CombatPanelStore {
   isOpen: boolean;
   phase: CombatPanelPhase | null;
+  /** Template id (MISSIONS lookup, tutorial check, map select) — may be shared. */
   missionId: string | null;
+  /** Unique active-mission instance id — identifies WHICH party is fighting. */
+  instanceId: string | null;
   resultData: MissionResult | null;
   /** Post-combat dialog lines shown during the 'story-dialog' phase. */
   dialogLines: DialogLine[] | null;
@@ -25,7 +28,7 @@ interface CombatPanelStore {
   pendingResult: MissionResult | null;
 
   /** Called by arrival modal — opens panel in formation phase */
-  openCombatPanel: (missionId: string) => void;
+  openCombatPanel: (missionId: string, instanceId: string) => void;
   setPhase: (phase: CombatPanelPhase) => void;
   setResult: (result: MissionResult) => void;
   /** Enter the post-combat dialog phase, holding `result` until confirmed. */
@@ -39,12 +42,13 @@ export const useCombatPanelStore = create<CombatPanelStore>()((set) => ({
   isOpen: false,
   phase: null,
   missionId: null,
+  instanceId: null,
   resultData: null,
   dialogLines: null,
   pendingResult: null,
 
-  openCombatPanel: (missionId) =>
-    set({ isOpen: true, phase: 'formation', missionId, resultData: null, dialogLines: null, pendingResult: null }),
+  openCombatPanel: (missionId, instanceId) =>
+    set({ isOpen: true, phase: 'formation', missionId, instanceId, resultData: null, dialogLines: null, pendingResult: null }),
 
   setPhase: (phase) => set({ phase }),
 
@@ -57,5 +61,5 @@ export const useCombatPanelStore = create<CombatPanelStore>()((set) => ({
     set((s) => ({ phase: 'result', resultData: s.pendingResult, dialogLines: null, pendingResult: null })),
 
   closeCombatPanel: () =>
-    set({ isOpen: false, phase: null, missionId: null, resultData: null, dialogLines: null, pendingResult: null }),
+    set({ isOpen: false, phase: null, missionId: null, instanceId: null, resultData: null, dialogLines: null, pendingResult: null }),
 }));

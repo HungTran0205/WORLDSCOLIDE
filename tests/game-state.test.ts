@@ -108,6 +108,7 @@ describe('Game State Store', () => {
   describe('MissionSlice', () => {
     it('should dispatch and complete missions', () => {
       const mission = {
+        instanceId: 'inst-test-1',
         missionId: 'test-mission',
         memberIds: ['m1'],
         startTime: Date.now(),
@@ -116,7 +117,9 @@ describe('Game State Store', () => {
       useGameStore.getState().dispatchMission(mission);
       expect(useGameStore.getState().activeMissions.length).toBe(1);
 
-      useGameStore.getState().completeMission('test-mission');
+      // completeMission keys by the unique instanceId, but records the template
+      // missionId in completedMissions (for prerequisite/tutorial checks).
+      useGameStore.getState().completeMission('inst-test-1');
       expect(useGameStore.getState().activeMissions.length).toBe(0);
       expect(useGameStore.getState().completedMissions).toContain('test-mission');
     });

@@ -698,15 +698,44 @@ function migrateV25toV26(envelope: SaveEnvelope): SaveEnvelope {
 }
 
 /**
- * v26→v27: TavernVisitor gains required `name` + `gender` (assigned at spawn).
- * Backfill embedded visitor snapshots in pre-v27 saves so they load + render:
+ * Backfill unique `instanceId` onto every active mission. Pre-instanceId missions were
+ * keyed only by the shared template `missionId`, so two parties on the same quest
+ * resolved as one (and the second party's members got stranded). Idempotent — skips any
+ * mission that already carries an id, so it is safe to re-run defensively.
+ */
+function backfillMissionInstanceIds(gs: AnyRecord): AnyRecord {
+  const activeMissions: AnyRecord[] = Array.isArray(gs.activeMissions) ? gs.activeMissions : [];
+  const migrated = activeMissions.map((am) =>
+    typeof am.instanceId === 'string' && am.instanceId
+      ? am
+      : { ...am, instanceId: crypto.randomUUID() },
+  );
+  return { ...gs, activeMissions: migrated };
+}
+
+/**
+ * v26→v27: Add unique `instanceId` to every active mission so same-template parties are
+ * independently addressable (see backfillMissionInstanceIds).
+ */
+function migrateV26toV27(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+  return {
+    ...envelope,
+    version: 27,
+    gameState: backfillMissionInstanceIds(gs) as unknown as SaveEnvelope['gameState'],
+  };
+}
+
+/**
+ * v27→v28: TavernVisitor gains required `name` + `gender` (assigned at spawn).
+ * Backfill embedded visitor snapshots in older saves so they load + render:
  *   - gender from the civ's RECRUITABLE_UNITS archetype→gender map (fallback 'M')
  *   - name from a stable hash over the visitor id (deterministic across reloads)
  * Visitors live in tavern.currentRoster plus the visitorSnapshot inside
  * mercContracts / pendingPrompts / veteranPool. The next day-tick respawns the
  * roster fresh — this only keeps in-flight saves crash-free and readable.
  */
-function migrateV26toV27(envelope: SaveEnvelope): SaveEnvelope {
+function migrateV27toV28(envelope: SaveEnvelope): SaveEnvelope {
   const gs = envelope.gameState as unknown as AnyRecord;
   const tavern = (gs.tavern ?? {}) as AnyRecord;
 
@@ -742,16 +771,23 @@ function migrateV26toV27(envelope: SaveEnvelope): SaveEnvelope {
 
   return {
     ...envelope,
-    version: 27,
+    version: 28,
     gameState: { ...gs, tavern: migratedTavern } as unknown as SaveEnvelope['gameState'],
   };
 }
 
 /**
- * v27→v28: Add Arc 1 quest story fields to Mission (additive — all optional, no transform needed).
+ * v28→v29: Add Arc 1 quest story fields to Mission (additive — all optional, no transform).
+ * Also re-runs the mission instanceId backfill defensively: saves created on the Arc 1
+ * branch reached v28 before the instanceId migration existed, so they may still lack it.
  */
-function migrateV27toV28(envelope: SaveEnvelope): SaveEnvelope {
-  return { ...envelope, version: 28 };
+function migrateV28toV29(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+  return {
+    ...envelope,
+    version: 29,
+    gameState: backfillMissionInstanceIds(gs) as unknown as SaveEnvelope['gameState'],
+  };
 }
 
 /** Migration chain: index = source version, fn upgrades to next version */
@@ -777,6 +813,7 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   25: migrateV25toV26,
   26: migrateV26toV27,
   27: migrateV27toV28,
+  28: migrateV28toV29,
 };
 
 /**

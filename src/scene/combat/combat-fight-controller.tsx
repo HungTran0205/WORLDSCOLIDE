@@ -69,6 +69,7 @@ export function CombatFightController() {
 
   const phase = useCombatPanelStore((s) => s.phase);
   const missionId = useCombatPanelStore((s) => s.missionId);
+  const instanceId = useCombatPanelStore((s) => s.instanceId);
   const setPanelResult = useCombatPanelStore((s) => s.setResult);
   const showStoryDialog = useCombatPanelStore((s) => s.showStoryDialog);
 
@@ -90,7 +91,7 @@ export function CombatFightController() {
   const formation = useGameStore((s) => s.formation);
   const speedMultiplier = useGameStore((s) => s.speedMultiplier);
   const targetPriority = useGameStore((s) =>
-    s.activeMissions.find((m) => m.missionId === missionId)?.targetPriority ?? 'focus',
+    s.activeMissions.find((m) => m.instanceId === instanceId)?.targetPriority ?? 'focus',
   );
   const syncArenaState = useGameStore((s) => s.syncArenaState);
   const syncWaveState = useGameStore((s) => s.syncWaveState);
@@ -103,7 +104,7 @@ export function CombatFightController() {
 
   // (Re)initialize engine when the battle phase starts.
   useEffect(() => {
-    if (phase !== 'battle' || !missionId) {
+    if (phase !== 'battle' || !missionId || !instanceId) {
       engineRef.current = null;
       waveManagerRef.current = null;
       waveTransitioningRef.current = false;
@@ -143,7 +144,7 @@ export function CombatFightController() {
     syncArenaState(buildSnapshots(engine), 0, []);
     useCombatProjectionStore.getState().clear();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, missionId]);
+  }, [phase, instanceId]);
 
   // Sync targetPriority changes to running engine (player toggles in panel).
   useEffect(() => {
@@ -224,10 +225,10 @@ export function CombatFightController() {
 
     // Autosave entity snapshot to active mission — supports mid-fight reload
     // (D12). Throttled to 2s to keep IndexedDB writes cheap.
-    if (missionId && engine.time - lastSnapshotRef.current >= SNAPSHOT_INTERVAL_MS) {
+    if (instanceId && engine.time - lastSnapshotRef.current >= SNAPSHOT_INTERVAL_MS) {
       lastSnapshotRef.current = engine.time;
       saveCombatSnapshot(
-        missionId,
+        instanceId,
         engine.entities.map((e) => cloneCombatEntity(e)),
         engine.time,
       );
@@ -245,20 +246,22 @@ export function CombatFightController() {
    *  When a `resultOverride` is supplied (e.g. from the Skip path), it replaces
    *  the engine's natural getResult() outcome. */
   function finalizeCombat(engine: CombatEngineType, resultOverride?: CombatResult) {
-    const id = useCombatPanelStore.getState().missionId;
-    if (!id) return;
+    const panel = useCombatPanelStore.getState();
+    const id = panel.missionId;       // template id (MISSIONS lookup)
+    const instId = panel.instanceId;  // unique active-mission id (identity)
+    if (!id || !instId) return;
 
     const result = resultOverride ?? engine.getResult();
     if (engine.syringesConsumed > 0) removeItem('HEALING_SYRINGE', engine.syringesConsumed);
 
     // Combat resolved — drop snapshot so reload doesn't re-resolve from stale state.
-    saveCombatSnapshot(id, null, 0);
+    saveCombatSnapshot(instId, null, 0);
     syncArenaState(buildSnapshots(engine), engine.time, []);
     endCombat(result);
 
     const store = useGameStore.getState();
     const mission = MISSIONS.find((m) => m.id === id);
-    const active = store.activeMissions.find((m) => m.missionId === id);
+    const active = store.activeMissions.find((m) => m.instanceId === instId);
     if (!mission || !active) {
       engineRef.current = null;
       return;

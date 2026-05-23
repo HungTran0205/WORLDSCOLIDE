@@ -27,14 +27,17 @@ interface DecorPlacement {
   flip: boolean;
 }
 
-// Hand-placed positions — only at the FAR edges of the panel (|x| ≥ 14) so
-// they frame the battlefield without occluding sprites at x=-10..+10. Two
-// per side, alternating grass + rock for variety.
+// Hand-placed positions. At zoom 64 the panel only shows ~24u (±12u), so the
+// old |x|≥14 placements sat OFF-frame → no framing at all. Pulled inward to
+// |x| 9–11: outside the spread formations (allies/enemies reach |x|≈8) but
+// inside the visible frame, and well forward (z≈5.5–6.5 vs sprite z≤+3) so they
+// frame the action without occluding fighters. Two per side, alternating
+// grass + rock for variety.
 const PLACEMENTS: DecorPlacement[] = [
-  { x: -16, z: 5.5, scale: 1.3, variant: 'grass', flip: false },
-  { x: -14, z: 6.5, scale: 0.9, variant: 'rock', flip: false },
-  { x: 14, z: 6.5, scale: 0.9, variant: 'rock', flip: true },
-  { x: 16, z: 5.5, scale: 1.3, variant: 'grass', flip: true },
+  { x: -11, z: 5.5, scale: 1.3, variant: 'grass', flip: false },
+  { x: -9, z: 6.5, scale: 0.9, variant: 'rock', flip: false },
+  { x: 9, z: 6.5, scale: 0.9, variant: 'rock', flip: true },
+  { x: 11, z: 5.5, scale: 1.3, variant: 'grass', flip: true },
 ];
 
 /** Soft grass tuft silhouette — multi-blade silhouette on transparent bg. */

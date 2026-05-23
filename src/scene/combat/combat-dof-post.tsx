@@ -13,6 +13,12 @@
  * NOTE: Only ONE EffectComposer per Canvas may run at a time — `world-bloom-
  * post.tsx` early-returns while combat is open so this composer can take over
  * during the combat session.
+ *
+ * WebGPU: superseded by `combat-webgpu-post.tsx`, which runs a TSL post chain
+ * (bloom/tilt-shift/color-grade/vignette/ACES) — the tilt-shift focus band
+ * provides the HD-2D depth cue that this WebGL DOF can't on WebGPU. This file
+ * stays the WebGL combat path; the two never coexist (each null on the other's
+ * renderer).
  */
 
 import { useThree } from '@react-three/fiber';

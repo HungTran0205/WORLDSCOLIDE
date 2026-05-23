@@ -50,6 +50,7 @@ const SLOT_SIDE: Record<number, 'front' | 'back'> = {
 export function CombatPanelFormation() {
   const { t } = useTranslation();
   const missionId = useCombatPanelStore((s) => s.missionId);
+  const instanceId = useCombatPanelStore((s) => s.instanceId);
   const setPhase = useCombatPanelStore((s) => s.setPhase);
 
   const formation = useGameStore((s) => s.formation);
@@ -60,7 +61,7 @@ export function CombatPanelFormation() {
   const setTargetPriority = useGameStore((s) => s.setTargetPriority);
   const updateMissionPhase = useGameStore((s) => s.updateMissionPhase);
 
-  const mission = activeMissions.find((m) => m.missionId === missionId);
+  const mission = activeMissions.find((m) => m.instanceId === instanceId);
   const missionData = MISSIONS.find((m) => m.id === missionId);
   const allMembers = useMemo(() => (founder ? [founder, ...roster] : roster), [founder, roster]);
   const partyMembers = useMemo(
@@ -86,13 +87,13 @@ export function CombatPanelFormation() {
   const handleStart = useCallback(() => {
     // Flip mission.phase to 'in-combat' here (not on Enter-Battle click) so a
     // mid-formation close leaves the mission resumable instead of auto-resolving.
-    if (missionId) updateMissionPhase(missionId, 'in-combat');
+    if (instanceId) updateMissionPhase(instanceId, 'in-combat');
     setPhase('battle');
-  }, [missionId, updateMissionPhase, setPhase]);
+  }, [instanceId, updateMissionPhase, setPhase]);
 
   const handlePriority = useCallback((priority: TargetPriority) => {
-    if (missionId) setTargetPriority(missionId, priority);
-  }, [missionId, setTargetPriority]);
+    if (instanceId) setTargetPriority(instanceId, priority);
+  }, [instanceId, setTargetPriority]);
 
   const onDragStart = (e: React.DragEvent, memberId: string) => {
     e.dataTransfer.setData('memberId', memberId);

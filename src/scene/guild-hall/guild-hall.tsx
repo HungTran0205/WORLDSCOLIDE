@@ -12,6 +12,7 @@ import { GuildHallFront } from './guild-hall-front';
 import { GuildHallProps } from './guild-hall-props';
 import { GuildHallCollisionOverlay } from './guild-hall-collision-overlay';
 import { LinhSonFloor } from './linh-son-floor';
+import { GUILD_HALL_GRID_WIDTH, GUILD_HALL_GRID_DEPTH } from '@/game/state/guild-hall-grid';
 
 /** Directional shadow light owned by the guild hall room.
  *  castShadow is mutated via ref — R3F JSX reconciliation of this bool prop
@@ -68,15 +69,15 @@ export function GuildHall() {
   return (
     <group>
       <GuildHallLighting />
-      {!isCombatOpen && <GuildHallWall gridWidth={10} gridDepth={7} />}
-      <LinhSonFloor gridWidth={10} gridDepth={7} />
+      {!isCombatOpen && <GuildHallWall gridWidth={GUILD_HALL_GRID_WIDTH} gridDepth={GUILD_HALL_GRID_DEPTH} />}
+      <LinhSonFloor gridWidth={GUILD_HALL_GRID_WIDTH} gridDepth={GUILD_HALL_GRID_DEPTH} />
       <GuildHallProps />
       {DEBUG_MODE && <GuildHallCollisionOverlay />}
       {furniture.map((f) => (
         <FurnitureModel key={f.id} furniture={f} />
       ))}
       {isBuildMode && <BuildOverlay />}
-      {!isCombatOpen && <GuildHallFront gridWidth={10} gridDepth={7} />}
+      {!isCombatOpen && <GuildHallFront gridWidth={GUILD_HALL_GRID_WIDTH} gridDepth={GUILD_HALL_GRID_DEPTH} />}
     </group>
   );
 }
