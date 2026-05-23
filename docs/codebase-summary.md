@@ -2,7 +2,7 @@
 
 **Worlds Collide** — An HD-2D auto-RPG idle guild builder where civilizations collide. Build your guild hall, recruit members from different civilizations, dispatch quests, and watch your guild grow — even while you're away.
 
-**Last Updated**: 2026-05-22 (MVP Recruit Gating, VN Names & Roster Rename)
+**Last Updated**: 2026-05-23 (Arc 1 Quest Story: Narrative Gates + UI/Combat Fixes)
 
 ## Technology Stack
 
@@ -199,6 +199,42 @@
 - **Keys**: Game UI, panel headers, button labels, system messages
 - **Title Screen**: Slot display, action buttons, messages
 - **Save/Import Dialogs**: User-facing feedback
+
+## Recent Changes (Arc 1 Quest Story — 2026-05-23)
+
+### i18n Quest Card Lore Routing (ENHANCEMENT)
+- **Quest `cardLore` field**: Now routed through i18n `tContent('missions', missionId, 'cardLore')` instead of hardcoded VN text
+- **Arc 1 Main Quests**: Each carries bilingual (EN inline, VN in content.vi.json) `cardLore` clue displayed italic/muted under quest title on quest-board
+- **Backward Compat**: Legacy missions without `cardLore` field render without clue line (no change to quest-card.tsx layout)
+- **Implementation**: `quest-card.tsx` renders `{mission.cardLore && <p>tContent(...)</p>}`
+
+### Combat Skip Button Gating (BEHAVIORAL)
+- **Skip restricted to expeditions**: Skip button hidden + DOM handler no-op for main-story quests (`isMainQuest: true`) and tutorial missions (`id.startsWith('tutorial-'`)
+- **Rule**: `const isSkippable = !!mission && !mission.isMainQuest && !mission.id.startsWith('tutorial-')`
+- **Expeditions + legacy missions**: Remain skippable; legacy flagless missions treated as expeditions (backward compat)
+- **Rationale**: Story missions have enforced combat resolution (no shortcut); expeditions are repeatable and allow skip
+
+### Quest Board MAIN/EXPEDITION Tab Split (UI REFACTOR)
+- **Two-tab layout**: MAIN (story quests) vs EXPEDITION (repeatable + legacy)
+- **MAIN tab**: `isMainQuest` quests with prerequisites met, not completed; tutorial excluded; no tier-filter pills
+- **EXPEDITION tab**: `isExpedition` quests + legacy flagless missions; tier-gated per existing logic; tier-filter pills shown
+- **Tutorial preservation**: During tutorial, board shows only tutorial quest (tabs hidden) so accept-quest beat stays intact
+- **UI component**: `.quest-board__tabs` segmented control (CSS new); `<QuestCard cardLore>` unchanged layout
+
+### Tavern Working Sprite Assets (NEW ANIMATION)
+- **4 characters with `working/` asset**: LS-SCOUT-F, LS-SCOUT-M, LS-SWORD-M, LS-WARRIOR-M (4 of 12 recruitable charIds)
+- **Assigned member behavior**: When assigned to Tavern facility, play `working` animation loop instead of patrol
+- **Fallback**: Members without `working/` asset (e.g., LS-WARRIOR-F) fall back to patrol loop (no 404 error)
+- **Implementation**: `combat-sprite-resolver.ts` maintains `charsWithWorking` Set; `hasWorkingAnim(basePath)` checks membership
+- **Asset path**: `public/sprites/characters/{charId}/animations/working/{west,east}/frame_XXX.png`
+
+### Multi-Wave Combat: Enemy Spawn Slide Animation (COSMETIC)
+- **New-wave enemies spawn off-screen**: Spawn at position + optional `spawnSlideFromX` constant (right edge, ~+14 units off-screen)
+- **Slide-in animation**: Renderer lerps enemy X from `spawnSlideFromX` to `position.x` over first few frames (smooth visual entry)
+- **Data layer**: Optional field `spawnSlideFromX?: number` on ArenaEntity + ArenaEntitySnapshot (cosmetic only, no engine logic change)
+- **Engine unchanged**: Combat AI, victory conditions, turn-lock unchanged; field only affects visual presentation
+- **Wave spawn path**: `CombatEngine.addEnemies()` sets `spawnSlideFromX ≥ +14 + formation.x` when wave > 0; initial-wave enemies have undefined (spawn in-place)
+- **Renderer**: `combat-idle-sprite.tsx` initializes group X to `entity.spawnSlideFromX ?? entity.position.x`, lerps to position.x over 400ms
 
 ## Recent Changes (MVP Recruit Gating, VN Names & Roster Rename — 2026-05-22)
 

@@ -640,11 +640,21 @@ Shifted from isometric (20°) to beat-em-up sidescroller:
 - **Zoom**: 80 (was 114)
 - **Parallax**: Background Y offsets raised for 35° angle
 
+#### Spawn Slide Animation (v1.28 — Cosmetic Wave Entry Visual)
+
+New-wave enemies (wave > 0) spawn off-screen and slide in from the right edge for visual polish:
+- **Field**: `ArenaEntity.spawnSlideFromX?: number` (optional, cosmetic only)
+- **Set by engine**: `CombatEngine.addEnemies()` calculates `spawnSlideFromX ≥ +14 + formation.x` (off-screen right edge)
+- **Initial wave**: Wave 0 enemies + allies have `spawnSlideFromX` undefined (spawn in-place, no slide)
+- **Renderer**: `combat-idle-sprite.tsx` initializes group X to `spawnSlideFromX ?? position.x`, lerps to `position.x` over 400ms
+- **Logic unaffected**: Combat AI, turn locks, victory checks unchanged; field is renderer-only
+
 #### Backward Compatibility
 
 - Missions without `waves` field default to single-wave mode (all enemies at once)
 - Existing formation positions preserved for non-wave combat
 - Post-processing additive (new DoF layers on top of existing vignette)
+- `spawnSlideFromX` optional; missions without it render enemies at `position.x` immediately
 
 ## Combat Formation Movement (Phase 1 — Positional Attacks)
 
