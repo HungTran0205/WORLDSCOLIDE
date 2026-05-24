@@ -10,6 +10,7 @@ import { calcMemberDerivedStats } from '@/game/systems/member-derived-stats';
 import { getEquipmentTemplate } from '@/game/data/equipment-templates';
 import type { EquipmentSlot } from '@/game/data/equipment-templates';
 import type { EquipmentItem } from '@/game/state/game-state';
+import type { EquipmentSlotData } from '@/game/data/workshop-types';
 import { StatsTab } from '@/ui/components/character-tabs/stats-tab';
 import { DEFAULT_MEDICINE_SLOTS } from '@/game/state/guild-slice';
 import { ITEM_DATABASE } from '@/game/data/items';
@@ -173,6 +174,11 @@ export function CharacterDetailPanel({
                       <span className="equip-slot-name">{tContent('equipment', equipped.templateId, 'name', tpl.name)}</span>
                       <span className="equip-stat-hint">
                         {tpl.damage ? `⚔${tpl.damage}` : ''}{tpl.defense ? ` 🛡${tpl.defense}` : ''}{tpl.hp ? ` ❤+${tpl.hp}` : ''}
+                        {equipped.slots?.map((s: EquipmentSlotData, i: number) => (
+                          <span key={i} style={{ color: 'var(--ink-gold-dim)', marginLeft: 4 }}>
+                            {s.statKey === 'HP' ? `❤+${s.value}` : `+${s.value}`}
+                          </span>
+                        ))}
                       </span>
                       {onUnequipGear && (
                         <button className="char-btn" style={{ fontSize: '0.6rem', padding: '2px 8px' }} onClick={() => onUnequipGear(slot)}>{t('characterDetail.remove')}</button>

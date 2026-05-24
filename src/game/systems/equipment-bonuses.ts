@@ -4,11 +4,19 @@ import type { MemberEquipment, EquipmentItem } from '@/game/state/game-state';
 import type { CivArchetype } from '@/game/data/civilization-config';
 import { getEquipmentTemplate } from '@/game/data/equipment-templates';
 import type { EquipmentTemplateId } from '@/game/data/equipment-templates';
+import type { EquipmentSlotData } from '@/game/data/workshop-types';
 
 export interface GearBonuses {
   flatDamage: number;
   flatHp: number;
   flatDefense: number;
+}
+
+function applySlotBonuses(slots: EquipmentSlotData[] | undefined, bonus: GearBonuses): void {
+  if (!slots) return;
+  for (const slot of slots) {
+    if (slot.statKey === 'HP') bonus.flatHp += slot.value;
+  }
 }
 
 /** Compute additive flat gear bonuses from equipped items. Broken gear (durability=0) gives no bonus. */
@@ -21,16 +29,19 @@ export function calcGearBonuses(equipment?: MemberEquipment | null): GearBonuses
   if (weapon && weapon.durability > 0) {
     const tpl = getEquipmentTemplate(weapon.templateId);
     bonus.flatDamage += tpl.damage ?? 0;
+    applySlotBonuses(weapon.slots, bonus);
   }
   if (armor && armor.durability > 0) {
     const tpl = getEquipmentTemplate(armor.templateId);
     bonus.flatHp      += tpl.hp      ?? 0;
     bonus.flatDefense += tpl.defense ?? 0;
+    applySlotBonuses(armor.slots, bonus);
   }
   if (headgear && headgear.durability > 0) {
     const tpl = getEquipmentTemplate(headgear.templateId);
     bonus.flatHp      += tpl.hp      ?? 0;
     bonus.flatDefense += tpl.defense ?? 0;
+    applySlotBonuses(headgear.slots, bonus);
   }
   return bonus;
 }
