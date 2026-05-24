@@ -14,6 +14,12 @@ export type IconCategory =
 
 /** Explicit overrides where entity ID doesn't match kebab-case filename */
 const ID_TO_FILENAME: Record<string, string> = {
+  // Equipment weapons
+  WOODEN_AXE: 'wooden-axe', WOODEN_SWORD: 'wooden-sword', WOODEN_CROSSBOW: 'wooden-crossbow',
+  STONE_AXE: 'stone-axe', STONE_SWORD: 'stone-sword', STONE_CROSSBOW: 'stone-crossbow',
+  IRON_AXE: 'iron-axe', IRON_SWORD: 'iron-sword', IRON_CROSSBOW: 'iron-crossbow',
+  // Equipment armor
+  CLOTH_VEST: 'cloth-vest', LEATHER_ARMOR: 'leather-armor', IRON_ARMOR: 'iron-armor',
   // ItemID UPPER_SNAKE → kebab
   WOOD: 'wood', STONE: 'stone', IRON_ORE: 'iron-ore',
   SLIME_GEL: 'slime-gel', BOAR_PELT: 'boar-pelt',
