@@ -12,6 +12,7 @@ import {
   calcDefenseRating,
   calcSkillDmgBonus,
 } from './combat-formulas';
+import type { GearBonuses } from './equipment-bonuses';
 
 export interface DerivedCombatStats {
   // --- Base stats (re-exposed for unified read-model) ---
@@ -43,6 +44,10 @@ export interface DerivedCombatStats {
   statusResist: number;
   /** Individual morale contribution (+0.1% dmg per CHA point) */
   moraleAura: number;
+  /** Flat bonus defense from gear (additive, not folded into defenseRating fraction) */
+  bonusDefense: number;
+  /** Flat bonus damage from gear */
+  bonusDamage: number;
 }
 
 // --- Internal calculators ---
@@ -86,16 +91,19 @@ function calcHitsPerSecond(attackIntervalMs: number): number {
  * @param stats     Member's base talent stats
  * @param level     Member level (affects maxHp, hpRegen)
  * @param weaponBaseSpeedMs  Weapon base attack speed in ms (default 1800)
+ * @param gearBonuses  Flat bonuses from equipped gear (pass calcGearBonuses result)
  */
 export function calcDerivedCombatStats(
   stats: Stats,
   level: number,
   weaponBaseSpeedMs: number = 1800,
+  gearBonuses?: GearBonuses,
 ): DerivedCombatStats {
   const { STR, END, INT, DEX, CHA, LCK, AGI } = stats;
+  const gb = gearBonuses ?? { flatHp: 0, flatDefense: 0, flatDamage: 0 };
   const attackIntervalMs = calcAttackInterval(AGI, weaponBaseSpeedMs);
   return {
-    maxHp: calcMaxHp(END, level),
+    maxHp: calcMaxHp(END, level) + gb.flatHp,
     attackIntervalMs,
     hitsPerSecond: calcHitsPerSecond(attackIntervalMs),
     critRate: calcCritRate(LCK),
@@ -108,5 +116,7 @@ export function calcDerivedCombatStats(
     skillHaste: calcSkillHaste(INT),
     statusResist: calcStatusResist(INT, END),
     moraleAura: calcMoraleAura(CHA),
+    bonusDefense: gb.flatDefense,
+    bonusDamage: gb.flatDamage,
   };
 }

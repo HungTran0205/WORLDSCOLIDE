@@ -6,7 +6,7 @@ import { getSpritePath } from '@/scene/sprites/sprite-path-resolver';
 import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
 import { expToNextLevel } from '@/game/systems/leveling-system';
-import { calcMaxHp } from '@/game/systems/combat-formulas';
+import { calcMemberDerivedStats } from '@/game/systems/member-derived-stats';
 import { getEquipmentTemplate } from '@/game/data/equipment-templates';
 import type { EquipmentSlot } from '@/game/data/equipment-templates';
 import type { EquipmentItem } from '@/game/state/game-state';
@@ -62,7 +62,7 @@ export function CharacterDetailPanel({
 
   const expNeeded = expToNextLevel(member.level);
   const expPct    = Math.min(100, Math.floor((member.exp / expNeeded) * 100));
-  const maxHp     = calcMaxHp(member.stats.END, member.level);
+  const maxHp     = calcMemberDerivedStats(member).combat.maxHp;
   const isMerc    = member.rank === 'MERCENARY';
   const civConfig = CIV_CONFIG[member.civilization as Civilization];
 

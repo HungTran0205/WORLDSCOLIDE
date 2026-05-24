@@ -2,8 +2,9 @@ import { useTranslation } from 'react-i18next';
 import type { Member, StatKey } from '@/game/state/game-state';
 import { STAT_KEYS } from '@/game/systems/stat-allocation';
 import { RankPromotionSection } from '@/ui/components/rank-promotion-section';
-import { calcMaxHp, calcAttackInterval, calcCritRate, calcDefenseRating } from '@/game/systems/combat-formulas';
+import { calcAttackInterval, calcCritRate, calcDefenseRating } from '@/game/systems/combat-formulas';
 import { calcDerivedGuildStats } from '@/game/systems/derived-guild-stats';
+import { calcMemberDerivedStats } from '@/game/systems/member-derived-stats';
 
 interface StatsTabProps {
   member: Member;
@@ -25,7 +26,7 @@ function DerivedRow({ label, value }: { label: string; value: string | number })
 export function StatsTab({ member, isMerc, onAllocateStat, onPromote, canAffordPromote }: StatsTabProps) {
   const { t } = useTranslation();
   const { STR, END, DEX, LCK, AGI } = member.stats;
-  const maxHp       = calcMaxHp(END, member.level);
+  const maxHp       = calcMemberDerivedStats(member).combat.maxHp;
   const atkIntervalMs = calcAttackInterval(AGI);
   const critPct     = Math.round(calcCritRate(LCK) * 100);
   const defPct      = Math.round(calcDefenseRating(END) * 100);
