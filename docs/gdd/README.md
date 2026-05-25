@@ -46,4 +46,4 @@ presentation (`12`–`14`). `03`/`04` give world context; full canon is in [`../
 
 When you change game logic under `src/game/{systems,data,state}/**`, update the matching GDD section.
 A non-blocking reminder hook points you to the right file — see
-[`.claude/rules/gdd-sync.md`](../../.claude/rules/gdd-sync.md) for the path→section map.
+[`sync-guide.md`](./sync-guide.md) for the path→section map and how to enable it.

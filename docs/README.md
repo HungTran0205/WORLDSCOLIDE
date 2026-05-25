@@ -42,4 +42,4 @@ is an HD-2D auto-RPG idle guild builder. Docs are organized into **operational r
   `<!-- TODO: verify against code -->`, never invented.
 - **No duplication:** GDD summarizes + links to `lore/` and `reference/`; it never copies them.
 - **Sync:** editing `src/game/{systems,data,state}/**` triggers a non-blocking GDD-sync reminder
-  (see [`.claude/rules/gdd-sync.md`](../.claude/rules/gdd-sync.md)).
+  (see [`gdd/sync-guide.md`](./gdd/sync-guide.md)).
