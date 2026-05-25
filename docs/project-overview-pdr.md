@@ -2,6 +2,7 @@
 
 ## Executive Summary
 
+<!-- TODO: stale canon — title is "2000s A.C — After the Collapse"; factions are Linh Sơn / Đế Quốc (Republic Empire) / Thiên Lữ / Eliza / Scavenger, not Human/Orc/Elf. Playable now = Linh Sơn only (see src/game/data/civilization-config.ts + docs/lore/ + docs/gdd/04-civilizations.md). Owner to rewrite — flag-only per plan. -->
 **Worlds Collide** is a client-side idle RPG built with React 19 + TypeScript, featuring an innovative multi-civilization recruitment system, real-time quest dispatch, and offline progression through Web Workers. The game emphasizes passive income generation (gold farming) combined with active decision-making (team building, quest selection).
 
 **Current Phase**: Core gameplay implemented. Multi-slot save system deployed (v1.0).
@@ -47,6 +48,7 @@ Create an engaging idle RPG where players build and manage a thriving guild, rec
 - Guild state persists in save envelope
 
 #### FR-3: Recruitment System
+<!-- TODO: stale canon — civilizations are Linh Sơn / Đế Quốc / Thiên Lữ (code defines 3; only Linh Sơn recruitable per RECRUITABLE_UNITS in civilization-config.ts), NOT Human/Orc/Elf. See docs/gdd/04-civilizations.md. -->
 - **FR-3.1**: 3 civilizations with distinct archetypes: Human, Orc, Elf
 - **FR-3.2**: 80+ unique heroes available across 3 tiers (uncommon, rare, epic)
 - **FR-3.3**: Recruitment costs fixed per tier, scale with progression
@@ -460,6 +462,7 @@ Create an engaging idle RPG where players build and manage a thriving guild, rec
 | **Tick** | 1 game simulation step (~100ms in Web Worker) |
 | **Party** | Selected group of 1-6 members for quest dispatch |
 | **Tier** | Quest difficulty level (F/E/D/C/B/A/S) |
+<!-- TODO: stale canon — factions are Linh Sơn / Đế Quốc / Thiên Lữ, not Human/Orc/Elf. See docs/lore/faction-bible-v2.md. -->
 | **Civilization** | Hero faction (Human, Orc, Elf) with distinct traits |
 
 ## Appendix: API Reference (Internal)

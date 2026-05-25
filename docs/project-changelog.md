@@ -1,6 +1,6 @@
 # Project Changelog
 
-All notable changes to Worlds Collide are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/).
+All notable changes to 2000s A.C — After the Collapse are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 **Current Version**: 1.27.9
 **Release Date**: 2026-05-10 (Combat AOE Telegraph)
@@ -1075,7 +1075,7 @@ Integrated Skill Choreography Sequencer into vfx-playground as a second mode alo
 - Sequence code generator producing `.tsx` exports for game integration
 - localStorage persistence for sequence library
 - R3F preview canvas with Three.js WebGPU rendering
-- Engine adapters for compatibility with Worlds Collide game state
+- Engine adapters for compatibility with the core game state
 
 **New Files**:
 - `tools/vfx-playground/src/ui/mode-tabs.tsx` — Mode switcher component
