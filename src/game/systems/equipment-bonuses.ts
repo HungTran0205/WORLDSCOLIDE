@@ -24,7 +24,7 @@ export function calcGearBonuses(equipment?: MemberEquipment | null): GearBonuses
   const bonus: GearBonuses = { flatDamage: 0, flatHp: 0, flatDefense: 0 };
   if (!equipment) return bonus;
 
-  const { weapon, armor, headgear } = equipment;
+  const { weapon, armor } = equipment;
 
   if (weapon && weapon.durability > 0) {
     const tpl = getEquipmentTemplate(weapon.templateId);
@@ -36,12 +36,6 @@ export function calcGearBonuses(equipment?: MemberEquipment | null): GearBonuses
     bonus.flatHp      += tpl.hp      ?? 0;
     bonus.flatDefense += tpl.defense ?? 0;
     applySlotBonuses(armor.slots, bonus);
-  }
-  if (headgear && headgear.durability > 0) {
-    const tpl = getEquipmentTemplate(headgear.templateId);
-    bonus.flatHp      += tpl.hp      ?? 0;
-    bonus.flatDefense += tpl.defense ?? 0;
-    applySlotBonuses(headgear.slots, bonus);
   }
   return bonus;
 }

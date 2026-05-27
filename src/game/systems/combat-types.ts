@@ -25,9 +25,9 @@ export interface CombatEntity {
   // Gear bonuses (baked in at entity creation from member.equipment)
   /** Flat damage bonus from equipped weapon (0 if no weapon or durability=0) */
   gearFlatDamage?: number;
-  /** Flat HP bonus from armor+headgear (already added to maxHp at init) */
+  /** Flat HP bonus from armor (already added to maxHp at init) */
   gearFlatHp?: number;
-  /** Flat defense bonus from armor+headgear (used in damage receive calc) */
+  /** Flat defense bonus from armor (used in damage receive calc) */
   gearFlatDefense?: number;
 
   // Syringe auto-use (allies only)

@@ -246,7 +246,7 @@ describe('migrateSave', () => {
           unallocatedPoints: 0, skill: null, status: 'idle', injuredUntil: null,
           civilization: 'LinhSon', isFounder: true, rank: 'COMMANDER', missionsCompleted: 0,
           craftSkills: { woodcutting: { level: 0, xpAccumulated: 0 }, mining: { level: 0, xpAccumulated: 0 }, alchemy: { level: 0, xpAccumulated: 0 } },
-          equipment: { weapon: { id: 'eq-equipped', templateId: 'WOODEN_AXE', durability: 50 }, armor: null, headgear: null },
+          equipment: { weapon: { id: 'eq-equipped', templateId: 'WOODEN_AXE', durability: 50 }, armor: null },
           medicineSlots: [{ itemId: null, condition: 'start' }, { itemId: null, condition: 'start' }],
         },
         roster: [],

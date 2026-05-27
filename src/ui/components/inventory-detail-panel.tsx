@@ -68,8 +68,7 @@ export function InventoryDetailPanel({ entry, equippedByName, onEquip, onUse, on
   const rarityColor = RARITY_COLOR[tpl.rarity] ?? '#a09080';
   const durPct = Math.round((entry.item.durability / tpl.maxDurability) * 100);
   const displayName = equipmentName(entry.templateId);
-  // Slot label: capitalise first letter (headgear stays as-is from t() key)
-  const slotLabel = tpl.slot === 'headgear' ? 'Headgear' : tpl.slot.charAt(0).toUpperCase() + tpl.slot.slice(1);
+  const slotLabel = tpl.slot.charAt(0).toUpperCase() + tpl.slot.slice(1);
   return (
     <div>
       <div className="inv-detail-icon-frame">
@@ -97,6 +96,16 @@ export function InventoryDetailPanel({ entry, equippedByName, onEquip, onUse, on
             {entry.item.durability}/{tpl.maxDurability}
           </span>
         </div>
+        {entry.item.slots && entry.item.slots.length > 0 && (
+          <div className="inv-detail-stat-row">
+            <span className="inv-detail-stat-label">{t('inventoryDetail.affixes')}</span>
+            <span className="inv-detail-affix-chips">
+              {entry.item.slots.map((s, i) => (
+                <span key={i} className="inv-detail-affix-chip">{s.statKey} +{s.value}</span>
+              ))}
+            </span>
+          </div>
+        )}
       </div>
       <div className="inv-detail-actions">
         {!equippedByName && onEquip && (

@@ -163,7 +163,7 @@ export function CharacterDetailPanel({
         {tab === 'equipment' && (
           <>
             <p className="char-section-title">{t('characterDetail.gear')}</p>
-            {(['weapon', 'armor', 'headgear'] as const).map(slot => {
+            {(['weapon', 'armor'] as const).map(slot => {
               const equipped = member.equipment?.[slot] ?? null;
               const tpl = equipped ? getEquipmentTemplate(equipped.templateId) : null;
               return (

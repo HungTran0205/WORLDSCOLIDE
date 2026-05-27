@@ -97,6 +97,11 @@ export function TavernNegotiateModal({ visitor, keeper, visibilityScore, onClose
       },
     }));
 
+    // Consume gift from inventory — gift is given to the visitor on each roll attempt.
+    if (gift) {
+      useGameStore.getState().removeItem(gift.itemId, 1);
+    }
+
     setTimeout(() => {
       onOutcome(result, visitor);
       setRolling(false);

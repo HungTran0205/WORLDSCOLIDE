@@ -506,7 +506,7 @@ function migrateV22toV23(envelope: SaveEnvelope): SaveEnvelope {
   const migrateMemberEquipment = (m: AnyRecord): AnyRecord => {
     const eq = m.equipment as AnyRecord | null | undefined;
     if (!eq) return m;
-    const slots = ['weapon', 'armor', 'headgear'] as const;
+    const slots = ['weapon', 'armor'] as const;
     const newEq: AnyRecord = { ...eq };
     for (const slot of slots) {
       const item = eq[slot] as AnyRecord | null | undefined;

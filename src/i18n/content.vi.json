@@ -351,13 +351,13 @@
     "WOODEN_SWORD": { "name": "Kiếm Gỗ" },
     "STONE_SWORD": { "name": "Kiếm Đá" },
     "IRON_SWORD": { "name": "Kiếm Sắt" },
-    "IRON_SPEAR": { "name": "Giáo Sắt" },
+    "STONE_AXE": { "name": "Rìu Đá" },
+    "STONE_CROSSBOW": { "name": "Nỏ Đá" },
+    "IRON_AXE": { "name": "Rìu Sắt" },
+    "IRON_CROSSBOW": { "name": "Nỏ Sắt" },
     "CLOTH_VEST": { "name": "Áo Vải" },
     "LEATHER_ARMOR": { "name": "Giáp Da" },
-    "IRON_ARMOR": { "name": "Giáp Sắt" },
-    "CLOTH_HOOD": { "name": "Mũ Trùm Vải" },
-    "LEATHER_HELMET": { "name": "Mũ Da" },
-    "IRON_HELMET": { "name": "Mũ Sắt" }
+    "IRON_ARMOR": { "name": "Giáp Sắt" }
   },
   "recipes": {
     "healing-syringe": {

@@ -66,7 +66,7 @@ export function InventoryPanel({ onClose }: { onClose: () => void }) {
     const all = founder ? [founder, ...roster] : roster;
     for (const m of all) {
       if (!m.equipment) continue;
-      for (const slot of ['weapon', 'armor', 'headgear'] as const) {
+      for (const slot of ['weapon', 'armor'] as const) {
         const e = m.equipment[slot];
         if (e) map.set(e.id, m.name);
       }
@@ -97,7 +97,7 @@ export function InventoryPanel({ onClose }: { onClose: () => void }) {
       } else {
         const t = EQUIPMENT_DATABASE[e.templateId];
         if (t.slot === 'weapon')                          c.weapon++;
-        if (t.slot === 'armor' || t.slot === 'headgear')  c.armor++;
+        if (t.slot === 'armor')  c.armor++;
       }
     }
     return c;
@@ -112,7 +112,7 @@ export function InventoryPanel({ onClose }: { onClose: () => void }) {
           return activeTab === 'material' ? t.type === 'MATERIAL' : activeTab === 'consumable' ? t.type === 'CONSUMABLE' : false;
         }
         const t = EQUIPMENT_DATABASE[e.templateId];
-        return activeTab === 'weapon' ? t.slot === 'weapon' : t.slot === 'armor' || t.slot === 'headgear';
+        return activeTab === 'weapon' ? t.slot === 'weapon' : t.slot === 'armor';
       });
     }
     if (search.trim()) {
