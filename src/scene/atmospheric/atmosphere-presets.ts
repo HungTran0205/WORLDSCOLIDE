@@ -98,19 +98,23 @@ const TRAINING_YARD: AtmospherePreset = {
 
 const INFIRMARY: AtmospherePreset = {
   id: 'infirmary',
-  mood: 'sterile cool, clinical hush',
-  bloom: { threshold: 0.85, intensity: 0.9, radius: 0.65 },
-  tiltShift: { strength: 0.3, enabled: true },
-  dof: { focalLength: 0.7, bokehScale: 2.0, enabled: true },
-  colorGrade: { hue: -0.04, saturation: -0.15, brightness: 0.05, contrast: 0 },
-  vignette: { offset: 0.5, darkness: 0.6 },
+  mood: 'ether-lit sanctuary, warm gold crystal hush',
+  // Lower threshold + bump intensity so the golden ether crystal blooms.
+  bloom: { threshold: 0.65, intensity: 1.1, radius: 0.7 },
+  tiltShift: { strength: 0.4, enabled: true },
+  // Focus pulls up to the crystal core; pods + shelves soften.
+  dof: { focalLength: 0.6, bokehScale: 2.5, targetOffset: [0, 0.9, 0], enabled: true },
+  // Warm hue shift + slight contrast punch (was cool/desaturated clinical).
+  colorGrade: { hue: 0.04, saturation: 0, brightness: 0.02, contrast: 0.04 },
+  vignette: { offset: 0.5, darkness: 0.55 },
   noise: { opacity: 0.03 },
-  fog: { color: '#0f1423', near: 14, far: 40, enabled: true },
-  godRays: { color: '#bcd0ff', exposure: 0.4, samples: 60, sourceId: 'infirmary-ceiling-light', enabled: true },
+  // Warm dark haze so background fades through amber, not cold blue void.
+  fog: { color: '#1a1208', near: 12, far: 38, enabled: true },
+  godRays: { color: '#ffc864', exposure: 0.5, samples: 60, sourceId: 'infirmary-ether-crystal', enabled: true },
   chromaticAberration: null,
   heatHaze: null,
   particles: 'dust',
-  hemisphereLight: { skyColor: '#a0c0e0', groundColor: '#5060a0', intensity: 0.5 },
+  hemisphereLight: { skyColor: '#e0b070', groundColor: '#403020', intensity: 0.4 },
 };
 
 const WORKSHOP: AtmospherePreset = {

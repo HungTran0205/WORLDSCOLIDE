@@ -27,7 +27,7 @@ All facilities defined in `src/game/data/facility-definitions.ts` — `FACILITY_
 | Logging Site | `logging-site` | 0g (permit) | — | 1 / 2 / 3 | STR + WC Skill |
 | Stone Quarry | `stone-quarry` | 500g | 20 WOOD | 1 / 2 / 3 | STR + LCK |
 | Alchemy Lab | `alchemy-lab` | 350g | 20 STONE + 50 WOOD | 1 / 2 / 3 | INT + DEX |
-| Infirmary | `infirmary` | 300g | — | 1 / 2 / 3 | END + INT |
+| Infirmary | `infirmary` | 500g | 50 STONE + 50 WOOD | 1 / 2 / 3 (beds) | — (no worker) |
 | Training Yard | `training-yard` | 250g | — | 2 / 3 / 4 | DEX + AGI |
 
 > Training Yard: passive EXP gain only — no dedicated room file; requires guild level 3.
@@ -48,7 +48,7 @@ Facilities produce effects through two mechanisms:
 
 **Not a production room:**
 - Tavern: visitor spawn / negotiation system
-- Infirmary: injury recovery timer on `Member.injuredUntil`
+- Infirmary: bed/queue injury recovery (beds heal fast by level, queue heals slow); see [`rooms/infirmary.md`](rooms/infirmary.md)
 - Training Yard: passive daily EXP tick <!-- TODO: verify training-yard EXP formula against code -->
 
 ## Member Assignment
