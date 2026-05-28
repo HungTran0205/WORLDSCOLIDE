@@ -120,10 +120,12 @@ export function processMissionTick(store: GameStore, now: number): MissionTickEv
           store.failMission(active.instanceId);
         }
 
-        // Injury duration scales with mission difficulty (members only).
-        const injuryDuration = mission.durationMs * 0.5;
+        // Injury duration scales with mission difficulty (members only). Recovery is
+        // now progress-driven (infirmary beds/queue); `baseRecoveryMs` is the passive
+        // wall-clock time, `now` the FIFO ordering key.
+        const baseRecoveryMs = mission.durationMs * 0.5;
         for (const memberId of memberInjured) {
-          store.setMemberInjuredUntil(memberId, now + injuryDuration);
+          store.injureMember(memberId, baseRecoveryMs, now);
         }
 
         // Phase 04: route merc outcomes (survival/defeat) to tavern lifecycle.
@@ -140,14 +142,4 @@ export function processMissionTick(store: GameStore, now: number): MissionTickEv
   }
 
   return events;
-}
-
-/** Check injured members, recover those whose timer expired */
-export function processInjuryRecovery(store: GameStore, now: number): void {
-  const allMembers = store.founder ? [store.founder, ...store.roster] : store.roster;
-  for (const member of allMembers) {
-    if (member.status === 'injured' && member.injuredUntil && member.injuredUntil <= now) {
-      store.setMemberInjuredUntil(member.id, null);
-    }
-  }
 }

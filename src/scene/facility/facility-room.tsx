@@ -19,6 +19,7 @@ import { FacilityRoomFurniture } from './facility-room-furniture';
 import { QuarryRoomDecor } from '../quarry/quarry-furniture';
 import { QuarryZoneCard } from '../quarry/facility-room-quarry-decor';
 import { AlchemyZoneCard } from '../alchemy/facility-room-alchemy-decor';
+import { InfirmaryZoneCard } from '../infirmary/facility-room-infirmary-decor';
 import { AlchemyWalls } from '../alchemy/facility-room-alchemy-walls';
 import { WorkshopWalls } from '../workshop/workshop-walls';
 import { TavernWalls } from '../tavern/tavern-walls';
@@ -316,6 +317,10 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
         ) : isActive && cameraSettled && isAlchemy ? (
           <Html position={[cx - 5.0, 1, cz + 0.5]} center>
             <AlchemyZoneCard facility={facility} />
+          </Html>
+        ) : isActive && cameraSettled && isInfirmary ? (
+          <Html position={[cx - 5.0, 1, cz + 0.5]} center>
+            <InfirmaryZoneCard facility={facility} />
           </Html>
         ) : (
           <Html position={[cx, 1.8, cz]} center>

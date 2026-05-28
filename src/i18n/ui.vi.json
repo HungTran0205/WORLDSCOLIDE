@@ -781,6 +781,16 @@
     "dropHint": "Kéo nguyên liệu vào đây",
     "lockedHint": "Mở khóa ở Giả Kim Lv.{{level}}"
   },
+  "infirmaryCard": {
+    "header": "Giường: {{occupied}}/{{max}} · Hàng chờ: {{queue}}",
+    "bedsLabel": "Giường",
+    "bedsEmpty": "Không có người bị thương.",
+    "queueLabel": "Hàng Chờ",
+    "waitingForBed": "đang chờ giường",
+    "skipBtn": "Bỏ 5p",
+    "speedBadge": "×{{factor}}",
+    "recoveryHint": "Giường hồi nhanh hơn · bỏ 1 lần/ngày"
+  },
   "facilitiesPanel": {
     "title": "CƠ SỞ",
     "guildLevel": "Hội Lv.{{level}}",

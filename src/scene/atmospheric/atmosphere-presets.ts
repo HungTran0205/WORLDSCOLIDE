@@ -33,7 +33,7 @@ const GUILD_HALL: AtmospherePreset = {
   bloom: { threshold: 0.9, intensity: 0.3, radius: 0.3},
   tiltShift: { strength: 0.6, enabled: true },
   dof: { focalLength: 0.6, bokehScale: 2.5, targetOffset: [0, 0.5, 0], enabled: true },
-  colorGrade: { hue: 0.04, saturation: -0.05, brightness: 0.02, contrast: -0.01 },
+  colorGrade: { hue: 0.04, saturation: -0.05, brightness: 0.02, contrast: -0.05},
   vignette: { offset: 0.5, darkness: 0.45 },
   noise: { opacity: 0.04 },
   fog: { color: '#14121e', near: 15, far: 55, enabled: true },
@@ -105,11 +105,11 @@ const INFIRMARY: AtmospherePreset = {
   // Focus pulls up to the crystal core; pods + shelves soften.
   dof: { focalLength: 0.6, bokehScale: 2.5, targetOffset: [0, 0.9, 0], enabled: true },
   // Warm hue shift + slight contrast punch (was cool/desaturated clinical).
-  colorGrade: { hue: 0.04, saturation: 0, brightness: 0.02, contrast: 0.04 },
+  colorGrade: { hue: 0.04, saturation: 0, brightness: 0.02, contrast: -0.04 },
   vignette: { offset: 0.5, darkness: 0.55 },
   noise: { opacity: 0.03 },
   // Warm dark haze so background fades through amber, not cold blue void.
-  fog: { color: '#1a1208', near: 12, far: 38, enabled: true },
+  fog: { color: '#704108', near: 12, far: 38, enabled: true },
   godRays: { color: '#ffc864', exposure: 0.5, samples: 60, sourceId: 'infirmary-ether-crystal', enabled: true },
   chromaticAberration: null,
   heatHaze: null,

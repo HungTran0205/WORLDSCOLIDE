@@ -116,6 +116,8 @@ export interface GuildFacility {
   workshopQueue?: WorkshopTask[];
   /** Workshop v2: saved blueprint presets (workshop facilities only) */
   workshopBlueprints?: WorkshopBlueprint[];
+  /** Game-day index of the last guild-wide Skip use (infirmary only). null = never. */
+  lastSkipDay?: number | null;
 }
 
 /** Guild hierarchy ranks (promotable). MERCENARY is orthogonal — not in hierarchy. */
@@ -132,6 +134,10 @@ export interface Member {
   skill: Skill | null;
   status: MemberStatus;
   injuredUntil: number | null;
+  /** Recovery model (GDD bed/queue). Set at injury; cleared (→ undefined/null) on full heal. */
+  injuredAt?: number | null;        // wall-clock ms at injury — FIFO ordering key
+  baseRecoveryMs?: number | null;   // mission.durationMs × 0.5, set once at injury
+  recoveryProgress?: number;        // 0→1; member recovers at ≥1
   civilization: string;
   archetype?: string;   // CivArchetype — maps to sprite folder (missing in old saves)
   gender?: 'M' | 'F';  // maps to sprite folder suffix (missing in old saves)

@@ -25,11 +25,20 @@ export interface RosterSlice {
   renameMember: (id: string, name: string) => void;
   updateMemberStatus: (id: string, status: MemberStatus) => void;
   setMemberInjuredUntil: (id: string, until: number | null) => void;
+  /** Mark a member injured under the recovery engine: status='injured', progress reset to 0,
+   *  `baseRecoveryMs` + `injuredAt` recorded, legacy `injuredUntil` nulled (progress is the driver). */
+  injureMember: (memberId: string, baseRecoveryMs: number, injuredAt: number) => void;
   toggleAutoCast: (memberId: string) => void;
   allocateStat: (memberId: string, stat: StatKey, amount?: number) => void;
   addMemberExp: (memberId: string, exp: number) => void;
   /** Increment missionsCompleted counter for given member IDs */
   incrementMissionsCompleted: (memberIds: string[]) => void;
+  /** Apply one recovery tick: set progress on still-injured members,
+   *  clear (→ idle, fields nulled) members who reached 100%. Single set(). */
+  applyInjuryRecovery: (
+    progressUpdates: { id: string; progress: number }[],
+    recoveredIds: string[],
+  ) => void;
 }
 
 function applyExpGain(member: Member, rawExp: number): Member {
@@ -106,6 +115,22 @@ export const createRosterSlice: StateCreator<RosterSlice> = (set) => ({
       };
     }),
 
+  injureMember: (memberId, baseRecoveryMs, injuredAt) =>
+    set((s) => {
+      const injure = (m: Member): Member => ({
+        ...m,
+        status: 'injured',
+        injuredAt,
+        baseRecoveryMs,
+        recoveryProgress: 0,
+        injuredUntil: null,
+      });
+      if (s.founder?.id === memberId) {
+        return { founder: injure(s.founder) };
+      }
+      return { roster: updateMember(s.roster, memberId, injure) };
+    }),
+
   toggleAutoCast: (memberId) =>
     set((s) => {
       const toggler = (m: Member): Member => {
@@ -154,6 +179,32 @@ export const createRosterSlice: StateCreator<RosterSlice> = (set) => ({
         roster: s.roster.map((m) =>
           idSet.has(m.id) ? { ...m, missionsCompleted: m.missionsCompleted + 1 } : m
         ),
+      };
+    }),
+
+  applyInjuryRecovery: (progressUpdates, recoveredIds) =>
+    set((s) => {
+      if (progressUpdates.length === 0 && recoveredIds.length === 0) return s;
+      const progressById = new Map(progressUpdates.map((u) => [u.id, u.progress]));
+      const recoveredSet = new Set(recoveredIds);
+      const apply = (m: Member): Member => {
+        if (recoveredSet.has(m.id)) {
+          // Fully healed → back to idle, injury fields cleared.
+          return {
+            ...m,
+            status: 'idle',
+            injuredAt: null,
+            baseRecoveryMs: null,
+            injuredUntil: null,
+            recoveryProgress: 0,
+          };
+        }
+        const next = progressById.get(m.id);
+        return next === undefined ? m : { ...m, recoveryProgress: next };
+      };
+      return {
+        founder: s.founder ? apply(s.founder) : s.founder,
+        roster: s.roster.map(apply),
       };
     }),
 });

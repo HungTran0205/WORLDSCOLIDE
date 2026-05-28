@@ -790,6 +790,47 @@ function migrateV28toV29(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+/**
+ * v29→v30: Infirmary bed/queue recovery model. Adds Member recovery fields
+ * (injuredAt/baseRecoveryMs/recoveryProgress) and GuildFacility.lastSkipDay.
+ * In-flight injured members are converted from deadline-driven to progress-driven:
+ * their remaining wall-clock time becomes the new passive base (floored at 30s),
+ * progress resets to 0, and injuredUntil is cleared (no longer the driver).
+ */
+function migrateV29toV30(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+  const now = Date.now();
+
+  const convertInjured = (m: AnyRecord): AnyRecord => {
+    if (m.status !== 'injured') return m;
+    const remaining = Math.max(30_000, ((m.injuredUntil as number) ?? 0) - now);
+    return {
+      ...m,
+      injuredAt: now,
+      baseRecoveryMs: remaining,
+      recoveryProgress: 0,
+      injuredUntil: null,
+    };
+  };
+
+  const founder = gs.founder ? convertInjured(gs.founder as AnyRecord) : null;
+  const roster = Array.isArray(gs.roster)
+    ? (gs.roster as AnyRecord[]).map(convertInjured)
+    : gs.roster;
+
+  const facilities = Array.isArray(gs.facilities)
+    ? (gs.facilities as AnyRecord[]).map((f) =>
+        f.type === 'infirmary' && f.lastSkipDay === undefined ? { ...f, lastSkipDay: null } : f,
+      )
+    : gs.facilities;
+
+  return {
+    ...envelope,
+    version: 30,
+    gameState: { ...gs, founder, roster, facilities } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -814,6 +855,7 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   26: migrateV26toV27,
   27: migrateV27toV28,
   28: migrateV28toV29,
+  29: migrateV29toV30,
 };
 
 /**

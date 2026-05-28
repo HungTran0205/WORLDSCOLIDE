@@ -7,6 +7,30 @@ All notable changes to 2000s A.C — After the Collapse are documented in this f
 
 ---
 
+## [Unreleased] — 2026-05-28 (Infirmary Recovery — Beds, Queue, Progress, Skip)
+
+### feat(infirmary): bed/queue recovery model with per-tick progress and once-per-day Skip
+
+Replaces the flat wall-clock `injuredUntil` auto-clear with the GDD bed/queue model (plan `260527-2037-infirmary-recovery-logic`). Injured members now accrue `recoveryProgress` (0→1) each tick at a rate derived from their bed/queue placement; beds (1/2/3 per level) heal at ×0.6/×0.5/×0.4 of the wall-clock base, queued members heal at the passive ×1.0 so the roster is never stuck. Bed/queue assignment is **derived every tick** (FIFO by `injuredAt`, tie-break by id) — no stored slot state, so recovering a bedded member auto-promotes the next-oldest on the following tick. Capacity stacks across every active infirmary instance (beds sum; heal speed = highest active level). New room card surfaces beds + queue with progress bars, speed badges, and a per-row Skip-5min button gated guild-wide to once per game day via `lastSkipDay` on the primary infirmary.
+
+**Save bump v30**: `Member` gains `injuredAt` / `baseRecoveryMs` / `recoveryProgress` and `GuildFacility` gains `lastSkipDay`. v29→v30 migration converts in-flight injured members from deadline-driven to progress-driven (remaining wall-clock → new passive base, floored at 30s; progress reset to 0; `injuredUntil` cleared).
+
+**Key Files**:
+- `src/game/systems/infirmary-recovery.ts` (NEW) — `resolveInjuryQueue` (single source of truth for who-is-bedded), `processInjuryRecovery` (per-tick engine), `SKIP_THRESHOLD_MS`.
+- `src/game/state/roster-slice.ts` — new `injureMember` / `applyInjuryRecovery` actions; old `setMemberInjuredUntil` retained for save-compat callers only.
+- `src/game/state/guild-slice.ts` — `skipMemberRecovery` action (guild-wide once/day, ≤5min threshold).
+- `src/game/state/game-state.ts` + `src/game/save/save-types.ts` + `src/game/save/save-migrations.ts` — added fields + v29→v30 migration.
+- `src/ui/components/infirmary-room-card.tsx` (NEW) + `src/ui/components/facility-detail-tray.tsx` — required beds + queue card with Skip button.
+- `src/ui/hooks/use-game-tick-loop.ts` — wall-clock `dt` captured pre-`tickClock` and passed into `processInjuryRecovery`.
+- `src/game/systems/mission-tick.ts` + `src/game/systems/arena-result-handler.ts` — injury triggers now call `injureMember(id, baseRecoveryMs, injuredAt)` instead of stamping `injuredUntil`.
+- `src/ui/components/roster-list-item.tsx` — generic "Injured" badge (precise countdown lives on the infirmary card).
+- `tests/infirmary-recovery.test.ts` (NEW, 14 tests) + `src/game/state/guild-slice-infirmary-skip.test.ts` (NEW, 5 tests) + 2 new v29→v30 cases in `save-migrations.test.ts`.
+- `docs/gdd/rooms/infirmary.md` — flipped Implementation status from "TARGET spec / not yet built" to "implemented (save v30)"; refreshed references section.
+
+**Locks verified (no code change)**: assign / promote / mission-dispatch already exclude injured members (`guild-slice.ts:654`, `:507`, `quest-board.tsx:47`). The GDD's "block repair/upgrade while injured" line was dropped — workshop repair/enhance is item-centric (global target lookup), so no per-member gate maps to the architecture.
+
+---
+
 ## [Unreleased] — 2026-05-23 (Deploy Pipeline + Sprite Sheets + Itch Asset Paths)
 
 ### chore(deploy): add itch.io butler deploy pipeline

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { processMissionTick, processInjuryRecovery } from '@/game/systems/mission-tick';
+import { processMissionTick } from '@/game/systems/mission-tick';
 import type { ActiveMission, Member } from '@/game/state/game-state';
 import type { GameStore } from '@/game/state/store';
 
@@ -79,6 +79,9 @@ function makeStore(
     }),
     setMemberInjuredUntil: vi.fn((id: string, until: number | null) => {
       calls.push(`setInjured:${id}:${until}`);
+    }),
+    injureMember: vi.fn((id: string, baseRecoveryMs: number, injuredAt: number) => {
+      calls.push(`injure:${id}:${baseRecoveryMs}:${injuredAt}`);
     }),
     pushMissionResult: vi.fn(() => { calls.push('pushResult'); }),
     incrementMissionsCompleted: vi.fn((ids: string[]) => { calls.push(`incrementMissions:${ids.join(',')}`); }),
@@ -228,23 +231,5 @@ describe('processMissionTick — edge cases', () => {
     const resolvedA = store.calls.some((c) => c === 'completeMission:inst-a' || c === 'failMission:inst-a');
     expect(resolvedA).toBe(true);
     expect(store.calls.some((c) => c.includes('inst-b'))).toBe(false);
-  });
-});
-
-describe('processInjuryRecovery', () => {
-  it('sets injuredUntil to null for expired injuries', () => {
-    const member = makeMember('m1', 'injured');
-    member.injuredUntil = 5_000;
-    const store = makeStore([], [member]);
-    processInjuryRecovery(store, 6_000);
-    expect(store.calls).toContain('setInjured:m1:null');
-  });
-
-  it('does not recover members still within injury duration', () => {
-    const member = makeMember('m1', 'injured');
-    member.injuredUntil = 20_000;
-    const store = makeStore([], [member]);
-    processInjuryRecovery(store, 10_000);
-    expect(store.calls).toHaveLength(0);
   });
 });
