@@ -5,9 +5,11 @@
 
 import { LOGGING_SITE_CONFIG } from '@/game/data/facility-definitions';
 import type { GuildFacility } from '@/game/state/game-state';
+import { useGameStore } from '@/game/state/store';
 
 /** Compact floating card — pinned to top-back of room so characters stay visible */
 export function LoggingSiteZoneCard({ facility }: { facility: GuildFacility }) {
+  const removeFacility = useGameStore((s) => s.removeFacility);
   const reserve = facility.woodReserve ?? 0;
   const max = LOGGING_SITE_CONFIG.woodReserve;
   const pct = reserve / max;
@@ -34,7 +36,10 @@ export function LoggingSiteZoneCard({ facility }: { facility: GuildFacility }) {
       <div style={{ height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3, marginBottom: 4, overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${(pct * 100).toFixed(1)}%`, background: barColor, borderRadius: 3 }} />
       </div>
-      <div style={{ color: '#aaa', fontSize: 11 }}>
+      <div
+        style={{ color: isDepleted ? '#ef4444' : '#aaa', fontSize: 11, cursor: isDepleted ? 'pointer' : 'default' }}
+        onClick={isDepleted ? () => removeFacility(facility.id) : undefined}
+      >
         {Math.floor(reserve)}/{max} wood {isDepleted ? '— tap to remove' : ''}
       </div>
     </div>

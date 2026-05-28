@@ -205,7 +205,7 @@ export function useGameTickLoop() {
           const all: Member[] = wsState.founder ? [wsState.founder, ...wsState.roster] : wsState.roster;
           for (const m of all) {
             if (!m.equipment) continue;
-            for (const slot of ['weapon', 'armor', 'headgear'] as const) {
+            for (const slot of ['weapon', 'armor'] as const) {
               const cur = m.equipment[slot];
               if (cur && cur.id === id) return cur;
             }
@@ -247,7 +247,7 @@ export function useGameTickLoop() {
               if (!m.equipment || ws.updatedEquipment.size === 0) return m;
               let changed = false;
               const nextEq: MemberEquipment = { ...m.equipment };
-              for (const slot of ['weapon', 'armor', 'headgear'] as const) {
+              for (const slot of ['weapon', 'armor'] as const) {
                 const cur = nextEq[slot];
                 if (cur) {
                   const repl = ws.updatedEquipment.get(cur.id);

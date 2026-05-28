@@ -2,7 +2,7 @@
 
 ## Application Overview
 
-**Worlds Collide** is a client-side idle RPG built with React + TypeScript, using Zustand for state management and IndexedDB for persistence. The architecture supports offline play through Web Workers and provides a complete save/load system with multi-slot support.
+**2000s A.C — After the Collapse** is a client-side idle RPG built with React + TypeScript, using Zustand for state management and IndexedDB for persistence. The architecture supports offline play through Web Workers and provides a complete save/load system with multi-slot support.
 
 ## Architecture Diagram
 
@@ -113,7 +113,7 @@ For detailed implementation, see:
 
 ## Combat Stage Specification (v1.28+ — Platformer Layout Foundation)
 
-**Status**: Phases 01–06 complete (phases 07+ deferred). Full authoring guide: [`combat-stage-spec.md`](./combat-stage-spec.md).
+**Status**: Phases 01–06 complete (phases 07+ deferred). Full authoring guide: [`gdd/06-combat.md`](./gdd/06-combat.md).
 
 Typed DSL decouples stage design from hardcoded global positions. Stages own platform geometry, spawn anchors, decals, and background references. Supports multi-tier side-scroller layouts with optional Y-axis spatial elevation.
 

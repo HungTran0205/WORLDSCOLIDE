@@ -1,6 +1,6 @@
 # Codebase Summary
 
-**Worlds Collide** — An HD-2D auto-RPG idle guild builder where civilizations collide. Build your guild hall, recruit members from different civilizations, dispatch quests, and watch your guild grow — even while you're away.
+**2000s A.C — After the Collapse** — An HD-2D auto-RPG idle guild builder set 2000 years after a civilizational collapse. Build your guild hall, recruit members from Vietnamese-inspired civilizations, dispatch quests, and watch your guild grow — even while you're away.
 
 **Last Updated**: 2026-05-23 (Deploy Pipeline + Sprite Sheets + Itch Asset Paths)
 

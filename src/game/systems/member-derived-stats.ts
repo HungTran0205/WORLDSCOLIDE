@@ -7,6 +7,7 @@
 import type { Member } from '@/game/state/game-state';
 import { calcDerivedCombatStats, type DerivedCombatStats } from './derived-combat-stats';
 import { calcDerivedGuildStats, type DerivedGuildStats } from './derived-guild-stats';
+import { calcGearBonuses } from './equipment-bonuses';
 
 export type { DerivedCombatStats } from './derived-combat-stats';
 export type { DerivedGuildStats } from './derived-guild-stats';
@@ -25,8 +26,9 @@ export function calcMemberDerivedStats(
   member: Member,
   weaponBaseSpeedMs: number = 1800,
 ): MemberDerivedStats {
+  const gearBonuses = calcGearBonuses(member.equipment ?? null);
   return {
-    combat: calcDerivedCombatStats(member.stats, member.level, weaponBaseSpeedMs),
+    combat: calcDerivedCombatStats(member.stats, member.level, weaponBaseSpeedMs, gearBonuses),
     guild: calcDerivedGuildStats(member.stats, member.level),
   };
 }

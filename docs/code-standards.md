@@ -933,7 +933,7 @@ Plan: `plans/260509-1253-standard-tile-floor-system/phase-08-floor-decal-aoe-tel
 
 ## Combat Stage Specification (NEW — Phase 03+ Platformer DSL)
 
-Stages are now defined via typed pure-data specs rather than hardcoded global positions. See [`combat-stage-spec.md`](./combat-stage-spec.md) for full authoring guide covering:
+Stages are now defined via typed pure-data specs rather than hardcoded global positions. See [`gdd/06-combat.md`](./gdd/06-combat.md) for full authoring guide covering:
 - Type hierarchy (CombatStageSpec, PlatformSpec, SpawnSlot, DecalPlacement, DecalDensitySpec)
 - Render flow (data projection → platform rendering → spawn anchor reading)
 - Decal patterns (manual vs scatter; anti-pattern warnings)

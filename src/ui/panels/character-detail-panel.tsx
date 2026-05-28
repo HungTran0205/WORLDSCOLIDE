@@ -6,10 +6,11 @@ import { getSpritePath } from '@/scene/sprites/sprite-path-resolver';
 import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
 import { expToNextLevel } from '@/game/systems/leveling-system';
-import { calcMaxHp } from '@/game/systems/combat-formulas';
+import { calcMemberDerivedStats } from '@/game/systems/member-derived-stats';
 import { getEquipmentTemplate } from '@/game/data/equipment-templates';
 import type { EquipmentSlot } from '@/game/data/equipment-templates';
 import type { EquipmentItem } from '@/game/state/game-state';
+import type { EquipmentSlotData } from '@/game/data/workshop-types';
 import { StatsTab } from '@/ui/components/character-tabs/stats-tab';
 import { DEFAULT_MEDICINE_SLOTS } from '@/game/state/guild-slice';
 import { ITEM_DATABASE } from '@/game/data/items';
@@ -62,7 +63,7 @@ export function CharacterDetailPanel({
 
   const expNeeded = expToNextLevel(member.level);
   const expPct    = Math.min(100, Math.floor((member.exp / expNeeded) * 100));
-  const maxHp     = calcMaxHp(member.stats.END, member.level);
+  const maxHp     = calcMemberDerivedStats(member).combat.maxHp;
   const isMerc    = member.rank === 'MERCENARY';
   const civConfig = CIV_CONFIG[member.civilization as Civilization];
 
@@ -162,7 +163,7 @@ export function CharacterDetailPanel({
         {tab === 'equipment' && (
           <>
             <p className="char-section-title">{t('characterDetail.gear')}</p>
-            {(['weapon', 'armor', 'headgear'] as const).map(slot => {
+            {(['weapon', 'armor'] as const).map(slot => {
               const equipped = member.equipment?.[slot] ?? null;
               const tpl = equipped ? getEquipmentTemplate(equipped.templateId) : null;
               return (
@@ -173,6 +174,11 @@ export function CharacterDetailPanel({
                       <span className="equip-slot-name">{tContent('equipment', equipped.templateId, 'name', tpl.name)}</span>
                       <span className="equip-stat-hint">
                         {tpl.damage ? `⚔${tpl.damage}` : ''}{tpl.defense ? ` 🛡${tpl.defense}` : ''}{tpl.hp ? ` ❤+${tpl.hp}` : ''}
+                        {equipped.slots?.map((s: EquipmentSlotData, i: number) => (
+                          <span key={i} style={{ color: 'var(--ink-gold-dim)', marginLeft: 4 }}>
+                            {s.statKey === 'HP' ? `❤+${s.value}` : `+${s.value}`}
+                          </span>
+                        ))}
                       </span>
                       {onUnequipGear && (
                         <button className="char-btn" style={{ fontSize: '0.6rem', padding: '2px 8px' }} onClick={() => onUnequipGear(slot)}>{t('characterDetail.remove')}</button>

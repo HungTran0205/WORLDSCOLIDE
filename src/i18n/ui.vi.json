@@ -39,7 +39,9 @@
       "rangeDetail": "{{statKey}} +{{min}} đến +{{max}} ({{category}})",
       "confirmTitle": "Xác Nhận Đúc Lại",
       "confirmLabel": "Đúc Lại",
-      "confirmBody": "Đúc lại {{statKey}} {{current}} → khoảng {{min}}-{{max}}? Giá trị mới có thể thấp hơn hiện tại."
+      "confirmBody": "Đúc lại {{statKey}} {{current}} → khoảng {{min}}-{{max}}? Giá trị mới có thể thấp hơn hiện tại.",
+      "clickToPick": "Nhấn để chọn trang bị ↓",
+      "selectBelow": "Chọn từ danh sách ↓"
     },
     "repair": {
       "damagedTitle": "Trang Bị Bị Hỏng",
@@ -509,7 +511,6 @@
     "slot": {
       "weapon": "Vũ Khí",
       "armor": "Giáp",
-      "headgear": "Mũ",
       "empty": "—"
     },
     "medSlot": "Thuốc {{index}}",
@@ -739,7 +740,8 @@
     "damage": "Sát Thương",
     "defense": "Phòng Thủ",
     "hp": "HP",
-    "durability": "Độ Bền"
+    "durability": "Độ Bền",
+    "affixes": "Phụ Lực"
   },
   "inventoryExpansion": {
     "expandSlots": "+{{count}} ô",

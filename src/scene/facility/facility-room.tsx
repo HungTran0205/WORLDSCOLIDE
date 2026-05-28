@@ -22,6 +22,8 @@ import { AlchemyZoneCard } from '../alchemy/facility-room-alchemy-decor';
 import { AlchemyWalls } from '../alchemy/facility-room-alchemy-walls';
 import { WorkshopWalls } from '../workshop/workshop-walls';
 import { TavernWalls } from '../tavern/tavern-walls';
+import { InfirmaryWalls } from '../infirmary/infirmary-walls';
+import { InfirmaryLights } from '../infirmary/infirmary-lights';
 import { TorchFireEffect } from '../vfx/torch-fire-particles';
 import { TiledFloor, type TileTextureSpec } from '@/scene/sprites/tiled-floor';
 import type { GuildFacility, FacilityType } from '@/game/state/game-state';
@@ -40,7 +42,7 @@ const WALL_THICKNESS = 0.2;
 const FACILITY_TILE_PATH: Record<FacilityType, TileTextureSpec> = {
   tavern: '/tiles/2d/32px/dirt-base_0001.png',
   'training-yard': '/tiles/2d/32px/paving-stone-32_0002.png',
-  infirmary: '/tiles/2d/32px/paving-stone-32_0003.png',
+  infirmary: '/tiles/2d/64px/wood-guild-floor_0004.png',
   'logging-site': {
     main: '/tiles/2d/32px/forest-grass-32_0003.png',
     variants: [
@@ -68,6 +70,8 @@ const FACILITY_TILE_PATH: Record<FacilityType, TileTextureSpec> = {
  */
 const FACILITY_TILE_WORLD_SIZE: Partial<Record<FacilityType, number>> = {
   'alchemy-lab': 2,
+  // Larger cells to match the wooden-plank scale (same as alchemy/guild floor).
+  infirmary: 2,
 };
 
 /**
@@ -175,11 +179,13 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
   const isAlchemy = facility.type === 'alchemy-lab';
   const isWorkshop = facility.type === 'workshop';
   const isTavern = facility.type === 'tavern';
+  const isInfirmary = facility.type === 'infirmary';
 
   return (
     <group>
-      {/* Room point light — always mounted, intensity toggled to prevent shader recompilation lag */}
-      {!isAlchemy && (
+      {/* Room point light — always mounted, intensity toggled to prevent shader recompilation lag.
+          Infirmary opts out: its light comes from the central ether crystal (InfirmaryLights). */}
+      {!isAlchemy && !isInfirmary && (
         <pointLight
           position={[cx, isLoggingSite ? 8 : 2.5, cz]}
           color={light.color}
@@ -188,6 +194,8 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
           decay={isLoggingSite ? 1 : 2}
         />
       )}
+      {/* Infirmary — golden ether crystal key + radiate fill + pod flicker */}
+      {isInfirmary && <InfirmaryLights cx={cx} cz={cz} isActive={isActive} />}
       {/* Stone quarry ambient fill */}
       {isQuarry && (
         <ambientLight color="#9999bb" intensity={isActive ? 0.6 : 0} />
@@ -264,6 +272,8 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
         <WorkshopWalls cx={cx} cz={cz} />
       ) : isTavern ? (
         <TavernWalls cx={cx} cz={cz} />
+      ) : isInfirmary ? (
+        <InfirmaryWalls cx={cx} cz={cz} />
       ) : (
         <>
           <mesh position={[cx, WALL_HEIGHT / 2, oz]}>

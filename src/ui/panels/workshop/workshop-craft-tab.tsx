@@ -130,11 +130,19 @@ export function WorkshopCraftTab({ facility }: Props) {
       {/* Template selector */}
       <div className="ws-section">
         <div className="ws-section-title">{t('workshop.craft.template')}</div>
-        <select className="ws-select" value={effectiveTemplateId} onChange={(e) => setTemplateId(e.target.value as EquipmentTemplateId)}>
+        <div className="ws-template-grid">
           {eligibleTemplates.map((tpl) => (
-            <option key={tpl.id} value={tpl.id}>{tpl.name}</option>
+            <button
+              key={tpl.id}
+              className={`ws-mat-cell ws-tpl-cell ${effectiveTemplateId === tpl.id ? 'is-selected' : ''}`}
+              onClick={() => setTemplateId(tpl.id)}
+              title={tpl.name}
+            >
+              <GameIcon category="item" id={tpl.id} size={32} fallbackText={tpl.name.slice(0, 2)} />
+              <span className="ws-tpl-name">{tpl.name}</span>
+            </button>
           ))}
-        </select>
+        </div>
       </div>
 
       {/* Path indicator + range */}

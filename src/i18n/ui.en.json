@@ -39,7 +39,9 @@
       "rangeDetail": "{{statKey}} +{{min}} to +{{max}} ({{category}})",
       "confirmTitle": "Confirm Reroll",
       "confirmLabel": "Reroll",
-      "confirmBody": "Reroll {{statKey}} {{current}} → range {{min}}-{{max}}? New value can be lower than current."
+      "confirmBody": "Reroll {{statKey}} {{current}} → range {{min}}-{{max}}? New value can be lower than current.",
+      "clickToPick": "Click to pick equipment ↓",
+      "selectBelow": "Select from list ↓"
     },
     "repair": {
       "damagedTitle": "Damaged Equipment",
@@ -509,7 +511,6 @@
     "slot": {
       "weapon": "Weapon",
       "armor": "Armor",
-      "headgear": "Headgear",
       "empty": "—"
     },
     "medSlot": "Med {{index}}",
@@ -739,7 +740,8 @@
     "damage": "Damage",
     "defense": "Defense",
     "hp": "HP",
-    "durability": "Durability"
+    "durability": "Durability",
+    "affixes": "Affixes"
   },
   "inventoryExpansion": {
     "expandSlots": "+{{count}} slots",

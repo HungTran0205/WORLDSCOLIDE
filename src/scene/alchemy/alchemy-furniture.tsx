@@ -83,7 +83,7 @@ export function AlchemyLabFurniture({ cx, cz }: { cx: number; cz: number }) {
         light.shadow.needsUpdate = true;
         light.castShadow = true;
       } else {
-        // Dispose map trước castShadow=false để ShadowNode không access null map
+        // Dispose map trước =false để ShadowNode không access null map
         if (light.shadow.map) {
           light.shadow.map.dispose();
           (light.shadow as { map: null }).map = null;
@@ -122,11 +122,11 @@ export function AlchemyLabFurniture({ cx, cz }: { cx: number; cz: number }) {
         texture="/decals/floor/magic-rune-circle.png"
       />
 
-      <RoomProp castShadow path="/models/furnitures/Verdant_Pipe_Crossroa.glb" position={[cx  - 2.55 , 0, cz - 0.2]} targetHeight={0.5} rotY={0} />
+      <RoomProp  path="/models/furnitures/Verdant_Pipe_Crossroa.glb" position={[cx  - 2.55 , 0, cz - 0.2]} targetHeight={0.5} rotY={0} />
       {/* Reactor — click to open the brewing panel for this alchemy-lab instance.
           Taller hitbox to match the 3.1u reactor body. */}
       <InteractiveFacilityObject
-        castShadow
+        
         glbPath="/models/furnitures/alchemy_reactor.glb"
         position={[cx, 0, cz - 0.2]}
         targetHeight={3.1}
@@ -134,25 +134,26 @@ export function AlchemyLabFurniture({ cx, cz }: { cx: number; cz: number }) {
         hitboxSize={[2.4, 3.2, 2.4]}
         facilityType="alchemy-lab"
       />
-      <RoomProp castShadow path="/models/furnitures/Green_bamboo_tube.glb" position={[cx, 0, cz - 2.1]} targetHeight={0.5} rotY={1.5} />
+      <RoomProp  path="/models/furnitures/Green_bamboo_tube.glb" position={[cx, 0, cz - 2.1]} targetHeight={0.5} rotY={1.5} />
       <SteamVentEffect position={[cx + 1.5, 3.3, cz - 0.1]} scale={1.5} />
-      <RoomProp castShadow path="/models/furnitures/alchemy_shelf.glb" position={[cx - 2.7, 0, cz - 2.5]} targetHeight={2.7} rotY={Math.PI / 2} />
-      <RoomProp castShadow path="/models/furnitures/alchemy_silo.glb" position={[cx - 2.8, 0, cz + 1.2]} targetHeight={2.4} rotY={Math.PI / 0.4} />
-      <RoomProp castShadow path="/models/furnitures/alchemy_workbend.glb" position={[cx - 1, 0, cz + 3]} targetHeight={1.5} rotY={Math.PI / -1} />
+      
+      <RoomProp  path="/models/furnitures/alchemy_shelf.glb" position={[cx - 2.7, 0, cz - 2.5]} targetHeight={2.7} rotY={Math.PI / 2} />
+      <RoomProp  path="/models/furnitures/alchemy_silo.glb" position={[cx - 2.8, 0, cz + 1.2]} targetHeight={2.4} rotY={Math.PI / 0.4} />
+      <RoomProp  path="/models/furnitures/alchemy_workbend.glb" position={[cx - 1, 0, cz + 3]} targetHeight={1.5} rotY={Math.PI / -1} />
       <pointLight position={[cx - 1, 1.1, cz + 3]} color="#66ffcc" intensity={0.7} distance={1.8} decay={2} />
-      <RoomProp castShadow path="/models/furnitures/p_vibrant_han_2.glb" position={[cx - 2.6, 0, cz + 3.0]} targetHeight={0.9} rotY={1.5} />
-      <RoomProp castShadow path="/models/furnitures/alchemists-curio-cab.glb" position={[cx + 2, -0.1, cz - 3]} targetHeight={1.5} rotY={0} />
+      <RoomProp  path="/models/furnitures/p_vibrant_han_2.glb" position={[cx - 2.6, 0, cz + 3.0]} targetHeight={0.9} rotY={1.5} />
+      <RoomProp  path="/models/furnitures/alchemists-curio-cab.glb" position={[cx + 2, -0.1, cz - 3]} targetHeight={1.5} rotY={0} />
 
       {/* Oil lamp — dimmed */}
       <group position={[cx + 2.4, 0.5, cz - 2.8]}>
-        <RoomProp castShadow path="/models/furnitures/oil-lamp.glb" position={[0, 0, 0]} targetHeight={0.4} rotY={0} />
+        <RoomProp  path="/models/furnitures/oil-lamp.glb" position={[0, 0, 0]} targetHeight={0.4} rotY={0} />
         <FireVfx offsetY={0.42} scale={0.35} debugLabel="Alchemy OilLamp" />
         <pointLight position={[0, 0.55, 0]} color="#ff9944" intensity={1} distance={2} decay={1} />
       </group>
 
       {/* Candle tome tower — flicker nhẹ */}
       <group position={[cx + 3, 0, cz + 2.0]}>
-        <RoomProp castShadow path="/models/furnitures/candlelit-tome-tower.glb" position={[0, 0, 0]} targetHeight={1.2} rotY={1.5} />
+        <RoomProp  path="/models/furnitures/candlelit-tome-tower.glb" position={[0, 0, 0]} targetHeight={1.2} rotY={1.5} />
         <CandleFireEffect offsetY={1.25} scale={0.9} />
         <group position={[-0.12, 0.2, 0.06]}>
           <CandleFireEffect offsetY={0.82} scale={0.9} />
@@ -163,7 +164,7 @@ export function AlchemyLabFurniture({ cx, cz }: { cx: number; cz: number }) {
         <FlickerPointLight position={[0, 1.1, 0]} color="#ffbb55" baseIntensity={1} distance={1} />
       </group>
 
-      {/* Reactor — 2 spot lights, castShadow toggled via ref (WebGPU reconciliation workaround) */}
+      {/* Reactor — 2 spot lights,  toggled via ref (WebGPU reconciliation workaround) */}
       <spotLight ref={spot1Ref} position={[cx + spotL.posX, spotL.posY, cz + spotL.posZ]} target={reactorTarget1} color={spotL.color} intensity={spotL.intensity} distance={spotL.distance} angle={spotL.angle} penumbra={spotL.penumbra} decay={2} />
       <spotLight ref={spot2Ref} position={[cx + spotR.posX, spotR.posY, cz + spotR.posZ]} target={reactorTarget2} color={spotR.color} intensity={spotR.intensity} distance={spotR.distance} angle={spotR.angle} penumbra={spotR.penumbra} decay={2} />
 

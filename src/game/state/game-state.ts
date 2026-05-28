@@ -27,7 +27,6 @@ export interface EquipmentItem {
 export interface MemberEquipment {
   weapon?: EquipmentItem | null;
   armor?: EquipmentItem | null;
-  headgear?: EquipmentItem | null;
 }
 
 export type StatKey = 'STR' | 'END' | 'INT' | 'DEX' | 'CHA' | 'LCK' | 'AGI';

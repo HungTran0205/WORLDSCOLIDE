@@ -82,7 +82,6 @@
 }
 .equip-slot-box.filled         { border-style: solid; border-color: var(--ink-amber); }
 .equip-slot-box.drop-target    { border-color: var(--ink-gold); background: var(--ink-bg-selected); }
-.equip-slot-box.headgear-full  { grid-column: 1 / -1; max-width: calc(50% - 3px); margin: 0 auto; }
 .equip-slot-label {
   font-family: var(--ink-font-mono);
   font-size: 0.58rem;

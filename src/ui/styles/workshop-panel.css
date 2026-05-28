@@ -158,7 +158,7 @@
 }
 
 /* ── Select / input ─────────────────────────────────────────────── */
-.ws-select, .ws-input {
+.ws-input {
   background: var(--ink-bg-deep);
   border: 1px solid var(--ink-gold-dim);
   color: var(--ink-text);
@@ -168,7 +168,30 @@
   font-size: 0.7rem;
   outline: none;
 }
-.ws-input:focus, .ws-select:focus { border-color: var(--ink-gold); }
+.ws-input:focus { border-color: var(--ink-gold); }
+
+/* ── Template icon grid ─────────────────────────────────────────── */
+.ws-template-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ws-tpl-cell {
+  flex-direction: column;
+  gap: 4px;
+  min-width: 56px;
+  height: auto;
+  padding: 6px 4px;
+}
+.ws-tpl-name {
+  font-size: 10px;
+  text-align: center;
+  line-height: 1.2;
+  max-width: 56px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ── Path card ──────────────────────────────────────────────────── */
 .ws-path-card {
@@ -238,6 +261,55 @@
   color: var(--ink-gold);
   border-color: var(--ink-gold);
 }
+
+/* ── Enhance slot (compact equipment input target) ──────────────── */
+.ws-enhance-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  min-height: 52px;
+  border: 1px dashed var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.02);
+  transition: background 120ms, border-color 120ms;
+}
+.ws-enhance-slot:hover { background: var(--ink-bg-hover); border-color: var(--ink-gold); }
+.ws-enhance-slot.has-item {
+  border-style: solid;
+  background: var(--ink-bg-selected);
+  cursor: default;
+}
+.ws-enhance-slot-hint {
+  font-family: var(--ink-font-mono);
+  font-size: 0.62rem;
+  color: var(--ink-text-muted);
+  font-style: italic;
+  flex: 1;
+  text-align: center;
+}
+.ws-enhance-slot-name {
+  font-family: var(--ink-font-body);
+  font-size: 0.78rem;
+  color: var(--ink-text);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-enhance-slot-clear {
+  background: none;
+  border: 1px solid var(--ink-gold-dim);
+  color: var(--ink-text-muted);
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: var(--ink-radius-sm);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.ws-enhance-slot-clear:hover { border-color: var(--ink-status-bad); color: var(--ink-status-bad); }
 
 /* ── Equipment list rows ────────────────────────────────────────── */
 .ws-eq-list { display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow-y: auto; }

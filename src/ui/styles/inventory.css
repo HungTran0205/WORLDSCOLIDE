@@ -502,3 +502,15 @@
 .inv-expand-cost { font-size: 0.6rem; color: rgba(160,128,80,0.7); }
 .inv-expand-cost--unaffordable { color: var(--ink-status-bad, #e74c3c); }
 .inv-expand-maxed { font-size: var(--ink-fs-tiny); color: rgba(160,128,80,0.4); font-style: italic; }
+
+/* ── Affix chips (equipment slot bonuses) ── */
+.inv-detail-affix-chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.inv-detail-affix-chip {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid rgba(212, 168, 67, 0.35);
+  border-radius: 8px;
+  color: #d4a843;
+  font-size: 0.5rem;
+  font-family: var(--ink-font-mono, monospace);
+}
