@@ -436,6 +436,78 @@ describe('migrateSave', () => {
     expect(ams[0].instanceId).not.toBe(ams[1].instanceId);
   });
 
+  // v29→v30: infirmary bed/queue recovery model. Converts in-flight injured members from
+  // the old deadline-driven model to the progress-driven one and seeds lastSkipDay on the
+  // infirmary facility.
+  it('migrates v29→v30: injured members get baseRecoveryMs/injuredAt/recoveryProgress + cleared injuredUntil', () => {
+    const futureUntil = Date.now() + 120_000;
+    const envelope = {
+      version: 29,
+      savedAt: Date.now(),
+      metadata: { slotId: 1, guildName: 'Test', guildLevel: 1, playTimeMs: 0, founderName: 'F', createdAt: 0, updatedAt: 0 },
+      gameState: {
+        gameTime: 0, realTimeLastTick: 0, guildName: 'Test', guildLevel: 1, gold: 100,
+        guildHall: { level: 1, floorTiles: [{ x: 0, z: 0, color: '#DAA520' }], furniture: [] },
+        settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high', shadowsEnabled: false, bloomEnabled: false, bloomThreshold: 0.85, atmosphericEnabled: true },
+        founder: null,
+        roster: [
+          { id: 'hurt', name: 'Hurt', level: 5, exp: 0, stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 }, unallocatedPoints: 0, skill: null, status: 'injured', injuredUntil: futureUntil, civilization: 'LinhSon', isFounder: false, rank: 'MEMBER', missionsCompleted: 0, rarity: 1, traits: [] },
+          { id: 'ok',   name: 'Ok',   level: 5, exp: 0, stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 }, unallocatedPoints: 0, skill: null, status: 'idle',     injuredUntil: null,        civilization: 'LinhSon', isFounder: false, rank: 'MEMBER', missionsCompleted: 0, rarity: 1, traits: [] },
+        ],
+        completedMissions: [], tutorialStep: 'complete',
+        tavern: { level: 1, keeperId: null, reputation: 0, currentRoster: [], rerolledToday: false, factionBias: null, rumor: null, mercContracts: [], pendingPrompts: [], lastDayProcessed: 0, reputationLastTickWeek: 0, globalNegotiationDebuffUntilDay: null, veteranPool: [] },
+        inventory: { items: {} },
+        facilities: [
+          { id: 'infirmary', type: 'infirmary', level: 2, assignedMemberIds: [], placedSlot: 0 },
+        ],
+        activeMissions: [],
+      },
+    };
+    const result = migrateSave(envelope as any);
+    expect(result.version).toBe(SAVE_VERSION);
+
+    const roster = (result.gameState as any).roster;
+    const hurt = roster.find((m: any) => m.id === 'hurt');
+    expect(hurt.injuredUntil).toBeNull();
+    expect(typeof hurt.injuredAt).toBe('number');
+    expect(typeof hurt.baseRecoveryMs).toBe('number');
+    expect(hurt.baseRecoveryMs).toBeGreaterThanOrEqual(30_000); // floor enforced
+    expect(hurt.recoveryProgress).toBe(0);
+
+    // Healthy members are untouched.
+    const ok = roster.find((m: any) => m.id === 'ok');
+    expect(ok.status).toBe('idle');
+    expect(ok.injuredAt).toBeUndefined();
+    expect(ok.baseRecoveryMs).toBeUndefined();
+
+    // Infirmary gains lastSkipDay (null = never used).
+    const infirmary = (result.gameState as any).facilities.find((f: any) => f.id === 'infirmary');
+    expect(infirmary.lastSkipDay).toBeNull();
+  });
+
+  it('migrates v29→v30: stale injuredUntil floors baseRecoveryMs at 30s (not a negative value)', () => {
+    const envelope = {
+      version: 29,
+      savedAt: Date.now(),
+      metadata: { slotId: 1, guildName: 'Test', guildLevel: 1, playTimeMs: 0, founderName: 'F', createdAt: 0, updatedAt: 0 },
+      gameState: {
+        gameTime: 0, realTimeLastTick: 0, guildName: 'Test', guildLevel: 1, gold: 100,
+        guildHall: { level: 1, floorTiles: [{ x: 0, z: 0, color: '#DAA520' }], furniture: [] },
+        settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high', shadowsEnabled: false, bloomEnabled: false, bloomThreshold: 0.85, atmosphericEnabled: true },
+        founder: { id: 'f1', name: 'F', level: 5, exp: 0, stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 }, unallocatedPoints: 0, skill: null, status: 'injured', injuredUntil: 0 /* in the past */, civilization: 'LinhSon', isFounder: true, rank: 'COMMANDER', missionsCompleted: 0, rarity: 1, traits: [] },
+        roster: [], completedMissions: [], tutorialStep: 'complete',
+        tavern: { level: 1, keeperId: null, reputation: 0, currentRoster: [], rerolledToday: false, factionBias: null, rumor: null, mercContracts: [], pendingPrompts: [], lastDayProcessed: 0, reputationLastTickWeek: 0, globalNegotiationDebuffUntilDay: null, veteranPool: [] },
+        inventory: { items: {} },
+        facilities: [{ id: 'infirmary', type: 'infirmary', level: 0, assignedMemberIds: [], placedSlot: null }],
+        activeMissions: [],
+      },
+    };
+    const result = migrateSave(envelope as any);
+    const founder = (result.gameState as any).founder;
+    expect(founder.baseRecoveryMs).toBe(30_000);
+    expect(founder.injuredUntil).toBeNull();
+  });
+
   it('throws for version higher than SAVE_VERSION', () => {
     const futureEnvelope = { ...VALID_SAVE_ENVELOPE, version: 999 };
     expect(() => migrateSave(futureEnvelope)).toThrow(/newer than supported/);

@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Member } from '@/game/state/game-state';
 import { expToNextLevel } from '@/game/systems/leveling-system';
@@ -36,21 +35,11 @@ export function RosterListItem({ member, isSelected, activeMissionName, onClick 
   const statusColor = STATUS_COLORS[member.status] ?? '#aaa';
   const civColor = getCivColor(member.civilization);
 
-  // Refresh injury countdown
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (member.status !== 'injured') return;
-    const timer = setInterval(() => setNow(Date.now()), 10_000);
-    return () => clearInterval(timer);
-  }, [member.status]);
-
+  // Precise injury countdown lives in the infirmary card; here we just show the badge label.
   const labelKey = STATUS_LABEL_KEYS[member.status];
   let statusLabel = labelKey ? t(labelKey) : member.status;
   if (member.status === 'on-mission' && activeMissionName) {
     statusLabel = activeMissionName;
-  } else if (member.status === 'injured' && member.injuredUntil) {
-    const mins = Math.max(1, Math.ceil((member.injuredUntil - now) / 60000));
-    statusLabel = t('roster.listItem.injuredCountdown', { mins });
   }
 
   return (

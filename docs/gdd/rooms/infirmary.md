@@ -1,9 +1,9 @@
 # Room: Infirmary
 
 **Def:** `src/game/data/facility-definitions.ts` — `FACILITY_DEFINITIONS.infirmary`
-**System:** injury recovery via member `status` / `injuredUntil` (+ planned `baseRecoveryMs` / `recoveryProgress`) fields in `src/game/state/game-state.ts`; recovery tick in `src/game/systems/mission-tick.ts` → `processInjuryRecovery`
+**System:** injury recovery via member `status` / `injuredAt` / `baseRecoveryMs` / `recoveryProgress` fields in `src/game/state/game-state.ts`; bed/queue resolver + per-tick engine in `src/game/systems/infirmary-recovery.ts` (`resolveInjuryQueue`, `processInjuryRecovery`); skip + lastSkipDay gate in `src/game/state/guild-slice.ts` → `skipMemberRecovery`.
 
-> **Implementation status:** the bed/queue recovery system below is the TARGET spec — not yet built. Current code auto-clears injury on a flat timer (`injuredUntil = now + mission.durationMs × 0.5`) with zero infirmary involvement, no slots, no queue, and no stat scaling. The old `maxHp × 1.2` formula previously documented here never existed in code.
+> **Implementation status:** implemented (plan `260527-2037-infirmary-recovery-logic`, save v30). Recovery is driven by per-tick `recoveryProgress` accrual; beds sum across infirmary instances and heal at the highest active level's speed factor; queued members heal at the passive ×1.0 rate. Skip-5min is gated guild-wide once per game day via `lastSkipDay` on the primary infirmary.
 
 ## Purpose
 
@@ -106,10 +106,12 @@ Guild members who reach HP = 0 in combat: status → `injured`, enter the Infirm
 
 ## References
 
-- Member injury state: `src/game/state/game-state.ts` — `Member.status`, `Member.injuredUntil` (planned: `baseRecoveryMs`, `recoveryProgress`)
-- Recovery tick: `src/game/systems/mission-tick.ts` — `processInjuryRecovery`
-- Injury trigger: `src/game/systems/arena-result-handler.ts`, `src/game/systems/mission-tick.ts` (sets `injuredUntil`)
+- Member injury state: `src/game/state/game-state.ts` — `Member.status`, `Member.injuredAt`, `Member.baseRecoveryMs`, `Member.recoveryProgress` (legacy `injuredUntil` retained for save-compat, no longer the driver)
+- Recovery engine + bed/queue resolver: `src/game/systems/infirmary-recovery.ts` — `processInjuryRecovery`, `resolveInjuryQueue`
+- Skip + once-per-day gate: `src/game/state/guild-slice.ts` — `skipMemberRecovery` (uses `GuildFacility.lastSkipDay` on the primary infirmary)
+- Injury trigger: `src/game/systems/arena-result-handler.ts`, `src/game/systems/mission-tick.ts` (calls `injureMember` with `baseRecoveryMs`/`injuredAt`)
 - Facility def: `src/game/data/facility-definitions.ts`
+- Save migration: `src/game/save/save-migrations.ts` (v29→v30)
 
 ## Open Questions
 

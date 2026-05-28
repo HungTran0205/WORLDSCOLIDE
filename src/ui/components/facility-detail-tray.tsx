@@ -11,6 +11,7 @@ import { handleFirstHaul } from '@/game/systems/tutorial-first-haul-handler';
 import { handleKeeperAssigned } from '@/game/systems/tutorial-keeper-handler';
 import { FacilityMemberAvatar } from './facility-member-avatar';
 import { InkConfirmDialog } from './ink-confirm-dialog';
+import { InfirmaryRoomCard } from './infirmary-room-card';
 
 // ── Bonus preview (extracted from facility-card logic) ──────────────────────
 function getBonusPreview(facility: GuildFacility, members: Member[]): string {
@@ -26,12 +27,6 @@ function getBonusPreview(facility: GuildFacility, members: Member[]): string {
       const totalW = members.reduce((s, m) => s + Math.floor([3, 5, 8][lv - 1] * (1 + m.stats.STR * 0.004)), 0);
       const totalS = members.reduce((s, m) => s + Math.floor([2, 3, 5][lv - 1] * (1 + m.stats.STR * 0.004)), 0);
       return `+${totalW} Wood, +${totalS} Stone/day`;
-    }
-    case 'infirmary': {
-      const avgEnd = members.reduce((s, m) => s + m.stats.END, 0) / members.length;
-      const avgInt = members.reduce((s, m) => s + m.stats.INT, 0) / members.length;
-      const mult = Math.max(0.2, ([0.75, 0.55, 0.40][lv - 1]) - (avgEnd + avgInt) * 0.001);
-      return `${Math.round((1 - mult) * 100)}% faster recovery`;
     }
     case 'logging-site': {
       const total = members.reduce((s, m) => {
@@ -175,10 +170,16 @@ interface FacilityDetailTrayProps {
 
 export function FacilityDetailTray({ selectedSlot, slotMap, onClose }: FacilityDetailTrayProps) {
   const isBuilt = selectedSlot !== null && slotMap.has(selectedSlot);
+  const facility = isBuilt ? slotMap.get(selectedSlot!)! : null;
 
   return (
     <div className={`fp-tray${isBuilt ? ' fp-tray--open' : ''}`}>
-      {isBuilt && <BuiltRoomTray facility={slotMap.get(selectedSlot!)!} onClose={onClose} />}
+      {facility && facility.type === 'infirmary' && (
+        <InfirmaryRoomCard facility={facility} onClose={onClose} />
+      )}
+      {facility && facility.type !== 'infirmary' && (
+        <BuiltRoomTray facility={facility} onClose={onClose} />
+      )}
     </div>
   );
 }

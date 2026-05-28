@@ -6,7 +6,8 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useGameStore } from '@/game/state/store';
 import { GAME_TIME_MULTIPLIER, MS_PER_GAME_DAY } from '@/game/state/clock-slice';
-import { processMissionTick, processInjuryRecovery } from '@/game/systems/mission-tick';
+import { processMissionTick } from '@/game/systems/mission-tick';
+import { processInjuryRecovery } from '@/game/systems/infirmary-recovery';
 import { shouldAdvanceTutorial, getNextStep } from '@/game/systems/tutorial-manager';
 import { processFacilityProduction, processLoggingSiteTick } from '@/game/systems/facility-production-system';
 import { processStoneQuarryTick } from '@/game/systems/stone-quarry-production-system';
@@ -28,6 +29,10 @@ export function useGameTickLoop() {
 
     // Pause game tick during combat arena to prevent injury recovery, tavern refresh, etc.
     if (store.gameScene === 'combat-arena') return;
+
+    // Capture wall-clock delta BEFORE advancing the clock — the recovery engine accrues
+    // progress per real-ms, and tickClock overwrites realTimeLastTick.
+    const dt = Math.max(0, now - store.realTimeLastTick);
 
     // Advance game clock
     store.tickClock(now);
@@ -102,8 +107,8 @@ export function useGameTickLoop() {
     // Tick workshop queues — start pending tasks (skip-on-missing-mat), advance active
     store.tickWorkshopQueues();
 
-    // Recover injured members whose timer expired
-    processInjuryRecovery(store, now);
+    // Accrue infirmary recovery progress for injured members (bed/queue derived per tick)
+    processInjuryRecovery(store, dt);
 
     // Auto-advance tutorial steps with conditions. Re-read fresh state: processMissionTick
     // and mid-tick handlers (e.g. handleTutorialQuestComplete) may have mutated

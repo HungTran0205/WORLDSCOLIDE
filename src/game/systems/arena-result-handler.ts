@@ -58,10 +58,12 @@ export function applyMissionResultSideEffects(
   }
 
   // Injuries scale with mission difficulty (members only — mercs never enter infirmary).
+  // Progress-driven recovery: `baseRecoveryMs` is the passive wall-clock time, `now` the
+  // FIFO ordering key for bed/queue assignment.
   const now = Date.now();
-  const injuryDuration = mission.durationMs * 0.5;
+  const baseRecoveryMs = mission.durationMs * 0.5;
   for (const memberId of memberInjured) {
-    store.setMemberInjuredUntil(memberId, now + injuryDuration);
+    store.injureMember(memberId, baseRecoveryMs, now);
   }
 
   // Phase 04: tavern merc-contract bookkeeping (RP, defeat rep, veteranPool).

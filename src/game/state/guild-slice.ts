@@ -32,6 +32,8 @@ import type { InventoryState } from './game-state';
 import type { InventorySlice } from './inventory-slice';
 import type { RosterSlice } from './roster-slice';
 import type { ClockSlice } from './clock-slice';
+import { MS_PER_GAME_DAY } from './clock-slice';
+import { resolveInjuryQueue, SKIP_THRESHOLD_MS } from '@/game/systems/infirmary-recovery';
 import type { ItemID } from '@/game/data/items';
 import type { EquipmentSlot } from '@/game/data/equipment-templates';
 import { getEquipmentTemplate } from '@/game/data/equipment-templates';
@@ -89,6 +91,10 @@ export interface GuildSlice extends WorkshopActions {
   applyStoneQuarryProduction: (result: StoneQuarryTickResult) => void;
   /** Apply alchemy lab AC skill XP gains (used by offline catch-up). */
   applyAlchemyProduction: (result: { acXpGains: AcXpGain[] }) => void;
+  /** Guild-wide once-per-game-day Skip: instantly recover one injured member whose
+   *  remaining time is ≤ 5 min. Requires a built infirmary. Sets `lastSkipDay` on the
+   *  primary infirmary. Returns false when blocked (no infirmary / used today / >5 min). */
+  skipMemberRecovery: (memberId: string) => boolean;
   /** Set or clear a member's syringe loadout (auto-use config) */
   setSyringeLoadout: (memberId: string, loadout: SyringeLoadout | null) => void;
   /** Equip an item from equipmentInventory onto a member. Swaps if slot occupied. Returns success. */
@@ -788,6 +794,47 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
         ...(fullState.founder ? { founder: updateMember(fullState.founder) } : {}),
       } as unknown as Partial<GuildSlice>;
     });
+  },
+
+  skipMemberRecovery: (memberId) => {
+    let success = false;
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null; gameTime: number };
+      const members = fullState.founder ? [fullState.founder, ...fullState.roster] : fullState.roster;
+      const { beds, rows } = resolveInjuryQueue(members, s.facilities);
+      if (beds === 0) return s; // no infirmary built → skip unavailable
+
+      // Day gate is guild-wide; the flag lives on the primary infirmary (always built first).
+      const primary = s.facilities.find((f) => f.id === 'infirmary');
+      if (!primary) return s;
+      const currentDay = Math.floor(fullState.gameTime / MS_PER_GAME_DAY);
+      if (primary.lastSkipDay === currentDay) return s; // already used this game-day
+
+      const row = rows.find((r) => r.member.id === memberId);
+      if (!row || row.remainingMs > SKIP_THRESHOLD_MS) return s; // not injured / too far out
+
+      success = true;
+      // Same reset as applyInjuryRecovery's recovered path.
+      const clearInjury = (m: Member): Member => ({
+        ...m,
+        status: 'idle',
+        injuredAt: null,
+        baseRecoveryMs: null,
+        injuredUntil: null,
+        recoveryProgress: 0,
+      });
+      const facilities = s.facilities.map((f) =>
+        f.id === 'infirmary' ? { ...f, lastSkipDay: currentDay } : f,
+      );
+      if (fullState.founder?.id === memberId) {
+        return { facilities, founder: clearInjury(fullState.founder) } as unknown as Partial<GuildSlice>;
+      }
+      return {
+        facilities,
+        roster: fullState.roster.map((m) => (m.id === memberId ? clearInjury(m) : m)),
+      } as unknown as Partial<GuildSlice>;
+    });
+    return success;
   },
 
   setSyringeLoadout: (memberId, loadout) => {

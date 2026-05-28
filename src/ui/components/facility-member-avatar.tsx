@@ -6,7 +6,7 @@ import { getSpritePath, getAvatarPath } from '@/scene/sprites/sprite-path-resolv
 
 interface FacilityMemberAvatarProps {
   member: Member;
-  onUnassign: (id: string) => void;
+  onUnassign?: (id: string) => void;
 }
 
 export function FacilityMemberAvatar({ member, onUnassign }: FacilityMemberAvatarProps) {
@@ -17,7 +17,9 @@ export function FacilityMemberAvatar({ member, onUnassign }: FacilityMemberAvata
     <div className="fp-avatar-card">
       <div className="fp-avatar-frame">
         <img src={src} alt={member.name} className="fp-avatar-img" />
-        <button className="fp-avatar-remove" onClick={() => onUnassign(member.id)}>×</button>
+        {onUnassign && (
+          <button className="fp-avatar-remove" onClick={() => onUnassign(member.id)}>×</button>
+        )}
       </div>
       <div className="fp-avatar-name">{member.name}</div>
     </div>

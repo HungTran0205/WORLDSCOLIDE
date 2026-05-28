@@ -781,6 +781,16 @@
     "dropHint": "Drag ingredient here",
     "lockedHint": "Unlocks at Alchemy Lv.{{level}}"
   },
+  "infirmaryCard": {
+    "header": "Beds: {{occupied}}/{{max}} · Queue: {{queue}} waiting",
+    "bedsLabel": "Beds",
+    "bedsEmpty": "All beds empty — no injured.",
+    "queueLabel": "Queue",
+    "waitingForBed": "waiting for bed",
+    "skipBtn": "Skip 5m",
+    "speedBadge": "×{{factor}}",
+    "recoveryHint": "Beds heal faster · skip once per game-day"
+  },
   "facilitiesPanel": {
     "title": "FACILITIES",
     "guildLevel": "Guild Lv.{{level}}",

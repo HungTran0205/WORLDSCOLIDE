@@ -334,6 +334,120 @@
 /* Member avatar card (.fp-avatar-*) lives in member-avatar.css — shared with
    the quest-board party slots so the assigned-member tile is identical. */
 
+/* ── Infirmary room card (beds + queue) ──────────────── */
+.fp-inf-section-label {
+  font-family: var(--ink-font-title);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  color: var(--ink-gold);
+  margin: 4px 0 4px;
+}
+.fp-inf-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.fp-inf-empty {
+  font-family: var(--ink-font-mono);
+  font-size: 0.55rem;
+  color: var(--ink-text-muted);
+  font-style: italic;
+  padding: 4px 2px;
+}
+.fp-inf-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px;
+  background: var(--ink-bg-panel-alt, rgba(255,255,255,0.02));
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+}
+.fp-inf-row--queue {
+  opacity: 0.85;
+  background: transparent;
+  border-style: dashed;
+}
+.fp-inf-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.fp-inf-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.fp-inf-row-name {
+  font-family: var(--ink-font-mono);
+  font-size: 0.58rem;
+  color: var(--ink-text-bright, #ddd);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fp-inf-row-badge {
+  font-family: var(--ink-font-mono);
+  font-size: 0.5rem;
+  color: var(--ink-status-ok);
+  background: rgba(109, 191, 109, 0.12);
+  border: 1px solid rgba(109, 191, 109, 0.4);
+  border-radius: var(--ink-radius-sm);
+  padding: 1px 5px;
+}
+.fp-inf-row-pos {
+  font-family: var(--ink-font-mono);
+  font-size: 0.5rem;
+  color: var(--ink-amber);
+}
+.fp-inf-progress {
+  height: 5px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.fp-inf-progress-fill {
+  height: 100%;
+  background: var(--ink-status-ok, #6dbf6d);
+  transition: width 240ms linear;
+}
+.fp-inf-progress--queue .fp-inf-progress-fill {
+  background: var(--ink-amber, #c9a14b);
+}
+.fp-inf-row-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.fp-inf-row-remaining {
+  font-family: var(--ink-font-mono);
+  font-size: 0.52rem;
+  color: var(--ink-text-muted);
+}
+.fp-inf-row-waiting {
+  font-family: var(--ink-font-mono);
+  font-size: 0.5rem;
+  color: var(--ink-text-muted);
+  font-style: italic;
+}
+.fp-inf-skip-btn {
+  font-family: var(--ink-font-mono);
+  font-size: 0.52rem;
+  color: var(--ink-gold);
+  background: var(--ink-bg-selected);
+  border: 1px solid var(--ink-gold);
+  border-radius: var(--ink-radius-sm);
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: background 120ms;
+}
+.fp-inf-skip-btn:hover { background: rgba(212, 168, 67, 0.25); }
+
 /* Assign placeholder card */
 .fp-assign-card {
   width: 48px;
