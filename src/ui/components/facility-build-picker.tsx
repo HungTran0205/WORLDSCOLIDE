@@ -144,7 +144,7 @@ export function FacilityBuildPicker({ slotIdx, onBuildComplete, onClose }: Facil
   const selDef = selectedBp ? FACILITY_DEFINITIONS[selectedBp] : null;
 
   return (
-    <div className="fp-bp-column">
+    <>
       <div className="ink-panel fp-build-picker ink-enter">
         <div className="fp-bp-header">
           <span className="fp-bp-title">{t('facilityTray.buildBtn')}</span>
@@ -187,7 +187,6 @@ export function FacilityBuildPicker({ slotIdx, onBuildComplete, onClose }: Facil
 
       {buildConfirm && selDef && (
         <InkConfirmDialog
-          inline
           title={t('facilityTray.buildConfirmTitle', { name: selDef.name })}
           body={t('facilityTray.buildConfirmBody', { number: slotIdx + 1, cost: costLabel(selDef) })}
           confirmLabel={t('facilityTray.buildConfirmBtn')}
@@ -195,6 +194,6 @@ export function FacilityBuildPicker({ slotIdx, onBuildComplete, onClose }: Facil
           onCancel={() => setBuildConfirm(false)}
         />
       )}
-    </div>
+    </>
   );
 }

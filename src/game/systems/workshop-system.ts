@@ -24,9 +24,14 @@ type Rng = () => number;
 
 // ─── Roll engine ───────────────────────────────────────────────────────────
 
-/** Linear-interpolate within [min, max], rounded to integer. */
+/**
+ * Linear-interpolate within [min, max].
+ * Integer ranges (HP) round to nearest integer.
+ * Fractional ranges (DODGE/BLOCK/ACCURACY/ATTACK_SPEED) round to 4 decimal places.
+ */
 export function rollSlotValue([min, max]: readonly [number, number], rng: Rng): number {
-  return Math.round(min + rng() * (max - min));
+  const raw = min + rng() * (max - min);
+  return max >= 1 ? Math.round(raw) : Math.round(raw * 10000) / 10000;
 }
 
 // ─── Result types ──────────────────────────────────────────────────────────
@@ -36,7 +41,8 @@ export type WorkshopErrorCode =
   | 'TIER_MISMATCH'
   | 'CATEGORY_MISMATCH'
   | 'MATERIAL_DISABLED'
-  | 'INVALID_SLOT';
+  | 'INVALID_SLOT'
+  | 'EQUIP_TYPE_MISMATCH';
 
 export interface CraftSuccess { equipment: EquipmentItem; }
 export interface EnhanceAddSuccess { equipment: EquipmentItem; }
@@ -63,9 +69,9 @@ export function processCraft(payload: CraftPayload, rng: Rng = Math.random): Cra
   const slots: EquipmentSlotData[] = [];
 
   if (payload.monsterMaterial) {
-    // Path B: guaranteed slot rolled from material affinity (if enabled)
+    // Path B: guaranteed slot rolled from material affinity (if enabled + type matches)
     const aff = getAffinity(payload.monsterMaterial);
-    if (aff?.enabled) {
+    if (aff?.enabled && aff.equipmentType === tpl.slot) {
       slots.push({
         category: aff.category,
         statKey: aff.statKey,
@@ -108,6 +114,9 @@ export function processEnhanceAdd(
 ): EnhanceAddResult {
   const aff = getAffinity(monsterMaterial);
   if (!aff?.enabled) return { error: 'MATERIAL_DISABLED' };
+
+  const tpl = getEquipmentTemplate(eq.templateId);
+  if (aff.equipmentType !== tpl.slot) return { error: 'EQUIP_TYPE_MISMATCH' };
 
   const tplTier = getTierForTemplate(eq.templateId);
   if (aff.tier < tplTier) return { error: 'TIER_MISMATCH' };
@@ -199,7 +208,7 @@ export function processDismantle(eq: EquipmentItem, rng: Rng = Math.random): Dis
 
 /**
  * Verifies the inventory has enough of each material the craft would consume:
- * `craftMaterial × craftCost` plus 1 × monsterMaterial when present.
+ * `craftMaterial × craftCost` + each `extraMaterials` entry + 1 × monsterMaterial when present.
  */
 export function validateCraftInput(
   payload: CraftPayload,
@@ -210,6 +219,11 @@ export function validateCraftInput(
 
   if (tpl.craftMaterial && tpl.craftCost) {
     need[tpl.craftMaterial] = tpl.craftCost;
+  }
+  if (tpl.extraMaterials) {
+    for (const [id, qty] of Object.entries(tpl.extraMaterials) as [ItemID, number][]) {
+      need[id] = (need[id] ?? 0) + qty;
+    }
   }
   if (payload.monsterMaterial) {
     need[payload.monsterMaterial] = (need[payload.monsterMaterial] ?? 0) + 1;

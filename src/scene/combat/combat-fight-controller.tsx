@@ -276,7 +276,7 @@ export function CombatFightController() {
     if (!id || !instId) return;
 
     const result = resultOverride ?? engine.getResult();
-    if (engine.syringesConsumed > 0) removeItem('HEALING_SYRINGE', engine.syringesConsumed);
+    if (engine.syringesConsumed > 0) removeItem(engine.loadedSyringeItemId, engine.syringesConsumed);
 
     // Combat resolved — drop snapshot so reload doesn't re-resolve from stale state.
     saveCombatSnapshot(instId, null, 0);

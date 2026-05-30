@@ -197,6 +197,10 @@
       "name": "Da Lợn Rừng",
       "description": "Da dày từ lợn rừng trong rừng."
     },
+    "BEAR_PELT": {
+      "name": "Da Gấu",
+      "description": "Da gấu đột biến dày dặn, quý giá để làm giáp ấm."
+    },
     "WOLF_FANG": {
       "name": "Nanh Sói",
       "description": "Răng nanh sắc bén."
@@ -355,13 +359,19 @@
     "STONE_CROSSBOW": { "name": "Nỏ Đá" },
     "IRON_AXE": { "name": "Rìu Sắt" },
     "IRON_CROSSBOW": { "name": "Nỏ Sắt" },
-    "CLOTH_VEST": { "name": "Áo Vải" },
-    "LEATHER_ARMOR": { "name": "Giáp Da" },
+    "BOAR_FUR_COAT": { "name": "Áo Lông Heo Rừng" },
+    "BEAR_COAT": { "name": "Áo Gấu" },
     "IRON_ARMOR": { "name": "Giáp Sắt" }
   },
   "recipes": {
     "healing-syringe": {
       "name": "Ống Tiêm Hồi Máu"
+    },
+    "healing-syringe-2": {
+      "name": "Ống Tiêm Hồi Máu II"
+    },
+    "healing-syringe-3": {
+      "name": "Ống Tiêm Hồi Máu III"
     }
   },
   "archetypes": {

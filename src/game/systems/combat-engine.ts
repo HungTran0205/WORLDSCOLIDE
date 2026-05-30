@@ -5,6 +5,7 @@
  */
 
 import type { Member, InventoryState } from '@/game/state/game-state';
+import type { ItemID } from '@/game/data/items';
 import type { EnemyTemplate } from '@/game/data/enemies';
 import type { CombatEvent, CombatTick, CombatResult, CombatOutcome } from './combat-types';
 import type { ArenaEntity, Formation, TargetPriority } from './combat-arena-types';
@@ -12,7 +13,7 @@ import { getFormationPosition, DEFAULT_TARGET_PRIORITY } from './combat-arena-ty
 import type { CombatStageSpec } from '@/scene/combat/maps/stage-spec-types';
 import { getStageSpawnPosition } from '@/scene/combat/maps/stage-formation-positions';
 import type { ArenaSpawnPos } from './combat-entity-factory';
-import { calcAutoAttackDamage, calcSkillDamage, rollCrit } from './combat-formulas';
+import { calcAutoAttackDamage, calcSkillDamage, rollCrit, SHIELD_DAMAGE_REDUCTION } from './combat-formulas';
 import { applyEffectTick } from './combat-effects';
 import {
   applyPassiveTick, onDamageDealt,
@@ -22,6 +23,16 @@ import {
 import { findTarget, processAbilities } from './combat-ai';
 import { pickFocusPrimary } from './target-priority-resolver';
 import { memberToArenaEntity, enemyToArenaEntity } from './combat-entity-factory';
+
+/** Heal fraction applied per syringe type. HS1 baseline = 30%, HS2 = 50%, HS3 = 80%. */
+const HEAL_FRACTION_BY_ITEM: Partial<Record<ItemID, number>> = {
+  HEALING_SYRINGE:   0.30,
+  HEALING_SYRINGE_2: 0.50,
+  HEALING_SYRINGE_3: 0.80,
+};
+
+/** Ordered from highest to lowest tier — auto-pick walks this list to find the first owned. */
+const SYRINGE_TIERS: ItemID[] = ['HEALING_SYRINGE_3', 'HEALING_SYRINGE_2', 'HEALING_SYRINGE'];
 
 const LOGIC_TICK_MS = 100;
 const MAX_COMBAT_MS = 120_000; // 2 min hard cap
@@ -55,6 +66,13 @@ export class CombatEngine {
   totalSyringesLoaded = 0;
   /** Syringes actually consumed during combat — deduct this from inventory at combat end */
   syringesConsumed = 0;
+  /**
+   * Which item tier was loaded this combat session. Highest-owned tier is auto-picked
+   * at init; a full type-picker UI would set this explicitly (not yet implemented).
+   */
+  loadedSyringeItemId: ItemID = 'HEALING_SYRINGE';
+  /** Per-entity loaded syringe heal fraction (keyed by entity id). Set at init. */
+  private syringeHealFraction = new Map<string, number>();
   /** Active stage spec — drives spawn anchors (and y per platform). null →
    *  fallback to legacy FORMATION_POSITIONS (y=0). Set during init(). */
   private stageSpec: CombatStageSpec | null = null;
@@ -86,14 +104,21 @@ export class CombatEngine {
     this.nextEnemyIndex = 0;
     this.totalSyringesLoaded = 0;
     this.syringesConsumed = 0;
+    this.syringeHealFraction.clear();
     this.stageSpec = stageSpec ?? null;
+
+    // Auto-pick highest-tier syringe the party owns. Full type-picker UI deferred.
+    const loadedTier = SYRINGE_TIERS.find((id) => (inventory?.items[id] ?? 0) > 0)
+      ?? 'HEALING_SYRINGE';
+    this.loadedSyringeItemId = loadedTier;
+    const healFrac = HEAL_FRACTION_BY_ITEM[loadedTier] ?? 0.30;
 
     // Distribute available syringes evenly among formation members who have loadout configured
     const formationMembers = formation
       .filter(Boolean)
       .map((id) => members.find((m) => m.id === id))
       .filter((m): m is Member => !!m && !!m.syringeLoadout);
-    const totalSyringes = inventory?.items.HEALING_SYRINGE ?? 0;
+    const totalSyringes = inventory?.items[loadedTier] ?? 0;
     const syringeShare = formationMembers.length > 0
       ? Math.floor(totalSyringes / formationMembers.length)
       : 0;
@@ -101,6 +126,9 @@ export class CombatEngine {
       formationMembers.map((m) => [m.id, syringeShare]),
     );
     this.totalSyringesLoaded = syringeShare * formationMembers.length;
+    for (const m of formationMembers) {
+      this.syringeHealFraction.set(m.id, healFrac);
+    }
 
     // Place allies from formation
     formation.forEach((memberId, slotIndex) => {
@@ -327,7 +355,8 @@ export class CombatEngine {
       entity.syringeThresholdPct !== undefined &&
       entity.currentHp / entity.maxHp < entity.syringeThresholdPct
     ) {
-      const healAmt = Math.floor(entity.maxHp * 0.30);
+      const frac = this.syringeHealFraction.get(entity.id) ?? 0.30;
+      const healAmt = Math.floor(entity.maxHp * frac);
       entity.currentHp = Math.min(entity.maxHp, entity.currentHp + healAmt);
       entity.syringesLoaded -= 1;
       this.syringesConsumed += 1;
@@ -431,8 +460,9 @@ export class CombatEngine {
   }
 
   private tryAttack(entity: ArenaEntity, target: ArenaEntity): void {
-    // Generic stat-derived dodge check
-    if (target.dodgeRate > 0 && Math.random() < target.dodgeRate) {
+    // Attacker accuracy reduces effective dodge; clamped to 0 (can't go negative)
+    const effectiveDodge = Math.max(0, target.dodgeRate - (entity.accuracy ?? 0));
+    if (effectiveDodge > 0 && Math.random() < effectiveDodge) {
       this.eventQueue.push({ type: 'dodge', attackerId: entity.id, targetId: target.id });
       entity.nextAttackAt = this.time + entity.attackIntervalMs;
       return;
@@ -472,6 +502,14 @@ export class CombatEngine {
       this.eventQueue.push({ type: 'block', attackerId: entity.id, targetId: target.id, reducedDamage });
       damage = reducedDamage;
       blocked = true;
+    }
+
+    // Shield charge check — applied after block, before HP (order: block → shield → HP).
+    // Each charge absorbs 80% of post-block damage; min 1 chip still lands.
+    if (target.shieldCharges > 0) {
+      damage = Math.max(1, Math.floor(damage * (1 - SHIELD_DAMAGE_REDUCTION)));
+      target.shieldCharges -= 1;
+      this.eventQueue.push({ type: 'shield-break', targetId: target.id, chargesRemaining: target.shieldCharges });
     }
 
     target.currentHp -= damage;

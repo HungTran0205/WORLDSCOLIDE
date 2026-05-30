@@ -7,6 +7,28 @@ All notable changes to 2000s A.C — After the Collapse are documented in this f
 
 ---
 
+## [Unreleased] — 2026-05-29 (Items System Overhaul Waves 1–4)
+
+### feat(items): pelt armor tier, 5 new active affixes, SHIELD mechanic, HS2/HS3 alchemy recipes
+
+**Items system expansion** — four-phase overhaul completing pelt-armor tier, affix combat wiring, SHIELD blocking, and higher-tier syringes. Scope: (1) T1 Boar Fur Coat (BOAR_PELT + WOOD) + T2 Bear Coat (BEAR_PELT + STONE) with extraMaterials schema; (2) 5 new materials active: BAT_WING→DODGE armor, SPIDER_LEGS→ATTACK_SPEED weapon, METAL_PLATE→BLOCK armor, DRONE_SENSOR→ACCURACY weapon, SLIME_KING_CORE→SHIELD armor [1–2 charges]; (3) SHIELD mechanic — fresh charges at combat start, each negates 80% of one hit, applies after BLOCK in damage order; (4) Healing Syringe II (2× SLIME_GEL, AC Lv3, 50% heal) + Healing Syringe III (3× SLIME_GEL, AC Lv5, 80% heal); both with quantity-aware recipe matching. Moonbear now drops BEAR_PELT {0.8,1,1}; cave-bat drops BAT_WING {0.30,1,1}; forest-spider drops SPIDER_LEGS {0.22,1,1}. Equip-type guard enforces armor-only (DODGE/BLOCK/SHIELD) vs weapon-only (ACCURACY/ATTACK_SPEED) affixes.
+
+**Key Files**:
+- `src/game/data/items.ts` — BEAR_PELT + 5 materials now in ITEM_DATABASE; HEALING_SYRINGE_2/3 descriptions
+- `src/game/data/equipment-templates.ts` — BOAR_FUR_COAT + BEAR_COAT with extraMaterials schema
+- `src/game/data/workshop-material-affinity.ts` — 5 materials enabled: BAT_WING (DODGE), SPIDER_LEGS (ATTACK_SPEED), METAL_PLATE (BLOCK), DRONE_SENSOR (ACCURACY), SLIME_KING_CORE (SHIELD)
+- `src/game/data/alchemy-recipes.ts` — HS2 + HS3 recipes + quantity-aware matchRecipe logic
+- `src/game/systems/combat-engine.ts` — SHIELD charge handling in damage order (block → shield → HP)
+- `src/game/systems/derived-combat-stats.ts` — dodgeRate, blockRate, accuracyBonus, attackSpeedBonus, shieldCharges fields
+- `src/game/data/enemies.ts` — moonbear drops BEAR_PELT; cave-bat + forest-spider loot updated
+- `src/i18n/content.vi.json` — HS2/HS3 + pelt armor i18n strings (all keys present, content-coverage green)
+- `docs/gdd/15-items-inventory-system.md` + `docs/gdd/10-items-equipment.md` — docs rewritten; stale claims fixed (syringe auto-use now implemented, affix categories live)
+- `docs/gdd/combat/formulas-damage.md` — documented DODGE/BLOCK/SHIELD damage order, new derived stats (accuracy, attack-speed)
+
+**Deferred (forward-ref note)**: METAL_PLATE + DRONE_SENSOR drop sources; WOLF_FANG/GOBLIN_EAR/ORC_TUSK recipes → tracked in separate Enemy & Mission Overhaul plan.
+
+---
+
 ## [Unreleased] — 2026-05-28 (Infirmary Recovery — Beds, Queue, Progress, Skip)
 
 ### feat(infirmary): bed/queue recovery model with per-tick progress and once-per-day Skip

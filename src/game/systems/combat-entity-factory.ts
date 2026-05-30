@@ -7,12 +7,11 @@ import type { Member, MercContract } from '@/game/state/game-state';
 import type { EnemyTemplate } from '@/game/data/enemies';
 import type { ArenaEntity } from './combat-arena-types';
 import { getAttackRange, DEFAULT_MOVE_SPEED } from './combat-arena-types';
-// calcMaxHp / calcAttackInterval consumed via calcDerivedCombatStats — no direct import needed
 import { calcDerivedCombatStats } from './derived-combat-stats';
 import { createPassiveState, applyPassiveOnInit, snapshotBaseStats } from './combat-passives';
 import { calcGearBonuses } from './equipment-bonuses';
 
-/** Spatial spawn coordinate — y added in phase 05 for multi-platform stages. */
+/** Spatial spawn coordinate — y added for multi-platform stages. */
 export interface ArenaSpawnPos { x: number; y: number; z: number }
 
 /**
@@ -24,15 +23,15 @@ export function memberToArenaEntity(
   pos: ArenaSpawnPos,
   syringeCount = 0,
 ): ArenaEntity {
-  const derived = calcDerivedCombatStats(member.stats, member.level);
   const gear = calcGearBonuses(member.equipment);
+  const derived = calcDerivedCombatStats(member.stats, member.level, 1800, gear);
   const loadout = member.syringeLoadout;
   const entity: ArenaEntity = {
     id: member.id,
     name: member.name,
     isAlly: true,
-    maxHp: derived.maxHp + gear.flatHp,
-    currentHp: derived.maxHp + gear.flatHp,
+    maxHp: derived.maxHp,
+    currentHp: derived.maxHp,
     stats: { ...member.stats },
     skill: member.skill ? { ...member.skill } : null,
     level: member.level,
@@ -53,6 +52,9 @@ export function memberToArenaEntity(
     blockRate: derived.blockRate,
     critDmg: derived.critDmg,
     hpRegenPerSec: derived.hpRegen,
+    accuracy: derived.accuracy,
+    shieldCharges: gear.shieldCharges,
+    shieldChargesMax: gear.shieldCharges,
     position: { x: pos.x, y: pos.y, z: pos.z },
     targetId: null,
     attackRange: getAttackRange(member.archetype),
@@ -140,6 +142,9 @@ export function enemyToArenaEntity(
     blockRate: derived.blockRate,
     critDmg: derived.critDmg,
     hpRegenPerSec: derived.hpRegen,
+    accuracy: 0,
+    shieldCharges: 0,
+    shieldChargesMax: 0,
     position: { x: pos.x, y: pos.y, z: pos.z },
     targetId: null,
     attackRange: 1.5,

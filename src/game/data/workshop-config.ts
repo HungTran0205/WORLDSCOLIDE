@@ -54,13 +54,15 @@ export function getCraftingTime(tier: Tier): number {
   return WORKSHOP_CONFIG.craftTimeByTier[tier];
 }
 
-/** Map a base material item to its weapon/armor tier. */
+/** Map a craft material to its weapon/armor tier. */
 export function getTierForMaterial(itemId: ItemID): Tier {
   switch (itemId) {
     case 'WOOD':
     case 'STONE':
+    case 'BOAR_PELT':
       return 1;
     case 'IRON_ORE':
+    case 'BEAR_PELT':
       return 2;
     default:
       return 1;

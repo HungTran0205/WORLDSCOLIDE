@@ -673,23 +673,6 @@
   pointer-events: auto;
 }
 
-/* Build picker + its inline confirm dialog stack vertically as one left-docked
-   column: the confirm box sits directly beneath the picker panel (same width,
-   same left edge) instead of dead-centering over the game scene. */
-.fp-bp-column {
-  display: flex;
-  flex-direction: column;
-  align-self: flex-start;
-  gap: 10px;
-}
-/* Inline build-confirm: match the picker's 212px width + 20% upscale so it lines
-   up flush under the picker. pointer-events:auto re-enables clicks (the .fp-overlay
-   ancestor sets pointer-events:none; panels opt back in individually). */
-.fp-bp-column .fp-dialog {
-  width: 212px;
-  zoom: 1.2;
-  pointer-events: auto;
-}
 .fp-dialog {
   background: var(--ink-bg-panel);
   border: 2px solid var(--ink-gold);

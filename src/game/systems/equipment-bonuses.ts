@@ -10,18 +10,35 @@ export interface GearBonuses {
   flatDamage: number;
   flatHp: number;
   flatDefense: number;
+  dodgeBonus: number;
+  blockBonus: number;
+  accuracyBonus: number;
+  attackSpeedBonus: number;
+  /** Integer count of shield charges granted at combat start (sum of all SHIELD affixes). */
+  shieldCharges: number;
 }
 
 function applySlotBonuses(slots: EquipmentSlotData[] | undefined, bonus: GearBonuses): void {
   if (!slots) return;
   for (const slot of slots) {
-    if (slot.statKey === 'HP') bonus.flatHp += slot.value;
+    switch (slot.statKey) {
+      case 'HP':           bonus.flatHp          += slot.value; break;
+      case 'DODGE':        bonus.dodgeBonus       += slot.value; break;
+      case 'BLOCK':        bonus.blockBonus       += slot.value; break;
+      case 'ACCURACY':     bonus.accuracyBonus    += slot.value; break;
+      case 'ATTACK_SPEED': bonus.attackSpeedBonus += slot.value; break;
+      case 'SHIELD':       bonus.shieldCharges    += Math.round(slot.value); break;
+    }
   }
 }
 
 /** Compute additive flat gear bonuses from equipped items. Broken gear (durability=0) gives no bonus. */
 export function calcGearBonuses(equipment?: MemberEquipment | null): GearBonuses {
-  const bonus: GearBonuses = { flatDamage: 0, flatHp: 0, flatDefense: 0 };
+  const bonus: GearBonuses = {
+    flatDamage: 0, flatHp: 0, flatDefense: 0,
+    dodgeBonus: 0, blockBonus: 0, accuracyBonus: 0, attackSpeedBonus: 0,
+    shieldCharges: 0,
+  };
   if (!equipment) return bonus;
 
   const { weapon, armor } = equipment;

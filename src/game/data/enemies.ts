@@ -39,7 +39,10 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     id: 'forest-spider', name: 'Forest Spider', level: 1,
     stats: { STR: 4, END: 2, INT: 1, DEX: 3, CHA: 0, LCK: 1, AGI: 5 },
     skill: null, abilities: [{ type: 'poison-attack', chance: 0.10 }],
-    loot: [{ itemId: 'SLIME_GEL', chance: 0.5, min: 1, max: 1 }],
+    loot: [
+      { itemId: 'SLIME_GEL', chance: 0.5, min: 1, max: 1 },
+      { itemId: 'SPIDER_LEGS', chance: 0.22, min: 1, max: 1 },
+    ],
     spriteId: 'forest-spider',
   },
 
@@ -63,7 +66,7 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     stats: { STR: 3, END: 2, INT: 1, DEX: 6, CHA: 0, LCK: 2, AGI: 8 },
     skill: null, abilities: [],
     loot: [
-      { itemId: 'BOAR_PELT', chance: 0.3, min: 1, max: 1 },
+      { itemId: 'BAT_WING', chance: 0.30, min: 1, max: 1 },
       { itemId: 'STONE', chance: 0.35, min: 1, max: 2 },
     ],
     spriteId: 'cave-bat',
@@ -77,7 +80,7 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     id: 'moonbear', name: 'Moonbear', level: 2,
     stats: { STR: 9, END: 12, INT: 1, DEX: 3, CHA: 0, LCK: 2, AGI: 3 },
     skill: null, abilities: [{ type: 'enrage', chance: 0.20 }],
-    loot: [{ itemId: 'BOAR_PELT', chance: 0.8, min: 1, max: 1 }, { itemId: 'WOOD', chance: 0.3, min: 1, max: 2 }],
+    loot: [{ itemId: 'BEAR_PELT', chance: 0.8, min: 1, max: 1 }, { itemId: 'WOOD', chance: 0.3, min: 1, max: 2 }],
     spriteId: 'moonbear',
     isBoss: true,
   },

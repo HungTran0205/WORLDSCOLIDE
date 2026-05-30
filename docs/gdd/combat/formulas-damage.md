@@ -45,15 +45,26 @@ Crit roll: `Math.random() < calcCritRate(lck)` — `combat-formulas.ts:43`.
 
 ---
 
-## Defense, Dodge, Block
+## Defense, Dodge, Block & Shield
 
 | Mechanic | Formula | Cap | Effect |
 |----------|---------|-----|--------|
 | Defense rating | `END / (END+100)` | 75% | Reduces all incoming damage |
-| Dodge rate | `AGI×0.2% + DEX×0.1%` | 30% | Complete avoidance |
-| Block rate | `END×0.2% + STR×0.1%` | 25% | Halves damage on proc |
+| **Dodge rate** | Base: `AGI×0.2% + DEX×0.1%` (cap 30%); + Gear DODGE (cap 20%) | **50%** | Complete avoidance; rolls first in hit resolution |
+| **Block rate** | Base: `END×0.2% + STR×0.1%` (cap 25%); + Gear BLOCK (cap 20%) | **45%** | Halves damage on proc; rolls after dodge, before shield |
+| **Shield charges** | Granted from SLIME_KING_CORE affix (1–2 per equip) | — | Each charge negates 80% of one hit; rolls last (after block) |
 
-<!-- TODO: dodge and block rolls are defined in derived-combat-stats.ts but their integration into combat-engine.ts hit resolution path needs verification — check combat-engine tick where damage is applied -->
+**Damage order:** Block (if proc) → Shield (if charged) → HP. Each blocking/shielding mechanic reduces damage before it applies to health. Dodge prevents hit entirely (no damage calc).
+
+---
+
+## Accuracy & Attack Speed
+
+| Stat | Source | Effect |
+|------|--------|--------|
+| **Accuracy** | DRONE_SENSOR weapon affix [+0.05–0.15] | Subtracts from enemy dodge roll (enemies start at 0 accuracy). Higher accuracy pierces dodge chance |
+| **Attack Speed** | SPIDER_LEGS weapon affix [+0.05–0.12] | Multiplied into weapon base interval → faster attack cooldown. Formula: `interval × (1 − attackSpeedBonus)` |
+| **Skill Haste** | INT stat (cap 30%: `INT×0.3%`) | Reduces cooldowns on special abilities and utility skills |
 
 ---
 

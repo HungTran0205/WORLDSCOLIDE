@@ -35,10 +35,13 @@ function memberToEntity(member: Member): CombatEntity {
     passiveState: createPassiveState(member.civilization),
     dodgeRate: derived.dodgeRate,
     blockRate: derived.blockRate,
+    accuracy: derived.accuracy ?? 0,
     critDmg: derived.critDmg,
     hpRegenPerSec: derived.hpRegen,
     gearFlatDamage: gear.flatDamage,
     gearFlatDefense: gear.flatDefense,
+    shieldCharges: 0,
+    shieldChargesMax: 0,
   };
   applyPassiveOnInit(entity);
   return entity;
@@ -62,8 +65,11 @@ function enemyToEntity(template: EnemyTemplate, index: number): CombatEntity {
     abilities: [...template.abilities],
     dodgeRate: derived.dodgeRate,
     blockRate: derived.blockRate,
+    accuracy: 0,
     critDmg: derived.critDmg,
     hpRegenPerSec: derived.hpRegen,
+    shieldCharges: 0,
+    shieldChargesMax: 0,
   };
 }
 

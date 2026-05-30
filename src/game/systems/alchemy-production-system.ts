@@ -68,8 +68,9 @@ export function advanceAlchemyQueues(
         const out = job.outputItemId as ItemID;
         itemGains[out] = (itemGains[out] ?? 0) + job.outputQuantity;
 
-        // AC XP for healing-syringe jobs — split equally among assigned alchemists
-        if (out === 'HEALING_SYRINGE' && assigned.length > 0) {
+        // AC XP for any healing-syringe tier — split equally among assigned alchemists
+        const SYRINGE_IDS = new Set(['HEALING_SYRINGE', 'HEALING_SYRINGE_2', 'HEALING_SYRINGE_3']);
+        if (SYRINGE_IDS.has(out) && assigned.length > 0) {
           const xpPerMember = job.outputQuantity / assigned.length;
           for (const m of assigned) {
             xpAccum.set(m.id, (xpAccum.get(m.id) ?? 0) + xpPerMember);

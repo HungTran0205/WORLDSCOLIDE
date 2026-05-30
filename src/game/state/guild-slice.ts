@@ -945,8 +945,9 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
         for (const job of f.craftQueue) {
           if (job.remainingSeconds <= 1) {
             completed.push({ itemId: job.outputItemId, qty: job.outputQuantity });
-            // AC XP only for healing-syringe completions, split across assigned alchemists
-            if (job.outputItemId === 'HEALING_SYRINGE' && assignedIds.length > 0) {
+            // AC XP for any healing-syringe tier, split across assigned alchemists
+            const SYRINGE_IDS = new Set(['HEALING_SYRINGE', 'HEALING_SYRINGE_2', 'HEALING_SYRINGE_3']);
+            if (SYRINGE_IDS.has(job.outputItemId) && assignedIds.length > 0) {
               const xpPerMember = job.outputQuantity / assignedIds.length;
               for (const id of assignedIds) {
                 xpAccum.set(id, (xpAccum.get(id) ?? 0) + xpPerMember);

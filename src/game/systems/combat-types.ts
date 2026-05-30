@@ -41,6 +41,12 @@ export interface CombatEntity {
   blockRate: number;
   critDmg: number;
   hpRegenPerSec: number;
+  /** Gear accuracy — subtracts from target dodgeRate before the dodge roll. Enemies: 0. */
+  accuracy: number;
+  /** Remaining hit-shield charges. Each charge absorbs one incoming hit at 80% reduction. Enemies: 0. */
+  shieldCharges: number;
+  /** Charges at combat start — kept for UI display (pip count). Enemies: 0. */
+  shieldChargesMax: number;
 
   // Spatial fields (used by real-time arena, absent in auto-resolve)
   // y is optional — entities on flat (y=0) stages omit it; entities placed
@@ -91,6 +97,7 @@ export type CombatEvent =
   | { type: 'death'; entityId: string }
   | { type: 'dodge'; attackerId: string; targetId: string }
   | { type: 'block'; attackerId: string; targetId: string; reducedDamage: number }
+  | { type: 'shield-break'; targetId: string; chargesRemaining: number }
   | { type: 'heal'; healerId: string; targetId: string; amount: number }
   | { type: 'syringe-used'; entityId: string; healAmount: number }
   | { type: 'wave-cleared'; waveIndex: number }

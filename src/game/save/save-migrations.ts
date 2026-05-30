@@ -831,6 +831,56 @@ function migrateV29toV30(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+/**
+ * v30→v31: Replace CLOTH_VEST/LEATHER_ARMOR with pelt-crafted armors.
+ * Stats are identical — CLOTH_VEST→BOAR_FUR_COAT, LEATHER_ARMOR→BEAR_COAT.
+ * Remaps templateId on equipped armor slots and equipment inventory items.
+ */
+function migrateV30toV31(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+
+  const ARMOR_REMAP: Record<string, string> = {
+    CLOTH_VEST: 'BOAR_FUR_COAT',
+    LEATHER_ARMOR: 'BEAR_COAT',
+  };
+
+  const remapEquipItem = (eq: AnyRecord): AnyRecord => {
+    const remapped = ARMOR_REMAP[eq.templateId as string];
+    return remapped ? { ...eq, templateId: remapped } : eq;
+  };
+
+  const remapMemberEquipment = (m: AnyRecord): AnyRecord => {
+    const eq = m.equipment as AnyRecord | null | undefined;
+    if (!eq) return m;
+    const armor = eq.armor as AnyRecord | null | undefined;
+    if (!armor) return m;
+    const remapped = ARMOR_REMAP[armor.templateId as string];
+    if (!remapped) return m;
+    return { ...m, equipment: { ...eq, armor: { ...armor, templateId: remapped } } };
+  };
+
+  const founder = gs.founder ? remapMemberEquipment(gs.founder as AnyRecord) : null;
+  const roster = Array.isArray(gs.roster)
+    ? (gs.roster as AnyRecord[]).map(remapMemberEquipment)
+    : gs.roster;
+
+  const inventory = (gs.inventory ?? {}) as AnyRecord;
+  const eqInv = Array.isArray(inventory.equipmentInventory)
+    ? (inventory.equipmentInventory as AnyRecord[]).map(remapEquipItem)
+    : inventory.equipmentInventory;
+
+  return {
+    ...envelope,
+    version: 31,
+    gameState: {
+      ...gs,
+      founder,
+      roster,
+      inventory: { ...inventory, equipmentInventory: eqInv },
+    } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -856,6 +906,7 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   27: migrateV27toV28,
   28: migrateV28toV29,
   29: migrateV29toV30,
+  30: migrateV30toV31,
 };
 
 /**

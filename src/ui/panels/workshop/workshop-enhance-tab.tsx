@@ -16,8 +16,16 @@ import { InkConfirmDialog } from '@/ui/components/ink-confirm-dialog';
 import { GameIcon } from '@/ui/components/game-icon';
 import { itemName } from '@/i18n/content-wrappers';
 
-const MONSTER_MATERIALS: ItemID[] = ['SLIME_GEL'];
+const MONSTER_MATERIALS: ItemID[] = [
+  'SLIME_GEL', 'BAT_WING', 'SPIDER_LEGS', 'METAL_PLATE', 'DRONE_SENSOR',
+];
 type Mode = 'add' | 'reroll';
+
+/** Format a slot value for display. Integer stats (HP) show raw number; fractional stats show %. */
+function formatSlotValue(statKey: string, value: number): string {
+  if (statKey === 'HP') return `+${value}`;
+  return `+${(value * 100).toFixed(1)}%`;
+}
 
 interface Props { facility: GuildFacility; }
 
@@ -118,7 +126,7 @@ export function WorkshopEnhanceTab({ facility }: Props) {
               <span className="ws-enhance-slot-name">{selEqTpl?.name}</span>
               <span className="ws-eq-slots">
                 {(selEq.slots ?? []).map((s, i) => (
-                  <span key={i} className="ws-slot-chip">{s.statKey}+{s.value}</span>
+                  <span key={i} className="ws-slot-chip">{s.statKey}{formatSlotValue(s.statKey, s.value)}</span>
                 ))}
               </span>
               <button
@@ -146,7 +154,7 @@ export function WorkshopEnhanceTab({ facility }: Props) {
                   <span className="ws-eq-slots">
                     {t('workshop.enhance.slotsLabel', { used: slots.length, max: maxSlots })}
                     {slots.map((s, i) => (
-                      <span key={i} className="ws-slot-chip">{s.statKey}+{s.value}</span>
+                      <span key={i} className="ws-slot-chip">{s.statKey}{formatSlotValue(s.statKey, s.value)}</span>
                     ))}
                   </span>
                 </div>
@@ -167,7 +175,7 @@ export function WorkshopEnhanceTab({ facility }: Props) {
                 className={`ws-mat-cell ${safeSlotIdx === i ? 'is-selected' : ''}`}
                 onClick={() => setRerollSlotIdx(i)}
               >
-                <span className="ws-slot-chip">{s.statKey}+{s.value}</span>
+                <span className="ws-slot-chip">{s.statKey}{formatSlotValue(s.statKey, s.value)}</span>
               </button>
             ))}
           </div>

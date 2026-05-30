@@ -3,9 +3,18 @@ export function calcMaxHp(end: number, level: number): number {
   return Math.floor(50 + end * 5 + level * 10);
 }
 
-/** Attack interval from AGI + weapon base speed (Option 2). Floor at 300ms. */
-export function calcAttackInterval(agi: number, weaponBaseSpeedMs: number = 1800): number {
-  const interval = weaponBaseSpeedMs / (1 + agi / 100);
+/**
+ * Attack interval from AGI + weapon base speed + optional gear speed multiplier.
+ * attackSpeedMult: additive fraction from ATTACK_SPEED affixes (0.10 = 10% faster).
+ * Floor at 300ms. Base cap from AGI unchanged; gear adds on top.
+ */
+export function calcAttackInterval(
+  agi: number,
+  weaponBaseSpeedMs: number = 1800,
+  attackSpeedMult: number = 0,
+): number {
+  const agiReduced = weaponBaseSpeedMs / (1 + agi / 100);
+  const interval = agiReduced / (1 + attackSpeedMult);
   return Math.max(300, Math.floor(interval));
 }
 
@@ -54,3 +63,9 @@ export function calcSkillDmgBonus(dex: number): number {
 }
 
 export const CRIT_MULTIPLIER = 1.5;
+
+/**
+ * Fraction of post-block damage that passes through a shield charge.
+ * A shielded hit deals damage × (1 - SHIELD_DAMAGE_REDUCTION) = 20% of incoming.
+ */
+export const SHIELD_DAMAGE_REDUCTION = 0.80;
