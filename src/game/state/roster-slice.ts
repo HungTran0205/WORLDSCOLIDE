@@ -1,19 +1,5 @@
 import type { StateCreator } from 'zustand';
-import type { Member, MemberStatus, StatKey, Stats, GuildRank } from './game-state';
-import { expToNextLevel, LEVEL_UP_BONUS_POINTS } from '@/game/systems/leveling-system';
-import { GUILD_RANKS } from '@/game/data/ranks';
-
-const ALL_STATS: StatKey[] = ['STR', 'END', 'INT', 'DEX', 'CHA', 'LCK', 'AGI'];
-
-/** Randomly distribute stat points across all stats (for mercenary level-ups) */
-function autoDistributeStats(stats: Stats, points: number): Stats {
-  const result = { ...stats };
-  for (let i = 0; i < points; i++) {
-    const key = ALL_STATS[Math.floor(Math.random() * ALL_STATS.length)];
-    result[key] += 1;
-  }
-  return result;
-}
+import type { Member, MemberStatus, StatKey } from './game-state';
 
 export interface RosterSlice {
   founder: Member | null;
@@ -30,7 +16,6 @@ export interface RosterSlice {
   injureMember: (memberId: string, baseRecoveryMs: number, injuredAt: number) => void;
   toggleAutoCast: (memberId: string) => void;
   allocateStat: (memberId: string, stat: StatKey, amount?: number) => void;
-  addMemberExp: (memberId: string, exp: number) => void;
   /** Increment missionsCompleted counter for given member IDs */
   incrementMissionsCompleted: (memberIds: string[]) => void;
   /** Apply one recovery tick: set progress on still-injured members,
@@ -39,33 +24,6 @@ export interface RosterSlice {
     progressUpdates: { id: string; progress: number }[],
     recoveredIds: string[],
   ) => void;
-}
-
-function applyExpGain(member: Member, rawExp: number): Member {
-  // Apply rank EXP bonus (mercenaries get 0% bonus)
-  let exp = rawExp;
-  if (member.rank !== 'MERCENARY') {
-    const bonus = GUILD_RANKS[member.rank as GuildRank]?.perks.expBonusPct ?? 0;
-    exp = Math.floor(rawExp * (1 + bonus / 100));
-  }
-
-  let newExp = member.exp + exp;
-  let newLevel = member.level;
-  let newPoints = member.unallocatedPoints;
-  let newStats = member.stats;
-
-  while (newExp >= expToNextLevel(newLevel)) {
-    newExp -= expToNextLevel(newLevel);
-    newLevel++;
-    if (member.rank === 'MERCENARY') {
-      // Mercenaries auto-distribute stat points — no manual allocation
-      newStats = autoDistributeStats(newStats, LEVEL_UP_BONUS_POINTS);
-    } else {
-      newPoints += LEVEL_UP_BONUS_POINTS;
-    }
-  }
-
-  return { ...member, exp: newExp, level: newLevel, unallocatedPoints: newPoints, stats: newStats };
 }
 
 function updateMember(members: Member[], id: string, updater: (m: Member) => Member): Member[] {
@@ -88,7 +46,7 @@ export const createRosterSlice: StateCreator<RosterSlice> = (set) => ({
       if (!trimmed) return s;
       return {
         roster: s.roster.map((m) =>
-          m.id === id && m.rank !== 'MERCENARY' ? { ...m, name: trimmed } : m,
+          m.id === id && !m.isMercenary ? { ...m, name: trimmed } : m,
         ),
       };
     }),
@@ -158,14 +116,6 @@ export const createRosterSlice: StateCreator<RosterSlice> = (set) => ({
         return { founder: updater(s.founder) };
       }
       return { roster: updateMember(s.roster, memberId, updater) };
-    }),
-
-  addMemberExp: (memberId, exp) =>
-    set((s) => {
-      if (s.founder?.id === memberId) {
-        return { founder: applyExpGain(s.founder, exp) };
-      }
-      return { roster: updateMember(s.roster, memberId, (m) => applyExpGain(m, exp)) };
     }),
 
   incrementMissionsCompleted: (memberIds) =>

@@ -16,7 +16,7 @@ it describes — when the code changes, the section must be updated (see *Keepin
 | 02 | [Core Loop & Pillars](./02-core-loop-pillars.md) | Recruit→Build→Dispatch→Resolve→Reward→Upgrade loop |
 | 03 | [World & Lore](./03-world-and-lore.md) | Surface summary → links to `lore/` |
 | 04 | [Civilizations](./04-civilizations.md) | Playable (Linh Sơn) + roadmap identity |
-| 05 | [Characters & Progression](./05-characters-progression.md) | Attributes, leveling, derived stats, traits, ranks |
+| 05 | [Characters & Progression](./05-characters-progression.md) | Grade F–S model, stat budgets, combat/guild formulas, upkeep, promotion spec |
 | 06 | [Combat](./06-combat.md) | Tick/ATB model, formulas, AI, waves, formations |
 | 07 | [Economy](./07-economy.md) | Gold, upkeep, debt, recruit cost, loot, offline |
 | 08 | [Guild Hall & Rooms](./08-guild-hall-rooms.md) | Grid placement, room-effect model → [`rooms/`](./rooms/) |
@@ -28,7 +28,6 @@ it describes — when the code changes, the section must be updated (see *Keepin
 | 14 | [UX / UI & i18n](./14-ux-ui-i18n.md) | Panel/HUD conventions, i18next EN/VI |
 | 15 | [Items Master Database](./15-items-inventory-system.md) | Comprehensive items/materials/consumables/equipment/recipes lookup — use this for edits |
 | 16 | [Linh Sơn Class Skills](./16-linh-son-class-skills.md) | Ability kits for Templar/Forester/Ranger — effects, balance, impl tiers |
-| 17 | [Character Rarity Grade System](./17-character-rarity-grade-system.md) | ⚠️ Proposal — F–S rarity replaces leveling + guild-rank; stat budgets, promotion gates |
 
 ### Rooms ([`rooms/`](./rooms/))
 

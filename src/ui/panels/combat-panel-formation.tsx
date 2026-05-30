@@ -161,7 +161,7 @@ export function CombatPanelFormation() {
                   {member ? (
                     <>
                       <div className="combat-panel-formation__member-name">{member.name}</div>
-                      <div className="combat-panel-formation__member-meta">{t('combatPanel.formation.slotMeta', { level: member.level })}</div>
+                      <div className="combat-panel-formation__member-meta">{`Grade ${member.grade}`}</div>
                     </>
                   ) : (
                     <div className="combat-panel-formation__slot--placeholder">

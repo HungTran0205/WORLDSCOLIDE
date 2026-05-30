@@ -100,8 +100,8 @@ export function TavernPanel({ facility, onClose }: TavernPanelProps) {
           const newMember: Member = {
             id: `mem-${Date.now()}-${visitor.id.slice(-4)}`,
             name: visitor.name,
-            level: visitor.level,
-            exp: 0,
+            grade: visitor.grade,
+            isMercenary: false,
             stats: visitor.stats,
             unallocatedPoints: 0,
             skill: null,
@@ -111,13 +111,11 @@ export function TavernPanel({ facility, onClose }: TavernPanelProps) {
             archetype: visitor.archetype,
             gender: visitor.gender,
             isFounder: false,
-            rank: 'MEMBER',
             missionsCompleted: 0,
-            rarity: visitor.rarity,
             traits: visitor.traits,
           };
-          // +1 Tavern Rep when rarity ≥ 3
-          const repBonus = visitor.rarity >= 3 ? 1 : 0;
+          // +1 Tavern Rep when grade ≥ C
+          const repBonus = ['C','B','A','S'].includes(visitor.grade) ? 1 : 0;
           return {
             roster: [...baseRoster, newMember],
             tavern: {

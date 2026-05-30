@@ -12,7 +12,7 @@ interface MemberBookmarkListProps {
 /** Status dot color — founder = gold, mercenary = amber, otherwise status-based */
 function getStatusColor(member: Member): string {
   if (member.isFounder) return '#ffd700';
-  if (member.rank === 'MERCENARY') return '#f0a500';
+  if (member.isMercenary) return '#f0a500';
   const STATUS_DOT: Record<string, string> = {
     idle: '#2ecc71',
     'on-mission': '#4a90d9',

@@ -144,13 +144,6 @@ export function useGameTickLoop() {
           store.facilities, allMembers, gameDays,
         );
 
-        // Apply EXP gains (Training Yard)
-        for (const result of results) {
-          for (const [memberId, exp] of Object.entries(result.expGains)) {
-            store.addMemberExp(memberId, exp);
-          }
-        }
-
         // Apply item gains
         for (const result of results) {
           for (const [itemId, qty] of Object.entries(result.itemGains)) {
@@ -184,7 +177,6 @@ export function useGameTickLoop() {
 
         // Store report for popup (only if any production occurred)
         const hasProduction = results.some((r) =>
-          Object.keys(r.expGains).length > 0 ||
           Object.keys(r.itemGains).length > 0,
         );
         if (hasProduction) {

@@ -118,7 +118,7 @@ Each carried skill is **ranked 1→5 by training the character at the Training Y
 
 ### Training Yard Integration
 
-The Training Yard is **repurposed**: it no longer grants passive character EXP — it now **exclusively trains skill ranks**. (Old behavior in [facility-definitions.ts:43](src/game/data/facility-definitions.ts) / [facility-production-system.ts:135](src/game/systems/facility-production-system.ts) is removed.) There is no character leveling at all — power comes from **rarity grade + gear + skill ranks** (see [17 Rarity Grade System](17-character-rarity-grade-system.md)). Reuses existing scaffolding:
+The Training Yard is **repurposed**: it no longer grants passive character EXP — it now **exclusively trains skill ranks**. (Old behavior in [facility-definitions.ts:43](src/game/data/facility-definitions.ts) / [facility-production-system.ts:135](src/game/systems/facility-production-system.ts) is removed.) There is no character leveling at all — power comes from **grade + gear + skill ranks** (see [05 Characters & Progression](05-characters-progression.md) §3). Reuses existing scaffolding:
 
 | Mechanic | Reused from | Detail |
 |----------|-------------|--------|

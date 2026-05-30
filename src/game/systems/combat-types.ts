@@ -9,7 +9,7 @@ export interface CombatEntity {
   currentHp: number;
   stats: Stats;
   skill: Skill | null;
-  level: number;
+  level?: number;
   attackIntervalMs: number;
   nextAttackAt: number;
   skillCooldownUntil: number;
@@ -21,6 +21,10 @@ export interface CombatEntity {
 
   // Temporary combat flags (set each tick by engine/simulator)
   _hasDeQuocBuff?: boolean;  // DeQuoc ally team buff: +5% crit/dmg
+  _linhSonDefBuff?: number;  // active teamDefUp magnitude (0.20 base)
+  _linhSonCritBuff?: number; // active teamCritUp magnitude (0.10 base)
+  /** Resist rate (0–1) reducing debuff duration. Computed from INT+END. Enemies: 0. */
+  statusResist?: number;
 
   // Gear bonuses (baked in at entity creation from member.equipment)
   /** Flat damage bonus from equipped weapon (0 if no weapon or durability=0) */
@@ -71,8 +75,11 @@ export interface CombatEntity {
 }
 
 export interface ActiveEffect {
-  type: 'poisoned' | 'stunned' | 'boosted' | 'shocked';
+  type: 'poisoned' | 'stunned' | 'boosted' | 'shocked'
+      | 'slowed' | 'taunted' | 'teamDefUp' | 'teamCritUp';
   ticksRemaining: number;
+  /** Magnitude override — used by teamDefUp (0.20) and teamCritUp (0.10). */
+  magnitude?: number;
 }
 
 export type EnemyAbility =
@@ -104,6 +111,8 @@ export type CombatEvent =
   | { type: 'victory' }
   | { type: 'ally-turn-start'; entityId: string }
   | { type: 'wipe' }
+  | { type: 'skill-buff-applied'; casterId: string; buffEffect: string; scope: 'self' | 'team'; durationMs: number }
+  | { type: 'skill-debuff-applied'; casterId: string; targetId: string; effect: string; durationMs: number }
   | {
       type: 'aoe-telegraph';
       /** Casting entity id (deduplication / debug source). */

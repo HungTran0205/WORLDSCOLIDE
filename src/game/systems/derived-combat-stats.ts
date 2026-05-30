@@ -16,7 +16,7 @@ import type { GearBonuses } from './equipment-bonuses';
 
 export interface DerivedCombatStats {
   // --- Base stats ---
-  /** Max HP: 50 + END×5 + level×10 */
+  /** Max HP: 60 + END×5 + flatHpBonus (grade-derived for members, template.level*10 for enemies) */
   maxHp: number;
   /** Attack interval in ms — floored at 300ms */
   attackIntervalMs: number;
@@ -77,8 +77,8 @@ function calcBlockRate(end: number, str: number): number {
   return Math.min(0.25, end * 0.002 + str * 0.001);
 }
 
-function calcHpRegen(end: number, level: number): number {
-  return Math.round((end * 0.1 + level * 0.05) * 100) / 100;
+function calcHpRegen(end: number): number {
+  return Math.round(end * 0.1 * 100) / 100;
 }
 
 function calcSkillHaste(int: number): number {
@@ -100,15 +100,15 @@ function calcHitsPerSecond(attackIntervalMs: number): number {
 // --- Public API ---
 
 /**
- * Compute all combat derived stats for a member.
- * @param stats     Member's base talent stats
- * @param level     Member level (affects maxHp, hpRegen)
- * @param weaponBaseSpeedMs  Weapon base attack speed in ms (default 1800)
- * @param gearBonuses  Flat bonuses from equipped gear (pass calcGearBonuses result)
+ * Compute all combat derived stats for a member or enemy.
+ * @param stats             Base talent stats
+ * @param hpBonus           Flat HP bonus added to base formula (GRADE_HP_BONUS[grade] for members, template.level*10 for enemies)
+ * @param weaponBaseSpeedMs Weapon base attack speed in ms (default 1800)
+ * @param gearBonuses       Flat bonuses from equipped gear (pass calcGearBonuses result)
  */
 export function calcDerivedCombatStats(
   stats: Stats,
-  level: number,
+  hpBonus: number,
   weaponBaseSpeedMs: number = 1800,
   gearBonuses?: GearBonuses,
 ): DerivedCombatStats {
@@ -128,7 +128,7 @@ export function calcDerivedCombatStats(
   const attackIntervalMs = calcAttackInterval(AGI, weaponBaseSpeedMs, gb.attackSpeedBonus);
 
   return {
-    maxHp: calcMaxHp(END, level) + gb.flatHp,
+    maxHp: calcMaxHp(END, hpBonus) + gb.flatHp,
     attackIntervalMs,
     hitsPerSecond: calcHitsPerSecond(attackIntervalMs),
     critRate: calcCritRate(LCK),
@@ -137,7 +137,7 @@ export function calcDerivedCombatStats(
     skillDmgBonus: calcSkillDmgBonus(DEX),
     dodgeRate: baseDodge + gearDodge,
     blockRate: baseBlock + gearBlock,
-    hpRegen: calcHpRegen(END, level),
+    hpRegen: calcHpRegen(END),
     skillHaste: calcSkillHaste(INT),
     statusResist: calcStatusResist(INT, END),
     moraleAura: calcMoraleAura(CHA),

@@ -1,18 +1,18 @@
 /**
- * Tavern spawn engine — determinism + rarity-distribution sanity.
+ * Tavern spawn engine — determinism + grade-distribution sanity.
  */
 
 import { describe, it, expect } from 'vitest';
 import {
   generateTavernRoster,
-  rollRarity,
-  RARITY_WEIGHTS,
+  rollGrade,
+  GRADE_WEIGHTS,
   VISITOR_COUNT_BY_LEVEL,
-  biasRarityWeightsByLuck,
-  talentBudgetForRarity,
+  biasGradeWeightsByLuck,
   getEffectiveKeeperStats,
   rerollSeedForDay,
 } from './tavern-spawn';
+import { GRADE_BUDGET, GRADE_ORDER } from '@/game/data/grades';
 import { dailyTavernSeed, mulberry32 } from './seeded-rng';
 import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Stats, Member } from '@/game/state/game-state';
@@ -23,8 +23,8 @@ function member(id: string, partialStats: Partial<Stats>): Member {
   return {
     id,
     name: id,
-    level: 1,
-    exp: 0,
+    grade: 'F',
+    isMercenary: false,
     stats: { ...zeroStats(), ...partialStats },
     unallocatedPoints: 0,
     skill: null,
@@ -32,9 +32,7 @@ function member(id: string, partialStats: Partial<Stats>): Member {
     injuredUntil: null,
     civilization: 'LinhSon',
     isFounder: false,
-    rank: 'MEMBER',
     missionsCompleted: 0,
-    rarity: 1,
   };
 }
 
@@ -46,52 +44,60 @@ describe('VISITOR_COUNT_BY_LEVEL', () => {
   });
 });
 
-describe('biasRarityWeightsByLuck', () => {
+describe('biasGradeWeightsByLuck', () => {
   it('no LCK = no shift', () => {
-    const out = biasRarityWeightsByLuck([70, 30, 0, 0, 0], 0);
-    expect(out).toEqual([70, 30, 0, 0, 0]);
+    const out = biasGradeWeightsByLuck([70, 30, 0, 0, 0, 0, 0], 0);
+    expect(out).toEqual([70, 30, 0, 0, 0, 0, 0]);
   });
 
   it('shifts from lowest non-zero to highest non-zero', () => {
-    const out = biasRarityWeightsByLuck([70, 30, 0, 0, 0], 10); // shift 5%
+    const out = biasGradeWeightsByLuck([70, 30, 0, 0, 0, 0, 0], 10); // shift 5%
     expect(out[0]).toBeCloseTo(65);
     expect(out[1]).toBeCloseTo(35);
   });
 
   it('caps shift at effective LCK 50', () => {
-    const out = biasRarityWeightsByLuck([70, 30, 0, 0, 0], 999);
+    const out = biasGradeWeightsByLuck([70, 30, 0, 0, 0, 0, 0], 999);
     expect(out[0]).toBeCloseTo(45);
     expect(out[1]).toBeCloseTo(55);
   });
 });
 
-describe('rollRarity', () => {
-  it('Lv1 yields only rarities 1-2 (per RARITY_WEIGHTS)', () => {
+describe('rollGrade', () => {
+  it('Lv1 yields only grades F/E (per GRADE_WEIGHTS)', () => {
     const rng = mulberry32(1);
-    const seen = new Set<number>();
-    for (let i = 0; i < 500; i++) seen.add(rollRarity(1, 0, rng));
-    expect(Array.from(seen).every((r) => r === 1 || r === 2)).toBe(true);
+    const seen = new Set<string>();
+    for (let i = 0; i < 500; i++) seen.add(rollGrade(1, 0, rng));
+    expect(Array.from(seen).every((g) => g === 'F' || g === 'E')).toBe(true);
   });
 
   it('Lv3 distribution roughly matches table', () => {
     const rng = mulberry32(7);
-    const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0 };
+    const counts: Record<string, number> = { F: 0, E: 0, D: 0 };
     const N = 4000;
-    for (let i = 0; i < N; i++) counts[rollRarity(3, 0, rng)]++;
-    const expected = RARITY_WEIGHTS[3]; // [40,35,25,0,0]
-    expect(Math.abs(counts[1] / N - expected[0] / 100)).toBeLessThan(0.05);
-    expect(Math.abs(counts[2] / N - expected[1] / 100)).toBeLessThan(0.05);
-    expect(Math.abs(counts[3] / N - expected[2] / 100)).toBeLessThan(0.05);
+    for (let i = 0; i < N; i++) {
+      const g = rollGrade(3, 0, rng);
+      if (g in counts) counts[g]++;
+    }
+    const expected = GRADE_WEIGHTS[3]; // [40,35,25,0,0,0,0]
+    expect(Math.abs(counts['F'] / N - expected[0] / 100)).toBeLessThan(0.05);
+    expect(Math.abs(counts['E'] / N - expected[1] / 100)).toBeLessThan(0.05);
+    expect(Math.abs(counts['D'] / N - expected[2] / 100)).toBeLessThan(0.05);
   });
 });
 
-describe('talentBudgetForRarity', () => {
-  it('matches Phase 02 spec: Lv1=50 … Lv5=130', () => {
-    expect(talentBudgetForRarity(1)).toBe(50);
-    expect(talentBudgetForRarity(2)).toBe(70);
-    expect(talentBudgetForRarity(3)).toBe(90);
-    expect(talentBudgetForRarity(4)).toBe(110);
-    expect(talentBudgetForRarity(5)).toBe(130);
+describe('GRADE_BUDGET values', () => {
+  it('matches spec: F=50, E=58, D=68, S=160', () => {
+    expect(GRADE_BUDGET['F']).toBe(50);
+    expect(GRADE_BUDGET['E']).toBe(58);
+    expect(GRADE_BUDGET['D']).toBe(68);
+    expect(GRADE_BUDGET['S']).toBe(160);
+  });
+
+  it('budgets are strictly increasing across GRADE_ORDER', () => {
+    for (let i = 1; i < GRADE_ORDER.length; i++) {
+      expect(GRADE_BUDGET[GRADE_ORDER[i]]).toBeGreaterThan(GRADE_BUDGET[GRADE_ORDER[i - 1]]);
+    }
   });
 });
 
@@ -104,7 +110,7 @@ describe('generateTavernRoster', () => {
 
     expect(rosterA).toHaveLength(VISITOR_COUNT_BY_LEVEL[2]);
     expect(rosterA.map((v) => v.id)).toEqual(rosterB.map((v) => v.id));
-    expect(rosterA.map((v) => v.rarity)).toEqual(rosterB.map((v) => v.rarity));
+    expect(rosterA.map((v) => v.grade)).toEqual(rosterB.map((v) => v.grade));
     expect(rosterA.map((v) => v.stats)).toEqual(rosterB.map((v) => v.stats));
     expect(rosterA.map((v) => v.archetype)).toEqual(rosterB.map((v) => v.archetype));
   });

@@ -10,6 +10,8 @@ import { getAttackRange, DEFAULT_MOVE_SPEED } from './combat-arena-types';
 import { calcDerivedCombatStats } from './derived-combat-stats';
 import { createPassiveState, applyPassiveOnInit, snapshotBaseStats } from './combat-passives';
 import { calcGearBonuses } from './equipment-bonuses';
+import { GRADE_HP_BONUS, gradeOf } from '@/game/data/grades';
+import { applySkillRankMilestones } from './skill-training-system';
 
 /** Spatial spawn coordinate — y added for multi-platform stages. */
 export interface ArenaSpawnPos { x: number; y: number; z: number }
@@ -24,7 +26,7 @@ export function memberToArenaEntity(
   syringeCount = 0,
 ): ArenaEntity {
   const gear = calcGearBonuses(member.equipment);
-  const derived = calcDerivedCombatStats(member.stats, member.level, 1800, gear);
+  const derived = calcDerivedCombatStats(member.stats, GRADE_HP_BONUS[member.grade], 1800, gear);
   const loadout = member.syringeLoadout;
   const entity: ArenaEntity = {
     id: member.id,
@@ -33,8 +35,9 @@ export function memberToArenaEntity(
     maxHp: derived.maxHp,
     currentHp: derived.maxHp,
     stats: { ...member.stats },
-    skill: member.skill ? { ...member.skill } : null,
-    level: member.level,
+    skill: member.skill
+      ? applySkillRankMilestones({ ...member.skill }, member.skillRanks?.[member.skill.id]?.rank ?? 1)
+      : null,
     attackIntervalMs: derived.attackIntervalMs,
     nextAttackAt: derived.attackIntervalMs,
     skillCooldownUntil: 0,
@@ -69,6 +72,7 @@ export function memberToArenaEntity(
     ...(loadout && syringeCount > 0
       ? { syringeThresholdPct: loadout.autoUseThresholdPct, syringesLoaded: syringeCount }
       : {}),
+    statusResist: derived.statusResist,
   };
   applyPassiveOnInit(entity);
   return entity;
@@ -88,8 +92,8 @@ export function memberFromMercContract(contract: MercContract): Member {
   return {
     id: contract.id,
     name: `Merc-${contract.id.slice(-4)}`,
-    level: v.level,
-    exp: 0,
+    grade: gradeOf(v),
+    isMercenary: true,
     stats: { ...v.stats },
     unallocatedPoints: 0,
     skill: null,
@@ -98,9 +102,7 @@ export function memberFromMercContract(contract: MercContract): Member {
     civilization: v.civilization,
     archetype: v.archetype,
     isFounder: false,
-    rank: 'MERCENARY',
     missionsCompleted: 0,
-    rarity: v.rarity,
     traits: v.traits,
     equipment: null,
     syringeLoadout: null,
@@ -122,7 +124,7 @@ export function enemyToArenaEntity(
   pos: ArenaSpawnPos,
   hpMultiplier = 1.0,
 ): ArenaEntity {
-  const derived = calcDerivedCombatStats(template.stats, template.level);
+  const derived = calcDerivedCombatStats(template.stats, template.level * 10);
   const hp = Math.max(1, Math.floor(derived.maxHp * hpMultiplier));
   return {
     id: `enemy-${template.id}-${index}`,

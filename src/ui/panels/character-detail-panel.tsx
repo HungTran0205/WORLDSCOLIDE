@@ -5,8 +5,8 @@ import type { StatKey } from '@/game/state/game-state';
 import { getSpritePath } from '@/scene/sprites/sprite-path-resolver';
 import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
-import { expToNextLevel } from '@/game/systems/leveling-system';
 import { calcMemberDerivedStats } from '@/game/systems/member-derived-stats';
+import { GRADE_META } from '@/game/data/grades';
 import { getEquipmentTemplate } from '@/game/data/equipment-templates';
 import type { EquipmentSlot } from '@/game/data/equipment-templates';
 import type { EquipmentItem } from '@/game/state/game-state';
@@ -54,17 +54,16 @@ export function CharacterDetailPanel({
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
 
-  const canRename = Boolean(onRename) && !member.isFounder && member.rank !== 'MERCENARY';
+  const canRename = Boolean(onRename) && !member.isFounder && !member.isMercenary;
   const commitRename = () => {
     const next = nameDraft.trim();
     if (next && onRename) onRename(next);
     setEditingName(false);
   };
 
-  const expNeeded = expToNextLevel(member.level);
-  const expPct    = Math.min(100, Math.floor((member.exp / expNeeded) * 100));
-  const maxHp     = calcMemberDerivedStats(member).combat.maxHp;
-  const isMerc    = member.rank === 'MERCENARY';
+  const maxHp  = calcMemberDerivedStats(member).combat.maxHp;
+  const isMerc = member.isMercenary;
+  const gradeMeta = GRADE_META[member.grade];
   const civConfig = CIV_CONFIG[member.civilization as Civilization];
 
   const avatarUrl = member.archetype && member.gender
@@ -124,15 +123,15 @@ export function CharacterDetailPanel({
               </span>
             )}
           </div>
-          <div className="char-sub">{t('characterDetail.subline', { rank: member.rank, level: member.level, civ: civName })}</div>
+          <div className="char-sub">
+            <span style={{ color: gradeMeta.color, fontWeight: 'bold' }}>Grade {member.grade}</span>
+            {isMerc && <span style={{ marginLeft: 6, opacity: 0.7, fontSize: '0.75em' }}>MERC</span>}
+            {' · '}{civName}
+          </div>
           <div className="char-bar-row">
             <div>
               <div className="char-bar-label"><span>{t('characterDetail.barHp')}</span><span>{maxHp}</span></div>
               <div className="ink-bar-track"><div className="ink-bar-fill ink-bar-hp" style={{ width: '100%' }} /></div>
-            </div>
-            <div>
-              <div className="char-bar-label"><span>{t('characterDetail.barExp')}</span><span>{expPct}%</span></div>
-              <div className="ink-bar-track"><div className="ink-bar-fill ink-bar-exp" style={{ width: `${expPct}%` }} /></div>
             </div>
           </div>
         </div>
@@ -157,7 +156,7 @@ export function CharacterDetailPanel({
       <div className="char-tabs-body">
 
         {tab === 'stats' && (
-          <StatsTab member={member} isMerc={isMerc} onAllocateStat={onAllocateStat} onPromote={onPromote} canAffordPromote={canAffordPromote} />
+          <StatsTab member={member} isMerc={isMerc} onAllocateStat={onAllocateStat} />
         )}
 
         {tab === 'equipment' && (

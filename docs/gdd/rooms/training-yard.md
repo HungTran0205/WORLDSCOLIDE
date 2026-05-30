@@ -5,7 +5,7 @@
 
 > **Implementation status:** DESIGN ONLY — not yet implemented. See [`../16-linh-son-class-skills.md`](../16-linh-son-class-skills.md) §Skill Ranks & Mastery.
 >
-> **Repurpose note:** the Training Yard previously granted **passive character EXP** (`facility-production-system.ts` training-yard branch). That behavior is **removed** — the yard now exclusively trains **skill ranks**. Character leveling is removed entirely; power comes from rarity grade + gear + skill ranks ([17 Rarity Grade System](../17-character-rarity-grade-system.md)). The Training Yard's skill-rank gate is also one of the three promotion requirements for grade-up.
+> **Repurpose note:** the Training Yard previously granted **passive character EXP** (`facility-production-system.ts` training-yard branch). That behavior is **removed** — the yard now exclusively trains **skill ranks**. Character leveling is removed entirely; power comes from grade + gear + skill ranks ([05 Characters & Progression](../05-characters-progression.md) §3). The Training Yard's skill-rank gate is also one of the three promotion requirements for grade-up.
 
 ## Purpose
 

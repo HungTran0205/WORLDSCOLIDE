@@ -256,6 +256,9 @@ export class CombatEngine {
   private processLogicTick(): void {
     // Phase A: status tick for ALL alive entities (poison, regen, passives, anim revert)
     const stunnedThisTick = new Set<string>();
+    for (const e of this.entities) {
+      if (e.riposteCountersThisTick?.size) e.riposteCountersThisTick.clear();
+    }
     for (const entity of this.entities) {
       if (entity.currentHp <= 0) continue;
       const { stunned } = this.processEntityStatus(entity);
@@ -349,6 +352,22 @@ export class CombatEngine {
     );
     entity._hasDeQuocBuff = !!(deQuocAlly && entity.id !== deQuocAlly.id);
 
+    const defBuffer = this.entities.find(e =>
+      e.isAlly === entity.isAlly && e.currentHp > 0 &&
+      e.statusEffects.some(s => s.type === 'teamDefUp'),
+    );
+    entity._linhSonDefBuff = defBuffer
+      ? (defBuffer.statusEffects.find(s => s.type === 'teamDefUp')?.magnitude ?? 0.20)
+      : 0;
+
+    const critBuffer = this.entities.find(e =>
+      e.isAlly === entity.isAlly && e.currentHp > 0 &&
+      e.statusEffects.some(s => s.type === 'teamCritUp'),
+    );
+    entity._linhSonCritBuff = critBuffer
+      ? (critBuffer.statusEffects.find(s => s.type === 'teamCritUp')?.magnitude ?? 0.10)
+      : 0;
+
     if (
       entity.isAlly &&
       entity.syringesLoaded !== undefined && entity.syringesLoaded > 0 &&
@@ -413,7 +432,7 @@ export class CombatEngine {
     if (entity.isAlly && this.pendingSkills.has(entity.id)) {
       this.trySkill(entity, target);
       this.pendingSkills.delete(entity.id);
-    } else if (!entity.isAlly && entity.skill && entity.skill.autoEnabled && this.time >= entity.skillCooldownUntil) {
+    } else if (entity.skill?.autoEnabled && this.time >= entity.skillCooldownUntil) {
       this.trySkill(entity, target);
     }
 
@@ -469,15 +488,18 @@ export class CombatEngine {
     }
 
     this.dealDamage(entity, target);
-    entity.nextAttackAt = this.time + entity.attackIntervalMs;
+    const isSlowed = entity.statusEffects.some(e => e.type === 'slowed');
+    entity.nextAttackAt = this.time + (isSlowed ? entity.attackIntervalMs * 2 : entity.attackIntervalMs);
     entity.animState = 'attacking';
     entity.animStateUntil = this.time + ANIM_ATTACK_DURATION;
   }
 
   /** Apply damage, passive effects, and target reactions — no nextAttackAt/animState changes */
   private dealDamage(entity: ArenaEntity, target: ArenaEntity): void {
-    const targetEffDef = target.stats.END + (target.gearFlatDefense ?? 0);
-    let damage = calcAutoAttackDamage(entity.stats.STR, targetEffDef, 1.0, entity.gearFlatDamage ?? 0);
+    const baseEnd = target.stats.END + (target.gearFlatDefense ?? 0);
+    // LinhSon team defense buff increases effective END
+    const effectiveEnd = Math.floor(baseEnd * (1 + (target._linhSonDefBuff ?? 0)));
+    let damage = calcAutoAttackDamage(entity.stats.STR, effectiveEnd, 1.0, entity.gearFlatDamage ?? 0);
     // Boosted status gives +20% damage
     if (entity.statusEffects.some(e => e.type === 'boosted')) {
       damage = Math.floor(damage * 1.2);
@@ -490,6 +512,10 @@ export class CombatEngine {
     // DeQuoc team buff crit bonus (+5%)
     if (!isCrit && entity._hasDeQuocBuff) {
       isCrit = Math.random() < 0.05;
+    }
+    // LinhSon Mark crit buff
+    if (!isCrit && (entity._linhSonCritBuff ?? 0) > 0) {
+      isCrit = Math.random() < entity._linhSonCritBuff!;
     }
     if (isCrit) damage = Math.floor(damage * entity.critDmg);
     // DeQuoc team buff damage bonus (+5%)
@@ -569,58 +595,261 @@ export class CombatEngine {
     if (target.currentHp > 0) {
       processAbilities(entity, this.entities, this.eventQueue);
     }
+
+    // Riposte counter-attack — fires on any incoming hit while stance is active
+    if (
+      target.isAlly &&
+      (target.riposteUntil ?? 0) >= this.time &&
+      entity.currentHp > 0
+    ) {
+      const alreadyCountered = target.riposteCountersThisTick?.has(entity.id) ?? false;
+      if (!alreadyCountered && Math.random() < 0.70) {
+        const counterDmg = calcAutoAttackDamage(
+          target.stats.STR, entity.stats.END, 1.0, target.gearFlatDamage ?? 0,
+        );
+        entity.currentHp -= counterDmg;
+        this.totalDamageDealt += counterDmg;
+        this.eventQueue.push({
+          type: 'auto-attack',
+          attackerId: target.id,
+          targetId: entity.id,
+          damage: counterDmg,
+          isCrit: false,
+        });
+        if (!target.riposteCountersThisTick) target.riposteCountersThisTick = new Set();
+        target.riposteCountersThisTick.add(entity.id);
+        if (entity.currentHp <= 0) {
+          entity.animState = 'dead';
+          this.eventQueue.push({ type: 'death', entityId: entity.id });
+          if (this.primaryTargetId === entity.id) this.primaryTargetId = null;
+        }
+      }
+    }
   }
 
   private trySkill(entity: ArenaEntity, target: ArenaEntity): void {
     if (!entity.skill) return;
-    if (entity.level < 5) return;
     if (this.time < entity.skillCooldownUntil) return;
 
-    const skillTargetDef = target.stats.END + (target.gearFlatDefense ?? 0);
-    const baseDmg = calcAutoAttackDamage(entity.stats.STR, skillTargetDef, 1.0, entity.gearFlatDamage ?? 0);
-    const isCrit2 = rollCrit(entity.stats.LCK);
-    let skillDmg = calcSkillDamage(baseDmg, entity.skill.damageMultiplier, entity.stats.DEX);
-    if (isCrit2) skillDmg = Math.floor(skillDmg * entity.critDmg);
+    const skill = entity.skill;
+    const type = skill.skillType ?? 'damage';
 
-    // AOE telegraph — emit BEFORE damage so the React subscriber can spawn the
-    // ground decal in the same tick the skill animation begins. Damage is still
-    // applied instantly (Phase 08 v1: cosmetic only, no wind-up gating).
-    // Color defaults to red ('danger') regardless of caster faction — an ally
-    // offensive AOE on enemies is still a danger zone visually. Use aoeColor
-    // override (e.g. blue) only for explicit beneficial-zone skills (heal AOE).
-    if (entity.skill.aoeRadius && entity.skill.aoeRadius > 0 && target.position) {
+    // AOE telegraph for radius-based skills (cosmetic only, no wind-up gating)
+    if (skill.aoeRadius && skill.aoeRadius > 0 && target.position) {
       this.eventQueue.push({
         type: 'aoe-telegraph',
         attackerId: entity.id,
-        skillId: entity.skill.id,
+        skillId: skill.id,
         position: [target.position.x, target.position.y ?? 0, target.position.z],
-        radius: entity.skill.aoeRadius,
-        shape: entity.skill.aoeShape ?? 'circle',
-        durationMs: entity.skill.aoeCastTimeMs ?? ANIM_ATTACK_DURATION,
-        color: entity.skill.aoeColor ?? '#ff5a5a',
+        radius: skill.aoeRadius,
+        shape: skill.aoeShape ?? 'circle',
+        durationMs: skill.aoeCastTimeMs ?? ANIM_ATTACK_DURATION,
+        color: skill.aoeColor ?? '#ff5a5a',
       });
     }
 
-    target.currentHp -= skillDmg;
-    this.clampTutorialAllyFloor(target);
-    this.totalDamageDealt += entity.isAlly ? skillDmg : 0;
-    this.eventQueue.push({ type: 'skill-use', attackerId: entity.id, targetId: target.id, damage: skillDmg, skillName: entity.skill.name, isCrit: isCrit2 });
-    entity.skillCooldownUntil = this.time + entity.skill.cooldownMs;
+    switch (type) {
+      case 'damage':      this.executeSkillDamage(entity, target, skill); break;
+      case 'lane-hit':    this.executeSkillLaneHit(entity, target, skill); break;
+      case 'multi-hit':   this.executeSkillMultiHit(entity, target, skill); break;
+      case 'aoe-ground':  this.executeSkillAoeGround(entity, skill); break;
+      case 'armor-pierce':this.executeSkillArmorPierce(entity, target, skill); break;
+      case 'buff':        this.executeSkillBuff(entity, skill); break;
+      case 'debuff':      this.executeSkillDamageDebuff(entity, target, skill); break;
+      case 'riposte':     this.executeSkillRiposte(entity, skill); break;
+      default:            this.executeSkillDamage(entity, target, skill); break;
+    }
 
-    // Anim
+    entity.skillCooldownUntil = this.time + skill.cooldownMs;
     entity.animState = 'skill';
     entity.animStateUntil = this.time + ANIM_ATTACK_DURATION;
 
     if (entity.passiveState) {
       onDamageDealt(entity.passiveState);
-      if (entity.passiveState.civId === 'ThienLu') {
-        resolveThienLuTimers(entity.passiveState, this.time);
+      if (entity.passiveState.civId === 'ThienLu') resolveThienLuTimers(entity.passiveState, this.time);
+    }
+  }
+
+  private executeSkillDamage(entity: ArenaEntity, target: ArenaEntity, skill: import('@/game/state/game-state').Skill): void {
+    const effectiveDodge = Math.max(0, target.dodgeRate - (entity.accuracy ?? 0) - (skill.accuracyBonus ?? 0));
+    if (effectiveDodge > 0 && Math.random() < effectiveDodge) {
+      this.eventQueue.push({ type: 'dodge', attackerId: entity.id, targetId: target.id });
+      return;
+    }
+    const effectiveDef = Math.floor((target.stats.END + (target.gearFlatDefense ?? 0)) * (1 + (target._linhSonDefBuff ?? 0)));
+    const baseDmg = calcAutoAttackDamage(entity.stats.STR, effectiveDef, 1.0, entity.gearFlatDamage ?? 0);
+    let isCrit = rollCrit(entity.stats.LCK + (skill.critRateBonus ?? 0) * 100);
+    if (!isCrit && (entity._linhSonCritBuff ?? 0) > 0) isCrit = Math.random() < entity._linhSonCritBuff!;
+    let dmg = calcSkillDamage(baseDmg, skill.damageMultiplier, entity.stats.DEX);
+    if (isCrit) dmg = Math.floor(dmg * entity.critDmg);
+    this.applySkillHit(entity, target, dmg, isCrit, skill.name);
+  }
+
+  private executeSkillLaneHit(entity: ArenaEntity, target: ArenaEntity, skill: import('@/game/state/game-state').Skill): void {
+    const LANE_Z_THRESHOLD = 1.5;
+    const maxExtra = (skill.laneHitDepth ?? 2) - 1;
+    const laneTargets = this.entities.filter(e =>
+      !e.isAlly && e.currentHp > 0 && e.id !== target.id &&
+      Math.abs((e.position?.z ?? 0) - (target.position?.z ?? 0)) < LANE_Z_THRESHOLD,
+    ).slice(0, maxExtra);
+
+    const allTargets = [target, ...laneTargets];
+    for (let i = 0; i < allTargets.length; i++) {
+      const t = allTargets[i];
+      const effectiveDef = Math.floor((t.stats.END + (t.gearFlatDefense ?? 0)) * (1 + (t._linhSonDefBuff ?? 0)));
+      const baseDmg = calcAutoAttackDamage(entity.stats.STR, effectiveDef, 1.0, entity.gearFlatDamage ?? 0);
+      const isCrit = rollCrit(entity.stats.LCK);
+      const isLast = i === allTargets.length - 1 && allTargets.length > 1;
+      const mult = isLast && (skill.laneHitLastBonus ?? 0) > 0
+        ? skill.damageMultiplier * (1 + skill.laneHitLastBonus!)
+        : skill.damageMultiplier;
+      let dmg = calcSkillDamage(baseDmg, mult, entity.stats.DEX);
+      if (isCrit) dmg = Math.floor(dmg * entity.critDmg);
+      this.applySkillHit(entity, t, dmg, isCrit, skill.name);
+    }
+  }
+
+  private executeSkillMultiHit(entity: ArenaEntity, target: ArenaEntity, skill: import('@/game/state/game-state').Skill): void {
+    const count = skill.multiHitCount ?? 1;
+    const mult = skill.multiHitMultiplier ?? skill.damageMultiplier;
+    for (let i = 0; i < count; i++) {
+      if (target.currentHp <= 0) break;
+      const effectiveDef = Math.floor((target.stats.END + (target.gearFlatDefense ?? 0)) * (1 + (target._linhSonDefBuff ?? 0)));
+      const baseDmg = calcAutoAttackDamage(entity.stats.STR, effectiveDef, 1.0, entity.gearFlatDamage ?? 0);
+      const isCrit = rollCrit(entity.stats.LCK);
+      const isLast = i === count - 1;
+      const hitMult = isLast && (skill.multiHitFinalBonus ?? 0) > 0 ? mult * (1 + skill.multiHitFinalBonus!) : mult;
+      let dmg = calcSkillDamage(baseDmg, hitMult, entity.stats.DEX);
+      if (isCrit) dmg = Math.floor(dmg * entity.critDmg);
+      this.applySkillHit(entity, target, dmg, isCrit, skill.name);
+    }
+  }
+
+  private executeSkillAoeGround(entity: ArenaEntity, skill: import('@/game/state/game-state').Skill): void {
+    const groundEnemies = this.entities.filter(e => !e.isAlly && e.currentHp > 0 && !e.flying);
+    for (const t of groundEnemies) {
+      const effectiveDef = Math.floor((t.stats.END + (t.gearFlatDefense ?? 0)) * (1 + (t._linhSonDefBuff ?? 0)));
+      const baseDmg = calcAutoAttackDamage(entity.stats.STR, effectiveDef, 1.0, entity.gearFlatDamage ?? 0);
+      const isCrit = rollCrit(entity.stats.LCK);
+      let dmg = calcSkillDamage(baseDmg, skill.damageMultiplier, entity.stats.DEX);
+      if (isCrit) dmg = Math.floor(dmg * entity.critDmg);
+      this.applySkillHit(entity, t, dmg, isCrit, skill.name);
+      // Quake R5 stun chance
+      if ((skill.aoeStunChance ?? 0) > 0 && Math.random() < skill.aoeStunChance! && t.currentHp > 0) {
+        if (!t.statusEffects.some(e => e.type === 'stunned')) {
+          t.statusEffects.push({ type: 'stunned', ticksRemaining: 2 });
+          this.eventQueue.push({ type: 'effect-applied', targetId: t.id, effect: 'stunned' });
+        }
+      }
+    }
+  }
+
+  private executeSkillArmorPierce(entity: ArenaEntity, target: ArenaEntity, skill: import('@/game/state/game-state').Skill): void {
+    const pierced = Math.random() < (skill.armorPierceChance ?? 0);
+    const baseEnd = target.stats.END + (target.gearFlatDefense ?? 0);
+    const effectiveDef = pierced ? 0 : Math.floor(baseEnd * (1 + (target._linhSonDefBuff ?? 0)));
+    const baseDmg = calcAutoAttackDamage(entity.stats.STR, effectiveDef, 1.0, entity.gearFlatDamage ?? 0, pierced);
+    const isCrit = rollCrit(entity.stats.LCK);
+    const mult = pierced && (skill.armorPierceBonusMult ?? 0) > 0
+      ? skill.damageMultiplier * skill.armorPierceBonusMult!
+      : skill.damageMultiplier;
+    let dmg = calcSkillDamage(baseDmg, mult, entity.stats.DEX);
+    if (isCrit) dmg = Math.floor(dmg * entity.critDmg);
+    this.applySkillHit(entity, target, dmg, isCrit, skill.name);
+  }
+
+  private executeSkillBuff(entity: ArenaEntity, skill: import('@/game/state/game-state').Skill): void {
+    const TICKS_PER_MS = 1 / 100;
+    const tickDuration = Math.round((skill.buffDurationMs ?? 5000) * TICKS_PER_MS);
+    const magnitude = skill.buffMagnitude
+      ?? (skill.buffEffect === 'defense-up' ? 0.20 : skill.buffEffect === 'crit-up' ? 0.10 : 0);
+
+    const effectType = skill.buffEffect === 'defense-up' ? 'teamDefUp'
+      : skill.buffEffect === 'crit-up' ? 'teamCritUp'
+      : 'boosted';
+
+    const applyBuff = (e: ArenaEntity) => {
+      const existing = e.statusEffects.find(s => s.type === effectType);
+      if (existing) {
+        existing.ticksRemaining = tickDuration; // refresh; no stack
+      } else {
+        e.statusEffects.push({ type: effectType as import('./combat-types').ActiveEffect['type'], ticksRemaining: tickDuration, magnitude });
+      }
+    };
+
+    if (skill.buffScope === 'self') {
+      applyBuff(entity);
+      // Bulwark: also apply pseudo-taunt to self
+      if (skill.statusEffect === 'taunted') {
+        const tauntTicks = Math.round((skill.statusDurationMs ?? 5000) / 100);
+        const existingTaunt = entity.statusEffects.find(s => s.type === 'taunted');
+        if (existingTaunt) existingTaunt.ticksRemaining = tauntTicks;
+        else entity.statusEffects.push({ type: 'taunted', ticksRemaining: tauntTicks });
+      }
+    } else {
+      for (const ally of this.entities.filter(e => e.isAlly && e.currentHp > 0)) {
+        applyBuff(ally);
+        // Aegis R5 heal
+        if ((skill.buffHealPct ?? 0) > 0) {
+          const healAmt = Math.floor(ally.maxHp * skill.buffHealPct!);
+          ally.currentHp = Math.min(ally.maxHp, ally.currentHp + healAmt);
+          this.eventQueue.push({ type: 'heal', healerId: entity.id, targetId: ally.id, amount: healAmt });
+        }
       }
     }
 
+    this.eventQueue.push({
+      type: 'skill-buff-applied',
+      casterId: entity.id,
+      buffEffect: skill.buffEffect ?? 'damage-up',
+      scope: skill.buffScope ?? 'self',
+      durationMs: skill.buffDurationMs ?? 5000,
+    });
+  }
+
+  private executeSkillDamageDebuff(entity: ArenaEntity, target: ArenaEntity, skill: import('@/game/state/game-state').Skill): void {
+    this.executeSkillDamage(entity, target, skill);
+    if (target.currentHp <= 0) return;
+
+    const resist = target.statusResist ?? 0;
+    const baseDurationMs = skill.statusDurationMs ?? 5000;
+    const reducedMs = Math.floor(baseDurationMs * (1 - Math.min(resist, 0.75)));
+    const tickDuration = Math.round(reducedMs / 100);
+    if (tickDuration <= 0) return;
+
+    const statusType = (skill.statusEffect ?? 'slowed') as import('./combat-types').ActiveEffect['type'];
+    const existing = target.statusEffects.find(e => e.type === statusType);
+    if (existing) existing.ticksRemaining = tickDuration;
+    else target.statusEffects.push({ type: statusType, ticksRemaining: tickDuration });
+
+    // Pin R5: also apply accuracy penalty
+    if ((skill.debuffAccuracyPenalty ?? 0) > 0) {
+      target.dodgeRate = Math.min(0.95, target.dodgeRate + skill.debuffAccuracyPenalty!);
+    }
+
+    this.eventQueue.push({
+      type: 'skill-debuff-applied',
+      casterId: entity.id,
+      targetId: target.id,
+      effect: statusType,
+      durationMs: reducedMs,
+    });
+  }
+
+  private executeSkillRiposte(entity: ArenaEntity, skill: import('@/game/state/game-state').Skill): void {
+    entity.riposteUntil = this.time + (skill.statusDurationMs ?? 3000);
+    this.eventQueue.push({ type: 'effect-applied', targetId: entity.id, effect: 'riposte' });
+  }
+
+  private applySkillHit(entity: ArenaEntity, target: ArenaEntity, damage: number, isCrit: boolean, skillName: string): void {
+    target.currentHp -= damage;
+    this.clampTutorialAllyFloor(target);
+    this.totalDamageDealt += entity.isAlly ? damage : 0;
+    this.eventQueue.push({ type: 'skill-use', attackerId: entity.id, targetId: target.id, damage, skillName, isCrit });
     if (target.currentHp <= 0) {
       target.animState = 'dead';
       this.eventQueue.push({ type: 'death', entityId: target.id });
+      if (this.primaryTargetId === target.id) this.primaryTargetId = null;
     }
   }
 

@@ -9,6 +9,13 @@ import { FACILITY_DEFAULT_SLOTS } from '@/game/data/facility-slot-positions';
 import { RECRUITABLE_UNITS, CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
 import { hashSeed } from '@/game/systems/seeded-rng';
+import {
+  type Grade,
+  GRADE_ORDER,
+  GRADE_BUDGET,
+  gradeFromStatBudget,
+} from '@/game/data/grades';
+import { STAT_KEYS, createEmptyStats, distributeStatsByWeights } from '@/game/systems/stat-allocation';
 
 export type MigrationFn = (envelope: SaveEnvelope) => SaveEnvelope;
 
@@ -881,6 +888,154 @@ function migrateV30toV31(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+// ── v31→v32 helpers ───────────────────────────────────────────────────────────
+
+const EVEN_WEIGHTS: Record<string, number> = {
+  STR: 1, END: 1, INT: 1, DEX: 1, CHA: 1, LCK: 1, AGI: 1,
+};
+
+function rebudgetStats(stats: AnyRecord | undefined, target: number): AnyRecord {
+  const safe = (stats as AnyRecord | null) ?? createEmptyStats();
+  const current = STAT_KEYS.reduce((s, k) => s + ((safe[k] as number) || 0), 0);
+  if (current <= 0) return distributeStatsByWeights(target, EVEN_WEIGHTS as Record<import('@/game/state/game-state').StatKey, number>) as unknown as AnyRecord;
+  const scaled: AnyRecord = {};
+  for (const k of STAT_KEYS) scaled[k] = Math.floor(((safe[k] as number) || 0) * target / current);
+  let remainder = target - STAT_KEYS.reduce((s, k) => s + (scaled[k] as number), 0);
+  const order = [...STAT_KEYS].sort((a, b) => ((safe[b] as number) || 0) - ((safe[a] as number) || 0));
+  for (let i = 0; remainder > 0; i = (i + 1) % order.length, remainder--) {
+    (scaled[order[i]] as number) += 1;
+  }
+  return scaled;
+}
+
+/** v31→v32: Replace level/exp/rank/rarity with grade/isMercenary (GDD §17) */
+function migrateV31toV32(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+
+  const migrateMember = (m: AnyRecord): AnyRecord => {
+    const statSum = STAT_KEYS.reduce((s, k) => s + ((m.stats?.[k] as number) || 0), 0);
+    const grade: Grade = gradeFromStatBudget(statSum);
+    const { level: _l, exp: _e, rank, rarity: _r, ...rest } = m as AnyRecord & { level?: unknown; exp?: unknown; rank?: unknown; rarity?: unknown };
+    return {
+      ...rest,
+      grade,
+      isMercenary: rank === 'MERCENARY',
+      stats: rebudgetStats(m.stats as AnyRecord | undefined, GRADE_BUDGET[grade]),
+      unallocatedPoints: (m.unallocatedPoints as number) ?? 0,
+    };
+  };
+
+  const migrateVisitor = (v: AnyRecord): AnyRecord => {
+    const statSum = STAT_KEYS.reduce((s, k) => s + ((v.stats?.[k] as number) || 0), 0);
+    const grade: Grade = gradeFromStatBudget(statSum);
+    const { level: _l, rarity: _r, ...rest } = v as AnyRecord & { level?: unknown; rarity?: unknown };
+    return {
+      ...rest,
+      grade,
+      stats: rebudgetStats(v.stats as AnyRecord | undefined, GRADE_BUDGET[grade]),
+    };
+  };
+
+  const founder = gs.founder ? migrateMember(gs.founder as AnyRecord) : null;
+  const roster = Array.isArray(gs.roster) ? (gs.roster as AnyRecord[]).map(migrateMember) : [];
+
+  // RT-C3: strip mid-fight combat snapshots (entities carried now-removed level field)
+  const activeMissions = Array.isArray(gs.activeMissions)
+    ? (gs.activeMissions as AnyRecord[]).map(({ combatSnapshot: _s, combatSnapshotTime: _t, ...am }) => am)
+    : gs.activeMissions;
+
+  const activeContractIds = new Set(
+    (Array.isArray(activeMissions) ? activeMissions as AnyRecord[] : []).flatMap(
+      (am) => (am.mercContractIds as string[] | undefined) ?? [],
+    ),
+  );
+
+  const tavern = ((gs.tavern ?? {}) as AnyRecord);
+
+  const migrateContract = (rec: AnyRecord): AnyRecord => {
+    if (!rec?.visitorSnapshot) return rec;
+    // RT-H5: freeze in-flight contracts (preserve committed power); rebudget idle ones
+    if (activeContractIds.has(rec.id as string)) return rec;
+    return { ...rec, visitorSnapshot: migrateVisitor(rec.visitorSnapshot as AnyRecord) };
+  };
+
+  const migrateSnapshotRec = (rec: AnyRecord): AnyRecord =>
+    rec?.visitorSnapshot ? { ...rec, visitorSnapshot: migrateVisitor(rec.visitorSnapshot as AnyRecord) } : rec;
+
+  const migratedTavern: AnyRecord = {
+    ...tavern,
+    currentRoster: [],  // RT-H5: clear mid-negotiation visitors; respawned next day-tick
+    mercContracts: Array.isArray(tavern.mercContracts)
+      ? (tavern.mercContracts as AnyRecord[]).map(migrateContract)
+      : tavern.mercContracts,
+    pendingPrompts: Array.isArray(tavern.pendingPrompts)
+      ? (tavern.pendingPrompts as AnyRecord[]).map(migrateSnapshotRec)
+      : tavern.pendingPrompts,
+    veteranPool: Array.isArray(tavern.veteranPool)
+      ? (tavern.veteranPool as AnyRecord[]).map(migrateSnapshotRec)
+      : tavern.veteranPool,
+  };
+
+  return {
+    ...envelope,
+    version: 32,
+    gameState: { ...gs, founder, roster, activeMissions, tavern: migratedTavern } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
+// ── end v31→v32 ───────────────────────────────────────────────────────────────
+
+/**
+ * v32→v33: Add skill-rank training fields.
+ *  - Member: ensure `skillRanks: {}` exists (empty map = Rank 1 everywhere).
+ *  - GuildFacility: ensure training-yard gets `trainingQueue: []`.
+ *  - ActiveMission.combatSnapshot allies: ensure `skillRanks: {}` for restored entities.
+ */
+function migrateV32toV33(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+
+  const addSkillRanks = (m: AnyRecord): AnyRecord => ({
+    ...m,
+    skillRanks: (m.skillRanks as Record<string, unknown> | undefined) ?? {},
+  });
+
+  const founder = gs.founder ? addSkillRanks(gs.founder as AnyRecord) : null;
+  const roster = Array.isArray(gs.roster)
+    ? (gs.roster as AnyRecord[]).map(addSkillRanks)
+    : [];
+
+  const activeMissions = Array.isArray(gs.activeMissions)
+    ? (gs.activeMissions as AnyRecord[]).map((mission) => {
+        const snap = mission.combatSnapshot as AnyRecord | undefined;
+        if (!snap) return mission;
+        return {
+          ...mission,
+          combatSnapshot: {
+            ...snap,
+            allies: Array.isArray(snap.allies)
+              ? (snap.allies as AnyRecord[]).map(addSkillRanks)
+              : [],
+          },
+        };
+      })
+    : gs.activeMissions;
+
+  const facilities = Array.isArray(gs.facilities)
+    ? (gs.facilities as AnyRecord[]).map((f) => {
+        if (f.type !== 'training-yard') return f;
+        return { ...f, trainingQueue: (f.trainingQueue as unknown[] | undefined) ?? [] };
+      })
+    : gs.facilities;
+
+  return {
+    ...envelope,
+    version: 33,
+    gameState: { ...gs, founder, roster, activeMissions, facilities } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
+// ── end v32→v33 ───────────────────────────────────────────────────────────────
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -907,6 +1062,8 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   28: migrateV28toV29,
   29: migrateV29toV30,
   30: migrateV30toV31,
+  31: migrateV31toV32,
+  32: migrateV32toV33,
 };
 
 /**

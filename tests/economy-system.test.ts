@@ -4,57 +4,69 @@ import { formatGold } from '@/game/systems/economy-helpers';
 import { calcRecruitSuccess } from '@/game/systems/recruit-system';
 import { canUpgradeGuild, getUpgradeCost } from '@/game/systems/guild-upgrade-system';
 import type { Member } from '@/game/state/game-state';
+import type { Grade } from '@/game/data/grades';
 
-function makeMember(level: number, isFounder = false): Member {
+function makeMember(grade: Grade, isFounder = false): Member {
   return {
-    id: `m-${level}-${Math.random()}`, name: 'Test', level, exp: 0,
+    id: `m-${grade}-${Math.random()}`, name: 'Test',
+    grade, isMercenary: false,
     stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 },
     unallocatedPoints: 0, skill: null, status: 'idle',
-    injuredUntil: null, civilization: 'Viet', isFounder,
-    rank: isFounder ? 'COMMANDER' : 'MEMBER', missionsCompleted: 0,
+    injuredUntil: null, civilization: 'LinhSon', isFounder,
+    missionsCompleted: 0,
   };
 }
 
 describe('Upkeep System', () => {
-  it('should calculate member upkeep based on level', () => {
-    expect(calcMemberUpkeep(1, 'MEMBER')).toBe(5);
-    expect(calcMemberUpkeep(5, 'MEMBER')).toBeGreaterThan(5);
-    // Higher level = more upkeep
-    expect(calcMemberUpkeep(10, 'MEMBER')).toBeGreaterThan(calcMemberUpkeep(5, 'MEMBER'));
+  it('should calculate member upkeep based on grade', () => {
+    // Grade F: BASE_UPKEEP(5) * GRADE_UPKEEP_MULT[F](0.8) = 4
+    expect(calcMemberUpkeep({ grade: 'F', isMercenary: false })).toBe(4);
+    // Grade E: 5 * 1.0 = 5
+    expect(calcMemberUpkeep({ grade: 'E', isMercenary: false })).toBe(5);
+    // Higher grade = more upkeep
+    expect(calcMemberUpkeep({ grade: 'B', isMercenary: false })).toBeGreaterThan(
+      calcMemberUpkeep({ grade: 'E', isMercenary: false }),
+    );
+  });
+
+  it('mercenaries have 0 upkeep', () => {
+    expect(calcMemberUpkeep({ grade: 'S', isMercenary: true })).toBe(0);
   });
 
   it('should calculate total upkeep for all members', () => {
-    const members = [makeMember(1), makeMember(1), makeMember(1)];
-    expect(calcTotalUpkeep(members)).toBe(15); // 3 * 5
+    const members = [makeMember('F'), makeMember('F'), makeMember('F')];
+    // 3 × grade-F upkeep (4 each) = 12
+    expect(calcTotalUpkeep(members)).toBe(12);
   });
 
   it('should charge upkeep when gold is sufficient', () => {
-    const members = [makeMember(1)];
+    const members = [makeMember('F')]; // upkeep = 4/day
     const result = chargeUpkeep(100, members, 3);
-    expect(result.newGold).toBe(85); // 100 - 5*3
+    expect(result.newGold).toBe(100 - 4 * 3); // 88
     expect(result.debt).toBe(0);
   });
 
   it('should track debt when gold insufficient', () => {
-    const members = [makeMember(1)];
-    const result = chargeUpkeep(10, members, 5);
+    // grade-F upkeep = round(5 * 0.8) = 4/day; 4 gold = exactly 1 day affordable, 4 remain unpaid
+    const members = [makeMember('F')];
+    const result = chargeUpkeep(4, members, 5);
     expect(result.newGold).toBe(0);
     expect(result.debt).toBeGreaterThan(0);
     expect(result.daysInDebt).toBeGreaterThan(0);
   });
 
   it('should never remove founder from debt penalty', () => {
-    const roster = [makeMember(1, true), makeMember(1)];
+    const roster = [makeMember('F', true), makeMember('F')];
     const result = processDebtPenalty(roster, 5);
     const foundersRemoved = result.removedMembers.filter((m) => m.isFounder);
     expect(foundersRemoved.length).toBe(0);
   });
 
-  it('should remove lowest-level non-founder on debt penalty', () => {
-    const roster = [makeMember(5), makeMember(1), makeMember(3)];
+  it('should remove lowest-grade non-founder on debt penalty', () => {
+    const roster = [makeMember('B'), makeMember('F'), makeMember('D')];
     const result = processDebtPenalty(roster, 5);
     expect(result.removedMembers.length).toBe(1);
-    expect(result.removedMembers[0].level).toBe(1);
+    expect(result.removedMembers[0].grade).toBe('F'); // lowest grade evicted first
   });
 });
 

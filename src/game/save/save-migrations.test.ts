@@ -34,7 +34,9 @@ describe('migrateSave', () => {
   it('passes through current-version saves unchanged', () => {
     const result = migrateSave(VALID_SAVE_ENVELOPE);
     expect(result.version).toBe(SAVE_VERSION);
-    expect(result.gameState.founder?.rank).toBe('COMMANDER');
+    // Grade model: founder has grade + isMercenary, no rank/level fields
+    expect(result.gameState.founder?.grade).toBeDefined();
+    expect(result.gameState.founder?.isMercenary).toBe(false);
     expect(result.gameState.founder?.missionsCompleted).toBe(0);
   });
 
@@ -43,27 +45,38 @@ describe('migrateSave', () => {
     expect(result.version).toBe(SAVE_VERSION);
   });
 
-  it('migrates v7 → v8: founder gets COMMANDER rank', () => {
+  // v7→v8 set rank; v31→v32 then strips rank/level/rarity and adds grade/isMercenary.
+  // Tests verify the final v32 shape — the intermediate rank values are internal migration detail.
+  it('migrates v7 → v8+v32: founder becomes non-mercenary with valid grade', () => {
     const result = migrateSave(makeV7Envelope() as any);
-    expect((result.gameState as any).founder.rank).toBe('COMMANDER');
+    const founder = (result.gameState as any).founder;
+    expect(founder.grade).toBeDefined();
+    expect(['F','E','D','C','B','A','S']).toContain(founder.grade);
+    expect(founder.isMercenary).toBe(false);
+    expect(founder.rank).toBeUndefined();
   });
 
-  it('migrates v7 → v8: low-level member becomes RECRUIT', () => {
+  it('migrates v7 → v8+v32: low-level non-founder member has valid grade', () => {
     const result = migrateSave(makeV7Envelope() as any);
     const newbie = (result.gameState as any).roster.find((m: any) => m.id === 'r1');
-    expect(newbie.rank).toBe('RECRUIT');
+    expect(newbie.grade).toBeDefined();
+    expect(newbie.isMercenary).toBe(false);
+    expect(newbie.rank).toBeUndefined();
   });
 
-  it('migrates v7 → v8: high-level member becomes VETERAN', () => {
+  it('migrates v7 → v8+v32: high-level non-founder member has valid grade', () => {
     const result = migrateSave(makeV7Envelope() as any);
     const vet = (result.gameState as any).roster.find((m: any) => m.id === 'r2');
-    expect(vet.rank).toBe('VETERAN');
+    expect(vet.grade).toBeDefined();
+    expect(vet.isMercenary).toBe(false);
+    expect(vet.rank).toBeUndefined();
   });
 
-  it('migrates v7 → v8: mercenary stays MERCENARY', () => {
+  it('migrates v7 → v8+v32: MERCENARY rank maps to isMercenary=true', () => {
     const result = migrateSave(makeV7Envelope() as any);
     const merc = (result.gameState as any).roster.find((m: any) => m.id === 'r3');
-    expect(merc.rank).toBe('MERCENARY');
+    expect(merc.isMercenary).toBe(true);
+    expect(merc.rank).toBeUndefined();
   });
 
   it('migrates v7 → v8: seeds missionsCompleted = level * 2', () => {
@@ -107,13 +120,16 @@ describe('migrateSave', () => {
     expect(tavern.globalNegotiationDebuffUntilDay).toBeNull();
   });
 
-  it('migrates v23→v24: legacy members get rarity=1 and traits=[]', () => {
+  // v23→v24 seeded rarity=1; v31→v32 then strips rarity and adds grade/isMercenary.
+  it('migrates v23→v24+v32: legacy members get traits=[] and grade (rarity stripped by v32)', () => {
     const result = migrateSave(makeV7Envelope() as any);
     const founder = (result.gameState as any).founder;
-    expect(founder.rarity).toBe(1);
+    expect(founder.rarity).toBeUndefined();
+    expect(founder.grade).toBeDefined();
     expect(founder.traits).toEqual([]);
     const newbie = (result.gameState as any).roster.find((m: any) => m.id === 'r1');
-    expect(newbie.rarity).toBe(1);
+    expect(newbie.rarity).toBeUndefined();
+    expect(newbie.grade).toBeDefined();
     expect(newbie.traits).toEqual([]);
   });
 
@@ -369,20 +385,16 @@ describe('migrateSave', () => {
     ...extra,
   });
 
-  it('migrates tavern visitors: backfills currentRoster gender from archetype + VN name from pool', () => {
+  // v27→v28 backfilled gender/name on currentRoster visitors; v31→v32 then clears
+  // currentRoster entirely (respawns next day-tick). Verify the full chain completes.
+  it('migrates tavern visitors: currentRoster cleared by v32 (respawns on next day-tick)', () => {
     const env = makeV26TavernEnvelope(baseTavern({
       currentRoster: [staleVisitor('tav-1-0', 'scout'), staleVisitor('tav-1-1', 'warrior')],
     }));
     const result = migrateSave(env as any);
     expect(result.version).toBe(SAVE_VERSION);
-    const roster = (result.gameState as any).tavern.currentRoster;
-    const pool = new Set(CIV_CONFIG.LinhSon.namePool);
-    expect(roster[0].gender).toBe('F'); // scout → Ranger
-    expect(roster[1].gender).toBe('M'); // warrior → Forester
-    for (const v of roster) {
-      expect(typeof v.name).toBe('string');
-      expect(pool.has(v.name)).toBe(true);
-    }
+    // v32 clears currentRoster — visitors respawn on next day-tick
+    expect((result.gameState as any).tavern.currentRoster).toEqual([]);
   });
 
   it('migrates tavern visitors: backfills visitorSnapshot in mercContracts / pendingPrompts / veteranPool', () => {
@@ -398,11 +410,18 @@ describe('migrateSave', () => {
     expect(tavern.veteranPool[0].visitorSnapshot.gender).toBe('F');
   });
 
+  // v27→v28 name backfill is deterministic; v31→v32 clears currentRoster so we test
+  // determinism via veteranPool snapshots (which survive through v32).
   it('migrates tavern visitors: name backfill is deterministic across runs (hash by id)', () => {
-    const make = () => makeV26TavernEnvelope(baseTavern({ currentRoster: [staleVisitor('tav-X-0', 'scout')] }));
+    const make = () => makeV26TavernEnvelope(baseTavern({
+      veteranPool: [{ contractId: 'c-x', visitorSnapshot: staleVisitor('tav-X-0', 'scout'), relationshipPoints: 5, addedDay: 0 }],
+    }));
     const a = migrateSave(make() as any);
     const b = migrateSave(make() as any);
-    expect((a.gameState as any).tavern.currentRoster[0].name).toBe((b.gameState as any).tavern.currentRoster[0].name);
+    const nameA = (a.gameState as any).tavern.veteranPool[0].visitorSnapshot.name;
+    const nameB = (b.gameState as any).tavern.veteranPool[0].visitorSnapshot.name;
+    expect(typeof nameA).toBe('string');
+    expect(nameA).toBe(nameB);
   });
 
   it('migrates v26→v27: backfills distinct instanceId on same-template parties', () => {

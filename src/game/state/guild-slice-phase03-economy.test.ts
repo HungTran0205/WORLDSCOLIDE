@@ -24,8 +24,8 @@ function makeKael(): Member {
   return {
     id: 'kael-001',
     name: 'Kael',
-    level: 1,
-    exp: 0,
+    grade: 'F',
+    isMercenary: false,
     stats: { STR: 10, END: 8, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 },
     unallocatedPoints: 0,
     skill: null,
@@ -33,9 +33,7 @@ function makeKael(): Member {
     injuredUntil: null,
     civilization: 'LinhSon',
     isFounder: false,
-    rank: 'RECRUIT',
     missionsCompleted: 0,
-    rarity: 1,
   };
 }
 

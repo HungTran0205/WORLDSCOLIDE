@@ -4,6 +4,7 @@ import type { CombatEntity, CombatTick, CombatEvent, CombatResult, CombatOutcome
 import { calcAutoAttackDamage, calcSkillDamage, rollCrit } from './combat-formulas';
 import { calcDerivedCombatStats } from './derived-combat-stats';
 import { calcGearBonuses } from './equipment-bonuses';
+import { GRADE_HP_BONUS } from '@/game/data/grades';
 import { applyEffectTick } from './combat-effects';
 import {
   createPassiveState, applyPassiveOnInit, applyPassiveTick, onDamageDealt, snapshotBaseStats,
@@ -14,7 +15,7 @@ const TICK_MS = 500;
 const MAX_TICKS = 10000;
 
 function memberToEntity(member: Member): CombatEntity {
-  const derived = calcDerivedCombatStats(member.stats, member.level);
+  const derived = calcDerivedCombatStats(member.stats, GRADE_HP_BONUS[member.grade]);
   const gear = calcGearBonuses(member.equipment);
   const entity: CombatEntity = {
     id: member.id,
@@ -24,7 +25,6 @@ function memberToEntity(member: Member): CombatEntity {
     currentHp: derived.maxHp + gear.flatHp,
     stats: { ...member.stats },
     skill: member.skill ? { ...member.skill } : null,
-    level: member.level,
     attackIntervalMs: derived.attackIntervalMs,
     nextAttackAt: derived.attackIntervalMs,
     skillCooldownUntil: 0,
@@ -48,7 +48,7 @@ function memberToEntity(member: Member): CombatEntity {
 }
 
 function enemyToEntity(template: EnemyTemplate, index: number): CombatEntity {
-  const derived = calcDerivedCombatStats(template.stats, template.level);
+  const derived = calcDerivedCombatStats(template.stats, template.level * 10);
   return {
     id: `enemy-${template.id}-${index}`,
     name: template.name,
@@ -301,7 +301,7 @@ function runCombatLoop(
       }
 
       // Skill usage
-      if (entity.skill && entity.level >= 5 && entity.skill.autoEnabled && time >= entity.skillCooldownUntil) {
+      if (entity.skill && entity.skill.autoEnabled && time >= entity.skillCooldownUntil) {
         const target = pickTarget(entities, !entity.isAlly);
         if (target) {
           const skillTargetDef = target.stats.END + (target.gearFlatDefense ?? 0);

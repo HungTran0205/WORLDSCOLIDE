@@ -20,7 +20,19 @@
     },
     "sung-sac": {
       "name": "Spirit Bolt"
-    }
+    },
+    "pierce": { "name": "Pierce" },
+    "cleave": { "name": "Cleave" },
+    "riposte": { "name": "Riposte" },
+    "rally": { "name": "Rally" },
+    "sunder": { "name": "Sunder" },
+    "quake": { "name": "Quake" },
+    "bulwark": { "name": "Bulwark" },
+    "aegis": { "name": "Aegis" },
+    "snipe": { "name": "Snipe" },
+    "barrage": { "name": "Barrage" },
+    "pin": { "name": "Pin" },
+    "mark": { "name": "Mark" }
   },
   "civ": {
     "LinhSon": {

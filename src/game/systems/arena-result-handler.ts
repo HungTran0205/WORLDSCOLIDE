@@ -45,7 +45,6 @@ export function applyMissionResultSideEffects(
       if (amount && amount > 0) store.addItem(itemId as ItemID, amount);
     }
     for (const memberId of memberSurvivors) {
-      store.addMemberExp(memberId, result.expPerMember);
       store.updateMemberStatus(memberId, 'idle');
     }
     store.completeMission(active.instanceId);

@@ -6,6 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { migrateSave } from './save-migrations';
+import { SAVE_VERSION } from './save-types';
 import type { SaveEnvelope } from './save-types';
 
 /** Build a minimal v30 save envelope for migration testing */
@@ -58,9 +59,9 @@ function makeV30Envelope(overrides: Record<string, unknown> = {}) {
 }
 
 describe('save-migrations: v30→v31 armor remap', () => {
-  it('migrates to version 31', () => {
+  it('migrates to current SAVE_VERSION', () => {
     const result = migrateSave(makeV30Envelope() as any);
-    expect(result.version).toBe(31);
+    expect(result.version).toBe(SAVE_VERSION);
   });
 
   describe('equipped armor remapping', () => {
@@ -457,14 +458,13 @@ describe('save-migrations: v30→v31 armor remap', () => {
         },
       });
 
-      // First migration: v30 → v31
+      // First migration: v30 → current SAVE_VERSION (chain includes v31 armor remap)
       const result1 = migrateSave(envelope as any);
       expect((result1.gameState as any).founder.equipment.armor.templateId).toBe('BOAR_FUR_COAT');
 
-      // Re-run migration on already-migrated save
+      // Re-run on already-migrated save: should be idempotent at SAVE_VERSION
       const result2 = migrateSave(result1);
-      // Should stay at v31 and keep BOAR_FUR_COAT (no double remap to something else)
-      expect(result2.version).toBe(31);
+      expect(result2.version).toBe(SAVE_VERSION);
       expect((result2.gameState as any).founder.equipment.armor.templateId).toBe('BOAR_FUR_COAT');
     });
 
@@ -570,7 +570,7 @@ describe('save-migrations: v30→v31 armor remap', () => {
       expect(gs.founder.equipment.armor.templateId).toBe('BOAR_FUR_COAT');
       expect(gs.roster[0].equipment.armor.templateId).toBe('BEAR_COAT');
       expect(gs.inventory.equipmentInventory[0].templateId).toBe('BOAR_FUR_COAT');
-      expect(result.version).toBe(31);
+      expect(result.version).toBe(SAVE_VERSION);
     });
   });
 });

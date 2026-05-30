@@ -93,18 +93,13 @@ export function QuestRosterPicker({
         <div className="quest-roster-picker__empty">{t('questBoard.party.pickerEmpty')}</div>
       ) : (
         <div className="quest-roster-picker__grid">
-          {candidates.map((m) => {
-            const underleveled = m.level < mission.requiredLevel;
-            return (
-              <MemberCard
-                key={m.id}
-                member={m}
-                disabled={underleveled}
-                reason={underleveled ? t('partySelect.underleveled') : undefined}
-                onClick={() => onPick(m.id)}
-              />
-            );
-          })}
+          {candidates.map((m) => (
+            <MemberCard
+              key={m.id}
+              member={m}
+              onClick={() => onPick(m.id)}
+            />
+          ))}
         </div>
       )}
     </div>

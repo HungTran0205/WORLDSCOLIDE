@@ -1,6 +1,6 @@
-/** Max HP from END + level */
-export function calcMaxHp(end: number, level: number): number {
-  return Math.floor(50 + end * 5 + level * 10);
+/** Max HP from END + flatHpBonus (grade-derived for members, template.level*10 for enemies) */
+export function calcMaxHp(end: number, flatHpBonus: number): number {
+  return Math.floor(60 + end * 5 + flatHpBonus);
 }
 
 /**
@@ -30,8 +30,9 @@ export function calcAutoAttackDamage(
   targetEnd: number,
   weaponMult: number = 1.0,
   flatBonus: number = 0,
+  armorPierced = false,
 ): number {
-  const defRatio = Math.min(0.75, targetEnd / (targetEnd + 100));
+  const defRatio = armorPierced ? 0 : Math.min(0.75, targetEnd / (targetEnd + 100));
   const raw = (str * weaponMult + flatBonus) * (1 - defRatio) * BASE_DAMAGE_MULTIPLIER;
   return Math.max(1, Math.floor(raw));
 }

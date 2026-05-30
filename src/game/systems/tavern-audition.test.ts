@@ -28,8 +28,8 @@ function makeFounder(overrides: Partial<Member> = {}): Member {
   return {
     id: FOUNDER_ID,
     name: 'Founder',
-    level: 5,
-    exp: 0,
+    grade: 'D',
+    isMercenary: false,
     stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 20, LCK: 5, AGI: 5 }, // high CHA → reliable success
     unallocatedPoints: 0,
     skill: null,
@@ -37,9 +37,7 @@ function makeFounder(overrides: Partial<Member> = {}): Member {
     injuredUntil: null,
     civilization: 'LinhSon',
     isFounder: true,
-    rank: 'COMMANDER',
     missionsCompleted: 0,
-    rarity: 1,
     traits: [],
     ...overrides,
   };
@@ -52,8 +50,7 @@ function fakeVisitor(overrides: Partial<TavernVisitor> = {}): TavernVisitor {
     archetype: 'warrior',
     civilization: 'LinhSon',
     gender: 'M',
-    rarity: 3,
-    level: 5,
+    grade: 'D',
     stats: { STR: 10, END: 10, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 },
     derivedDemand: 25,
     dailyMoodBias: 0,
@@ -166,10 +163,9 @@ describe('isReinviteEligible', () => {
 // ─── promoteMercToMember ────────────────────────────────────────────────────
 
 describe('promoteMercToMember', () => {
-  it('copies stats, civ, archetype, rarity, traits, level — rank = MEMBER', () => {
+  it('copies stats, civ, archetype, grade, traits — isMercenary=false', () => {
     const visitor = fakeVisitor({
-      rarity: 4,
-      level: 7,
+      grade: 'B',
       stats: { STR: 20, END: 15, INT: 5, DEX: 10, CHA: 8, LCK: 6, AGI: 12 },
       traits: ['loyal', 'hot-headed'],
       civilization: 'DeQuoc',
@@ -178,12 +174,11 @@ describe('promoteMercToMember', () => {
     const contract = makeMercContract(visitor, 200, 1);
     const member = promoteMercToMember(contract);
 
-    expect(member.rank).toBe('MEMBER');
+    expect(member.isMercenary).toBe(false);
+    expect(member.grade).toBe('B');
     expect(member.stats).toEqual(visitor.stats);
     expect(member.civilization).toBe('DeQuoc');
     expect(member.archetype).toBe('dualblade');
-    expect(member.rarity).toBe(4);
-    expect(member.level).toBe(7);
     expect(member.traits).toEqual(['loyal', 'hot-headed']);
     expect(member.status).toBe('idle');
     expect(member.isFounder).toBe(false);
@@ -302,7 +297,7 @@ describe('acceptCounterOffer', () => {
 
   it('creates a merc contract at +20% standard hire cost', () => {
     // Manually splice a visitor onto roster so we control the cost calc.
-    const v = fakeVisitor({ id: 'v-counter', rarity: 2, level: 3 });
+    const v = fakeVisitor({ id: 'v-counter', grade: 'E' });
     useGameStore.setState((s) => ({
       tavern: { ...s.tavern, currentRoster: [v] },
     }));
@@ -379,11 +374,11 @@ describe('executeReinvite', () => {
         ...s.tavern,
         pendingPrompts: s.tavern.pendingPrompts.map((p) => ({
           ...p,
-          visitorSnapshot: { ...p.visitorSnapshot, rarity: 1, stats: { STR: 1, END: 1, INT: 1, DEX: 1, CHA: 1, LCK: 1, AGI: 1 } },
+          visitorSnapshot: { ...p.visitorSnapshot, grade: 'F', stats: { STR: 1, END: 1, INT: 1, DEX: 1, CHA: 1, LCK: 1, AGI: 1 } },
         })),
         veteranPool: s.tavern.veteranPool.map((v) => ({
           ...v,
-          visitorSnapshot: { ...v.visitorSnapshot, rarity: 1, stats: { STR: 1, END: 1, INT: 1, DEX: 1, CHA: 1, LCK: 1, AGI: 1 } },
+          visitorSnapshot: { ...v.visitorSnapshot, grade: 'F', stats: { STR: 1, END: 1, INT: 1, DEX: 1, CHA: 1, LCK: 1, AGI: 1 } },
         })),
       },
     }));
@@ -408,7 +403,8 @@ describe('executeReinvite', () => {
       expect(useGameStore.getState().tavern.reputation).toBe(repBefore + REINVITE_SUCCESS_REP_BONUS);
       expect(useGameStore.getState().tavern.veteranPool).toHaveLength(0);
       const added = useGameStore.getState().roster[rosterBefore];
-      expect(added.rank).toBe('MEMBER');
+      expect(added.isMercenary).toBe(false);
+      expect(added.isFounder).toBe(false);
     }
   });
 
@@ -417,8 +413,7 @@ describe('executeReinvite', () => {
     bootstrap({ gold: 10_000, founderStats: { CHA: 0, INT: 0 } });
     const visitor = fakeVisitor({
       id: 'v-fail',
-      rarity: 5,
-      level: 9,
+      grade: 'S',
       stats: { STR: 99, END: 99, INT: 99, DEX: 99, CHA: 99, LCK: 0, AGI: 99 },
     });
     const contract = makeMercContract(visitor, 200, 1);

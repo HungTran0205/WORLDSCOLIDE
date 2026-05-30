@@ -90,7 +90,7 @@ export function EquipModePanel({ memberId, onClose }: EquipModePanelProps) {
         </div>
         <div>
           <div className="equip-header-name">{member.name}</div>
-          <div className="equip-header-sub">{member.rank} · Lv.{member.level}</div>
+          <div className="equip-header-sub">Grade {member.grade}{member.isMercenary ? ' · MERC' : ''}</div>
         </div>
         <button className="char-btn" onClick={onClose} type="button" style={{ marginLeft: 'auto' }}>{t('equipMode.done')}</button>
       </div>

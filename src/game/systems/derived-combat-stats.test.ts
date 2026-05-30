@@ -306,10 +306,10 @@ describe('derived-combat-stats: calcDerivedCombatStats', () => {
   });
 
   describe('stat-based derived stats (unchanged)', () => {
-    it('calculates max hp from END and level', () => {
+    it('calculates max hp from END and flatHpBonus', () => {
       const stats: Stats = { ...BASE_STATS, END: 10 };
-      const derived = calcDerivedCombatStats(stats, 5, 1800);
-      // maxHp = 50 + END*5 + level*10 = 50 + 50 + 50 = 150
+      // base=60, END*5=50, flatHpBonus=40 → 150
+      const derived = calcDerivedCombatStats(stats, 40, 1800);
       expect(derived.maxHp).toBe(150);
     });
 

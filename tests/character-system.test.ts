@@ -1,42 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { expToNextLevel, gainExp, LEVEL_UP_BONUS_POINTS } from '@/game/systems/leveling-system';
 import { createEmptyStats, totalAllocated, distributeStatsByWeights, distributeStatsByWeightsRandom, INITIAL_STAT_POINTS, STAT_KEYS } from '@/game/systems/stat-allocation';
 import { createFounder, generateRecruit } from '@/game/systems/character-creation';
 import { mulberry32 } from '@/game/systems/seeded-rng';
-
-describe('Leveling System', () => {
-  it('should return correct EXP for early levels', () => {
-    expect(expToNextLevel(1)).toBe(100);
-    expect(expToNextLevel(2)).toBe(150);
-    expect(expToNextLevel(3)).toBe(220);
-    expect(expToNextLevel(4)).toBe(310);
-  });
-
-  it('should scale EXP by 1.35x from level 5+', () => {
-    const lv5 = expToNextLevel(5);
-    expect(lv5).toBe(430);
-    const lv6 = expToNextLevel(6);
-    expect(lv6).toBe(Math.floor(430 * 1.35));
-  });
-
-  it('should handle multi-level gain', () => {
-    const result = gainExp(1, 0, 500);
-    expect(result.newLevel).toBeGreaterThan(1);
-    expect(result.levelsGained).toBeGreaterThan(0);
-    expect(result.remainingExp).toBeLessThan(expToNextLevel(result.newLevel));
-  });
-
-  it('should handle exact level-up amount', () => {
-    const result = gainExp(1, 0, 100);
-    expect(result.newLevel).toBe(2);
-    expect(result.remainingExp).toBe(0);
-    expect(result.levelsGained).toBe(1);
-  });
-
-  it('should provide 5 bonus points per level', () => {
-    expect(LEVEL_UP_BONUS_POINTS).toBe(5);
-  });
-});
+import { GRADE_ORDER, GRADE_BUDGET } from '@/game/data/grades';
 
 describe('Stat Allocation', () => {
   it('should create empty stats (all zeros)', () => {
@@ -79,39 +45,42 @@ describe('Weighted-random stat distribution', () => {
   });
 
   it('biases toward higher-weight stats over a large sample', () => {
-    // DEX (weight 3) should out-roll INT (weight 0.5) given enough points.
     const stats = distributeStatsByWeightsRandom(1000, scoutWeights, mulberry32(123));
     expect(stats.DEX).toBeGreaterThan(stats.INT);
   });
 });
 
-describe('Character Creation', () => {
-  it('should create founder with correct stats', () => {
+describe('Character Creation (grade model)', () => {
+  it('should create founder with correct fields', () => {
     const stats = { STR: 10, END: 10, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 10 };
     const founder = createFounder('TestHero', stats, 'LinhSon', 'sword', 'M', 'mask-01');
     expect(founder.name).toBe('TestHero');
     expect(founder.isFounder).toBe(true);
-    expect(founder.level).toBe(1);
+    expect(founder.isMercenary).toBe(false);
+    expect(founder.grade).toBe('F');
+    expect(GRADE_ORDER).toContain(founder.grade);
     expect(founder.civilization).toBe('LinhSon');
-    // Player-chosen identity is honored (new 6-arg contract).
     expect(founder.archetype).toBe('sword');
     expect(founder.gender).toBe('M');
     expect(founder.maskSpriteId).toBe('mask-01');
     expect(founder.skill).not.toBeNull();
-    expect(founder.equipment?.weapon).toBeTruthy(); // starting weapon resolved from archetype
-    // Civ bonuses apply: END*1.2=12, DEX*1.1=5, STR*1.1=11 → total > 50
-    expect(totalAllocated(founder.stats)).toBeGreaterThanOrEqual(50);
+    expect(founder.equipment?.weapon).toBeTruthy();
+    // civ bonuses may push total above grade-F budget — acceptable
+    expect(totalAllocated(founder.stats)).toBeGreaterThanOrEqual(GRADE_BUDGET['F']);
   });
 
-  it('should generate recruit within guild level cap', () => {
+  it('should generate recruit with valid grade and stats', () => {
     const recruit = generateRecruit(1);
     expect(recruit.isFounder).toBe(false);
-    expect(recruit.level).toBeGreaterThanOrEqual(1);
-    expect(recruit.level).toBeLessThanOrEqual(5); // guildLevel 1 * 5
+    expect(recruit.isMercenary).toBe(false);
+    expect(GRADE_ORDER).toContain(recruit.grade);
     expect(recruit.id).toBeDefined();
+    // stat sum >= grade budget (civ bonuses add on top of the budget)
+    const total = totalAllocated(recruit.stats);
+    expect(total).toBeGreaterThanOrEqual(GRADE_BUDGET[recruit.grade]);
   });
 
-  it('should generate recruits with valid stats', () => {
+  it('should generate recruits with non-negative stats', () => {
     for (let i = 0; i < 10; i++) {
       const recruit = generateRecruit(2);
       const total = totalAllocated(recruit.stats);

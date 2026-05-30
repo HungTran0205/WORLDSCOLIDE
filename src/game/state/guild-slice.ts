@@ -1,5 +1,5 @@
 import type { StateCreator, StoreApi } from 'zustand';
-import type { GuildHall, GameSettings, TavernState, Member, FloorTile, PlacedFurniture, GridCell, Rotation, FurnitureType, GuildRank, FacilityType, GuildFacility, SyringeLoadout, AlchemyCraftJob, MemberEquipment, MedicineSlot, MedicineCondition, TavernVisitor } from './game-state';
+import type { GuildHall, GameSettings, TavernState, Member, FloorTile, PlacedFurniture, GridCell, Rotation, FurnitureType, FacilityType, GuildFacility, SyringeLoadout, AlchemyCraftJob, MemberEquipment, MedicineSlot, MedicineCondition, TavernVisitor } from './game-state';
 import { GUILD_HALL_GRID_WIDTH, GUILD_HALL_GRID_DEPTH } from './guild-hall-grid';
 import {
   generateTavernRoster,
@@ -42,11 +42,13 @@ import type { StoneQuarryTickResult } from '@/game/systems/stone-quarry-producti
 import type { AcXpGain } from '@/game/systems/alchemy-production-system';
 import { calcAcLevel } from '@/game/systems/alchemy-production-system';
 import { FACILITY_DEFINITIONS, LOGGING_SITE_CONFIG } from '@/game/data/facility-definitions';
+import { RANK_COSTS, MAX_RANK_BY_FACILITY_LEVEL } from '@/game/data/skill-rank-costs';
+import type { TrainingResult } from '@/game/systems/skill-training-system';
 import { FLOOR_TILE_COST } from '@/game/data/buildings';
 import { getFurnitureDefinition } from '@/game/data/furniture';
 import { checkTileAdjacency, isCellOccupiedByFurniture } from '@/game/systems/building-system';
 import { canPlaceFurnitureOnFloor } from '@/game/systems/furniture-system';
-import { GUILD_RANKS, getNextRank } from '@/game/data/ranks';
+import { gradeIndex } from '@/game/data/grades';
 import { createWorkshopActions, type WorkshopActions } from './guild-slice-workshop';
 import type { WorkshopOfflineSummary } from '@/game/systems/workshop-offline-system';
 
@@ -72,10 +74,8 @@ export interface GuildSlice extends WorkshopActions {
   removeFurniture: (furnitureId: string) => boolean;
   /** Upgrade a core furniture piece (= level up). Spends resources. */
   upgradeFurniture: (furnitureId: string) => boolean;
-  /** Invite a mercenary to become an official guild member (cost: level * 100g) */
+  /** Invite a mercenary to become an official guild member. Cost: (gradeIndex+1) * 150g */
   inviteMercenary: (memberId: string) => boolean;
-  /** Promote a guild member to next rank. Costs gold. Returns success. */
-  promoteMember: (memberId: string) => boolean;
   // --- Facility system ---
   facilities: GuildFacility[];
   /** Build a new instance of a facility type (max 3 per type). Returns the new instance id, or null if failed. */
@@ -118,6 +118,15 @@ export interface GuildSlice extends WorkshopActions {
   /** Ephemeral workshop offline summary (cleared after popup display) */
   offlineWorkshopSummary: WorkshopOfflineSummary | null;
   clearOfflineWorkshopSummary: () => void;
+  // --- Skill-rank training (Training Yard) ---
+  /** Start training a member's skill toward the next rank. Deducts gold + material upfront.
+   *  Returns false if: member not idle, slot full, rank cap exceeded, insufficient resources. */
+  startSkillTraining: (memberId: string, skillId: string, facilityId: string) => boolean;
+  /** Cancel an in-progress training slot. No refund (sunk cost per GDD). */
+  cancelSkillTraining: (memberId: string, facilityId: string) => boolean;
+  /** Apply batch training results produced by processSkillTraining(). Called by game tick. */
+  applySkillTrainingResults: (results: TrainingResult[]) => void;
+
   // --- Tavern daily lifecycle (phase 02) ---
   /** Day-tick driver. Idempotent — guards on tavern.lastDayProcessed. */
   tickTavernDay: (currentDay: number) => void;
@@ -484,54 +493,17 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
     set((s) => {
       const fullState = s as GuildSlice & { roster: Member[] };
       const member = fullState.roster.find((m) => m.id === memberId);
-      if (!member || member.rank !== 'MERCENARY') return s;
+      if (!member || !member.isMercenary) return s;
 
-      const cost = member.level * 100;
+      const cost = (gradeIndex(member.grade) + 1) * 150;
       if (s.gold < cost) return s;
 
       success = true;
       return {
         gold: s.gold - cost,
         roster: fullState.roster.map((m) =>
-          m.id === memberId ? { ...m, rank: 'RECRUIT' as const } : m,
+          m.id === memberId ? { ...m, isMercenary: false } : m,
         ),
-      } as unknown as Partial<GuildSlice>;
-    });
-    return success;
-  },
-
-  promoteMember: (memberId) => {
-    let success = false;
-    set((s) => {
-      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null };
-
-      const member = fullState.founder?.id === memberId
-        ? fullState.founder
-        : fullState.roster.find((m) => m.id === memberId);
-      if (!member || member.rank === 'MERCENARY') return s;
-
-      if (member.status === 'on-mission' || member.status === 'injured' || member.status === 'assigned') return s;
-
-      const currentRank = member.rank as GuildRank;
-      const def = GUILD_RANKS[currentRank];
-      if (!def?.promotion) return s;
-
-      const req = def.promotion;
-      if (member.level < req.minLevel || member.missionsCompleted < req.minMissionsCompleted) return s;
-      if (s.gold < req.goldCost) return s;
-
-      const nextRank = getNextRank(currentRank);
-      if (!nextRank) return s;
-
-      success = true;
-      const promoted = { ...member, rank: nextRank };
-
-      if (fullState.founder?.id === memberId) {
-        return { gold: s.gold - req.goldCost, founder: promoted } as unknown as Partial<GuildSlice>;
-      }
-      return {
-        gold: s.gold - req.goldCost,
-        roster: fullState.roster.map((m) => m.id === memberId ? promoted : m),
       } as unknown as Partial<GuildSlice>;
     });
     return success;
@@ -1017,6 +989,188 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
   clearOfflineFacilityReport: () => set({ offlineFacilityReport: null, offlineElapsedHours: 0 }),
 
   clearOfflineWorkshopSummary: () => set({ offlineWorkshopSummary: null }),
+
+  startSkillTraining: (memberId, skillId, facilityId) => {
+    let success = false;
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null; inventory: InventoryState };
+      const member = fullState.founder?.id === memberId
+        ? fullState.founder
+        : fullState.roster.find((m) => m.id === memberId);
+      if (!member) return s;
+      if (member.status !== 'idle') return s;
+      if (!member.skill || member.skill.id !== skillId) return s;
+
+      const facility = s.facilities.find((f) => f.id === facilityId && f.type === 'training-yard');
+      if (!facility || facility.level === 0) return s;
+
+      const maxRank = MAX_RANK_BY_FACILITY_LEVEL[facility.level] ?? 2;
+      const currentRank = member.skillRanks?.[skillId]?.rank ?? 1;
+      const targetRank = currentRank + 1;
+      if (targetRank > maxRank || targetRank > 5) return s;
+
+      // Slot availability check
+      const maxSlots = FACILITY_DEFINITIONS['training-yard'].maxSlots[facility.level - 1];
+      if ((facility.trainingQueue?.length ?? 0) >= maxSlots) return s;
+
+      const rankCost = RANK_COSTS[targetRank];
+      if (!rankCost) return s;
+      if (s.gold < rankCost.gold) return s;
+
+      // Validate material cost
+      const inv = fullState.inventory;
+      if (rankCost.material && rankCost.quantity > 0) {
+        const have = (inv.items[rankCost.material] ?? 0);
+        if (have < rankCost.quantity) return s;
+      }
+
+      // Deduct gold
+      let newGold = s.gold - rankCost.gold;
+
+      // Deduct material
+      let newItems = inv.items;
+      if (rankCost.material && rankCost.quantity > 0) {
+        newItems = { ...inv.items };
+        newItems[rankCost.material] = (newItems[rankCost.material] ?? 0) - rankCost.quantity;
+        if ((newItems[rankCost.material] ?? 0) <= 0) delete newItems[rankCost.material];
+      }
+
+      const slot = {
+        memberId,
+        skillId,
+        targetRank,
+        goldPaid: rankCost.gold,
+        materialPaid: rankCost.material !== null && rankCost.quantity > 0,
+      };
+
+      const updatedFacilities = s.facilities.map((f) =>
+        f.id === facilityId
+          ? {
+              ...f,
+              trainingQueue: [...(f.trainingQueue ?? []), slot],
+              assignedMemberIds: [...f.assignedMemberIds, memberId],
+            }
+          : f,
+      );
+
+      const updateMember = (m: Member): Member =>
+        m.id === memberId ? { ...m, status: 'training' as const } : m;
+
+      success = true;
+      const patch: Partial<GuildSlice> = {
+        gold: newGold,
+        facilities: updatedFacilities,
+        inventory: { ...inv, items: newItems },
+      };
+
+      if (fullState.founder?.id === memberId) {
+        return { ...patch, founder: updateMember(fullState.founder) } as unknown as Partial<GuildSlice>;
+      }
+      return {
+        ...patch,
+        roster: fullState.roster.map(updateMember),
+      } as unknown as Partial<GuildSlice>;
+    });
+    return success;
+  },
+
+  cancelSkillTraining: (memberId, facilityId) => {
+    let success = false;
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null };
+      const facility = s.facilities.find((f) => f.id === facilityId && f.type === 'training-yard');
+      if (!facility) return s;
+      const slot = facility.trainingQueue?.find((sl) => sl.memberId === memberId);
+      if (!slot) return s;
+
+      const updatedFacilities = s.facilities.map((f) =>
+        f.id === facilityId
+          ? {
+              ...f,
+              trainingQueue: (f.trainingQueue ?? []).filter((sl) => sl.memberId !== memberId),
+              assignedMemberIds: f.assignedMemberIds.filter((id) => id !== memberId),
+            }
+          : f,
+      );
+
+      const updateMember = (m: Member): Member =>
+        m.id === memberId ? { ...m, status: 'idle' as const } : m;
+
+      success = true;
+      if (fullState.founder?.id === memberId) {
+        return {
+          facilities: updatedFacilities,
+          founder: updateMember(fullState.founder),
+        } as unknown as Partial<GuildSlice>;
+      }
+      return {
+        facilities: updatedFacilities,
+        roster: fullState.roster.map(updateMember),
+      } as unknown as Partial<GuildSlice>;
+    });
+    return success;
+  },
+
+  applySkillTrainingResults: (results) => {
+    if (results.length === 0) return;
+    set((s) => {
+      const fullState = s as GuildSlice & { roster: Member[]; founder: Member | null };
+
+      // Collect which members completed rank-up (for facility cleanup)
+      const completedMemberIds = new Set<string>(
+        results.filter((r) => r.rankReached !== null).map((r) => r.memberId),
+      );
+
+      const updateMember = (m: Member): Member => {
+        const result = results.find((r) => r.memberId === m.id);
+        if (!result) return m;
+
+        const currentEntry = m.skillRanks?.[result.skillId];
+        if (result.rankReached !== null) {
+          // Rank-up completed
+          return {
+            ...m,
+            status: 'idle' as const,
+            skillRanks: {
+              ...m.skillRanks,
+              [result.skillId]: { rank: result.rankReached, progress: 0 },
+            },
+          };
+        }
+        // Still in progress — advance progress, clamp below 1.0 (not complete yet)
+        const currentProgress = currentEntry?.progress ?? 0;
+        const newProgress = Math.min(0.999, currentProgress + result.progressDelta);
+        return {
+          ...m,
+          skillRanks: {
+            ...m.skillRanks,
+            [result.skillId]: {
+              rank: currentEntry?.rank ?? 1,
+              progress: newProgress,
+            },
+          },
+        };
+      };
+
+      // Remove completed members from their training queue + assignedMemberIds
+      const updatedFacilities = s.facilities.map((f) => {
+        if (f.type !== 'training-yard' || !completedMemberIds.size) return f;
+        const removedAny = (f.trainingQueue ?? []).some((sl) => completedMemberIds.has(sl.memberId));
+        if (!removedAny) return f;
+        return {
+          ...f,
+          trainingQueue: (f.trainingQueue ?? []).filter((sl) => !completedMemberIds.has(sl.memberId)),
+          assignedMemberIds: f.assignedMemberIds.filter((id) => !completedMemberIds.has(id)),
+        };
+      });
+
+      return {
+        facilities: updatedFacilities,
+        roster: fullState.roster.map(updateMember),
+        ...(fullState.founder ? { founder: updateMember(fullState.founder) } : {}),
+      } as unknown as Partial<GuildSlice>;
+    });
+  },
 
   setMedicineSlot: (memberId, slotIdx, slot) => {
     set((s) => {

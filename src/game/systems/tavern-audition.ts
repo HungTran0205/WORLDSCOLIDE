@@ -23,6 +23,7 @@ import type {
   Member,
   TavernPendingPrompt,
 } from '@/game/state/game-state';
+import { gradeOf } from '@/game/data/grades';
 import { REINVITE_BONUS } from './tavern-negotiation';
 
 /** Minimum RP required on a contract for the re-invite prompt to fire. Spec §8. */
@@ -93,18 +94,18 @@ export function makeReinvitePrompt(
 }
 
 /**
- * Convert a merc contract into a permanent guild Member (rank='MEMBER').
- * ALL visitorSnapshot fields propagate (stats, civ, archetype, traits,
- * rarity, level) so the promoted member is indistinguishable from a
- * tavern-recruited visitor of the same provenance.
+ * Convert a merc contract into a permanent guild Member.
+ * ALL visitorSnapshot fields propagate (stats, civ, archetype, traits, grade)
+ * so the promoted member is indistinguishable from a tavern-recruited visitor
+ * of the same provenance. gradeOf handles frozen snapshots that may lack grade.
  */
 export function promoteMercToMember(contract: MercContract, now: number = Date.now()): Member {
   const v = contract.visitorSnapshot;
   return {
     id: `mem-${now}-${contract.id.slice(-6)}`,
     name: v.name,
-    level: v.level,
-    exp: 0,
+    grade: gradeOf(v),
+    isMercenary: false,
     stats: { ...v.stats },
     unallocatedPoints: 0,
     skill: null,
@@ -114,9 +115,7 @@ export function promoteMercToMember(contract: MercContract, now: number = Date.n
     archetype: v.archetype,
     gender: v.gender,
     isFounder: false,
-    rank: 'MEMBER',
     missionsCompleted: 0,
-    rarity: v.rarity,
     traits: [...v.traits],
     equipment: null,
     syringeLoadout: null,

@@ -13,10 +13,10 @@ import type { Member } from '@/game/state/game-state';
 
 function founder(): Member {
   return {
-    id: 'founder-001', name: 'Founder', level: 5, exp: 0,
+    id: 'founder-001', name: 'Founder', grade: 'D', isMercenary: false,
     stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 10, LCK: 5, AGI: 5 },
     unallocatedPoints: 0, skill: null, status: 'idle', injuredUntil: null,
-    civilization: 'LinhSon', isFounder: true, rank: 'COMMANDER', missionsCompleted: 0, rarity: 1,
+    civilization: 'LinhSon', isFounder: true, missionsCompleted: 0,
   };
 }
 

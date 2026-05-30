@@ -21,8 +21,7 @@ export function OfflineFacilityPopup({ results, elapsedHours, onDismiss }: Offli
   const { t } = useTranslation();
   // Only show facilities with actual production
   const activeResults = results.filter((r) =>
-    Object.keys(r.expGains).length > 0 ||
-    Object.keys(r.itemGains).length > 0,
+    r.itemGains && Object.keys(r.itemGains).length > 0,
   );
 
   if (activeResults.length === 0) return null;
@@ -42,13 +41,6 @@ export function OfflineFacilityPopup({ results, elapsedHours, onDismiss }: Offli
             <div style={{ color: '#87ceeb', fontWeight: 'bold', fontSize: '0.9rem', marginBottom: 4 }}>
               {FACILITY_ICONS[r.facilityType] ?? '🏛'} {r.facilityName}
             </div>
-
-            {/* EXP gains (Training Yard) */}
-            {Object.entries(r.expGains).map(([memberId, exp]) => (
-              <div key={memberId} style={{ fontSize: '0.8rem', color: '#ccc', paddingLeft: 16 }}>
-                {t('offlinePopup.memberExp', { exp })}
-              </div>
-            ))}
 
             {/* Item gains (Workshop / Logging / Quarry) */}
             {Object.entries(r.itemGains).map(([itemId, qty]) => (
