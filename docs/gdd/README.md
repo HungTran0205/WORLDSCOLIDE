@@ -26,13 +26,17 @@ it describes — when the code changes, the section must be updated (see *Keepin
 | 12 | [Art Direction](./12-art-direction.md) | HD-2D language, palette → `reference/asset-list-sprites.md` |
 | 13 | [Audio Direction](./13-audio-direction.md) | BGM/SFX intent → `reference/asset-list-audio.md` |
 | 14 | [UX / UI & i18n](./14-ux-ui-i18n.md) | Panel/HUD conventions, i18next EN/VI |
+| 15 | [Items Master Database](./15-items-inventory-system.md) | Comprehensive items/materials/consumables/equipment/recipes lookup — use this for edits |
+| 16 | [Linh Sơn Class Skills](./16-linh-son-class-skills.md) | Ability kits for Templar/Forester/Ranger — effects, balance, impl tiers |
+| 17 | [Character Rarity Grade System](./17-character-rarity-grade-system.md) | ⚠️ Proposal — F–S rarity replaces leveling + guild-rank; stat budgets, promotion gates |
 
 ### Rooms ([`rooms/`](./rooms/))
 
 One file per guild-hall room: `tavern`, `workshop`, `alchemy`, `infirmary`, `inventory`,
-`wood-mining` (Logging Site), `stone-quarry`. Each cites its `facility-definitions.ts` entry and
-production system. (Stone comes only from the Stone Quarry — there is no separate stone-mining
-facility. The Training Yard exists in code but has no room file — see `08-guild-hall-rooms.md`.)
+`wood-mining` (Logging Site), `stone-quarry`, `training-yard`. Each cites its `facility-definitions.ts`
+entry and production/effect system. (Stone comes only from the Stone Quarry — there is no separate
+stone-mining facility. The Training Yard is repurposed from passive EXP to skill-rank training —
+see [`rooms/training-yard.md`](./rooms/training-yard.md) and `16-linh-son-class-skills.md`.)
 
 > **Status:** sections are authored progressively. Files marked here but not yet present are in-flight.
 > `_src-*` staging files/dirs are temporary authoring seeds and are deleted once consumed.

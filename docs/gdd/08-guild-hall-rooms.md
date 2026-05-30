@@ -28,9 +28,9 @@ All facilities defined in `src/game/data/facility-definitions.ts` — `FACILITY_
 | Stone Quarry | `stone-quarry` | 500g | 20 WOOD | 1 / 2 / 3 | STR + LCK |
 | Alchemy Lab | `alchemy-lab` | 350g | 20 STONE + 50 WOOD | 1 / 2 / 3 | INT + DEX |
 | Infirmary | `infirmary` | 500g | 50 STONE + 50 WOOD | 1 / 2 / 3 (beds) | — (no worker) |
-| Training Yard | `training-yard` | 250g | — | 2 / 3 / 4 | DEX + AGI |
+| Training Yard | `training-yard` | 250g | — | 2 / 3 / 4 | — (no stat dependency) |
 
-> Training Yard: passive EXP gain only — no dedicated room file; requires guild level 3.
+> Training Yard: trains a member's carried skill rank (1→5); benches the member from missions. Repurposed from passive EXP. Requires guild level 3. See [`rooms/training-yard.md`](rooms/training-yard.md).
 > Inventory (guild storage) is always available — no build required.
 
 ## Room-Effect Model
@@ -49,7 +49,7 @@ Facilities produce effects through two mechanisms:
 **Not a production room:**
 - Tavern: visitor spawn / negotiation system
 - Infirmary: bed/queue injury recovery (beds heal fast by level, queue heals slow); see [`rooms/infirmary.md`](rooms/infirmary.md)
-- Training Yard: passive daily EXP tick <!-- TODO: verify training-yard EXP formula against code -->
+- Training Yard: per-tick skill-rank training (speed by facility level only, stat-independent); benches the trainee from missions; see [`rooms/training-yard.md`](rooms/training-yard.md)
 
 ## Member Assignment
 
