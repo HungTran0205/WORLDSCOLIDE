@@ -33,6 +33,7 @@ import { applyMissionResultSideEffects } from '@/game/systems/arena-result-handl
 import { simulateCombatFromSnapshot, cloneCombatEntity } from '@/game/systems/combat-simulator';
 import { resolveCombatMapId, getStageSpec } from './maps/combat-map-registry';
 import { useCombatProjectionStore } from './combat-projection-store';
+import { tContent } from '@/i18n/content-localization';
 import { resolveEnemyCombatSheet } from '@/scene/sprites/combat-sprite-resolver';
 import {
   COMBAT_VFX_PRESETS, COMBAT_VFX_COUNTS,
@@ -405,6 +406,9 @@ function preloadNextWaveTextures(wm: WaveManager): void {
 /** Translate combat events into floating damage / heal / poison popups. */
 function emitDamagePopups(events: CombatEvent[], engine: CombatEngineType): void {
   const spawn = useCombatProjectionStore.getState().spawnDamage;
+  // One skill-name banner per caster per batch — multi-hit skills (Barrage) emit one
+  // skill-use event per hit, but the name should pop once, not 5× stacked.
+  const bannerShown = new Set<string>();
   for (const event of events) {
     if (event.type === 'auto-attack' || event.type === 'skill-use') {
       spawn(event.targetId, String(event.damage), event.isCrit ? 'crit' : 'normal');
@@ -419,6 +423,19 @@ function emitDamagePopups(events: CombatEvent[], engine: CombatEngineType): void
       if (target) spawn(target.id, 'DODGE', 'normal');
     } else if (event.type === 'block') {
       spawn(event.targetId, `BLOCK ${event.reducedDamage}`, 'normal');
+    }
+
+    // Skill cast → floating skill-name banner on the caster (localized), shown
+    // alongside the damage numbers so the player can read what was triggered.
+    if (event.type === 'skill-use' || event.type === 'skill-buff-applied' || event.type === 'skill-debuff-applied') {
+      const casterId = event.type === 'skill-use' ? event.attackerId : event.casterId;
+      if (!bannerShown.has(casterId)) {
+        const caster = engine.entities.find((e) => e.id === casterId);
+        if (caster?.skill) {
+          bannerShown.add(casterId);
+          spawn(casterId, tContent('skills', caster.skill.id, 'name', caster.skill.name), 'skill');
+        }
+      }
     }
   }
 }

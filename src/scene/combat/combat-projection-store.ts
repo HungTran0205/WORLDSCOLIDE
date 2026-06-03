@@ -25,7 +25,10 @@ export interface DamageNumber {
   /** Display text (e.g. "120", "120 CRIT", "+45") */
   text: string;
   /** Color category — drives CSS class */
-  kind: 'normal' | 'crit' | 'heal' | 'poison';
+  kind: 'normal' | 'crit' | 'heal' | 'poison' | 'skill';
+  /** Per-popup screen offset (px) so multi-hit numbers in one frame fan out instead of stacking. */
+  offsetX: number;
+  offsetY: number;
   /** Wall-clock ms when spawned (for cleanup) */
   spawnedAt: number;
 }
@@ -53,9 +56,14 @@ export const useCombatProjectionStore = create<CombatProjectionStore>()((set) =>
 
   spawnDamage: (entityId, text, kind) =>
     set((s) => {
+      // Damage numbers jitter so a multi-hit (e.g. Barrage's 5 hits in one frame) fans
+      // out and stays readable; skill-name banners + heals stay centered.
+      const jitter = kind === 'skill' || kind === 'heal';
+      const offsetX = jitter ? 0 : Math.round((Math.random() - 0.5) * 44);
+      const offsetY = jitter ? 0 : Math.round((Math.random() - 0.5) * 18);
       const next: DamageNumber[] = [
         ...s.damages,
-        { id: ++damageIdSeq, entityId, text, kind, spawnedAt: performance.now() },
+        { id: ++damageIdSeq, entityId, text, kind, offsetX, offsetY, spawnedAt: performance.now() },
       ];
       // Cap pool so a hellish AOE storm can't unbounded-grow
       if (next.length > MAX_ACTIVE_DAMAGES) {

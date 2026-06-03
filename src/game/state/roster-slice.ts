@@ -1,5 +1,7 @@
 import type { StateCreator } from 'zustand';
 import type { Member, MemberStatus, StatKey } from './game-state';
+import { getSkillFromPool } from '@/game/data/skills';
+import { requestSave } from '@/game/save/save-scheduler';
 
 export interface RosterSlice {
   founder: Member | null;
@@ -15,6 +17,9 @@ export interface RosterSlice {
    *  `baseRecoveryMs` + `injuredAt` recorded, legacy `injuredUntil` nulled (progress is the driver). */
   injureMember: (memberId: string, baseRecoveryMs: number, injuredAt: number) => void;
   toggleAutoCast: (memberId: string) => void;
+  /** Equip a skill from the member's class pool as the carried (combat) skill.
+   *  Preserves earned skillRanks and the auto-cast toggle. No-op while training. */
+  equipMemberSkill: (memberId: string, skillId: string) => void;
   allocateStat: (memberId: string, stat: StatKey, amount?: number) => void;
   /** Increment missionsCompleted counter for given member IDs */
   incrementMissionsCompleted: (memberIds: string[]) => void;
@@ -100,6 +105,25 @@ export const createRosterSlice: StateCreator<RosterSlice> = (set) => ({
       }
       return { roster: updateMember(s.roster, memberId, toggler) };
     }),
+
+  equipMemberSkill: (memberId, skillId) => {
+    set((s) => {
+      const equip = (m: Member): Member => {
+        if (m.status === 'training') return m; // carried skill locked while training
+        const chosen = getSkillFromPool(m.archetype, skillId);
+        if (!chosen) return m;
+        // Only learned skills (Lv1+) can be equipped — Lv0 must be learned at the Training Yard.
+        if ((m.skillRanks?.[skillId]?.rank ?? 0) < 1) return m;
+        // Keep the auto-cast toggle when swapping; earned skillRanks are untouched.
+        return { ...m, skill: { ...chosen, autoEnabled: m.skill?.autoEnabled ?? chosen.autoEnabled } };
+      };
+      if (s.founder?.id === memberId) {
+        return { founder: equip(s.founder) };
+      }
+      return { roster: updateMember(s.roster, memberId, equip) };
+    });
+    requestSave(); // persist the carried-skill change promptly
+  },
 
   allocateStat: (memberId, stat, amount = 1) =>
     set((s) => {

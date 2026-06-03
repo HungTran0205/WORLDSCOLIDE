@@ -27,7 +27,8 @@ function memberToEntity(member: Member): CombatEntity {
     skill: member.skill ? { ...member.skill } : null,
     attackIntervalMs: derived.attackIntervalMs,
     nextAttackAt: derived.attackIntervalMs,
-    skillCooldownUntil: 0,
+    skillCooldownUntil: member.skill?.cooldownMs ?? 0, // start on cooldown
+
     statusEffects: [],
     abilities: [],
     civilization: member.civilization,
@@ -60,7 +61,7 @@ function enemyToEntity(template: EnemyTemplate, index: number): CombatEntity {
     level: template.level,
     attackIntervalMs: derived.attackIntervalMs,
     nextAttackAt: derived.attackIntervalMs,
-    skillCooldownUntil: 0,
+    skillCooldownUntil: template.skill?.cooldownMs ?? 0, // start on cooldown
     statusEffects: [],
     abilities: [...template.abilities],
     dodgeRate: derived.dodgeRate,
@@ -211,8 +212,12 @@ function runCombatLoop(
       }
       if (effectResult.skipTurn) continue;
 
+      // One action per cycle: a ready skill replaces the basic attack (parity with
+      // CombatEngine.processEntityAction). Skip the auto-attack when a skill fires.
+      const willCastSkill = !!entity.skill?.autoEnabled && time >= entity.skillCooldownUntil;
+
       // Auto-attack
-      if (time >= entity.nextAttackAt) {
+      if (!willCastSkill && time >= entity.nextAttackAt) {
         const target = pickTarget(entities, !entity.isAlly);
         if (!target) continue;
 

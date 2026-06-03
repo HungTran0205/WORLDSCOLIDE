@@ -27,17 +27,17 @@ export interface EnemyTemplate {
 }
 
 export const ENEMIES: Record<string, EnemyTemplate> = {
-  // --- Level 1 ---
+  // --- Level 1 --- rank F 35 points
   slime: {
     id: 'slime', name: 'Slime', level: 1,
-    stats: { STR: 3, END: 5, INT: 1, DEX: 1, CHA: 0, LCK: 1, AGI: 2 },
+    stats: { STR: 5, END: 15, INT: 1, DEX: 5, CHA: 5, LCK: 1, AGI: 3 },
     skill: null, abilities: [],
     loot: [{ itemId: 'SLIME_GEL', chance: 0.75, min: 1, max: 2 }, { itemId: 'WOOD', chance: 0.15, min: 1, max: 2 }],
     spriteId: 'slime',
   },
   'forest-spider': {
     id: 'forest-spider', name: 'Forest Spider', level: 1,
-    stats: { STR: 4, END: 2, INT: 1, DEX: 3, CHA: 0, LCK: 1, AGI: 5 },
+    stats: { STR: 4, END: 8, INT: 1, DEX: 10, CHA: 0, LCK: 2, AGI: 10 },
     skill: null, abilities: [{ type: 'poison-attack', chance: 0.10 }],
     loot: [
       { itemId: 'SLIME_GEL', chance: 0.5, min: 1, max: 1 },
@@ -45,14 +45,44 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     ],
     spriteId: 'forest-spider',
   },
-
-  // --- Level 2 ---
-  goblin: {
-    id: 'goblin', name: 'Goblin', level: 2,
-    stats: { STR: 6, END: 4, INT: 2, DEX: 5, CHA: 0, LCK: 3, AGI: 5 },
-    skill: null, abilities: [{ type: 'poison-attack', chance: 0.15 }],
-    loot: [{ itemId: 'GOBLIN_EAR', chance: 0.8, min: 1, max: 1 }, { itemId: 'WOOD', chance: 0.15, min: 1, max: 2 }],
-    spriteId: 'goblin',
+  'cave-bat': {
+    id: 'cave-bat', name: 'Cave Bat', level: 2,
+    stats: { STR: 3, END: 5, INT: 1, DEX: 6, CHA: 0, LCK: 5, AGI: 15 },
+    skill: null, abilities: [],
+    loot: [
+      { itemId: 'BAT_WING', chance: 0.30, min: 1, max: 1 }
+    ],
+    spriteId: 'cave-bat',
+    flying: true,
+  },
+  'wild-boar': {
+    id: 'wild-boar', name: 'Wild Boar', level: 3,
+    stats: { STR: 10, END: 18, INT: 0, DEX: 2, CHA: 0, LCK: 0, AGI: 5 },
+    skill: null, abilities: [{ type: 'enrage', chance: 0.15 }],
+    loot: [{ itemId: 'BOAR_PELT', chance: 0.6, min: 1, max: 2 }, { itemId: 'WOOD', chance: 0.2, min: 1, max: 1 }],
+    spriteId: 'wild-boar',
+  },
+  // --- Level 2 --- rank F+ 45 - 50 points
+  // --- Arc 1: machine enemies ---
+  'flying-drone': {
+    id: 'flying-drone', name: 'Flying Drone', level: 2,
+    stats: { STR: 5, END: 8, INT: 2, DEX: 10, CHA: 0, LCK: 0, AGI: 20 },
+    skill: null, abilities: [{ type: 'stun-attack', chance: 0.15 }],
+    loot: [
+      { itemId: 'DRONE_SENSOR', chance: 0.80, min: 1, max: 1 }
+    ],
+    spriteId: 'drone', // walk-as-idle (no idle frames on disk), 4-frame attack
+    flying: true,
+  },
+  'dog-robot': {
+    id: 'dog-robot', name: 'Dog Robot', level: 3,
+    stats: { STR: 15, END: 15, INT: 0, DEX: 5, CHA: 0, LCK: 5, AGI: 10 },
+    skill: null, abilities: [{ type: 'enrage', chance: 0.20 }],
+    loot: [
+      { itemId: 'METAL_PLATE',  chance: 0.75, min: 1, max: 2 },
+      { itemId: 'DRONE_SENSOR', chance: 0.30, min: 1, max: 1 },
+    ],
+    spriteId: 'dog-robot', // walk-as-idle (no idle frames on disk), 9-frame death, 4-frame attack
   },
   bandit: {
     id: 'bandit', name: 'Bandit', level: 2,
@@ -61,31 +91,19 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     loot: [{ itemId: 'GOBLIN_EAR', chance: 0.4, min: 1, max: 1 }, { itemId: 'IRON_ORE', chance: 0.2, min: 1, max: 1 }],
     spriteId: 'bandit',
   },
-  'cave-bat': {
-    id: 'cave-bat', name: 'Cave Bat', level: 2,
-    stats: { STR: 3, END: 2, INT: 1, DEX: 6, CHA: 0, LCK: 2, AGI: 8 },
-    skill: null, abilities: [],
-    loot: [
-      { itemId: 'BAT_WING', chance: 0.30, min: 1, max: 1 },
-      { itemId: 'STONE', chance: 0.35, min: 1, max: 2 },
-    ],
-    spriteId: 'cave-bat',
-    flying: true,
-  },
   // Tutorial boss — "Bear the Bear" quest (chain-first-tremor). Stats kept low:
   // STR capped so it can't one-shot a lv1 founder; modest END for a ~3-4 turn fight.
   // `enrage` is the telegraphed "Lunar Roar" wind-up the coachmark cues (Phase 04).
   // Final balance pass: Phase 07. Sprite: public/sprites/enemies/moonbear (idle/attack/death/block).
+  // --- Level 3 --- rank E 50 - 65 points
   moonbear: {
     id: 'moonbear', name: 'Moonbear', level: 2,
-    stats: { STR: 9, END: 12, INT: 1, DEX: 3, CHA: 0, LCK: 2, AGI: 3 },
+    stats: { STR: 20, END: 15, INT: 5, DEX: 5, CHA: 0, LCK: 5, AGI: 5 },
     skill: null, abilities: [{ type: 'enrage', chance: 0.20 }],
     loot: [{ itemId: 'BEAR_PELT', chance: 0.8, min: 1, max: 1 }, { itemId: 'WOOD', chance: 0.3, min: 1, max: 2 }],
     spriteId: 'moonbear',
     isBoss: true,
   },
-
-  // --- Level 3 ---
   wolf: {
     id: 'wolf', name: 'Wolf', level: 3,
     stats: { STR: 8, END: 5, INT: 1, DEX: 4, CHA: 0, LCK: 2, AGI: 7 },
@@ -93,17 +111,10 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     loot: [{ itemId: 'WOLF_FANG', chance: 0.4, min: 1, max: 1 }, { itemId: 'BOAR_PELT', chance: 0.3, min: 1, max: 1 }],
     spriteId: 'wolf',
   },
-  'wild-boar': {
-    id: 'wild-boar', name: 'Wild Boar', level: 3,
-    stats: { STR: 7, END: 10, INT: 1, DEX: 2, CHA: 0, LCK: 1, AGI: 3 },
-    skill: null, abilities: [{ type: 'enrage', chance: 0.15 }],
-    loot: [{ itemId: 'BOAR_PELT', chance: 0.6, min: 1, max: 2 }, { itemId: 'WOOD', chance: 0.2, min: 1, max: 1 }],
-    spriteId: 'wild-boar',
-  },
   'slime-king': {
     id: 'slime-king', name: 'Slime King', level: 3,
-    stats: { STR: 10, END: 25, INT: 3, DEX: 5, CHA: 0, LCK: 5, AGI: 5 },
-    skill: null, abilities: [],
+    stats: { STR: 15, END: 25, INT: 10, DEX: 5, CHA: 0, LCK: 5, AGI: 5 },
+    skill: null, abilities: [{ type: 'poison-attack', chance: 0.30 }],
     loot: [
       { itemId: 'SLIME_GEL', chance: 1.0, min: 2, max: 4 },
       { itemId: 'STONE', chance: 0.5, min: 1, max: 2 },
@@ -112,30 +123,6 @@ export const ENEMIES: Record<string, EnemyTemplate> = {
     spriteId: 'slime-king',
     isBoss: true,
   },
-
-  // --- Arc 1: machine enemies ---
-  'flying-drone': {
-    id: 'flying-drone', name: 'Flying Drone', level: 2,
-    stats: { STR: 5, END: 3, INT: 2, DEX: 15, CHA: 0, LCK: 1, AGI: 25 },
-    skill: null, abilities: [{ type: 'stun-attack', chance: 0.15 }],
-    loot: [
-      { itemId: 'DRONE_SENSOR', chance: 0.80, min: 1, max: 1 },
-      { itemId: 'METAL_PLATE',  chance: 0.20, min: 1, max: 1 },
-    ],
-    spriteId: 'drone', // walk-as-idle (no idle frames on disk), 4-frame attack
-    flying: true,
-  },
-  'dog-robot': {
-    id: 'dog-robot', name: 'Dog Robot', level: 3,
-    stats: { STR: 15, END: 15, INT: 2, DEX: 5, CHA: 0, LCK: 1, AGI: 10 },
-    skill: null, abilities: [{ type: 'enrage', chance: 0.20 }],
-    loot: [
-      { itemId: 'METAL_PLATE',  chance: 0.75, min: 1, max: 2 },
-      { itemId: 'DRONE_SENSOR', chance: 0.30, min: 1, max: 1 },
-    ],
-    spriteId: 'dog-robot', // walk-as-idle (no idle frames on disk), 9-frame death, 4-frame attack
-  },
-
   // --- Level 4 (boss: queen-spider) ---
   'goblin-shaman': {
     id: 'goblin-shaman', name: 'Goblin Shaman', level: 4,

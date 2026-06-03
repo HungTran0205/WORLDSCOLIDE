@@ -76,7 +76,7 @@ Lv3/5/8/10 bonuses are defined in design but **not yet implemented in code**.
 
 ## Craft Panel UI
 
-Visible slots scale with AC: `min(4, maxAcLevel + 1)`. Player drags ingredients into slots; `matchRecipe()` runs automatically. Output preview appears; Craft button activates when recipe matches and ingredients are available.
+Visible ingredient slots equal the **lab level** (what the player upgrades): `min(4, max(facility.level, maxAcLevel))` → Lv1 = 1 slot, Lv2 = 2, Lv3 = 3. The 4th slot is only reachable by a very skilled alchemist (AC ≥ 4) assigned to the lab. The alchemist's AC level still gates which **recipes** match (`matchRecipe(slots, maxAcLevel)`). Player drags ingredients into slots; `matchRecipe()` runs automatically. Output preview appears; Craft button activates when recipe matches and ingredients are available.
 
 ## Syringe Loadout (Auto-Use)
 

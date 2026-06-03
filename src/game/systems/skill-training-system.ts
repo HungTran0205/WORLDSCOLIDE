@@ -4,7 +4,8 @@
  */
 
 import type { Member, GuildFacility, Skill } from '@/game/state/game-state';
-import { RANK_TRAIN_DAYS, MAX_RANK_BY_FACILITY_LEVEL } from '@/game/data/skill-rank-costs';
+import { RANK_TRAIN_DAYS, MAX_RANK_BY_FACILITY_LEVEL, TRAIN_SPEED_FACTOR, GAME_DAY_REAL_MS } from '@/game/data/skill-rank-costs';
+import { getSkillFromPool } from '@/game/data/skills';
 
 export interface TrainingResult {
   memberId: string;
@@ -14,17 +15,18 @@ export interface TrainingResult {
 }
 
 /**
- * Advance training progress for all active Training Yard slots by gameDays elapsed.
+ * Advance training progress for all active Training Yard slots by dtMs elapsed.
  * Pure function — caller (applySkillTrainingResults) applies state mutations.
  */
 export function processSkillTraining(
   facility: GuildFacility,
   allMembers: Member[],
-  gameDays: number,
+  dtMs: number,
 ): TrainingResult[] {
-  if (!facility.trainingQueue?.length) return [];
+  if (dtMs <= 0 || !facility.trainingQueue?.length) return [];
 
   const maxRank = MAX_RANK_BY_FACILITY_LEVEL[facility.level] ?? 2;
+  const speedFactor = TRAIN_SPEED_FACTOR[facility.level - 1] ?? 1.0;
   const results: TrainingResult[] = [];
 
   for (const slot of facility.trainingQueue) {
@@ -32,13 +34,12 @@ export function processSkillTraining(
     if (!member || member.status !== 'training') continue;
 
     const currentEntry = member.skillRanks?.[slot.skillId];
-    const currentRank = currentEntry?.rank ?? 1;
+    const currentRank = currentEntry?.rank ?? 0; // 0 = not yet learned
     if (currentRank >= slot.targetRank || slot.targetRank > maxRank) continue;
 
-    const trainDays = RANK_TRAIN_DAYS[slot.targetRank] ?? 1;
-    // Progress per day scales with facility level so higher-level yards train faster.
-    const progressPerDay = facility.level / trainDays;
-    const progressDelta = progressPerDay * gameDays;
+    const baseTrainMs = (RANK_TRAIN_DAYS[slot.targetRank] ?? 1) * GAME_DAY_REAL_MS;
+    // rate = 1/speedFactor — Lv2 (0.8) is 1.25× faster, Lv3 (0.6) ~1.667× faster
+    const progressDelta = (dtMs / baseTrainMs) / speedFactor;
 
     const currentProgress = currentEntry?.progress ?? 0;
     const newProgress = currentProgress + progressDelta;
@@ -53,6 +54,45 @@ export function processSkillTraining(
 
   return results;
 }
+
+// ── Display resolver (single source of truth for TrainingYardRoomCard) ──────
+
+export interface TrainingRow {
+  slot: import('@/game/state/game-state').TrainingSlot;
+  member: Member;
+  skill: Skill;
+  currentRank: number;
+  targetRank: number;
+  progress: number;
+  remainingMs: number;
+  speedFactor: number;
+}
+
+export function resolveTrainingRows(facility: GuildFacility, members: Member[]): TrainingRow[] {
+  const speedFactor = TRAIN_SPEED_FACTOR[facility.level - 1] ?? 1.0;
+  return (facility.trainingQueue ?? []).flatMap((slot) => {
+    const member = members.find((m) => m.id === slot.memberId);
+    if (!member) return [];
+    // Show the skill being trained (may differ from the carried skill).
+    const skill = getSkillFromPool(member.archetype, slot.skillId) ?? member.skill;
+    if (!skill) return [];
+    const entry = member.skillRanks?.[slot.skillId];
+    const progress = entry?.progress ?? 0;
+    const baseTrainMs = (RANK_TRAIN_DAYS[slot.targetRank] ?? 1) * GAME_DAY_REAL_MS;
+    return [{
+      slot,
+      member,
+      skill,
+      currentRank: entry?.rank ?? 0,
+      targetRank: slot.targetRank,
+      progress,
+      remainingMs: Math.max(0, (1 - progress) * baseTrainMs * speedFactor),
+      speedFactor,
+    }];
+  });
+}
+
+// ── Rank-milestone applier ───────────────────────────────────────────────────
 
 /**
  * Return a copy of `skill` with rank-milestone overrides applied for the given rank.

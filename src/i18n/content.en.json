@@ -21,18 +21,18 @@
     "sung-sac": {
       "name": "Spirit Bolt"
     },
-    "pierce": { "name": "Pierce" },
-    "cleave": { "name": "Cleave" },
-    "riposte": { "name": "Riposte" },
-    "rally": { "name": "Rally" },
-    "sunder": { "name": "Sunder" },
-    "quake": { "name": "Quake" },
-    "bulwark": { "name": "Bulwark" },
-    "aegis": { "name": "Aegis" },
-    "snipe": { "name": "Snipe" },
-    "barrage": { "name": "Barrage" },
-    "pin": { "name": "Pin" },
-    "mark": { "name": "Mark" }
+    "pierce": { "name": "Pierce", "desc": "Thrust through one lane: hits the front-row and back-row enemy in the same lane (max 2 targets)." },
+    "cleave": { "name": "Cleave", "desc": "Heavy horizontal swing with +10% crit chance." },
+    "riposte": { "name": "Riposte", "desc": "Take a counter stance; ripostes the next incoming melee hit." },
+    "rally": { "name": "Rally", "desc": "Self battle cry: raises own damage for a few seconds." },
+    "sunder": { "name": "Sunder", "desc": "Armor-breaking blow with a 50% chance to pierce the target's armor." },
+    "quake": { "name": "Quake", "desc": "Slam the ground, damaging all enemies in the area." },
+    "bulwark": { "name": "Bulwark", "desc": "Raise a bulwark: taunt nearby foes and sharply boost own defense." },
+    "aegis": { "name": "Aegis", "desc": "Project a team shield: raises all allies' defense." },
+    "snipe": { "name": "Snipe", "desc": "A precise bolt with +50% accuracy against evasive targets." },
+    "barrage": { "name": "Barrage", "desc": "Loose a volley of 5 arrows, each dealing partial damage." },
+    "pin": { "name": "Pin", "desc": "Pin the target in place, slowing it for several seconds." },
+    "mark": { "name": "Mark", "desc": "Mark a target: raises the whole team's crit chance against it." }
   },
   "civ": {
     "LinhSon": {

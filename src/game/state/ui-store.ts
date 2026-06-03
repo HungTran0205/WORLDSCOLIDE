@@ -4,7 +4,7 @@ const TUTORIAL_SEEN_KEY = 'questBoardTutorialSeen';
 const FACILITY_HINT_SEEN_KEY = 'facilityHintSeen';
 
 /** Facility types that surface a function panel via their iconic 3D object. */
-export type FacilityHintType = 'workshop' | 'alchemy-lab' | 'tavern';
+export type FacilityHintType = 'workshop' | 'alchemy-lab' | 'tavern' | 'training-yard';
 
 type FacilityHintSeen = Record<FacilityHintType, boolean>;
 
@@ -12,6 +12,7 @@ const FACILITY_HINT_DEFAULT: FacilityHintSeen = {
   workshop: false,
   'alchemy-lab': false,
   tavern: false,
+  'training-yard': false,
 };
 
 // Read once at module load. window guard keeps SSR / test env safe.

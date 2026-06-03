@@ -427,13 +427,25 @@ export class CombatEngine {
     // reverts to battle-idle in processEntityStatus. Ranged behaviour is the
     // baseline; melee/warrior step-forward + warrior-jump removed (Phase 6+
     // user feedback — no movement during the idle combat panel).
-    this.tryAttack(entity, target);
+    // A skill fires this turn if it's manually queued or auto-cast AND off cooldown.
+    const skillReady = !!entity.skill && this.time >= entity.skillCooldownUntil;
+    const manualCast = entity.isAlly && this.pendingSkills.has(entity.id) && skillReady;
+    const autoCast = !!entity.skill?.autoEnabled && skillReady;
+    // One action per turn: a skill that fires REPLACES the basic attack — the entity
+    // either attacks or casts, never both. So a buff cast deals no damage, and a damage
+    // skill hits once (the skill) instead of attack + skill.
+    const skipAttack = manualCast || autoCast;
 
-    if (entity.isAlly && this.pendingSkills.has(entity.id)) {
+    if (!skipAttack) this.tryAttack(entity, target);
+
+    if (manualCast) {
       this.trySkill(entity, target);
       this.pendingSkills.delete(entity.id);
-    } else if (entity.skill?.autoEnabled && this.time >= entity.skillCooldownUntil) {
+    } else if (autoCast) {
       this.trySkill(entity, target);
+    } else if (entity.isAlly && this.pendingSkills.has(entity.id)) {
+      // Manual cast requested but skill on cooldown — drop the stale request.
+      this.pendingSkills.delete(entity.id);
     }
 
     // ThienLu clone extra-hit — once per turn

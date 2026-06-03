@@ -16,6 +16,7 @@ import {
   gradeFromStatBudget,
 } from '@/game/data/grades';
 import { STAT_KEYS, createEmptyStats, distributeStatsByWeights } from '@/game/systems/stat-allocation';
+import { getDefaultSkill, getArchetypeSkillPool } from '@/game/data/skills';
 
 export type MigrationFn = (envelope: SaveEnvelope) => SaveEnvelope;
 
@@ -1036,6 +1037,73 @@ function migrateV32toV33(envelope: SaveEnvelope): SaveEnvelope {
 
 // ── end v32→v33 ───────────────────────────────────────────────────────────────
 
+/**
+ * v33→v34: Re-key each member's carried skill onto the LinhSon class kit.
+ * The class-skills overhaul replaced the legacy single-skill set (Heavy Strike,
+ * etc.) with per-archetype pools, but persisted `Member.skill` objects still held
+ * the old definition (so a Templar founder kept showing "Heavy Strike"). Promoted
+ * mercs were also saved with `skill: null`. Reassign the archetype default skill
+ * whenever the carried skill is missing or not part of the member's class pool;
+ * leave already-valid carried skills (and their skillRanks) untouched.
+ */
+function migrateV33toV34(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+
+  const refreshSkill = (m: AnyRecord): AnyRecord => {
+    const archetype = m.archetype as string | undefined;
+    if (!archetype) return m;
+    const pool = getArchetypeSkillPool(archetype);
+    const current = m.skill as AnyRecord | null | undefined;
+    const inPool = current && pool.some((s) => s.id === current.id);
+    if (inPool) return m;
+    return { ...m, skill: getDefaultSkill(archetype) };
+  };
+
+  const founder = gs.founder ? refreshSkill(gs.founder as AnyRecord) : null;
+  const roster = Array.isArray(gs.roster)
+    ? (gs.roster as AnyRecord[]).map(refreshSkill)
+    : gs.roster;
+
+  return {
+    ...envelope,
+    version: 34,
+    gameState: { ...gs, founder, roster } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
+// ── end v33→v34 ───────────────────────────────────────────────────────────────
+
+/**
+ * v34→v35: Skill learning model — a skill is now "learned" only when it has a
+ * skillRanks entry (Lv1+); absent = Lv0 (must be learned at the Training Yard).
+ * Existing members' carried skill must therefore be seeded to Lv1 so it stays
+ * usable + equippable. Pre-existing trained ranks are left untouched.
+ */
+function migrateV34toV35(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+
+  const seedCarried = (m: AnyRecord): AnyRecord => {
+    const skill = m.skill as AnyRecord | null | undefined;
+    if (!skill?.id) return m;
+    const ranks = (m.skillRanks ?? {}) as AnyRecord;
+    if (ranks[skill.id as string]) return m; // already has an entry
+    return { ...m, skillRanks: { ...ranks, [skill.id as string]: { rank: 1, progress: 0 } } };
+  };
+
+  const founder = gs.founder ? seedCarried(gs.founder as AnyRecord) : null;
+  const roster = Array.isArray(gs.roster)
+    ? (gs.roster as AnyRecord[]).map(seedCarried)
+    : gs.roster;
+
+  return {
+    ...envelope,
+    version: 35,
+    gameState: { ...gs, founder, roster } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
+// ── end v34→v35 ───────────────────────────────────────────────────────────────
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -1064,6 +1132,8 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   30: migrateV30toV31,
   31: migrateV31toV32,
   32: migrateV32toV33,
+  33: migrateV33toV34,
+  34: migrateV34toV35,
 };
 
 /**

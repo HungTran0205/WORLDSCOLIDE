@@ -38,8 +38,19 @@ export const SKILLS_BY_ARCHETYPE: Record<string, Skill[]> = {
   philosopher: [SKILL_HOA_CAU, SKILL_SUNG_SAC],         // ThienLu — mystic
 };
 
-/** Get first skill for an archetype (one skill per member for auto-battler) */
+/** Get first skill for an archetype (default carried skill for a new member) */
 export function getDefaultSkill(archetypeName: string): Skill {
   const skills = SKILLS_BY_ARCHETYPE[archetypeName];
   return skills?.[0] ? { ...skills[0] } : { ...SKILL_HOA_CAU };
+}
+
+/** Full selectable skill pool for an archetype (Training Yard skill picker). */
+export function getArchetypeSkillPool(archetypeName: string): Skill[] {
+  return (SKILLS_BY_ARCHETYPE[archetypeName] ?? [SKILL_HOA_CAU, SKILL_SUNG_SAC]).map((s) => ({ ...s }));
+}
+
+/** Resolve a single pool skill by id for an archetype, or null if it isn't in the pool. */
+export function getSkillFromPool(archetypeName: string, skillId: string): Skill | null {
+  const found = (SKILLS_BY_ARCHETYPE[archetypeName] ?? []).find((s) => s.id === skillId);
+  return found ? { ...found } : null;
 }

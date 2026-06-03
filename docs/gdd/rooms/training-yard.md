@@ -1,9 +1,9 @@
 # Room: Training Yard
 
 **Def:** `src/game/data/facility-definitions.ts` — `FACILITY_DEFINITIONS['training-yard']`
-**System:** skill-rank training via member `status: 'training'` + new `Member.skillRanks` field in `src/game/state/game-state.ts`; slot resolver + per-tick engine in `src/game/systems/training-yard.ts` (`resolveTrainingQueue`, `processTraining`) — **to be implemented**, mirrors `infirmary-recovery.ts`.
+**System:** `src/game/systems/skill-training-system.ts` — `processSkillTraining(facility, members, dtMs)` (pure, per-ms), `resolveTrainingRows()` (UI resolver), `applySkillRankMilestones()` (combat). Store actions in `src/game/state/guild-slice.ts`: `startSkillTraining`, `cancelSkillTraining`, `applySkillTrainingResults`. Tick-wired in `src/ui/hooks/use-game-tick-loop.ts` (online + offline catch-up).
 
-> **Implementation status:** DESIGN ONLY — not yet implemented. See [`../16-linh-son-class-skills.md`](../16-linh-son-class-skills.md) §Skill Ranks & Mastery.
+> **Implementation status:** IMPLEMENTED (2026-05-30). Cancel policy: 50% gold refund + forfeit all progress. See [`../16-linh-son-class-skills.md`](../16-linh-son-class-skills.md) §Skill Ranks & Mastery.
 >
 > **Repurpose note:** the Training Yard previously granted **passive character EXP** (`facility-production-system.ts` training-yard branch). That behavior is **removed** — the yard now exclusively trains **skill ranks**. Character leveling is removed entirely; power comes from grade + gear + skill ranks ([05 Characters & Progression](../05-characters-progression.md) §3). The Training Yard's skill-rank gate is also one of the three promotion requirements for grade-up.
 
@@ -67,15 +67,38 @@ Per tick: `skillRankProgress += (dt / baseTrainMs) × rateMultiplier`, where `ra
 - A training member (`status === 'training'`) **cannot be dispatched on missions** or assigned to production rooms until training completes or is cancelled.
 - Cancelling training mid-rank: design choice — **refund upfront cost partially OR forfeit progress**. (Open question, see below.)
 - Rank-ups are blocked above the facility-level cap (Lv1 cannot reach Rank 3, etc.).
-- Only the member's **currently carried skill** can be trained; to rank a different skill, swap the carried skill first (earned ranks on the previous skill persist).
+- **Learning model:** a member starts with **one learned skill (Lv1)** — the rest of their class pool is **Lv0 (not learned)**. The Training Yard is where skills are *learned* (Lv0→Lv1) and *ranked up* (Lv1→Lv5). A skill's level is `skillRanks[skillId].rank`; absent entry = Lv0.
+- **Training ≠ equipping (decoupled).** Picking a pool skill in the room card trains its level (learn or rank-up) but does **not** change the carried skill. Equipping is a separate action.
+- **Equipping** the carried (combat) skill happens in the **roster Skills tab** (`equipMemberSkill`): only **learned (Lv1+)** skills can be equipped; Lv0 skills show "Learn at Training Yard" and are not selectable. Swapping is locked while the member is training. Earned ranks are stored per (character, skill) and persist across swaps.
+- Learning (→Lv1) is allowed at **any** yard level; higher ranks are gated by the level cap below.
 
-## Room Card UI (REQUIRED)
+## UI (REQUIRED)
 
-The card must surface each training slot's progress and the rank ceiling.
+Two surfaces:
 
-**Header:** `Slots: {occupied}/{maxSlots} · Max Rank: {cap}`
+### A) Facilities-grid tray card (read-only)
+Selecting the Training Yard in the Bát Quái facilities grid shows a **status-only**
+tray: header (`Slots: {occupied}/{maxSlots} · Max Rank: {cap}`), the active slot
+rows (progress + remaining time), a hint to enter the room, and an **Enter Room**
+button. No assigning happens here.
 
-**Slot rows** (up to `maxSlots`): portrait · name · carried skill · current rank → target rank · progress bar · remaining time · speed badge (×1.0 / ×0.8 / ×0.6).
+### B) In-room function panel (diegetic — the assign surface)
+Inside the room, clicking the **training dummy** (`InteractiveFacilityObject`,
+`facilityType='training-yard'`) opens `TrainingYardPanel`. This is the **sole assign
+path** (mirrors the Workshop/Tavern object-click panels). It shows:
+
+- **Active slot rows**: portrait · skill icon · name · carried skill · current rank →
+  target rank · progress bar · remaining time · speed badge (×1.0 / ×0.8 / ×0.6) · Cancel.
+- **Two-step assign flow** (mirrors the Tavern's pick-then-act pattern):
+  1. **Member picker**: lists every idle member (no carried-skill prerequisite —
+     members without a skill can still be assigned and pick one here).
+  2. **Class skill picker**: lists the member's archetype skill pool, each row with a
+     skill icon, current rank, upfront cost to the next rank, and a Train button
+     (disabled when maxed / above the level cap / unaffordable). The currently carried
+     skill is flagged. Picking Train equips that skill and starts the rank-up.
+
+Skill icons resolve from `public/ui/icons/skills/{skillId}.png` via `SkillIcon`, with
+a glyph fallback keyed by skill type when an icon is absent.
 
 ```
 Training Yard  Lv2       Slots: 2/3 · Max Rank: 4

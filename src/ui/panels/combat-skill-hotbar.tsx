@@ -9,6 +9,7 @@
 import { useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
+import { tContent } from '@/i18n/content-localization';
 import type { ArenaEntitySnapshot } from '@/game/state/combat-arena-slice';
 
 export function CombatSkillHotbar() {
@@ -88,7 +89,7 @@ function SkillSlot({ ally, keyLabel, arenaTime }: {
       cursor: isReady && !isDead ? 'pointer' : 'default',
     }}>
       <div style={KEY_BADGE}>{keyLabel}</div>
-      <div style={{ fontSize: '0.7rem', color: '#ffd700', marginTop: 2 }}>{ally.skillName}</div>
+      <div style={{ fontSize: '0.7rem', color: '#ffd700', marginTop: 2 }}>{ally.skillId ? tContent('skills', ally.skillId, 'name', ally.skillName ?? '') : ally.skillName}</div>
       <div style={{ fontSize: '0.6rem', color: '#aaa' }}>{ally.name}</div>
 
       {/* Cooldown overlay */}

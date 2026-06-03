@@ -40,7 +40,8 @@ export function memberToArenaEntity(
       : null,
     attackIntervalMs: derived.attackIntervalMs,
     nextAttackAt: derived.attackIntervalMs,
-    skillCooldownUntil: 0,
+    // Skills start on cooldown — first cast only after one full cooldown elapses.
+    skillCooldownUntil: member.skill?.cooldownMs ?? 0,
     statusEffects: [],
     abilities: [],
     civilization: member.civilization,
@@ -137,7 +138,7 @@ export function enemyToArenaEntity(
     level: template.level,
     attackIntervalMs: derived.attackIntervalMs,
     nextAttackAt: derived.attackIntervalMs,
-    skillCooldownUntil: 0,
+    skillCooldownUntil: template.skill?.cooldownMs ?? 0,
     statusEffects: [],
     abilities: [...template.abilities],
     dodgeRate: derived.dodgeRate,

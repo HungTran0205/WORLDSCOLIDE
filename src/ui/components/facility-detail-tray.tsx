@@ -12,17 +12,14 @@ import { handleKeeperAssigned } from '@/game/systems/tutorial-keeper-handler';
 import { FacilityMemberAvatar } from './facility-member-avatar';
 import { InkConfirmDialog } from './ink-confirm-dialog';
 import { InfirmaryRoomCard } from './infirmary-room-card';
+import { TrainingYardRoomCard } from './training-yard-room-card';
 
 // ── Bonus preview (extracted from facility-card logic) ──────────────────────
 function getBonusPreview(facility: GuildFacility, members: Member[]): string {
   if (members.length === 0) return '';
   const lv = facility.level;
   switch (facility.type) {
-    case 'training-yard': {
-      const base = [12, 22, 40][lv - 1];
-      const total = members.reduce((s, m) => s + Math.floor(base * (1 + (m.stats.DEX + m.stats.AGI) * 0.002)), 0);
-      return `+${total} EXP/day`;
-    }
+    case 'training-yard': return ''; // skill-rank training — no simple EXP preview
     case 'workshop': {
       const totalW = members.reduce((s, m) => s + Math.floor([3, 5, 8][lv - 1] * (1 + m.stats.STR * 0.004)), 0);
       const totalS = members.reduce((s, m) => s + Math.floor([2, 3, 5][lv - 1] * (1 + m.stats.STR * 0.004)), 0);
@@ -177,7 +174,10 @@ export function FacilityDetailTray({ selectedSlot, slotMap, onClose }: FacilityD
       {facility && facility.type === 'infirmary' && (
         <InfirmaryRoomCard facility={facility} onClose={onClose} />
       )}
-      {facility && facility.type !== 'infirmary' && (
+      {facility && facility.type === 'training-yard' && (
+        <TrainingYardRoomCard facility={facility} onClose={onClose} />
+      )}
+      {facility && facility.type !== 'infirmary' && facility.type !== 'training-yard' && (
         <BuiltRoomTray facility={facility} onClose={onClose} />
       )}
     </div>

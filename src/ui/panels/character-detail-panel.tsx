@@ -16,6 +16,10 @@ import { DEFAULT_MEDICINE_SLOTS } from '@/game/state/guild-slice';
 import { ITEM_DATABASE } from '@/game/data/items';
 import type { ItemID } from '@/game/data/items';
 import { tContent } from '@/i18n/content-localization';
+import { SkillDetail } from '@/ui/components/skill-detail';
+import { SkillIcon } from '@/ui/components/skill-icon';
+import { getArchetypeSkillPool } from '@/game/data/skills';
+import { applySkillRankMilestones } from '@/game/systems/skill-training-system';
 import '@/ui/styles/character-detail.css';
 
 type TabKey = 'stats' | 'equipment' | 'skills' | 'bio';
@@ -25,6 +29,8 @@ export interface CharacterDetailPanelProps {
   member: Member;
   onAllocateStat: (stat: StatKey, amount?: number) => void;
   onToggleAutoCast: () => void;
+  /** Equip a skill from the member's class pool as the carried (combat) skill. */
+  onEquipSkill?: (skillId: string) => void;
   onInviteMercenary?: () => void;
   inviteCost?: number;
   canAffordInvite?: boolean;
@@ -42,7 +48,7 @@ export interface CharacterDetailPanelProps {
 }
 
 export function CharacterDetailPanel({
-  member, onAllocateStat, onToggleAutoCast,
+  member, onAllocateStat, onToggleAutoCast, onEquipSkill,
   onInviteMercenary, inviteCost, canAffordInvite,
   onPromote, canAffordPromote, onClose,
   syringeCount = 0, onSetSyringeLoadout,
@@ -227,18 +233,58 @@ export function CharacterDetailPanel({
           </>
         )}
 
-        {tab === 'skills' && (
-          member.skill ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ color: 'var(--ink-text)', fontSize: '0.9rem', fontFamily: 'var(--ink-font-body)' }}>{tContent('skills', member.skill.id, 'name', member.skill.name)}</div>
-              <div className="char-sub">{t('characterDetail.skillMeta', { mult: member.skill.damageMultiplier, cooldown: Math.round(member.skill.cooldownMs / 1000) })}</div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <input type="checkbox" checked={member.skill.autoEnabled} onChange={onToggleAutoCast} style={{ accentColor: 'var(--ink-gold)' }} />
-                <span className="ink-stat">{t('characterDetail.autoCast')}</span>
-              </label>
+        {tab === 'skills' && (() => {
+          const pool = getArchetypeSkillPool(member.archetype);
+          if (pool.length === 0) return <p className="ink-stat">{t('characterDetail.skillLocked')}</p>;
+          const carriedId = member.skill?.id ?? null;
+          const isTraining = member.status === 'training';
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <p className="char-sub">{t('characterDetail.skillPoolHint')}</p>
+              {pool.map(base => {
+                const rank = member.skillRanks?.[base.id]?.rank ?? 0; // 0 = not yet learned
+                const isLearned = rank >= 1;
+                const resolved = applySkillRankMilestones({ ...base }, Math.max(1, rank));
+                const isCarried = carriedId === base.id;
+                return (
+                  <div key={base.id} className={`skill-pool-row${isCarried ? ' is-carried' : ''}${isLearned ? '' : ' is-locked'}`}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <SkillIcon skill={base} size={36} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ color: 'var(--ink-text)', fontSize: '0.85rem', fontFamily: 'var(--ink-font-body)' }}>
+                          {tContent('skills', base.id, 'name', base.name)}
+                          <span className="char-sub" style={{ marginLeft: 8 }}>{t('characterDetail.skillLevel', { level: rank })}</span>
+                        </div>
+                        <div className="char-sub">{t('characterDetail.skillMeta', { mult: resolved.damageMultiplier, cooldown: Math.round(resolved.cooldownMs / 1000) })}</div>
+                      </div>
+                      {!isLearned
+                        ? <span className="skill-locked-badge">{t('characterDetail.skillNeedLearn')}</span>
+                        : isCarried
+                          ? <span className="skill-carried-badge">{t('characterDetail.skillCarried')}</span>
+                          : onEquipSkill && (
+                              <button className="char-btn" disabled={isTraining} title={isTraining ? t('characterDetail.skillEquipLocked') : ''}
+                                onClick={() => onEquipSkill(base.id)}>
+                                {t('characterDetail.skillEquip')}
+                              </button>
+                            )
+                      }
+                    </div>
+                    {tContent('skills', base.id, 'desc', '') && (
+                      <p className="skill-desc">{tContent('skills', base.id, 'desc', '')}</p>
+                    )}
+                    <SkillDetail skill={resolved} t={t} />
+                    {isCarried && (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginTop: 2 }}>
+                        <input type="checkbox" checked={!!member.skill?.autoEnabled} onChange={onToggleAutoCast} style={{ accentColor: 'var(--ink-gold)' }} />
+                        <span className="ink-stat">{t('characterDetail.autoCast')}</span>
+                      </label>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          ) : <p className="ink-stat">{t('characterDetail.skillLocked')}</p>
-        )}
+          );
+        })()}
 
         {tab === 'bio' && (
           <>

@@ -41,7 +41,8 @@
       "confirmLabel": "Đúc Lại",
       "confirmBody": "Đúc lại {{statKey}} {{current}} → khoảng {{min}}-{{max}}? Giá trị mới có thể thấp hơn hiện tại.",
       "clickToPick": "Nhấn để chọn trang bị ↓",
-      "selectBelow": "Chọn từ danh sách ↓"
+      "selectBelow": "Chọn từ danh sách ↓",
+      "noSlots": "Chưa có slot tăng cường"
     },
     "repair": {
       "damagedTitle": "Trang Bị Bị Hỏng",
@@ -527,7 +528,13 @@
     "unequip": "Tháo Ra",
     "skillMeta": "{{mult}}× sát thương · hồi {{cooldown}}s",
     "autoCast": "Tự Động Thi Triển",
-    "skillLocked": "Kỹ năng mở khóa ở Cấp 5",
+    "skillLocked": "Chưa trang bị kỹ năng — luyện một kỹ năng ở Sân Tập.",
+    "skillPoolHint": "Kỹ năng lớp — học ở Sân Tập, rồi trang bị một kỹ năng để mang ra trận.",
+    "skillCarried": "Đang mang",
+    "skillEquip": "Trang bị",
+    "skillEquipLocked": "Không thể đổi khi đang luyện",
+    "skillLevel": "Cấp {{level}}",
+    "skillNeedLearn": "Học ở Sân Tập",
     "biography": "Tiểu Sử",
     "biographyEmpty": "Câu chuyện của chiến binh này vẫn chưa được viết.",
     "inviteToGuild": "Mời Vào Hội ({{cost}}g)"
@@ -701,7 +708,40 @@
     "workshop": "Nhấn vào đe để chế tác",
     "alchemyLab": "Nhấn vào lò phản ứng để pha chế",
     "tavern": "Nhấn vào quầy để tuyển dụng",
+    "trainingYard": "Nhấn vào hình nộm để luyện kỹ năng",
     "drum": "Đánh trống để xem nhiệm vụ"
+  },
+  "skillDetail": {
+    "type": {
+      "lane-hit": "Đâm xuyên hàng",
+      "damage": "Tấn công",
+      "riposte": "Phản đòn",
+      "buff": "Tăng ích",
+      "armor-pierce": "Xuyên giáp",
+      "aoe-ground": "Diện rộng",
+      "multi-hit": "Đa đòn",
+      "debuff": "Suy yếu"
+    },
+    "dmg": "{{mult}}× ST",
+    "hits": "{{n}} đòn",
+    "lane": "Trước + sau",
+    "aoe": "Sát thương diện rộng",
+    "acc": "+{{pct}}% chính xác",
+    "crit": "+{{pct}}% bạo kích",
+    "armor": "{{pct}}% xuyên giáp",
+    "status": {
+      "slowed": "Làm chậm {{sec}}s",
+      "taunted": "Khiêu khích {{sec}}s"
+    },
+    "scope": { "self": "Bản thân", "team": "Đồng đội" },
+    "buffEffect": {
+      "damage-up": "tăng sát thương",
+      "defense-up": "tăng phòng thủ",
+      "crit-up": "tăng bạo kích",
+      "attack-speed-up": "tăng tốc đánh"
+    },
+    "buff": "{{scope}} {{effect}} {{sec}}s",
+    "cd": "Hồi {{sec}}s"
   },
   "inventory": {
     "title": "Kho Đồ Hội",
@@ -779,7 +819,8 @@
     "unlocksAt": "Lv.{{level}}",
     "removeHint": "{{name}} — nhấn để xóa",
     "dropHint": "Kéo nguyên liệu vào đây",
-    "lockedHint": "Mở khóa ở Giả Kim Lv.{{level}}"
+    "lockedHint": "Mở khóa ở Giả Kim Lv.{{level}}",
+    "levelTooLow": "Yêu cầu Giả Kim Lv.{{level}} — nâng cấp phòng lab hoặc luyện kỹ năng cho nhà giả kim"
   },
   "infirmaryCard": {
     "header": "Giường: {{occupied}}/{{max}} · Hàng chờ: {{queue}}",
@@ -790,6 +831,38 @@
     "skipBtn": "Bỏ 5p",
     "speedBadge": "×{{factor}}",
     "recoveryHint": "Giường hồi nhanh hơn · bỏ 1 lần/ngày"
+  },
+  "trainingYardCard": {
+    "header": "Chỗ: {{occupied}}/{{max}} · Cấp Tối Đa: {{cap}}",
+    "slotsEmpty": "Không có thành viên đang luyện.",
+    "assignBtn": "Giao người luyện",
+    "freeSlots": "+{{count}} chỗ trống",
+    "rankProgress": "Cấp {{cur}}→{{target}}",
+    "speedBadge": "×{{factor}}",
+    "cancelBtn": "Hủy",
+    "cancelConfirmTitle": "Hủy Luyện Tập?",
+    "cancelConfirmBody": "Hoàn 50% vàng. Toàn bộ tiến trình sẽ mất.",
+    "cancelConfirm": "Có, hủy",
+    "pickerTitle": "Chọn Người Luyện",
+    "pickerEmpty": "Không có thành viên rảnh.",
+    "assignHint": "Vào phòng và nhấn vào hình nộm tập luyện để giao người luyện.",
+    "pickMember": "Chọn thành viên để luyện",
+    "pickSkill": "Chọn kỹ năng cho {{name}}",
+    "pickSkillBtn": "Chọn kỹ năng",
+    "back": "← Quay lại",
+    "rankLabel": "Cấp {{rank}}",
+    "levelShort": "Cấp {{rank}}",
+    "carried": "Đang mang",
+    "unlearned": "Chưa học",
+    "gradeBadge": "Hạng {{grade}}",
+    "trainBtn": "Luyện",
+    "learnBtn": "Học",
+    "costLabel": "{{gold}}v",
+    "costMaterial": "{{gold}}v + {{qty}}× {{item}}",
+    "capTooLow": "Cấp sân chưa đủ",
+    "maxed": "Đã đạt rank tối đa",
+    "slotsFull": "Hết chỗ",
+    "cantAfford": "Không đủ tài nguyên"
   },
   "facilitiesPanel": {
     "title": "CƠ SỞ",
@@ -938,6 +1011,12 @@
     "offline": "Offline {{hours}} giờ",
     "memberExp": "• Thành Viên +{{exp}} EXP",
     "itemGain": "• +{{qty}} {{item}}",
+    "workshop": "Xưởng Chế Tác",
+    "alchemy": "Phòng Giả Kim",
+    "training": "Sân Tập",
+    "infirmary": "Y Xá",
+    "skillGain": "• {{member}} — {{skill}} đạt Cấp {{level}}",
+    "recovered": "• {{member}} đã hồi phục",
     "collect": "Thu Thập"
   },
   "rankPromotion": {

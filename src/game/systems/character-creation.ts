@@ -37,6 +37,7 @@ export function createFounder(
 ): Member {
   const boostedStats = applyCivBonuses(stats, civilization);
   const startingWeapon = getStartingWeapon(archetype);
+  const startSkill = getDefaultSkill(archetype); // founder skill matches the chosen archetype
   return {
     id: crypto.randomUUID(),
     name,
@@ -44,7 +45,8 @@ export function createFounder(
     isMercenary: false,
     stats: boostedStats,
     unallocatedPoints: 0,
-    skill: getDefaultSkill(archetype), // founder skill matches the player's chosen archetype
+    skill: startSkill,
+    skillRanks: { [startSkill.id]: { rank: 1, progress: 0 } }, // starting skill is learned at Lv1
     status: 'idle',
     injuredUntil: null,
     civilization,
@@ -72,6 +74,7 @@ export function generateRecruit(guildLevel: number): Member {
   const stats = applyCivBonuses(baseStats, civ);
 
   const startingWeapon = getStartingWeapon(civArchetype);
+  const startSkill = getDefaultSkill(profile.name);
   return {
     id: crypto.randomUUID(),
     name,
@@ -79,7 +82,8 @@ export function generateRecruit(guildLevel: number): Member {
     isMercenary: false,
     stats,
     unallocatedPoints: 0,
-    skill: getDefaultSkill(profile.name), // always assign skill — no level gate in grade model
+    skill: startSkill, // every recruit starts with one learned skill
+    skillRanks: { [startSkill.id]: { rank: 1, progress: 0 } }, // learned at Lv1
     status: 'idle',
     injuredUntil: null,
     civilization: civ,

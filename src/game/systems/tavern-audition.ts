@@ -24,6 +24,7 @@ import type {
   TavernPendingPrompt,
 } from '@/game/state/game-state';
 import { gradeOf } from '@/game/data/grades';
+import { getDefaultSkill } from '@/game/data/skills';
 import { REINVITE_BONUS } from './tavern-negotiation';
 
 /** Minimum RP required on a contract for the re-invite prompt to fire. Spec §8. */
@@ -101,6 +102,7 @@ export function makeReinvitePrompt(
  */
 export function promoteMercToMember(contract: MercContract, now: number = Date.now()): Member {
   const v = contract.visitorSnapshot;
+  const startSkill = getDefaultSkill(v.archetype); // carry the class default skill (learned Lv1)
   return {
     id: `mem-${now}-${contract.id.slice(-6)}`,
     name: v.name,
@@ -108,7 +110,8 @@ export function promoteMercToMember(contract: MercContract, now: number = Date.n
     isMercenary: false,
     stats: { ...v.stats },
     unallocatedPoints: 0,
-    skill: null,
+    skill: startSkill,
+    skillRanks: { [startSkill.id]: { rank: 1, progress: 0 } },
     status: 'idle',
     injuredUntil: null,
     civilization: v.civilization,

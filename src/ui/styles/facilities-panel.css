@@ -7,6 +7,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
+  flex-wrap: wrap; /* build picker + grid stack instead of overflowing on narrow screens */
   gap: 12px;
   padding: 16px;
   z-index: 200;
@@ -14,11 +15,11 @@
 }
 
 .fp-panel {
-  width: 460px;
-  /* Scaled up 20% for readability on large displays; max-height divided by the
-     zoom factor so the zoomed panel still fits within the viewport. */
-  zoom: 1.2;
-  max-height: calc((100vh - 32px) / 1.2);
+  /* Scaled up 30% for readability; width/height caps divided by the zoom factor so
+     the rendered panel fits the viewport (incl. mobile — vw/vh are multiplied by zoom). */
+  zoom: 1.3;
+  width: min(460px, 72vw);
+  max-height: calc((100vh - 32px) / 1.3);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -490,10 +491,10 @@
 
 /* ── Build Picker (left-docked icon grid) ────────────── */
 .fp-build-picker {
-  width: 212px;
-  /* Match the facilities panel's 20% upscale (see .fp-panel). */
-  zoom: 1.2;
-  max-height: calc((100vh - 32px) / 1.2);
+  /* Match the facilities panel's 30% upscale (see .fp-panel). */
+  zoom: 1.3;
+  width: min(212px, 44vw);
+  max-height: calc((100vh - 32px) / 1.3);
   display: flex;
   flex-direction: column;
   overflow: hidden;

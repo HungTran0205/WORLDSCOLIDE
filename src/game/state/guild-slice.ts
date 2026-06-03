@@ -44,6 +44,8 @@ import { calcAcLevel } from '@/game/systems/alchemy-production-system';
 import { FACILITY_DEFINITIONS, LOGGING_SITE_CONFIG } from '@/game/data/facility-definitions';
 import { RANK_COSTS, MAX_RANK_BY_FACILITY_LEVEL } from '@/game/data/skill-rank-costs';
 import type { TrainingResult } from '@/game/systems/skill-training-system';
+import { getSkillFromPool } from '@/game/data/skills';
+import { requestSave, saveNow } from '@/game/save/save-scheduler';
 import { FLOOR_TILE_COST } from '@/game/data/buildings';
 import { getFurnitureDefinition } from '@/game/data/furniture';
 import { checkTileAdjacency, isCellOccupiedByFurniture } from '@/game/systems/building-system';
@@ -51,6 +53,7 @@ import { canPlaceFurnitureOnFloor } from '@/game/systems/furniture-system';
 import { gradeIndex } from '@/game/data/grades';
 import { createWorkshopActions, type WorkshopActions } from './guild-slice-workshop';
 import type { WorkshopOfflineSummary } from '@/game/systems/workshop-offline-system';
+import type { OfflineReport } from '@/game/systems/offline-report';
 
 export interface GuildSlice extends WorkshopActions {
   guildName: string;
@@ -118,6 +121,9 @@ export interface GuildSlice extends WorkshopActions {
   /** Ephemeral workshop offline summary (cleared after popup display) */
   offlineWorkshopSummary: WorkshopOfflineSummary | null;
   clearOfflineWorkshopSummary: () => void;
+  /** Consolidated offline report (all facilities) — shown once on return, not persisted. */
+  offlineReport: OfflineReport | null;
+  clearOfflineReport: () => void;
   // --- Skill-rank training (Training Yard) ---
   /** Start training a member's skill toward the next rank. Deducts gold + material upfront.
    *  Returns false if: member not idle, slot full, rank cap exceeded, insufficient resources. */
@@ -283,6 +289,7 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
   offlineFacilityReport: null,
   offlineElapsedHours: 0,
   offlineWorkshopSummary: null,
+  offlineReport: null,
 
   setGuildName: (name) => set({ guildName: name }),
 
@@ -657,6 +664,7 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
         ),
       } as unknown as Partial<GuildSlice>;
     });
+    if (success) requestSave();
     return success;
   },
 
@@ -990,6 +998,8 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
 
   clearOfflineWorkshopSummary: () => set({ offlineWorkshopSummary: null }),
 
+  clearOfflineReport: () => set({ offlineReport: null }),
+
   startSkillTraining: (memberId, skillId, facilityId) => {
     let success = false;
     set((s) => {
@@ -999,13 +1009,17 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
         : fullState.roster.find((m) => m.id === memberId);
       if (!member) return s;
       if (member.status !== 'idle') return s;
-      if (!member.skill || member.skill.id !== skillId) return s;
+
+      // The skill must belong to the member's class pool. Training raises its rank
+      // (or learns it: Lv0→Lv1). Equipping is a separate action — see equipMemberSkill.
+      const chosenSkill = getSkillFromPool(member.archetype, skillId);
+      if (!chosenSkill) return s;
 
       const facility = s.facilities.find((f) => f.id === facilityId && f.type === 'training-yard');
       if (!facility || facility.level === 0) return s;
 
       const maxRank = MAX_RANK_BY_FACILITY_LEVEL[facility.level] ?? 2;
-      const currentRank = member.skillRanks?.[skillId]?.rank ?? 1;
+      const currentRank = member.skillRanks?.[skillId]?.rank ?? 0; // 0 = not yet learned
       const targetRank = currentRank + 1;
       if (targetRank > maxRank || targetRank > 5) return s;
 
@@ -1071,6 +1085,7 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
         roster: fullState.roster.map(updateMember),
       } as unknown as Partial<GuildSlice>;
     });
+    if (success) saveNow(); // learning costs gold + materials — persist immediately
     return success;
   },
 
@@ -1083,6 +1098,9 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
       const slot = facility.trainingQueue?.find((sl) => sl.memberId === memberId);
       if (!slot) return s;
 
+      // 50% gold refund (floor); material is not refunded per GDD cancel policy
+      const refund = Math.floor(slot.goldPaid * 0.5);
+
       const updatedFacilities = s.facilities.map((f) =>
         f.id === facilityId
           ? {
@@ -1093,21 +1111,33 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
           : f,
       );
 
+      // Forfeit in-progress rank progress (reset to 0) and set member idle
       const updateMember = (m: Member): Member =>
-        m.id === memberId ? { ...m, status: 'idle' as const } : m;
+        m.id === memberId
+          ? {
+              ...m,
+              status: 'idle' as const,
+              skillRanks: m.skillRanks?.[slot.skillId]
+                ? { ...m.skillRanks, [slot.skillId]: { ...m.skillRanks[slot.skillId]!, progress: 0 } }
+                : m.skillRanks,
+            }
+          : m;
 
       success = true;
       if (fullState.founder?.id === memberId) {
         return {
+          gold: s.gold + refund,
           facilities: updatedFacilities,
           founder: updateMember(fullState.founder),
         } as unknown as Partial<GuildSlice>;
       }
       return {
+        gold: s.gold + refund,
         facilities: updatedFacilities,
         roster: fullState.roster.map(updateMember),
       } as unknown as Partial<GuildSlice>;
     });
+    if (success) saveNow(); // gold refunded — persist immediately
     return success;
   },
 
@@ -1145,7 +1175,7 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
           skillRanks: {
             ...m.skillRanks,
             [result.skillId]: {
-              rank: currentEntry?.rank ?? 1,
+              rank: currentEntry?.rank ?? 0, // 0 while still learning (Lv0→Lv1)
               progress: newProgress,
             },
           },
@@ -1223,6 +1253,7 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
         ),
       } as unknown as Partial<GuildSlice>;
     });
+    if (success) requestSave();
     return success;
   },
 

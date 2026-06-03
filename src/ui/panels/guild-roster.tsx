@@ -30,6 +30,7 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
   const gold             = useGameStore(s => s.gold);
   const allocateStat     = useGameStore(s => s.allocateStat);
   const toggleAutoCast   = useGameStore(s => s.toggleAutoCast);
+  const equipMemberSkill = useGameStore(s => s.equipMemberSkill);
   const inviteMercenary  = useGameStore(s => s.inviteMercenary);
   const removeMember     = useGameStore(s => s.removeMember);
   const renameMember     = useGameStore(s => s.renameMember);
@@ -90,6 +91,7 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
             member={selected}
             onAllocateStat={(stat, amount) => allocateStat(selected.id, stat as StatKey, amount)}
             onToggleAutoCast={() => toggleAutoCast(selected.id)}
+            onEquipSkill={skillId => equipMemberSkill(selected.id, skillId)}
             onInviteMercenary={isMercenary ? () => inviteMercenary(selected.id) : undefined}
             inviteCost={isMercenary ? inviteCost : undefined}
             canAffordInvite={isMercenary ? gold >= inviteCost : undefined}

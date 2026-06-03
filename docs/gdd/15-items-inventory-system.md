@@ -70,11 +70,11 @@
 | **HEALING_SYRINGE** | Healing Syringe | CONSUMABLE | COMMON | Yes | 12g | Alchemy Lab (recipe) | Combat auto-use (30% HP heal) | ✅ Implemented |
 | **HEALING_SYRINGE_2** | Healing Syringe II | CONSUMABLE | UNCOMMON | Yes | 30g | Alchemy Lab (future recipe) | Combat auto-use (50% HP heal) | ⚠️ Declared |
 | **HEALING_SYRINGE_3** | Healing Syringe III | CONSUMABLE | RARE | Yes | 80g | Alchemy Lab (future recipe) | Combat auto-use (80% HP heal) | ⚠️ Declared |
-| **BAT_WING** | Bat Wing | MATERIAL | COMMON | Yes | 4g | *Future: bat enemy* | *Future: Workshop v2 affinity* | ⚠️ Declared |
-| **SPIDER_LEGS** | Spider Legs | MATERIAL | COMMON | Yes | 5g | *Future: spider enemy* | *Future: Workshop v2 affinity* | ⚠️ Declared |
-| **METAL_PLATE** | Metal Plate | MATERIAL | UNCOMMON | Yes | 12g | *Future: post-apoc source* | *Future: Workshop v2 affinity* | ⚠️ Declared |
-| **DRONE_SENSOR** | Drone Sensor | MATERIAL | UNCOMMON | Yes | 18g | *Future: salvage loot* | *Future: Workshop v2 affinity* | ⚠️ Declared |
-| **SLIME_KING_CORE** | Slime King Core | MATERIAL | RARE | Yes | 60g | *Future: boss drop* | *Future: rare affix/recipe* | ⚠️ Declared |
+| **BAT_WING** | Bat Wing | MATERIAL | COMMON | Yes | 4g | Cave Bat (level 2, 30%) | DODGE armor affix [+0.03–0.08] | ✅ Implemented |
+| **SPIDER_LEGS** | Spider Legs | MATERIAL | COMMON | Yes | 5g | Forest Spider (level 1, 22%) | ATTACK_SPEED weapon affix [+0.05–0.12] | ✅ Implemented |
+| **METAL_PLATE** | Metal Plate | MATERIAL | UNCOMMON | Yes | 12g | Dog Robot (level 3, 75%) | BLOCK armor affix [+0.03–0.08] | ✅ Implemented |
+| **DRONE_SENSOR** | Drone Sensor | MATERIAL | UNCOMMON | Yes | 18g | Flying Drone (level 2, 80%); Dog Robot (30%) | ACCURACY weapon affix [+0.05–0.15] | ✅ Implemented |
+| **SLIME_KING_CORE** | Slime King Core | MATERIAL | RARE | Yes | 60g | Slime King boss (100%) | SHIELD armor affix [1–2 charges] | ✅ Implemented |
 
 ---
 
@@ -82,16 +82,19 @@
 
 ### Material Drop Sources
 
-| Material | Enemy Type | Drop Rate | Chance |
-|----------|-----------|-----------|--------|
-| **SLIME_GEL** | Slime | Common | 100% |
-| **BOAR_PELT** | Boar | Common | 100% |
-| **BEAR_PELT** | Moonbear | Common | 80% |
-| **BAT_WING** | Cave Bat | Common | 30% |
-| **SPIDER_LEGS** | Forest Spider | Common | 22% |
-| **WOLF_FANG** | Wolf | Uncommon | 100% |
-| **GOBLIN_EAR** | Goblin | Common | 100% |
-| **ORC_TUSK** | Orc | Uncommon | 100% |
+| Material | Primary Enemy (level) | Chance | Secondary Sources |
+|----------|----------------------|--------|------------------|
+| **SLIME_GEL** | Slime (lv1, 75%) | 75% | Forest Spider 50%, Slime King 100%, Queen Spider 100% |
+| **BOAR_PELT** | Wild Boar (lv3, 60%) | 60% | Wolf 30% |
+| **BEAR_PELT** | Moonbear (lv2 boss, 80%) | 80% | — |
+| **BAT_WING** | Cave Bat (lv2, 30%) | 30% | — |
+| **SPIDER_LEGS** | Forest Spider (lv1, 22%) | 22% | — |
+| **METAL_PLATE** | Dog Robot (lv3, 75%) | 75% | — |
+| **DRONE_SENSOR** | Flying Drone (lv2, 80%) | 80% | Dog Robot 30% |
+| **SLIME_KING_CORE** | Slime King (lv3 boss, 100%) | 100% | — |
+| **WOLF_FANG** | Dire Wolf (lv5, 70%) | 70% | Wolf (lv3) 40% |
+| **GOBLIN_EAR** | Goblin Shaman (lv4, 60%) | 60% | Bandit (lv2) 40% |
+| **ORC_TUSK** | Warlord Grok (lv8 boss, 100%) | 100% | Orc Berserker 50%, Orc Warrior 35% |
 
 ### Facility-Based Materials
 
@@ -315,13 +318,13 @@ These items are **declared in code but not yet fully integrated**:
 
 | Item | Rarity | Drop Source | Affix Purpose | Status |
 |------|--------|------------|---------|--------|
-| **BAT_WING** | COMMON | Cave Bat (level 2 enemies) | DODGE armor [0.03–0.08] | ✅ Active |
-| **SPIDER_LEGS** | COMMON | Forest Spider (level 1 enemies) | ATTACK_SPEED weapon [0.05–0.12] | ✅ Active |
-| **METAL_PLATE** | UNCOMMON | *Future: post-apoc salvage source* | BLOCK armor [0.03–0.08] | ⚠️ In ITEM_DATABASE, no drop source yet |
-| **DRONE_SENSOR** | UNCOMMON | *Future: salvage loot source* | ACCURACY weapon [0.05–0.15] | ⚠️ In ITEM_DATABASE, no drop source yet |
-| **SLIME_KING_CORE** | RARE | Slime King boss drop | SHIELD armor [1–2 charges] | ✅ Active |
+| **BAT_WING** | COMMON | Cave Bat (level 2, 30%) | DODGE armor [+0.03–0.08] | ✅ Active |
+| **SPIDER_LEGS** | COMMON | Forest Spider (level 1, 22%) | ATTACK_SPEED weapon [+0.05–0.12] | ✅ Active |
+| **METAL_PLATE** | UNCOMMON | Dog Robot (level 3, 75%) | BLOCK armor [+0.03–0.08] | ✅ Active |
+| **DRONE_SENSOR** | UNCOMMON | Flying Drone (level 2, 80%); Dog Robot (30%) | ACCURACY weapon [+0.05–0.15] | ✅ Active |
+| **SLIME_KING_CORE** | RARE | Slime King boss (100%) | SHIELD armor [1–2 charges] | ✅ Active |
 
-**Note:** BAT_WING and SPIDER_LEGS are live; their enemies spawn in missions. METAL_PLATE and DRONE_SENSOR are in `ITEM_DATABASE` and usable in Workshop but have no enemy drop source yet (future Enemy & Mission Overhaul plan).
+**All 5 affix materials have live enemy drop sources.** METAL_PLATE and DRONE_SENSOR come from the post-apoc machine enemies (Flying Drone / Dog Robot) introduced in Arc 1.
 
 ### Higher-Tier Syringes
 
@@ -340,15 +343,14 @@ These items are **declared in code but not yet fully integrated**:
 
 | Gap | Type | Impact | Notes |
 |-----|------|--------|-------|
-| **BOAR_PELT, WOLF_FANG, GOBLIN_EAR, ORC_TUSK recipes** | Content | Materials drop but have limited craft use | Only BOAR_PELT and BEAR_PELT have pelt-armor recipes; others deferred to Enemy & Mission Overhaul plan |
+| **BOAR_PELT, WOLF_FANG, GOBLIN_EAR, ORC_TUSK recipes** | Content | Materials drop but have limited craft use | Only BOAR_PELT and BEAR_PELT have pelt-armor recipes; others deferred |
 | **GEM crafting** | Content | Rare material with no recipe | Planned for rare affix unlock or endgame gear |
-| **METAL_PLATE, DRONE_SENSOR drop sources** | Content | Materials in DB but no enemies drop them yet | Tracked in separate Enemy & Mission Overhaul plan; materials ready for Workshop use |
 
 ### Medium Priority
 
 | Gap | Type | Impact | Notes |
 |-----|------|--------|-------|
-| **Workshop v2 monster materials** | Content | BAT_WING, SPIDER_LEGS, etc. stubs only | Requires enemy spawns + affinity rework |
+| **Monster material craft use** | Content | BAT_WING/SPIDER_LEGS/METAL_PLATE/DRONE_SENSOR drop live but no recipes beyond affix enhance | No craft recipe chain (only affix material use) |
 | **SLIME_KING_CORE use** | Content | Boss material exists in code but no target | Propose as rare quest item or endgame unlock |
 | **Workshop level scaling** | Feature | Craft times don't scale with workshop level | Implement in `workshop-system.ts` |
 | **AC bonus unlocks** | Feature | AC Lv5 (double batch) and Lv10 (Grand Elixir) are design-only | Implement in production system |
@@ -389,10 +391,12 @@ These items are **declared in code but not yet fully integrated**:
 
 | Date | Change | Type |
 |------|--------|------|
+| 2026-06-02 | Sync with enemies.ts: METAL_PLATE (dog-robot 75%), DRONE_SENSOR (flying-drone 80%, dog-robot 30%), SLIME_KING_CORE (slime-king 100%) all have live drop sources — removed from Gaps, updated All Items + Future Items tables | UPDATE |
+| 2026-06-02 | Fixed Material Drop Sources table — accurate per-kill chances from code, added secondary sources column | UPDATE |
+| 2026-06-02 | BAT_WING, SPIDER_LEGS status: ⚠️ Declared → ✅ Implemented | UPDATE |
 | 2026-05-29 | Pelt armor tier (Boar/Bear coats), 5 active affixes, SHIELD mechanic, HS2/HS3 recipes | UPDATE |
 | 2026-05-29 | Fixed stale claims: syringe auto-use implemented, all 6 affix categories now active | UPDATE |
 | 2026-05-29 | Added cave-bat→BAT_WING, forest-spider→SPIDER_LEGS, moonbear→BEAR_PELT to drops | UPDATE |
-| — | *Future: METAL_PLATE/DRONE_SENSOR drop sources (Enemy & Mission Overhaul)* | PLANNED |
 | — | *Future: Deep Quarry & GEM source* | PLANNED |
 
 ---

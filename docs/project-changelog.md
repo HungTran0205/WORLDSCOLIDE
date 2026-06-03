@@ -7,6 +7,221 @@ All notable changes to 2000s A.C — After the Collapse are documented in this f
 
 ---
 
+## [Unreleased] — 2026-05-30 (Alchemy Ingredient Slots Follow Lab Level)
+
+### fix(alchemy): ingredient slots gated by lab level, not just alchemist skill
+
+A Lv3 Alchemy Lab still showed only 1 ingredient slot because visible slots were
+driven solely by the assigned alchemist's AC skill (`min(4, maxAcLevel + 1)`), and
+with no alchemist assigned `maxAcLevel = 0`. Slots now equal the **lab level**:
+`min(4, max(facility.level, maxAcLevel))` → Lv1 = 1, Lv2 = 2, Lv3 = 3 slots. The 4th
+slot is only reachable by a very skilled alchemist (AC ≥ 4). Recipe-tier gating still
+uses AC level; footer reports the slot-driving level. (`alchemy-craft-panel.tsx`)
+
+---
+
+## [Unreleased] — 2026-05-30 (Facility Panels +30% Size)
+
+### style(ui): scale all facility panels up 30% (responsive — fits mobile/landscape)
+
+Facility function panels were too small to read comfortably. Applied `zoom: 1.3`
+(the existing pattern used by the facilities grid): Workshop (`.ws-panel`), Training
+Yard (`.ty-panel`), Tavern (`.tv-panel`), Alchemy Lab (inline panel style). Facilities
+grid + detail tray bumped from `zoom: 1.2` → `1.3` (the tray scales with its parent).
+
+**Responsive:** because `zoom` multiplies `vw`/`vh`, every viewport-relative cap is
+divided by the zoom so the rendered panel still fits — width `min(Npx, 72vw)` and
+`max-height: calc(Xvh / 1.3)`. This keeps panels on-screen on mobile, including
+**landscape** where height is the tight axis. Alchemy columns `flex-wrap`, and the
+facilities overlay wraps the build picker + grid instead of overflowing on narrow widths.
+
+---
+
+## [Unreleased] — 2026-05-30 (Full Offline Report + Multi-hit Damage Numbers)
+
+### feat(offline): consolidated offline report across all facilities
+
+The return popup showed only wood/stone. New `OfflineReport` (built in
+`use-game-tick-loop.ts` via a before/after diff around the catch-up `handleTick`)
+now also surfaces: **workshop-crafted equipment**, **alchemy items**, **skills
+learned/ranked at the Training Yard**, and **members recovered in the Infirmary** —
+each in its own section. `OfflineFacilityPopup` rewritten to render all sections;
+`game-screen` switched to the new `offlineReport` state.
+
+- New: `src/game/systems/offline-report.ts` (`OfflineReport`, `offlineReportHasContent`)
+- `guild-slice` / `store`: `offlineReport` + `clearOfflineReport`
+- i18n: `offlinePopup.workshop/alchemy/training/infirmary/skillGain/recovered`
+
+### fix(combat): multi-hit skills showed one damage number instead of N
+
+Barrage's 5 hits emit 5 `skill-use` events in one frame, all on the same target at
+the same screen position → they stacked into one number. Damage popups now get a
+small random screen jitter (`offsetX/offsetY`) so multi-hit numbers fan out and stay
+readable; the skill-name banner is de-duplicated to fire once per cast (not per hit).
+
+- `combat-projection-store.ts` (jitter), `combat-panel-hud.tsx` (apply offset),
+  `combat-fight-controller.tsx` (banner de-dupe)
+
+---
+
+## [Unreleased] — 2026-05-30 (Save Reliability — Persist User Actions Promptly)
+
+### fix(save): lost progress on tab close — prompt save after actions + forced close saves
+
+**Bug:** assigning a member to the Training Yard (or unassigning from a room) could be
+lost if the browser was closed before the next 60s autosave — on reload the member was
+back in the old room with no training. The only persistence paths were the 60s interval
+and a `visibilitychange` save that was **non-forced** (could be skipped by the 5s debounce)
+and **async** (IndexedDB write may not flush during tab teardown).
+
+**Fix:**
+- New `save-scheduler.ts` — a debounced (`2s`) `requestSave()` that store actions call
+  after user-driven mutations, so a fresh action is persisted within seconds.
+- Wired `requestSave()` into `assignMemberToFacility`, `unassignMemberFromFacility`,
+  `startSkillTraining`, `cancelSkillTraining`, `equipMemberSkill`.
+- `SaveManager`: close saves are now **forced** (bypass the 5s debounce); added a
+  `pagehide` listener (flush pending + force write) alongside the existing
+  `visibilitychange` handler.
+- `saveNow()` (immediate, debounce-cancelling) for costly discrete actions — wired
+  into `startSkillTraining` / `cancelSkillTraining` so learning a skill persists at
+  the click (player saw no "saved" with the 2s debounce).
+- Save badge is now `position: fixed` top-right at a high z-index so the
+  saving/saved confirmation shows above room panels/overlays (was hidden behind the
+  Training Yard panel backdrop).
+
+**Key Files**:
+- `src/game/save/save-scheduler.ts` (new), `src/game/save/save-manager.ts`
+- `src/game/state/guild-slice.ts`, `src/game/state/roster-slice.ts`
+
+### fix(training): offline skill training counted twice (completed in half the time)
+
+Removed the redundant offline training pass in `use-game-tick-loop.ts`. The first
+`handleTick()` after load already runs with `dt = full offline window` (realTimeLastTick
+is only advanced inside `tickClock`), so the separate offline block double-advanced
+training — a 5-min absence completed a 7.5-min learn. Training now catches up once via
+the same single-source path as injury recovery.
+
+**Verified:** `startSkillTraining` adds the member to the Training Yard's `trainingQueue`
++ `assignedMemberIds`; `applySkillTrainingResults` removes both on rank-up. Offline
+training advances correctly (once) and is capped at one rank per absence.
+
+---
+
+## [Unreleased] — 2026-05-30 (Skill Learning Model + Roster Skill Selection + Descriptions)
+
+### feat(skills): Lv0 learn model, roster equip, authored skill descriptions
+
+**Learning model.** A member now starts with **one learned skill (Lv1)**; the rest of their
+class pool is **Lv0 (not learned)**. The Training Yard both **learns** (Lv0→Lv1, cheap/fast
+`RANK_COSTS[1]`) and **ranks up** (Lv1→Lv5). A skill's level = `skillRanks[id].rank`; absent = Lv0.
+Training is **decoupled from equipping** — training a skill no longer swaps the carried skill.
+
+**Roster skill selection.** The roster Skills tab lists the full class pool with **Level n**,
+description, and detail chips. Learned skills can be **Equipped** as the carried combat skill
+(`equipMemberSkill`); Lv0 skills show **"Learn at Training Yard"** and cannot be equipped.
+Swapping is locked while training.
+
+**Authored descriptions.** Each skill now has a prose effect description (e.g. Pierce —
+"Thrust through one lane: hits the front-row and back-row enemy in the same lane (max 2 targets)")
+in `content.en.json` / `content.vi.json`, shown above the numeric chips in both the roster tab
+and the Training Yard picker. Display switched from `R{n}` to **"Level {n}"** throughout.
+
+**Save migration v34→v35** seeds existing members' carried skill to Lv1 so it stays usable
++ equippable. `SAVE_VERSION` → 35.
+
+**Key Files**:
+- `src/game/data/skill-rank-costs.ts` — `RANK_COSTS[1]` + `RANK_TRAIN_DAYS[1]` (learn tier)
+- `src/game/state/guild-slice.ts` — `startSkillTraining` no longer equips; Lv0 default
+- `src/game/systems/skill-training-system.ts` — Lv0 default; rows show the trained skill
+- `src/game/state/roster-slice.ts` — `equipMemberSkill` rejects unlearned skills
+- `src/game/systems/character-creation.ts`, `tavern-audition.ts` — seed starting skill Lv1
+- `src/game/save/save-migrations.ts`, `save-types.ts` — `migrateV34toV35`, `SAVE_VERSION` 35
+- `src/ui/components/training-yard-pickers.tsx`, `src/ui/panels/character-detail-panel.tsx` — Level/Learn UI + descriptions
+- `src/i18n/content.en.json`, `content.vi.json` — `skills.{id}.desc`; `ui.*.json` level/learn keys
+- `tests/skill-training-system.test.ts` — learn + equip-gating tests (21 green)
+
+---
+
+## [Unreleased] — 2026-05-30 (Training Yard In-Room Panel + Skill Icons & Detail)
+
+### feat(training-yard): diegetic dummy-click assign panel, skill icons, detailed skill info
+
+**Assigning moved in-room.** Clicking the **training dummy** prop now opens a dedicated
+`TrainingYardPanel` (member picker → class skill picker) — the sole assign path, mirroring
+the Workshop/Tavern object-click panels. The facilities-grid tray card is now read-only
+(live progress + Enter Room + hint). Removes the assign/skill flow from the facilities panel.
+
+**Skill icons.** 12 monochrome silhouette icons (LinhSon Templar/Forester/Ranger kits)
+generated via PixelLab and stored at `public/ui/icons/skills/{id}.png`. New `SkillIcon`
+component resolves them with a per-type glyph fallback.
+
+**Detailed skill info.** New `SkillDetail` builds concrete, data-derived effect chips
+(type · damage · accuracy/crit/armor/status/buff · cooldown) straight from the Skill fields
+so they always match real combat numbers and reflect rank milestones. Shown in the roster
+Skills tab (rank-resolved) and the Training Yard skill picker — replaces the bare
+"{mult}× damage" line.
+
+**Skill selection in roster.** The roster Skills tab now lists the member's **full class
+skill pool** (icon · rank · detail chips), marks the carried skill, and lets the player
+**Equip** any pool skill as the combat skill via the new `equipMemberSkill` action
+(preserves earned ranks + auto-cast toggle; locked while training). Previously only the
+single carried skill was shown with no way to switch.
+
+**Key Files**:
+- `src/scene/training-yard/training-yard-furniture.tsx` — dummy wrapped in `InteractiveFacilityObject`
+- `src/game/state/ui-store.ts` — `training-yard` added to `FacilityHintType`
+- `src/ui/screens/game-screen.tsx` — proximity finder + panel open/close + coachmark wiring
+- `src/ui/panels/training-yard-panel.tsx` — new in-room function panel (+ `training-yard-panel.css`)
+- `src/ui/components/training-yard-pickers.tsx` — shared `MemberPicker` / `SkillPicker`
+- `src/ui/components/skill-icon.tsx`, `skill-detail.tsx` — icon + detail-chip components
+- `src/ui/components/training-yard-room-card.tsx` — stripped to read-only status
+- `src/ui/panels/character-detail-panel.tsx` — roster Skills tab shows icon + rank + detail chips
+- `src/i18n/ui.en.json`, `ui.vi.json` — `skillDetail.*`, `coachmark.trainingYard`, `assignHint`
+- `public/ui/icons/skills/*.png` — 12 skill icons
+
+---
+
+## [Unreleased] — 2026-05-30 (Training Yard Skill Selection + Skill Data Fixes)
+
+### fix(training-yard, skills): class-pool skill selection + repair stale/null carried skills
+
+**Training Yard assign reworked into a two-step flow** (mirrors Tavern): pick an idle member → pick a skill from that member's class pool to rank up. The previous picker required a carried skill, so promoted mercenaries (saved with `skill: null`) were unassignable and the picker showed empty. Choosing a skill now equips it as the carried skill so combat reflects the trained rank.
+
+**Skill data repaired**:
+- Promoted mercs now carry their class default skill instead of `null` (fixes roster Skills tab showing the stale "unlocks at Lv.5" placeholder).
+- Save migration **v33→v34** re-keys each member's carried skill onto the LinhSon class kit when the persisted skill is missing or not in the member's class pool — fixes legacy founders still showing "Heavy Strike" after the class-skills overhaul. `SAVE_VERSION` → 34.
+- Stale `characterDetail.skillLocked` copy (referenced the removed level system) replaced.
+
+**Key Files**:
+- `src/game/data/skills.ts` — `getArchetypeSkillPool`, `getSkillFromPool`
+- `src/game/state/guild-slice.ts` — `startSkillTraining` validates against class pool + equips chosen skill
+- `src/ui/components/training-yard-room-card.tsx` — two-step `MemberPicker` → `SkillPicker`
+- `src/game/systems/tavern-audition.ts` — `promoteMercToMember` assigns class default skill
+- `src/game/save/save-migrations.ts`, `save-types.ts` — `migrateV33toV34`, `SAVE_VERSION` 34
+- `src/i18n/ui.en.json`, `src/i18n/ui.vi.json` — skill-picker keys + `skillLocked` copy
+- `tests/skill-training-system.test.ts` — +2 tests (equip-on-train, pool rejection); 17 green
+
+---
+
+## [Unreleased] — 2026-05-30 (Training Yard End-to-End)
+
+### feat(training-yard): wire skill-rank training engine, tick integration, room card UI
+
+**Training Yard fully playable.** Completes the deferred tick wiring + UI from `260523-2230-linhson-skill-kit-implementation`. Engine aligned to GDD speed model (×1.0/×0.8/×0.6 by facility level). Cancel now refunds 50% gold and forfeits in-progress rank progress. New `TrainingYardRoomCard` replaces the generic `BuiltRoomTray` for training-yard; trainee picker lists idle members with carried skill, shows cost/cap gating, and is the sole assign path.
+
+**Key Files**:
+- `src/game/data/skill-rank-costs.ts` — added `TRAIN_SPEED_FACTOR`, `GAME_DAY_REAL_MS`
+- `src/game/systems/skill-training-system.ts` — `processSkillTraining` now uses dtMs + GDD speed model; added `resolveTrainingRows` + `TrainingRow`
+- `src/game/state/guild-slice.ts` — `cancelSkillTraining` now refunds 50% gold + resets progress to 0
+- `src/ui/hooks/use-game-tick-loop.ts` — online + offline training tick wired after infirmary recovery
+- `src/ui/components/training-yard-room-card.tsx` — new room card (slot rows, picker, cancel confirm)
+- `src/ui/components/facility-detail-tray.tsx` — training-yard routed to new card; excluded from `BuiltRoomTray`
+- `src/game/data/facility-definitions.ts` — updated training-yard description + primaryStats
+- `src/i18n/ui.en.json`, `src/i18n/ui.vi.json` — added `trainingYardCard.*` keys
+- `tests/skill-training-system.test.ts` — 15 tests green
+
+---
+
 ## [Unreleased] — 2026-05-29 (Items System Overhaul Waves 1–4)
 
 ### feat(items): pelt armor tier, 5 new active affixes, SHIELD mechanic, HS2/HS3 alchemy recipes
