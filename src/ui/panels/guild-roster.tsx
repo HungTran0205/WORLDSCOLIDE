@@ -6,7 +6,6 @@ import { CharacterDetailPanel } from './character-detail-panel';
 import { EquipModePanel } from '@/ui/components/equip-mode-panel';
 import { ConfirmDialog } from '@/ui/components/confirm-dialog';
 import { CIVILIZATIONS, CIV_CONFIG } from '@/game/data/civilization-config';
-import { canPromote } from '@/game/data/ranks';
 import { tContent } from '@/i18n/content-localization';
 import type { MemberStatus, StatKey, SyringeLoadout } from '@/game/state/game-state';
 import type { EquipmentSlot } from '@/game/data/equipment-templates';
@@ -31,8 +30,8 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
   const gold             = useGameStore(s => s.gold);
   const allocateStat     = useGameStore(s => s.allocateStat);
   const toggleAutoCast   = useGameStore(s => s.toggleAutoCast);
+  const equipMemberSkill = useGameStore(s => s.equipMemberSkill);
   const inviteMercenary  = useGameStore(s => s.inviteMercenary);
-  const promoteMember    = useGameStore(s => s.promoteMember);
   const removeMember     = useGameStore(s => s.removeMember);
   const renameMember     = useGameStore(s => s.renameMember);
   const setSyringeLoadout = useGameStore(s => s.setSyringeLoadout);
@@ -57,7 +56,7 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
     [allMembers, query, civFilter, statusFilter]);
 
   const selected = allMembers.find(m => m.id === selectedId) ?? null;
-  const isMercenary = selected?.rank === 'MERCENARY';
+  const isMercenary = selected?.isMercenary ?? false;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -69,7 +68,7 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [view, onClose]);
-  const inviteCost = (selected?.level ?? 0) * 100;
+  const inviteCost = selected ? (({ F:1,E:2,D:3,C:4,B:5,A:6,S:7 } as Record<string,number>)[selected.grade] ?? 1) * 150 : 0;
 
   function openDetail(id: string) {
     setSelectedId(id);
@@ -92,11 +91,10 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
             member={selected}
             onAllocateStat={(stat, amount) => allocateStat(selected.id, stat as StatKey, amount)}
             onToggleAutoCast={() => toggleAutoCast(selected.id)}
+            onEquipSkill={skillId => equipMemberSkill(selected.id, skillId)}
             onInviteMercenary={isMercenary ? () => inviteMercenary(selected.id) : undefined}
             inviteCost={isMercenary ? inviteCost : undefined}
             canAffordInvite={isMercenary ? gold >= inviteCost : undefined}
-            onPromote={!isMercenary && !selected.isFounder ? () => promoteMember(selected.id) : undefined}
-            canAffordPromote={!isMercenary ? canPromote(selected, gold) : undefined}
             onClose={() => setView('grid')}
             syringeCount={syringeCount}
             onSetSyringeLoadout={loadout => setSyringeLoadout(selected.id, loadout as SyringeLoadout | null)}

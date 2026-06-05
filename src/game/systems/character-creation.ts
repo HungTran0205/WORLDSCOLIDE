@@ -3,13 +3,28 @@ import { CIV_ARCHETYPE_PROFILES } from '@/game/data/characters';
 import { CIVILIZATIONS, CIV_CONFIG, applyCivBonuses } from '@/game/data/civilization-config';
 import type { Civilization, Gender, CivArchetype } from '@/game/data/civilization-config';
 import { getDefaultSkill } from '@/game/data/skills';
-import { distributeStatsByWeights, INITIAL_STAT_POINTS } from './stat-allocation';
+import type { Grade } from '@/game/data/grades';
+import { GRADE_BUDGET, GRADE_ORDER } from '@/game/data/grades';
+import { GRADE_WEIGHTS } from './tavern-spawn';
+import { distributeStatsByWeights } from './stat-allocation';
+import { weightedPick } from './seeded-rng';
 import { getStartingWeapon } from './equipment-bonuses';
 import { DEFAULT_MEDICINE_SLOTS } from '@/game/state/guild-slice';
 
 /** Pick random gender */
 function randomGender(): Gender {
   return Math.random() < 0.5 ? 'M' : 'F';
+}
+
+/**
+ * Roll a grade for a recruit based on guild level using the same GRADE_WEIGHTS
+ * table as the tavern (guild level caps at tavern level 3 for weight lookup).
+ */
+function rollRecruitGrade(guildLevel: number): Grade {
+  const tavernLevel = Math.min(3, Math.max(1, guildLevel)) as 1 | 2 | 3;
+  const weights = GRADE_WEIGHTS[tavernLevel];
+  const entries = weights.map((w, i) => ({ value: GRADE_ORDER[i], weight: w }));
+  return weightedPick(entries, Math.random);
 }
 
 export function createFounder(
@@ -22,23 +37,23 @@ export function createFounder(
 ): Member {
   const boostedStats = applyCivBonuses(stats, civilization);
   const startingWeapon = getStartingWeapon(archetype);
+  const startSkill = getDefaultSkill(archetype); // founder skill matches the chosen archetype
   return {
     id: crypto.randomUUID(),
     name,
-    level: 1,
-    exp: 0,
+    grade: 'F',
+    isMercenary: false,
     stats: boostedStats,
     unallocatedPoints: 0,
-    skill: getDefaultSkill(archetype), // founder skill matches the player's chosen archetype
+    skill: startSkill,
+    skillRanks: { [startSkill.id]: { rank: 1, progress: 0 } }, // starting skill is learned at Lv1
     status: 'idle',
     injuredUntil: null,
     civilization,
     archetype,
     gender,
     isFounder: true,
-    rank: 'COMMANDER',
     missionsCompleted: 0,
-    rarity: 1,
     traits: [],
     equipment: startingWeapon ? { weapon: startingWeapon } : null,
     maskSpriteId,
@@ -53,30 +68,29 @@ export function generateRecruit(guildLevel: number): Member {
   const name = names[Math.floor(Math.random() * names.length)];
   const civArchetype = civConfig.archetypes[Math.floor(Math.random() * civConfig.archetypes.length)];
   const profile = CIV_ARCHETYPE_PROFILES[civArchetype as CivArchetype];
-  const maxLevel = Math.min(guildLevel * 5, 80);
-  const level = Math.max(1, Math.floor(Math.random() * maxLevel) + 1);
-  const basePoints = INITIAL_STAT_POINTS + (level - 1) * 7;
-  const baseStats = distributeStatsByWeights(basePoints, profile.weights);
+  const grade = rollRecruitGrade(guildLevel);
+  const budget = GRADE_BUDGET[grade];
+  const baseStats = distributeStatsByWeights(budget, profile.weights);
   const stats = applyCivBonuses(baseStats, civ);
 
   const startingWeapon = getStartingWeapon(civArchetype);
+  const startSkill = getDefaultSkill(profile.name);
   return {
     id: crypto.randomUUID(),
     name,
-    level,
-    exp: 0,
+    grade,
+    isMercenary: false,
     stats,
     unallocatedPoints: 0,
-    skill: level >= 5 ? getDefaultSkill(profile.name) : null,
+    skill: startSkill, // every recruit starts with one learned skill
+    skillRanks: { [startSkill.id]: { rank: 1, progress: 0 } }, // learned at Lv1
     status: 'idle',
     injuredUntil: null,
     civilization: civ,
     archetype: civArchetype,
     gender: randomGender(),
     isFounder: false,
-    rank: 'RECRUIT',
     missionsCompleted: 0,
-    rarity: 1,
     traits: [],
     equipment: startingWeapon ? { weapon: startingWeapon } : null,
     medicineSlots: structuredClone(DEFAULT_MEDICINE_SLOTS),

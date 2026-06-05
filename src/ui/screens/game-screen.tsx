@@ -27,6 +27,7 @@ import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { AlchemyCraftPanel } from '@/ui/panels/alchemy-craft-panel';
 import { WorkshopPanel } from '@/ui/panels/workshop-panel';
 import { TavernPanel } from '@/ui/panels/tavern-panel';
+import { TrainingYardPanel } from '@/ui/panels/training-yard-panel';
 import { CombatSkillHotbar } from '@/ui/panels/combat-skill-hotbar';
 import { CombatTimelineBar } from '@/ui/panels/combat-timeline-bar';
 import { CombatResultOverlay } from '@/ui/panels/combat-result-overlay';
@@ -114,6 +115,7 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   const [alchemyPanelOpen, setAlchemyPanelOpen] = useState(false);
   const [workshopPanelOpen, setWorkshopPanelOpen] = useState(false);
   const [tavernPanelOpen, setTavernPanelOpen] = useState(false);
+  const [trainingPanelOpen, setTrainingPanelOpen] = useState(false);
   // Beat-2 sub-phase: the trimmed world-board lore page shows first, then the NPC
   // alarm. Reset by leaving the 'arrival-alarm' step (so a re-entry replays from lore).
   const [loreSeen, setLoreSeen] = useState(false);
@@ -144,13 +146,18 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
     return Math.abs(cameraTarget[0] - fx) <= 3.5 && Math.abs(cameraTarget[2] - fz) <= 3.5;
   }), [allFacilities, cameraTarget]);
 
+  const trainingFacility = useMemo(() => allFacilities.find((f) => {
+    if (f.type !== 'training-yard' || f.level === 0 || f.placedSlot === null) return false;
+    const [fx, , fz] = FACILITY_SLOTS[f.placedSlot];
+    return Math.abs(cameraTarget[0] - fx) <= 3.5 && Math.abs(cameraTarget[2] - fz) <= 3.5;
+  }), [allFacilities, cameraTarget]);
+
   const currentCombatReplay = useGameStore((s) => s.currentCombatReplay);
   const gameScene = useGameStore((s) => s.gameScene);
   const arenaPhase = useGameStore((s) => s.arenaPhase);
   const isCombatPanelOpen = useCombatPanelStore((s) => s.isOpen);
-  const offlineFacilityReport = useGameStore((s) => s.offlineFacilityReport);
-  const offlineElapsedHours = useGameStore((s) => s.offlineElapsedHours);
-  const clearOfflineFacilityReport = useGameStore((s) => s.clearOfflineFacilityReport);
+  const offlineReport = useGameStore((s) => s.offlineReport);
+  const clearOfflineReport = useGameStore((s) => s.clearOfflineReport);
   const pendingFacilityPanel = useGameStore((s) => s.pendingFacilityPanel);
   const clearPendingFacilityPanel = useGameStore((s) => s.clearPendingFacilityPanel);
 
@@ -203,8 +210,9 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
     if (pendingFacilityFunctionPanel === 'workshop' && workshopFacility) setWorkshopPanelOpen(true);
     else if (pendingFacilityFunctionPanel === 'alchemy-lab' && alchemyFacility) setAlchemyPanelOpen(true);
     else if (pendingFacilityFunctionPanel === 'tavern' && tavernFacility) setTavernPanelOpen(true);
+    else if (pendingFacilityFunctionPanel === 'training-yard' && trainingFacility) setTrainingPanelOpen(true);
     clearPendingFacilityFunctionPanel();
-  }, [pendingFacilityFunctionPanel, clearPendingFacilityFunctionPanel, workshopFacility, alchemyFacility, tavernFacility]);
+  }, [pendingFacilityFunctionPanel, clearPendingFacilityFunctionPanel, workshopFacility, alchemyFacility, tavernFacility, trainingFacility]);
 
   // Leaving a room (proximity finder goes falsy) closes its open panel and restores
   // default framing — replaces the old auto-open effect's else branch.
@@ -217,6 +225,9 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
   useEffect(() => {
     if (!tavernFacility && tavernPanelOpen) { setTavernPanelOpen(false); setCameraFocus('default'); }
   }, [tavernFacility, tavernPanelOpen, setCameraFocus]);
+  useEffect(() => {
+    if (!trainingFacility && trainingPanelOpen) { setTrainingPanelOpen(false); setCameraFocus('default'); }
+  }, [trainingFacility, trainingPanelOpen, setCameraFocus]);
 
   // Closing a panel pulls the camera back from the object to the room overview and
   // restores default framing (re-enables orbit). Falls back to leaving the target
@@ -282,11 +293,10 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
           {activePanel === 'quests' && <QuestBoard onClose={() => setActivePanel(null)} />}
           {activePanel === 'roster' && <GuildRoster onClose={() => setActivePanel(null)} />}
           {activePanel === 'facilities' && <FacilitiesPanel onClose={() => setActivePanel(null)} />}
-          {offlineFacilityReport && (
+          {offlineReport && (
             <OfflineFacilityPopup
-              results={offlineFacilityReport}
-              elapsedHours={offlineElapsedHours}
-              onDismiss={clearOfflineFacilityReport}
+              report={offlineReport}
+              onDismiss={clearOfflineReport}
             />
           )}
           {activePanel === 'combat' && <CombatView onClose={() => setActivePanel(null)} />}
@@ -317,21 +327,29 @@ export function GameScreen({ onReturnToTitle }: GameScreenProps) {
               onClose={() => { setTavernPanelOpen(false); restoreRoomFraming(tavernFacility.placedSlot); }}
             />
           )}
+          {trainingPanelOpen && trainingFacility && (
+            <TrainingYardPanel
+              facility={trainingFacility}
+              onClose={() => { setTrainingPanelOpen(false); restoreRoomFraming(trainingFacility.placedSlot); }}
+            />
+          )}
           <FacilityHintCoachmark
             activeType={
               workshopFacility ? 'workshop'
                 : alchemyFacility ? 'alchemy-lab'
                   : tavernFacility ? 'tavern'
-                    : null
+                    : trainingFacility ? 'training-yard'
+                      : null
             }
             roomCenter={
               workshopFacility?.placedSlot != null ? FACILITY_SLOTS[workshopFacility.placedSlot]
                 : alchemyFacility?.placedSlot != null ? FACILITY_SLOTS[alchemyFacility.placedSlot]
                   : tavernFacility?.placedSlot != null ? FACILITY_SLOTS[tavernFacility.placedSlot]
-                    : null
+                    : trainingFacility?.placedSlot != null ? FACILITY_SLOTS[trainingFacility.placedSlot]
+                      : null
             }
             settled={cameraSettled}
-            panelOpen={workshopPanelOpen || alchemyPanelOpen || tavernPanelOpen}
+            panelOpen={workshopPanelOpen || alchemyPanelOpen || tavernPanelOpen || trainingPanelOpen}
             // Re-point at the tavern counter during the recruit beat: the keeper
             // assignment already clicked the counter, which would otherwise leave
             // the player with no hint on where to open the recruitment panel.

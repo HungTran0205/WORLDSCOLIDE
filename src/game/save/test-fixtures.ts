@@ -9,8 +9,9 @@ import type { SaveEnvelope, GameSaveData, SaveSlotMetadata } from './save-types'
 export const VALID_MEMBER: Member = {
   id: 'founder-001',
   name: 'TestFounder',
-  level: 3,
-  exp: 50,
+  grade: 'F',
+  isMercenary: false,
+  // stat sum = 50 = grade F budget
   stats: { STR: 10, END: 8, INT: 7, DEX: 9, CHA: 5, LCK: 6, AGI: 5 },
   unallocatedPoints: 0,
   skill: null,
@@ -20,18 +21,17 @@ export const VALID_MEMBER: Member = {
   archetype: 'warrior',
   gender: 'M',
   isFounder: true,
-  rank: 'COMMANDER',
   missionsCompleted: 0,
   craftSkills: { woodcutting: { level: 0, xpAccumulated: 0 }, mining: { level: 0, xpAccumulated: 0 }, alchemy: { level: 0, xpAccumulated: 0 } },
-  rarity: 1,
   traits: [],
 };
 
 export const VALID_ROSTER_MEMBER: Member = {
   id: 'member-002',
   name: 'Recruit',
-  level: 1,
-  exp: 0,
+  grade: 'F',
+  isMercenary: false,
+  // stat sum = 35 → clamped to F (budget 50; rebudgeted on migration)
   stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 },
   unallocatedPoints: 0,
   skill: null,
@@ -41,10 +41,8 @@ export const VALID_ROSTER_MEMBER: Member = {
   archetype: 'engineer',
   gender: 'F',
   isFounder: false,
-  rank: 'RECRUIT',
   missionsCompleted: 0,
   craftSkills: { woodcutting: { level: 0, xpAccumulated: 0 }, mining: { level: 0, xpAccumulated: 0 }, alchemy: { level: 0, xpAccumulated: 0 } },
-  rarity: 1,
   traits: [],
 };
 

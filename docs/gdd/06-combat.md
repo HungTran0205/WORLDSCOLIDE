@@ -23,6 +23,10 @@
 
 Combat is a **real-time auto-battler** with player tactical control over formation, targeting mode, and skill activation. Entities act on individual cooldowns driven by AGI and weapon speed; there is no shared initiative queue.
 
+**One action per turn:** each entity either auto-attacks **or** casts a skill — never both. When a skill is ready (auto-cast or manually triggered) it **replaces** the basic attack that turn (`processEntityAction`, `combat-engine.ts`; mirrored in `combat-simulator.ts` for offline parity). So a buff cast (Bulwark/Aegis/Rally/Mark) deals no damage, and a damage skill lands a single skill hit instead of attack + skill.
+
+**Skills start on cooldown:** an entity's `skillCooldownUntil` is initialised to the skill's `cooldownMs` at combat start, so the first cast only becomes available after one full cooldown has elapsed (`combat-entity-factory.ts`, `combat-simulator.ts`) — no opening-tick burst.
+
 **Two execution paths share the same formulas:**
 - **Arena (live):** `CombatEngine.tick(dt)` — `LOGIC_TICK_MS = 100ms` accumulator loop (`combat-engine.ts:33`)
 - **Auto-resolve (offline/mission):** `simulateCombat()` in `combat-simulator.ts` — instant, same damage formulas

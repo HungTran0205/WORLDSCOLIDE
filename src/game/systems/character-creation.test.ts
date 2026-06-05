@@ -31,7 +31,7 @@ interface Case {
 }
 
 const CASES: Case[] = [
-  { label: 'Templar',  archetype: 'sword',   gender: 'M', weaponTemplate: 'WOODEN_SWORD',    skillId: getDefaultSkill('warrior').id },
+  { label: 'Templar',  archetype: 'sword',   gender: 'M', weaponTemplate: 'WOODEN_SWORD',    skillId: getDefaultSkill('sword').id },
   { label: 'Forester', archetype: 'warrior', gender: 'M', weaponTemplate: 'WOODEN_AXE',      skillId: getDefaultSkill('warrior').id },
   { label: 'Ranger',   archetype: 'scout',   gender: 'F', weaponTemplate: 'WOODEN_CROSSBOW', skillId: getDefaultSkill('scout').id },
 ];
@@ -59,9 +59,10 @@ describe('createFounder — per founder choice', () => {
 
   it.each(CASES)('$label: founder identity — COMMANDER, isFounder, level 1, no unallocated', (c) => {
     const f = createFounder(c.label, RAW_STATS, 'LinhSon', c.archetype, c.gender, MASK_ID);
-    expect(f.rank).toBe('COMMANDER');
+    // Grade model: founder starts at grade determined by stat budget; no rank/level fields
     expect(f.isFounder).toBe(true);
-    expect(f.level).toBe(1);
+    expect(f.isMercenary).toBe(false);
+    expect(f.grade).toBeDefined();
     expect(f.unallocatedPoints).toBe(0);
     expect(f.civilization).toBe('LinhSon');
   });
@@ -78,11 +79,15 @@ describe('createFounder — per founder choice', () => {
   });
 });
 
-describe('createFounder — sword founder (Templar) reuses warrior skill kit', () => {
-  it('sword and warrior founders share the same skill id', () => {
+describe('createFounder — each LinhSon class has a distinct default skill', () => {
+  it('sword (Templar=pierce), warrior (Forester=sunder), scout (Ranger=snipe) are all different', () => {
     const templar = createFounder('T', RAW_STATS, 'LinhSon', 'sword', 'M', MASK_ID);
     const forester = createFounder('F', RAW_STATS, 'LinhSon', 'warrior', 'M', MASK_ID);
-    expect(templar.skill?.id).toBe(forester.skill?.id);
+    const ranger = createFounder('R', RAW_STATS, 'LinhSon', 'scout', 'F', MASK_ID);
+    expect(templar.skill?.id).toBe('pierce');
+    expect(forester.skill?.id).toBe('sunder');
+    expect(ranger.skill?.id).toBe('snipe');
+    expect(templar.skill?.id).not.toBe(forester.skill?.id);
   });
 
   it('does not mutate the shared input stats object', () => {

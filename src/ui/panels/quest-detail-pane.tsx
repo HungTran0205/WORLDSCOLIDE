@@ -114,9 +114,8 @@ export function QuestDetailPane({
 
       <section className="quest-detail-pane__rewards">
         <div><span className="quest-detail-pane__reward-label">{t('questBoard.detail.rewardGold')}</span> <span className="quest-detail-pane__reward-value quest-detail-pane__reward-value--gold">{mission.goldRewardMin}–{mission.goldRewardMax}</span></div>
-        <div><span className="quest-detail-pane__reward-label">{t('questBoard.detail.rewardExp')}</span> <span className="quest-detail-pane__reward-value quest-detail-pane__reward-value--exp">{mission.expReward}</span></div>
         <div><span className="quest-detail-pane__reward-label">{t('questBoard.detail.rewardDuration')}</span> <span className="quest-detail-pane__reward-value">{t('questBoard.detail.durationValue', { mins: durationMin })}</span></div>
-        <div><span className="quest-detail-pane__reward-label">{t('questBoard.detail.rewardRequired')}</span> <span className="quest-detail-pane__reward-value">{t('questBoard.detail.requiredValue', { members: mission.requiredMembers, level: mission.requiredLevel })}</span></div>
+        <div><span className="quest-detail-pane__reward-label">{t('questBoard.detail.rewardRequired')}</span> <span className="quest-detail-pane__reward-value">{t('questBoard.detail.partyCount', { selected: 0, required: mission.requiredMembers })}</span></div>
       </section>
 
       <section className="quest-detail-pane__section">

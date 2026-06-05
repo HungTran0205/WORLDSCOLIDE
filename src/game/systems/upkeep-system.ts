@@ -1,22 +1,21 @@
-import type { Member, MemberRank, GuildRank } from '@/game/state/game-state';
-import { GUILD_RANKS } from '@/game/data/ranks';
+import type { Member } from '@/game/state/game-state';
+import { GRADE_UPKEEP_MULT, gradeIndex } from '@/game/data/grades';
+import type { Grade } from '@/game/data/grades';
 
 const BASE_UPKEEP = 5;
-const UPKEEP_SCALE = 1.15;
 const DEBT_GRACE_DAYS = 3;
 
-/** Upkeep per member per game-day — base cost scaled by rank modifier */
-export function calcMemberUpkeep(level: number, rank: MemberRank): number {
-  if (rank === 'MERCENARY') return 0;
-  const modifier = GUILD_RANKS[rank as GuildRank]?.perks.upkeepModifier ?? 1.0;
-  return Math.round(BASE_UPKEEP * Math.pow(UPKEEP_SCALE, level - 1) * modifier);
+/** Upkeep per member per game-day — base cost scaled by grade multiplier */
+export function calcMemberUpkeep(member: { grade: Grade; isMercenary: boolean }): number {
+  if (member.isMercenary) return 0;
+  return Math.round(BASE_UPKEEP * GRADE_UPKEEP_MULT[member.grade]);
 }
 
 /** Total daily upkeep — mercenaries excluded (they charge per-mission instead) */
 export function calcTotalUpkeep(members: Member[]): number {
   return members
-    .filter((m) => m.rank !== 'MERCENARY')
-    .reduce((sum, m) => sum + calcMemberUpkeep(m.level, m.rank), 0);
+    .filter((m) => !m.isMercenary)
+    .reduce((sum, m) => sum + calcMemberUpkeep(m), 0);
 }
 
 /** Charge upkeep for N game days. Returns new gold and debt info. */
@@ -42,7 +41,7 @@ export function chargeUpkeep(
   };
 }
 
-/** When debt exceeds grace period, remove lowest-level non-founder member */
+/** When debt exceeds grace period, remove lowest-grade non-founder member */
 export function processDebtPenalty(
   roster: Member[],
   daysInDebt: number,
@@ -52,18 +51,13 @@ export function processDebtPenalty(
   }
 
   // Mercenaries are excluded from eviction (no upkeep, no debt liability)
-  const nonFounders = roster.filter((m) => !m.isFounder && m.rank !== 'MERCENARY');
+  const nonFounders = roster.filter((m) => !m.isFounder && !m.isMercenary);
   if (nonFounders.length === 0) {
     return { updatedRoster: roster, removedMembers: [] };
   }
 
-  // Evict lowest-rank first, then lowest-level within same rank
-  const sorted = [...nonFounders].sort((a, b) => {
-    const rankA = GUILD_RANKS[a.rank as GuildRank]?.order ?? 0;
-    const rankB = GUILD_RANKS[b.rank as GuildRank]?.order ?? 0;
-    if (rankA !== rankB) return rankA - rankB;
-    return a.level - b.level;
-  });
+  // Evict lowest-grade first
+  const sorted = [...nonFounders].sort((a, b) => gradeIndex(a.grade) - gradeIndex(b.grade));
   const toRemove = sorted.slice(0, 1);
   const remaining = roster.filter((m) => !toRemove.includes(m));
 

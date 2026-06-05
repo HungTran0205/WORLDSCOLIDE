@@ -1,8 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { Member } from '@/game/state/game-state';
-import { expToNextLevel } from '@/game/systems/leveling-system';
 import { getCivColor } from '@/game/data/civilization-config';
-import { RankBadge } from './rank-badge';
+import { GradeBadge } from './grade-badge';
 import { GameIcon } from './game-icon';
 
 interface RosterListItemProps {
@@ -19,7 +18,6 @@ const STATUS_COLORS: Record<string, string> = {
   training: '#9b59b6',
 };
 
-// Compact-row status labels, keyed off the MemberStatus value so they stay in sync.
 const STATUS_LABEL_KEYS: Record<string, string> = {
   idle: 'roster.listItem.statusReady',
   'on-mission': 'roster.listItem.statusOnMission',
@@ -27,15 +25,12 @@ const STATUS_LABEL_KEYS: Record<string, string> = {
   training: 'roster.listItem.statusTraining',
 };
 
-/** Compact roster row — shows avatar, name, level, EXP bar, status badge */
+/** Compact roster row — shows avatar, name, grade badge, status */
 export function RosterListItem({ member, isSelected, activeMissionName, onClick }: RosterListItemProps) {
   const { t } = useTranslation();
-  const expNeeded = expToNextLevel(member.level);
-  const expPct = Math.min(100, Math.floor((member.exp / expNeeded) * 100));
   const statusColor = STATUS_COLORS[member.status] ?? '#aaa';
   const civColor = getCivColor(member.civilization);
 
-  // Precise injury countdown lives in the infirmary card; here we just show the badge label.
   const labelKey = STATUS_LABEL_KEYS[member.status];
   let statusLabel = labelKey ? t(labelKey) : member.status;
   if (member.status === 'on-mission' && activeMissionName) {
@@ -71,7 +66,7 @@ export function RosterListItem({ member, isSelected, activeMissionName, onClick 
         <GameIcon category="emblem" id={member.civilization} size={14} />
       </div>
 
-      {/* Name + EXP bar */}
+      {/* Name + grade badge */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
           <span style={{
@@ -81,23 +76,8 @@ export function RosterListItem({ member, isSelected, activeMissionName, onClick 
           }}>
             {member.name}
           </span>
-          <RankBadge rank={member.rank} />
+          <GradeBadge grade={member.grade} isMercenary={member.isMercenary} size="sm" />
         </div>
-        {/* Thin EXP bar */}
-        <div style={{
-          height: 3, borderRadius: 2,
-          background: 'rgba(255,255,255,0.1)', overflow: 'hidden',
-        }}>
-          <div style={{ width: `${expPct}%`, height: '100%', background: '#67b8e3' }} />
-        </div>
-      </div>
-
-      {/* Level */}
-      <div style={{
-        fontSize: '1.1rem', fontWeight: 'bold', color: '#87ceeb',
-        minWidth: 32, textAlign: 'center',
-      }}>
-        {member.level}
       </div>
 
       {/* Status + unallocated indicator */}

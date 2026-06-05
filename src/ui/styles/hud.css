@@ -136,12 +136,20 @@ button.tutorial-highlight {
 
 /* Save status badge */
 .save-badge {
+  position: fixed;
+  top: 10px;
+  right: 14px;
+  z-index: 9999; /* float above room panels/overlays so save feedback is always visible */
   font-size: 0.75rem;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 4px;
-  margin-left: auto;
   white-space: nowrap;
+  background: rgba(0, 0, 0, 0.65);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
 }
+
+.save-badge--error { pointer-events: auto; }
 
 .save-badge--saving {
   color: #ffd700;

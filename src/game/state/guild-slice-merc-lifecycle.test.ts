@@ -26,8 +26,8 @@ function makeFounder(): Member {
   return {
     id: FOUNDER_ID,
     name: 'Founder',
-    level: 5,
-    exp: 0,
+    grade: 'D',
+    isMercenary: false,
     stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 10, LCK: 5, AGI: 5 },
     unallocatedPoints: 0,
     skill: null,
@@ -35,9 +35,7 @@ function makeFounder(): Member {
     injuredUntil: null,
     civilization: 'LinhSon',
     isFounder: true,
-    rank: 'COMMANDER',
     missionsCompleted: 0,
-    rarity: 1,
   };
 }
 
@@ -64,8 +62,7 @@ function fakeVisitor(overrides: Partial<TavernVisitor> = {}): TavernVisitor {
     archetype: 'warrior',
     civilization: 'LinhSon',
     gender: 'M',
-    rarity: 2,
-    level: 3,
+    grade: 'E',
     stats: { STR: 10, END: 10, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 },
     derivedDemand: 25,
     dailyMoodBias: 0,

@@ -31,8 +31,6 @@ import type { FacilityType } from '@/game/state/game-state';
 import { EQUIPMENT_DATABASE } from '@/game/data/equipment-templates';
 import type { EquipmentTemplateId } from '@/game/data/equipment-templates';
 import { ALCHEMY_RECIPES } from '@/game/data/alchemy-recipes';
-import { GUILD_RANKS } from '@/game/data/ranks';
-import type { GuildRank } from '@/game/state/game-state';
 import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
 import { LINH_SON_FOUNDER_CHOICES } from '@/game/data/founder-archetypes';
@@ -74,13 +72,6 @@ export function enemyName(id: string): string {
 
 export function skillName(skillId: string, fallbackName: string): string {
   return tContent('skills', skillId, 'name', fallbackName);
-}
-
-// ----- Ranks (EN-authored, field = 'label') -----
-
-export function rankLabel(rank: GuildRank): string {
-  const def = GUILD_RANKS[rank];
-  return tContent('ranks', rank, 'label', def?.label ?? rank);
 }
 
 // ----- Furniture (EN-authored) -----

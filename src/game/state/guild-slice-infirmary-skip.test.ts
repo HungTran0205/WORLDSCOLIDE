@@ -21,8 +21,8 @@ function makeInjuredFounder(remainingMs: number): Member {
   return {
     id: FOUNDER_ID,
     name: 'Founder',
-    level: 5,
-    exp: 0,
+    grade: 'D',
+    isMercenary: false,
     stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 },
     unallocatedPoints: 0,
     skill: null,
@@ -34,9 +34,7 @@ function makeInjuredFounder(remainingMs: number): Member {
     recoveryProgress: 0,
     civilization: 'LinhSon',
     isFounder: true,
-    rank: 'COMMANDER',
     missionsCompleted: 0,
-    rarity: 1,
   };
 }
 

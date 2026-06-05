@@ -153,7 +153,7 @@ export function CombatPrepPanel() {
                     {member ? (
                       <>
                         <div style={{ fontWeight: 'bold', fontSize: '0.75rem' }}>{member.name}</div>
-                        <div style={{ fontSize: '0.65rem', color: '#aaa' }}>Lv.{member.level}</div>
+                        <div style={{ fontSize: '0.65rem', color: '#aaa' }}>Grade {member.grade}</div>
                       </>
                     ) : (
                       <div style={{ color: '#555', fontSize: '0.7rem' }}>{SLOT_LABELS[slotIdx]}</div>

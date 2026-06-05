@@ -23,8 +23,8 @@ function makeMember(id: string, overrides: Partial<Member> = {}): Member {
   return {
     id,
     name: id,
-    level: 5,
-    exp: 0,
+    grade: 'D',
+    isMercenary: false,
     stats: { STR: 10, END: 10, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 },
     unallocatedPoints: 0,
     skill: null,
@@ -32,9 +32,7 @@ function makeMember(id: string, overrides: Partial<Member> = {}): Member {
     injuredUntil: null,
     civilization: 'LinhSon',
     isFounder: false,
-    rank: 'MEMBER',
     missionsCompleted: 0,
-    rarity: 1,
     ...overrides,
   };
 }

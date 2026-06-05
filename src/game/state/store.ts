@@ -70,6 +70,7 @@ export function resetGameState(): void {
     offlineFacilityReport: null,
     offlineElapsedHours: 0,
     offlineWorkshopSummary: null,
+    offlineReport: null,
     founder: null,
     roster: [],
     activeMissions: [],

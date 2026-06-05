@@ -17,6 +17,7 @@ import type { Stats, Member, TavernVisitor, AttemptRecord, AttemptOutcome } from
 import type { CivArchetype } from '@/game/data/civilization-config';
 import type { TraitId } from '@/game/data/traits';
 import type { ItemID } from '@/game/data/items';
+import { gradeIndex } from '@/game/data/grades';
 import { mulberry32 } from './seeded-rng';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,7 +148,7 @@ export function totalCombatPower(stats: Stats, role: ArchetypeRole): number {
 export function targetDemand(visitor: TavernVisitor): number {
   const role = ARCHETYPE_ROLE_MAP[visitor.archetype];
   const power = totalCombatPower(visitor.stats, role);
-  return Math.floor(power * 0.4) + visitor.rarity * 5 + visitor.dailyMoodBias;
+  return Math.floor(power * 0.4) + gradeIndex(visitor.grade) * 5 + visitor.dailyMoodBias;
 }
 
 /**
@@ -319,6 +320,7 @@ export function rollInsultGoneForever(seed: number): boolean {
  */
 export function hireMercCost(visitor: TavernVisitor, mercFeeMultiplier = 1.0): number {
   const power = totalCombatPower(visitor.stats, ARCHETYPE_ROLE_MAP[visitor.archetype]);
-  const base = Math.floor(power * 2.0 + visitor.rarity * 100);
-  return Math.floor(base * (1.0 + 0.2 * (visitor.rarity - 1)) * mercFeeMultiplier);
+  const gi = gradeIndex(visitor.grade); // 0-6
+  const base = Math.floor(power * 2.0 + gi * 90);
+  return Math.floor(base * (1.0 + 0.15 * gi) * mercFeeMultiplier);
 }

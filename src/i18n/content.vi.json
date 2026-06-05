@@ -1,4 +1,18 @@
 {
+  "skills": {
+    "pierce": { "name": "Đâm", "desc": "Tấn công kẻ địch hàng trước và hàng sau cùng làn (tối đa 2 mục tiêu)." },
+    "cleave": { "name": "Chém", "desc": "Chém ngang và +10% tỉ lệ bạo kích." },
+    "riposte": { "name": "Phản", "desc": "Vào thế phản đòn; phản lại đòn cận chiến tiếp theo." },
+    "rally": { "name": "Hét", "desc": "Tăng sát thương cho bản thân trong vài giây." },
+    "sunder": { "name": "Phá", "desc": "Bổ mạnh từ trên xuống tăng 50% cơ hội xuyên giáp mục tiêu." },
+    "quake": { "name": "Nện", "desc": "Đập mạnh xuống đất, gây sát thương mọi kẻ địch trong vùng." },
+    "bulwark": { "name": "Trấn", "desc": "Khiêu khích kẻ địch gần và tăng mạnh phòng thủ bản thân." },
+    "aegis": { "name": "Hộ", "desc": "Tăng phòng thủ cho toàn đội." },
+    "snipe": { "name": "Tỉa", "desc": "Bắn chính xác, +50% chính xác trước mục tiêu né tránh." },
+    "barrage": { "name": "Sấy", "desc": "Bắn loạt 5 mũi tên, mỗi mũi gây một phần sát thương." },
+    "pin": { "name": "Ghim", "desc": "Ttấn công ghì mục tiêu tại chỗ, làm chậm vài giây." },
+    "mark": { "name": "Đánh dấu", "desc": "Đánh dấu mục tiêu và tăng tỉ lệ bạo kích của cả đội lên mục tiêu." }
+  },
   "missions": {
     "tutorial-bear-the-bear": {
       "name": "Đuổi gấu",
@@ -197,6 +211,10 @@
       "name": "Da Lợn Rừng",
       "description": "Da dày từ lợn rừng trong rừng."
     },
+    "BEAR_PELT": {
+      "name": "Da Gấu",
+      "description": "Da gấu đột biến dày dặn, quý giá để làm giáp ấm."
+    },
     "WOLF_FANG": {
       "name": "Nanh Sói",
       "description": "Răng nanh sắc bén."
@@ -355,13 +373,19 @@
     "STONE_CROSSBOW": { "name": "Nỏ Đá" },
     "IRON_AXE": { "name": "Rìu Sắt" },
     "IRON_CROSSBOW": { "name": "Nỏ Sắt" },
-    "CLOTH_VEST": { "name": "Áo Vải" },
-    "LEATHER_ARMOR": { "name": "Giáp Da" },
+    "BOAR_FUR_COAT": { "name": "Áo Lông Heo Rừng" },
+    "BEAR_COAT": { "name": "Áo Gấu" },
     "IRON_ARMOR": { "name": "Giáp Sắt" }
   },
   "recipes": {
     "healing-syringe": {
       "name": "Ống Tiêm Hồi Máu"
+    },
+    "healing-syringe-2": {
+      "name": "Ống Tiêm Hồi Máu II"
+    },
+    "healing-syringe-3": {
+      "name": "Ống Tiêm Hồi Máu III"
     }
   },
   "archetypes": {

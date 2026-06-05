@@ -7,6 +7,7 @@ import type { GuildFacility, Member } from '@/game/state/game-state';
 import type { ItemID } from '@/game/data/items';
 import { STONE_QUARRY_CONFIG } from '@/game/data/facility-definitions';
 import { calcDerivedGuildStats } from './derived-guild-stats';
+import { gradeIndex } from '@/game/data/grades';
 
 export interface MiningXpGain {
   memberId: string;
@@ -73,7 +74,7 @@ export function processStoneQuarryTick(
       let stoneForMember = stoneThisTick;
 
       // Vein strike probability (convert daily chance to per-tick)
-      const { fortune } = calcDerivedGuildStats(member.stats, member.level);
+      const { fortune } = calcDerivedGuildStats(member.stats, gradeIndex(member.grade));
       const dailyStrikeChance =
         STONE_QUARRY_CONFIG.baseStrikeChancePerDay +
         STONE_QUARRY_CONFIG.mcSkillStrikePct[mcLevel] +

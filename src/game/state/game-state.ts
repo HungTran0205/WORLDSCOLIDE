@@ -11,6 +11,7 @@ import type {
 } from '@/game/data/workshop-types';
 import type { TraitId } from '@/game/data/traits';
 import type { Civilization, CivArchetype, Gender } from '@/game/data/civilization-config';
+import type { Grade } from '@/game/data/grades';
 
 export interface EquipmentItem {
   /** Unique instance ID — uuid */
@@ -62,6 +63,22 @@ export interface CraftSkills {
   alchemy: AlchemySkill;
 }
 
+export type SkillType =
+  | 'damage'        // default single-target damage
+  | 'lane-hit'      // Pierce: front+back of one lane
+  | 'multi-hit'     // Barrage: N consecutive hits on one target
+  | 'aoe-ground'    // Quake: hits all ground (non-flying) enemies
+  | 'armor-pierce'  // Sunder: chance to ignore defense
+  | 'buff'          // Rally/Aegis/Mark: no damage, apply buff
+  | 'debuff'        // Pin: apply status to target
+  | 'riposte';      // Riposte: enter counter-stance
+
+export type BuffEffect =
+  | 'damage-up'       // Rally +20% damage
+  | 'defense-up'      // Aegis +20% team defense
+  | 'crit-up'         // Mark +10% team crit rate
+  | 'attack-speed-up'; // reserved — Rally R5 milestone
+
 export interface Skill {
   id: string;
   name: string;
@@ -76,6 +93,70 @@ export interface Skill {
   aoeCastTimeMs?: number;
   /** Optional tint hex (e.g. '#ff5a5a' danger / '#5a9bff' beneficial). Defaults to red danger. */
   aoeColor?: string;
+  /** Dispatch key. undefined → treated as 'damage' (backward-compat). */
+  skillType?: SkillType;
+  /** Buff scope — 'self' (Rally) or 'team' (Aegis, Mark). Only for skillType='buff'. */
+  buffScope?: 'self' | 'team';
+  /** What the buff does. */
+  buffEffect?: BuffEffect;
+  /** Buff duration in ms. */
+  buffDurationMs?: number;
+  /** Number of consecutive hits (Barrage). */
+  multiHitCount?: number;
+  /** Per-hit damage multiplier override for multi-hit skills. */
+  multiHitMultiplier?: number;
+  /** Flat crit rate added for this hit (Cleave +0.10). */
+  critRateBonus?: number;
+  /** Flat accuracy bonus subtracted from target dodge for this hit (Snipe +0.50). */
+  accuracyBonus?: number;
+  /** Status effect applied to target (Pin → slowed, Bulwark data → taunted). */
+  statusEffect?: 'slowed' | 'taunted';
+  /** Duration of statusEffect in ms. */
+  statusDurationMs?: number;
+  /** 0–1 chance to set armorPierced flag on this hit (Sunder). */
+  armorPierceChance?: number;
+  /** Pierce: hits both front-row and back-row enemy in the same lane (up to 2 targets). */
+  laneHit?: boolean;
+  // ── Skill Rank milestone fields (set by applySkillRankMilestones) ──
+  /** Pierce R3: hits up to 3 lane slots instead of 2. */
+  laneHitDepth?: number;
+  /** Pierce R5: last lane target takes this additional damage multiplier bonus. */
+  laneHitLastBonus?: number;
+  /** Cleave R5: on crit, cooldown reduced by this fraction. */
+  critCooldownReduction?: number;
+  /** Riposte R5: counter hit damage multiplier (default 1.0). */
+  riposteCounterMult?: number;
+  /** Sunder R5: on armor-pierce proc, deal this additional multiplier. */
+  armorPierceBonusMult?: number;
+  /** Quake R5: chance to stun each ground enemy hit. */
+  aoeStunChance?: number;
+  /** Bulwark R3+: defense buff magnitude override (0.20 base → 0.40 at R3). */
+  buffMagnitude?: number;
+  /** Aegis R5: heals each buffed ally for this fraction of max HP on cast. */
+  buffHealPct?: number;
+  /** Snipe R5: ignore block entirely. */
+  ignoreBlock?: boolean;
+  /** Barrage R5: last hit gets this additional damage multiplier. */
+  multiHitFinalBonus?: number;
+  /** Pin R3+: attackInterval multiplier when slowed (default 2, R3 → 2.5). */
+  slowMultiplier?: number;
+  /** Pin R5: apply this accuracy penalty to slowed target. */
+  debuffAccuracyPenalty?: number;
+  /** Mark R5: target takes this % extra damage from the whole team. */
+  focusFireBonus?: number;
+}
+
+export interface SkillRankEntry {
+  rank: number;     // 1–5
+  progress: number; // 0→1; reaches 1.0 to trigger rank-up
+}
+
+export interface TrainingSlot {
+  memberId: string;
+  skillId: string;
+  targetRank: number;   // rank being trained toward (current rank + 1)
+  goldPaid: number;     // upfront cost already deducted
+  materialPaid: boolean;
 }
 
 export type MemberStatus = 'idle' | 'on-mission' | 'injured' | 'training' | 'assigned';
@@ -118,17 +199,16 @@ export interface GuildFacility {
   workshopBlueprints?: WorkshopBlueprint[];
   /** Game-day index of the last guild-wide Skip use (infirmary only). null = never. */
   lastSkipDay?: number | null;
+  /** Skill-rank training slots (training-yard only). */
+  trainingQueue?: TrainingSlot[];
 }
-
-/** Guild hierarchy ranks (promotable). MERCENARY is orthogonal — not in hierarchy. */
-export type GuildRank = 'RECRUIT' | 'MEMBER' | 'VETERAN' | 'OFFICER' | 'COMMANDER';
-export type MemberRank = GuildRank | 'MERCENARY';
 
 export interface Member {
   id: string;
   name: string;
-  level: number;
-  exp: number;
+  grade: Grade;
+  /** true for hired mercenaries (no upkeep, no guild progression) */
+  isMercenary: boolean;
   stats: Stats;
   unallocatedPoints: number;
   skill: Skill | null;
@@ -142,7 +222,6 @@ export interface Member {
   archetype?: string;   // CivArchetype — maps to sprite folder (missing in old saves)
   gender?: 'M' | 'F';  // maps to sprite folder suffix (missing in old saves)
   isFounder: boolean;
-  rank: MemberRank;
   missionsCompleted: number;
   craftSkills?: CraftSkills;
   /** Syringe auto-use config. null = no syringe equipped. */
@@ -151,12 +230,12 @@ export interface Member {
   equipment?: MemberEquipment | null;
   /** Pre-loaded medicine slots for auto-use in combat (intent stored here; consumption is separate) */
   medicineSlots?: [MedicineSlot, MedicineSlot];
-  /** Tavern rarity tier (1–5). v24 migration backfills legacy members to 1. */
-  rarity: 1 | 2 | 3 | 4 | 5;
   /** Personality traits — optional; default [] in v24 migration. */
   traits?: TraitId[];
   /** Identity mask ID from MASK_POOL (optional; lazy hash-resolved if absent) */
   maskSpriteId?: string;
+  /** Skill rank progression per skill id. Empty map = Rank 1 everywhere. */
+  skillRanks?: Record<string, SkillRankEntry>;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -177,8 +256,7 @@ export interface TavernVisitor {
   archetype: CivArchetype;
   civilization: Civilization;
   gender: Gender;                        // from RECRUITABLE_UNITS — drives sprite folder
-  rarity: 1 | 2 | 3 | 4 | 5;
-  level: number;
+  grade: Grade;
   stats: Stats;                          // talent stats
   derivedDemand: number;
   dailyMoodBias: number;                 // [-5, +5]
@@ -274,12 +352,12 @@ export interface Mission {
   travelTimeMs: number;
   goldRewardMin: number;
   goldRewardMax: number;
-  expReward: number;
+  expReward?: number;
   enemyIds: string[];
   /** Multi-wave definitions — if present, overrides enemyIds for arena combat */
   waves?: import('@/game/systems/combat-wave-manager').WaveDefinition[];
   requiredMembers: number;
-  requiredLevel: number;
+  requiredLevel?: number;
   chainId?: string;
   chainOrder?: number;
   prerequisiteId?: string;

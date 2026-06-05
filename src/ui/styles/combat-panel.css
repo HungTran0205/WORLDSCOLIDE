@@ -678,6 +678,24 @@
 .combat-hud__damage--heal { color: #79e288; }
 .combat-hud__damage--poison { color: #b88dff; }
 
+/* Skill-name banner — floats above the caster's head, distinct from damage numbers. */
+.combat-hud__damage--skill {
+  color: #6fe0ff;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 1), 0 0 10px rgba(70, 180, 255, 0.6);
+  animation: combat-hud-skill-rise 800ms ease-out forwards;
+}
+
+@keyframes combat-hud-skill-rise {
+  0%   { transform: translate(-50%, -150%) scale(0.85); opacity: 0; }
+  25%  { transform: translate(-50%, -190%) scale(1.05); opacity: 1; }
+  75%  { transform: translate(-50%, -220%);             opacity: 1; }
+  100% { transform: translate(-50%, -250%);             opacity: 0; }
+}
+
 @keyframes combat-hud-damage-rise {
   0%   { transform: translate(-50%, -100%);            opacity: 1; }
   20%  { transform: translate(-50%, -130%) scale(1.1); opacity: 1; }

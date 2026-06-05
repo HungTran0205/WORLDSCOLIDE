@@ -34,19 +34,28 @@ export function AlchemyCraftPanel({ facility, onClose }: AlchemyCraftPanelProps)
   const allMembers = founder ? [founder, ...roster] : roster;
   const assigned = allMembers.filter((m) => facility.assignedMemberIds.includes(m.id));
 
-  // Highest alchemy level among assigned members → determines visible ingredient slots
+  // Highest alchemy SKILL level among assigned members — gates which recipes match.
   const maxAcLevel = assigned.reduce((max, m) =>
     Math.max(max, calcAcLevel(m.craftSkills?.alchemy?.xpAccumulated ?? 0)), 0);
-  const visibleSlots = Math.min(4, maxAcLevel + 1);
+  // Visible ingredient slots = the LAB level (what the player upgrades): Lv1→1 … Lv3→3.
+  // A very skilled alchemist (AC ≥ 4) can unlock the 4th slot beyond the lab cap.
+  const slotLevel = Math.max(facility.level, maxAcLevel);
+  const visibleSlots = Math.min(4, slotLevel);
 
   const [slots, setSlots] = useState<(ItemID | null)[]>([null, null, null, null]);
   const [qty, setQty] = useState(1);
   const [dragging, setDragging] = useState<ItemID | null>(null);
 
   const recipe = useMemo(
-    () => matchRecipe(slots.slice(0, visibleSlots), maxAcLevel),
-    [slots, visibleSlots, maxAcLevel],
+    () => matchRecipe(slots.slice(0, visibleSlots), slotLevel),
+    [slots, visibleSlots, slotLevel],
   );
+
+  // A recipe whose ingredients match but level is too low — for "level too low" hint.
+  const blockedRecipe = useMemo(() => {
+    if (recipe) return null;
+    return matchRecipe(slots.slice(0, visibleSlots), 99);
+  }, [recipe, slots, visibleSlots]);
 
   const canCraft = !!recipe && Object.entries(recipe.ingredients).every(
     ([id, cnt]) => (items[id as ItemID] ?? 0) >= (cnt as number) * qty,
@@ -217,6 +226,11 @@ export function AlchemyCraftPanel({ facility, onClose }: AlchemyCraftPanelProps)
               {' → '}{recipe.output.quantity}× {ITEM_DATABASE[recipe.output.itemId].name}
             </div>
           )}
+          {!recipe && blockedRecipe && (
+            <div style={{ color: '#f87171', fontSize: 11, textAlign: 'center' }}>
+              {t('alchemy.levelTooLow', { level: blockedRecipe.requiredAlchemyLevel })}
+            </div>
+          )}
 
           {/* Quantity */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -249,7 +263,7 @@ export function AlchemyCraftPanel({ facility, onClose }: AlchemyCraftPanelProps)
           </div>
 
           <div style={{ color: '#444', fontSize: 10 }}>
-            {t('alchemy.levelSlots', { level: maxAcLevel, visible: visibleSlots })}
+            {t('alchemy.levelSlots', { level: slotLevel, visible: visibleSlots })}
           </div>
         </div>
 
@@ -273,8 +287,11 @@ const S = {
     border: '1px solid rgba(140,80,220,0.4)',
     borderRadius: 12,
     padding: '22px 26px',
-    display: 'flex', gap: 24, alignItems: 'flex-start',
-    maxWidth: '90vw', maxHeight: '85vh', overflowY: 'auto',
+    display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap', justifyContent: 'center',
+    // Scaled up 30%; caps divided by zoom so the rendered panel fits the viewport
+    // (incl. mobile landscape — vw/vh are multiplied by zoom).
+    zoom: 1.3,
+    maxWidth: 'calc(92vw / 1.3)', maxHeight: 'calc(88vh / 1.3)', overflowY: 'auto',
   } as React.CSSProperties,
 
   sectionTitle: {

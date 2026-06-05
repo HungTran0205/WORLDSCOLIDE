@@ -26,7 +26,6 @@ import contentVi from './content.vi.json';
 import { MISSIONS } from '@/game/data/missions';
 import { ITEM_DATABASE } from '@/game/data/items';
 import { ENEMIES } from '@/game/data/enemies';
-import { GUILD_RANKS } from '@/game/data/ranks';
 import { FURNITURE_DEFINITIONS } from '@/game/data/furniture';
 import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
 import { EQUIPMENT_DATABASE } from '@/game/data/equipment-templates';
@@ -72,11 +71,6 @@ describe('content.vi.json covers every EN-authored entity', () => {
   it('enemies: name', () => {
     const ids = Object.keys(ENEMIES);
     expect(missingEntries(vi, 'enemies', ids, 'name')).toEqual([]);
-  });
-
-  it('ranks: label', () => {
-    const ids = Object.keys(GUILD_RANKS);
-    expect(missingEntries(vi, 'ranks', ids, 'label')).toEqual([]);
   });
 
   it('furniture: name + description', () => {

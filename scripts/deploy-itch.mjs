@@ -69,7 +69,8 @@ const pkg = JSON.parse(readFileSync(path.join(repoRoot, 'package.json'), 'utf8')
 const version = pkg.version || '0.0.0';
 
 if (!skipBuild) {
-  run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build']);
+  // Node 22+ requires shell:true to spawn .cmd/.bat shims on Windows.
+  run('npm', ['run', 'build'], { shell: process.platform === 'win32' });
 }
 
 if (!existsSync(distDir)) {

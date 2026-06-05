@@ -38,8 +38,8 @@ function member(id: string, partial: Partial<Stats>, traits: Member['traits'] = 
   return {
     id,
     name: id,
-    level: 1,
-    exp: 0,
+    grade: 'F',
+    isMercenary: false,
     stats: { ...zeroStats(), ...partial },
     unallocatedPoints: 0,
     skill: null,
@@ -47,9 +47,7 @@ function member(id: string, partial: Partial<Stats>, traits: Member['traits'] = 
     injuredUntil: null,
     civilization: 'LinhSon',
     isFounder: false,
-    rank: 'MEMBER',
     missionsCompleted: 0,
-    rarity: 1,
     traits,
   };
 }
@@ -61,8 +59,7 @@ function visitor(overrides: Partial<TavernVisitor>): TavernVisitor {
     archetype: 'warrior',
     civilization: 'LinhSon',
     gender: 'M',
-    rarity: 1,
-    level: 1,
+    grade: 'F',
     stats: zeroStats(),
     derivedDemand: 0,
     dailyMoodBias: 0,
@@ -138,26 +135,26 @@ describe('totalCombatPower', () => {
 // ─── targetDemand ────────────────────────────────────────────────────────────
 
 describe('targetDemand', () => {
-  it('floor(power × 0.4) + rarity×5 + moodBias', () => {
-    // fighter power = 10, rarity=2, mood=+3 → floor(4) + 10 + 3 = 17
+  it('floor(power × 0.4) + gradeIndex×5 + moodBias', () => {
+    // fighter power = 10, grade='D' (gradeIndex=2), mood=+3 → floor(4) + 10 + 3 = 17
     const v = visitor({
       archetype: 'warrior',
       stats: { ...zeroStats(), STR: 5, END: 3, DEX: 1, AGI: 1 },
-      rarity: 2,
+      grade: 'D',
       dailyMoodBias: 3,
     });
     expect(targetDemand(v)).toBe(17);
   });
 
   it('respects archetype role mapping', () => {
-    // scholar = mage role: power = INT+END+LCK = 6, rarity=1, mood=0 → floor(2.4)+5+0 = 7
+    // scholar = mage role: power = INT+END+LCK = 6, grade='F' (gradeIndex=0), mood=0 → floor(2.4)+0+0 = 2
     const v = visitor({
       archetype: 'scholar',
       stats: { ...zeroStats(), INT: 4, END: 1, LCK: 1, STR: 99 /* ignored */ },
-      rarity: 1,
+      grade: 'F',
       dailyMoodBias: 0,
     });
-    expect(targetDemand(v)).toBe(7);
+    expect(targetDemand(v)).toBe(2);
   });
 });
 
@@ -305,7 +302,7 @@ describe('rollNegotiation', () => {
     const v = visitor({
       archetype: 'warrior',
       stats: { ...zeroStats(), STR: 5, END: 3, DEX: 1, AGI: 1 },
-      rarity: 2,
+      grade: 'D',
       dailyMoodBias: 3,
     });
     const seed = attemptSeed(1234, v.id, 0);
@@ -324,7 +321,7 @@ describe('rollNegotiation', () => {
 
   it('guaranteedRecruit visitor always succeeds (comfortable), ignoring stats/seed', () => {
     const weakKeeper = member('k', { CHA: 0, INT: 0 }); // would normally give a low rate
-    const v = visitor({ guaranteedRecruit: true, rarity: 5, dailyMoodBias: 5 });
+    const v = visitor({ guaranteedRecruit: true, grade: 'S', dailyMoodBias: 5 });
     for (const seed of [1, 2, 999, 123456]) {
       const res = rollNegotiation(weakKeeper, v, baseMods(), attemptSeed(seed, v.id, 0));
       expect(res.outcome).toEqual({ kind: 'success', tier: 'comfortable' });
@@ -338,8 +335,8 @@ describe('rollNegotiation', () => {
     const v = visitor({
       archetype: 'warrior',
       stats: { ...zeroStats(), STR: 5, END: 3, DEX: 1, AGI: 1 },   // power = 10
-      rarity: 2,
-      dailyMoodBias: 3,                                              // demand = 4+10+3 = 17
+      grade: 'D',   // gradeIndex=2 → gradeIndex*5 = 10
+      dailyMoodBias: 3,                                              // demand = floor(4)+10+3 = 17
     });
     const res = rollNegotiation(k, v, baseMods({ tavernLevel: 2 }), 42);
     expect(res.keeperNegotiation).toBe(25);
@@ -383,32 +380,39 @@ describe('decayedRefusalCount', () => {
 // ─── hireMercCost ────────────────────────────────────────────────────────────
 
 describe('hireMercCost', () => {
-  it('rarity 1: base = floor(power×2 + 100), mult = 1.0', () => {
+  // Formula: base = floor(power*2 + gi*90), cost = floor(base * (1 + 0.15*gi) * mercFeeMultiplier)
+  it('grade F (gi=0): base = floor(power×2), mult = 1.0', () => {
     const v = visitor({
       archetype: 'warrior',
       stats: { ...zeroStats(), STR: 5, END: 3, DEX: 1, AGI: 1 }, // power = 10
-      rarity: 1,
+      grade: 'F',
     });
-    expect(hireMercCost(v)).toBe(Math.floor(120 * 1.0)); // 120
+    // base = floor(10*2 + 0) = 20; cost = floor(20 * 1.0) = 20
+    expect(hireMercCost(v)).toBe(20);
   });
 
-  it('rarity 5: mult = 1.8 (scaled)', () => {
-    const v = visitor({
+  it('grade S (gi=6): higher cost than grade F', () => {
+    const vF = visitor({
       archetype: 'warrior',
-      stats: { ...zeroStats(), STR: 5, END: 3, DEX: 1, AGI: 1 }, // power = 10
-      rarity: 5,
+      stats: { ...zeroStats(), STR: 5, END: 3, DEX: 1, AGI: 1 },
+      grade: 'F',
     });
-    // base = floor(10×2 + 500) = 520; mult = 1 + 0.2×4 = 1.8 → 936
-    expect(hireMercCost(v)).toBe(936);
+    const vS = visitor({
+      archetype: 'warrior',
+      stats: { ...zeroStats(), STR: 5, END: 3, DEX: 1, AGI: 1 },
+      grade: 'S',
+    });
+    expect(hireMercCost(vS)).toBeGreaterThan(hireMercCost(vF));
   });
 
   it('mercFeeMultiplier applies on top (counter-offer 1.2×)', () => {
     const v = visitor({
       archetype: 'warrior',
       stats: { ...zeroStats(), STR: 5, END: 3, DEX: 1, AGI: 1 },
-      rarity: 1,
+      grade: 'F',
     });
-    expect(hireMercCost(v, COUNTER_OFFER_MULTIPLIER)).toBe(Math.floor(120 * 1.2)); // 144
+    const base = hireMercCost(v);
+    expect(hireMercCost(v, COUNTER_OFFER_MULTIPLIER)).toBe(Math.floor(base * 1.2));
   });
 });
 
@@ -451,7 +455,7 @@ describe('buildModifierBundle', () => {
       traits: ['loyal'],                       // 1 shared
       archetype: 'warrior',
       stats: { ...zeroStats(), STR: 2, END: 2, DEX: 1, AGI: 1 }, // power = 6
-      rarity: 1,
+      grade: 'F',
       attemptHistory: [{ day: 3, margin: 25, outcome: 'soft-refuse' }],
     });
     const snap = snapshot({

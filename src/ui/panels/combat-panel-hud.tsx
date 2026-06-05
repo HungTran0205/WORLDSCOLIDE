@@ -75,7 +75,7 @@ export function CombatPanelHud() {
           <div
             key={d.id}
             className={`combat-hud__damage combat-hud__damage--${d.kind}`}
-            style={{ left: `${pos.x}px`, top: `${pos.y}px` }}
+            style={{ left: `${pos.x + d.offsetX}px`, top: `${pos.y + d.offsetY}px` }}
           >
             {d.text}
           </div>

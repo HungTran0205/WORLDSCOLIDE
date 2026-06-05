@@ -2,7 +2,7 @@
  * Tavern visitor spawn engine.
  *
  * Pure, deterministic generation of TavernVisitor[] from (level, keeperStats, daySeed).
- * Roster size and rarity weights scale with Tavern level; Keeper LCK biases rarity.
+ * Roster size and grade weights scale with Tavern level; Keeper LCK biases grade.
  *
  * Reload-determinism: feeding the same daySeed always returns an identical roster.
  */
@@ -13,6 +13,8 @@ import { TRAIT_POOL } from '@/game/data/traits';
 import { CIV_CONFIG, applyCivBonuses, CIVILIZATIONS, RECRUITABLE_UNITS } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
 import { CIV_ARCHETYPE_PROFILES } from '@/game/data/characters';
+import type { Grade } from '@/game/data/grades';
+import { GRADE_ORDER, GRADE_BUDGET, gradeIndex } from '@/game/data/grades';
 import { distributeStatsByWeightsRandom } from './stat-allocation';
 import { mulberry32, hashSeed, pickFromList, pickDistinct, weightedPick } from './seeded-rng';
 import { targetDemand } from './tavern-negotiation';
@@ -20,11 +22,14 @@ import { targetDemand } from './tavern-negotiation';
 export type TavernLevel = 1 | 2 | 3;
 export type GiftCategory = TavernVisitor['preferredGiftCategory'];
 
-/** Rarity weight rows, in percent. Index = level - 1, value index = rarity - 1. */
-export const RARITY_WEIGHTS: Record<TavernLevel, [number, number, number, number, number]> = {
-  1: [70, 30, 0, 0, 0],
-  2: [55, 35, 10, 0, 0],
-  3: [40, 35, 25, 0, 0],
+/**
+ * Grade weight rows, in percent. Index = tavern level, value index = grade index [F,E,D,C,B,A,S].
+ * MVP Lv1-3 only produces F/E/D (higher grade slots are 0).
+ */
+export const GRADE_WEIGHTS: Record<TavernLevel, [number, number, number, number, number, number, number]> = {
+  1: [70, 30, 0, 0, 0, 0, 0],
+  2: [55, 35, 10, 0, 0, 0, 0],
+  3: [40, 35, 25, 0, 0, 0, 0],
 };
 
 /** Visitor count by tavern level (MVP Lv1-3). */
@@ -40,19 +45,19 @@ const GIFT_CATEGORIES: readonly GiftCategory[] = ['consumable', 'material', 'equ
 const VISITOR_TRAITS: TraitId[] = TRAIT_POOL.filter((t) => t.category !== 'keeper').map((t) => t.id);
 
 /**
- * Compute LCK-biased rarity weights.
- * Each LCK point shifts 0.5% from the lowest non-zero rarity to the highest non-zero rarity,
+ * Compute LCK-biased grade weights.
+ * Each LCK point shifts 0.5% from the lowest non-zero grade to the highest non-zero grade,
  * capped at 25% total shift (i.e. effective LCK clamped to 50).
  */
-export function biasRarityWeightsByLuck(
-  weights: readonly [number, number, number, number, number],
+export function biasGradeWeightsByLuck(
+  weights: readonly [number, number, number, number, number, number, number],
   keeperLck: number,
-): [number, number, number, number, number] {
+): [number, number, number, number, number, number, number] {
   const effectiveLck = Math.max(0, Math.min(50, keeperLck));
   const shiftPct = effectiveLck * 0.5;
-  if (shiftPct <= 0) return [...weights] as [number, number, number, number, number];
+  if (shiftPct <= 0) return [...weights] as [number, number, number, number, number, number, number];
 
-  const result: [number, number, number, number, number] = [...weights] as [number, number, number, number, number];
+  const result: [number, number, number, number, number, number, number] = [...weights] as [number, number, number, number, number, number, number];
   let lowestIdx = -1;
   let highestIdx = -1;
   for (let i = 0; i < result.length; i++) {
@@ -69,16 +74,11 @@ export function biasRarityWeightsByLuck(
   return result;
 }
 
-/** Roll a rarity 1-5 from level + keeper LCK using a weighted table. */
-export function rollRarity(level: TavernLevel, keeperLck: number, rng: () => number): 1 | 2 | 3 | 4 | 5 {
-  const biased = biasRarityWeightsByLuck(RARITY_WEIGHTS[level], keeperLck);
-  const entries = biased.map((w, i) => ({ value: (i + 1) as 1 | 2 | 3 | 4 | 5, weight: w }));
+/** Roll a Grade from tavern level + keeper LCK using a weighted table. Consumes exactly one rng draw via weightedPick. */
+export function rollGrade(tavernLevel: TavernLevel, keeperLck: number, rng: () => number): Grade {
+  const biased = biasGradeWeightsByLuck(GRADE_WEIGHTS[tavernLevel], keeperLck);
+  const entries = biased.map((w, i) => ({ value: GRADE_ORDER[i], weight: w }));
   return weightedPick(entries, rng);
-}
-
-/** Talent budget by rarity — Lv1=50 … Lv5=130. */
-export function talentBudgetForRarity(rarity: 1 | 2 | 3 | 4 | 5): number {
-  return 50 + (rarity - 1) * 20;
 }
 
 export interface GenerateRosterArgs {
@@ -139,8 +139,8 @@ function generateTavernVisitor(args: GenerateVisitorArgs): TavernVisitor {
   const archetype = unit.archetype;
   const gender = unit.gender;
   const name = pickVisitorName(civ, rng, usedNames);
-  const rarity = rollRarity(level, keeperLck, rng);
-  const talentBudget = talentBudgetForRarity(rarity);
+  const grade = rollGrade(level, keeperLck, rng);
+  const talentBudget = GRADE_BUDGET[grade];
   const profile = CIV_ARCHETYPE_PROFILES[archetype];
 
   const rawStats = distributeStatsByWeightsRandom(talentBudget, profile.weights, rng);
@@ -149,7 +149,6 @@ function generateTavernVisitor(args: GenerateVisitorArgs): TavernVisitor {
   const dailyMoodBias = Math.floor(rng() * 11) - 5; // [-5, +5]
   const traits = pickVisitorTraits(rng);
   const preferredGiftCategory = pickFromList(GIFT_CATEGORIES, rng);
-  const visitorLevel = Math.max(1, Math.min(level + 2, 1 + Math.floor((rarity - 1) * 1.5))); // soft band by rarity
 
   const visitor: TavernVisitor = {
     id: `tav-${daySeed}-${index}`,
@@ -157,8 +156,7 @@ function generateTavernVisitor(args: GenerateVisitorArgs): TavernVisitor {
     archetype,
     civilization: civ,
     gender,
-    rarity,
-    level: visitorLevel,
+    grade,
     stats,
     derivedDemand: 0,
     dailyMoodBias,
@@ -168,7 +166,6 @@ function generateTavernVisitor(args: GenerateVisitorArgs): TavernVisitor {
     veteranTag: false,
     spawnedDay,
   };
-  // Phase 03: real demand = floor(power × 0.4) + rarity×5 + moodBias.
   visitor.derivedDemand = targetDemand(visitor);
   return visitor;
 }

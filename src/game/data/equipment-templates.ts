@@ -15,9 +15,9 @@ export type EquipmentTemplateId =
   | 'IRON_AXE'
   | 'IRON_CROSSBOW'
   | 'IRON_SWORD'
-  // Armor — by material tier
-  | 'CLOTH_VEST'
-  | 'LEATHER_ARMOR'
+  // Armor — by pelt tier (T1=BOAR_PELT, T2=BEAR_PELT, T3=IRON_ORE)
+  | 'BOAR_FUR_COAT'
+  | 'BEAR_COAT'
   | 'IRON_ARMOR';
 
 export interface EquipmentTemplate {
@@ -32,9 +32,14 @@ export interface EquipmentTemplate {
   /** Flat defense bonus — adds to END for defense calc */
   defense?: number;
   maxDurability: number;
-  /** Material used to craft (for Phase 2 workshop) */
+  /** Primary material used to craft — drives tier inference */
   craftMaterial?: ItemID;
   craftCost?: number;
+  /**
+   * Secondary materials consumed on craft in addition to craftMaterial×craftCost.
+   * Not recovered on dismantle (KISS — only the primary pelt is returned).
+   */
+  extraMaterials?: Partial<Record<ItemID, number>>;
 }
 
 export const EQUIPMENT_DATABASE: Record<EquipmentTemplateId, EquipmentTemplate> = {
@@ -48,10 +53,10 @@ export const EQUIPMENT_DATABASE: Record<EquipmentTemplateId, EquipmentTemplate> 
   IRON_AXE:        { id: 'IRON_AXE',        name: 'Iron Axe',        slot: 'weapon',   rarity: 'RARE',     damage: 30, maxDurability: 120, craftMaterial: 'IRON_ORE', craftCost: 10 },
   IRON_CROSSBOW:   { id: 'IRON_CROSSBOW',   name: 'Iron Crossbow',   slot: 'weapon',   rarity: 'RARE',     damage: 28, maxDurability: 100, craftMaterial: 'IRON_ORE', craftCost: 10 },
   IRON_SWORD:      { id: 'IRON_SWORD',      name: 'Iron Sword',      slot: 'weapon',   rarity: 'RARE',     damage: 30, maxDurability: 120, craftMaterial: 'IRON_ORE', craftCost: 10 },
-  // --- Armor ---
-  CLOTH_VEST:      { id: 'CLOTH_VEST',      name: 'Cloth Vest',      slot: 'armor',    rarity: 'COMMON',   hp: 20, defense: 3,  maxDurability: 40,  craftMaterial: 'WOOD',     craftCost: 10 },
-  LEATHER_ARMOR:   { id: 'LEATHER_ARMOR',   name: 'Leather Armor',   slot: 'armor',    rarity: 'UNCOMMON', hp: 40, defense: 7,  maxDurability: 70,  craftMaterial: 'STONE',    craftCost: 10 },
-  IRON_ARMOR:      { id: 'IRON_ARMOR',      name: 'Iron Armor',      slot: 'armor',    rarity: 'RARE',     hp: 70, defense: 15, maxDurability: 120, craftMaterial: 'IRON_ORE', craftCost: 8  },
+  // --- Armor (pelt-primary: craftMaterial drives tier; WOOD/STONE are secondary) ---
+  BOAR_FUR_COAT: { id: 'BOAR_FUR_COAT', name: 'Boar Fur Coat', slot: 'armor', rarity: 'COMMON',   hp: 20, defense: 3,  maxDurability: 40,  craftMaterial: 'BOAR_PELT', craftCost: 1, extraMaterials: { WOOD: 10 } },
+  BEAR_COAT:     { id: 'BEAR_COAT',     name: 'Bear Coat',     slot: 'armor', rarity: 'UNCOMMON', hp: 40, defense: 7,  maxDurability: 70,  craftMaterial: 'BEAR_PELT', craftCost: 1, extraMaterials: { STONE: 10 } },
+  IRON_ARMOR:    { id: 'IRON_ARMOR',    name: 'Iron Armor',    slot: 'armor', rarity: 'RARE',     hp: 70, defense: 15, maxDurability: 120, craftMaterial: 'IRON_ORE',  craftCost: 8 },
 };
 
 export function getEquipmentTemplate(id: EquipmentTemplateId): EquipmentTemplate {

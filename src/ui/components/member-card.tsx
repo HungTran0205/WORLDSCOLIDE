@@ -6,7 +6,7 @@ import { resolveMemberMaskId, getMaskAssetPath } from '@/scene/sprites/mask-pool
 import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
 import { civName } from '@/i18n/content-wrappers';
-import { GameIcon } from './game-icon';
+import { GradeBadge } from './grade-badge';
 
 const STATUS_COLOR: Record<string, string> = {
   idle:         'var(--ink-status-ok)',
@@ -46,11 +46,10 @@ export function MemberCard({ member, onClick, disabled = false, reason }: Member
   const top2 = topTwoStats(member);
   const statusColor = STATUS_COLOR[member.status] ?? 'var(--ink-text-muted)';
   const initials = (member.name || '??').slice(0, 2).toUpperCase();
-  const rankLc = member.rank.toLowerCase();
 
   return (
     <button
-      className={`member-card member-card--${rankLc} ink-pixelated${disabled ? ' member-card--disabled' : ''}`}
+      className={`member-card member-card--${member.grade.toLowerCase()} ink-pixelated${disabled ? ' member-card--disabled' : ''}`}
       data-status={member.status}
       aria-disabled={disabled || undefined}
       onClick={() => {
@@ -66,7 +65,7 @@ export function MemberCard({ member, onClick, disabled = false, reason }: Member
 
       <div className="card-avatar">
         <div className="card-insignia">
-          <GameIcon category="badge" id={member.rank} size={20} fallbackText="" alt={member.rank} />
+          <GradeBadge grade={member.grade} isMercenary={member.isMercenary} size="sm" />
         </div>
         {!imgFailed && avatarUrl ? (
           <img src={avatarUrl} alt={member.name} onError={() => setImgFailed(true)} />
@@ -87,7 +86,7 @@ export function MemberCard({ member, onClick, disabled = false, reason }: Member
       <div className="card-info">
         <div className="card-name">{member.name || '???'}</div>
         <div className="card-meta">
-          <span className="card-rank">{member.rank}</span>
+          <span className="card-grade">Grade {member.grade}</span>
           {civConfig && <span className="card-civ">{civName(member.civilization as Civilization)}</span>}
         </div>
         <div className="card-stats">

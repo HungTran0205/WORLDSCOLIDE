@@ -8,6 +8,7 @@ import { useGameStore } from '@/game/state/store';
 import { GAME_TIME_MULTIPLIER, MS_PER_GAME_DAY } from '@/game/state/clock-slice';
 import { processMissionTick } from '@/game/systems/mission-tick';
 import { processInjuryRecovery } from '@/game/systems/infirmary-recovery';
+import { processSkillTraining } from '@/game/systems/skill-training-system';
 import { shouldAdvanceTutorial, getNextStep } from '@/game/systems/tutorial-manager';
 import { processFacilityProduction, processLoggingSiteTick } from '@/game/systems/facility-production-system';
 import { processStoneQuarryTick } from '@/game/systems/stone-quarry-production-system';
@@ -15,6 +16,11 @@ import { advanceWorkshopQueues } from '@/game/systems/workshop-offline-system';
 import { advanceAlchemyQueues } from '@/game/systems/alchemy-production-system';
 import type { ItemID } from '@/game/data/items';
 import type { EquipmentItem, Member, MemberEquipment } from '@/game/state/game-state';
+import { getEquipmentTemplate } from '@/game/data/equipment-templates';
+import { getSkillFromPool } from '@/game/data/skills';
+import { tContent } from '@/i18n/content-localization';
+import { offlineReportHasContent, type OfflineTrainedSkill } from '@/game/systems/offline-report';
+import type { FacilityProductionResult } from '@/game/systems/facility-production-system';
 import { MISSIONS } from '@/game/data/missions';
 import { playSFX } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
@@ -110,6 +116,12 @@ export function useGameTickLoop() {
     // Accrue infirmary recovery progress for injured members (bed/queue derived per tick)
     processInjuryRecovery(store, dt);
 
+    // Advance skill-rank training progress for all active Training Yard slots
+    const trainingResults = store.facilities
+      .filter((f) => f.type === 'training-yard' && f.level > 0)
+      .flatMap((f) => processSkillTraining(f, allMembersForTick, dt));
+    if (trainingResults.length) store.applySkillTrainingResults(trainingResults);
+
     // Auto-advance tutorial steps with conditions. Re-read fresh state: processMissionTick
     // and mid-tick handlers (e.g. handleTutorialQuestComplete) may have mutated
     // tutorialStep / activeMissions since the tick-start snapshot above.
@@ -133,6 +145,23 @@ export function useGameTickLoop() {
     // Catch-up: resolve missions + process facility production while offline
     const store = useGameStore.getState();
     const elapsedMs = Date.now() - store.realTimeLastTick;
+    const isOfflineSession = elapsedMs >= 60_000;
+
+    // Snapshot pre-catch-up member state so the first handleTick() (which applies
+    // offline injury recovery + skill training via its full-offline dt) can be
+    // diffed afterward for the consolidated offline report.
+    const membersBefore = store.founder ? [store.founder, ...store.roster] : store.roster;
+    const injuredBefore = new Set(membersBefore.filter((m) => m.status === 'injured').map((m) => m.id));
+    const ranksBefore = new Map<string, Record<string, number>>();
+    for (const m of membersBefore) {
+      const r: Record<string, number> = {};
+      for (const [sid, e] of Object.entries(m.skillRanks ?? {})) r[sid] = e.rank;
+      ranksBefore.set(m.id, r);
+    }
+    // Report accumulators (gathering / workshop / alchemy gains collected below).
+    const productionForReport: FacilityProductionResult[] = [];
+    const craftedForReport: Record<string, number> = {};
+    const alchemyForReport: Record<string, number> = {};
 
     if (elapsedMs >= 60_000) {
       const GAME_DAY_REAL_MS = 30 * 60 * 1000;
@@ -143,13 +172,6 @@ export function useGameTickLoop() {
         const results = processFacilityProduction(
           store.facilities, allMembers, gameDays,
         );
-
-        // Apply EXP gains (Training Yard)
-        for (const result of results) {
-          for (const [memberId, exp] of Object.entries(result.expGains)) {
-            store.addMemberExp(memberId, exp);
-          }
-        }
 
         // Apply item gains
         for (const result of results) {
@@ -182,18 +204,17 @@ export function useGameTickLoop() {
           }
         }
 
-        // Store report for popup (only if any production occurred)
-        const hasProduction = results.some((r) =>
-          Object.keys(r.expGains).length > 0 ||
-          Object.keys(r.itemGains).length > 0,
-        );
-        if (hasProduction) {
-          useGameStore.setState({
-            offlineFacilityReport: results,
-            offlineElapsedHours: elapsedMs / 3_600_000,
-          });
+        // Collect gathering gains for the consolidated offline report (built after handleTick).
+        for (const r of results) {
+          if (Object.keys(r.itemGains).length > 0) productionForReport.push(r);
         }
       }
+
+      // NOTE: skill-rank training is NOT advanced here. The first handleTick() below
+      // runs with dt = full offline window (realTimeLastTick is only updated inside
+      // tickClock), so it already catches training up over the offline interval —
+      // same single-source pattern as injury recovery. Advancing it here too would
+      // double-count and complete training in half the intended time.
 
       // Advance queue-based facilities (workshop, alchemy) over offline interval.
       // Cap at 30 game days (matches facility production cap so all subsystems share one window).
@@ -274,6 +295,12 @@ export function useGameTickLoop() {
             };
           });
         }
+        // Collect crafted equipment (grouped by display name) for the offline report.
+        for (const eq of ws.newEquipment) {
+          const tpl = getEquipmentTemplate(eq.templateId);
+          const name = tpl ? tContent('equipment', eq.templateId, 'name', tpl.name) : eq.templateId;
+          craftedForReport[name] = (craftedForReport[name] ?? 0) + 1;
+        }
       }
 
       // Advance alchemy lab craft queues over the offline window.
@@ -289,7 +316,10 @@ export function useGameTickLoop() {
         if (producedTotal > 0 || al.acXpGains.length > 0) {
           useGameStore.setState({ facilities: al.facilities });
           for (const [itemId, qty] of Object.entries(al.itemGains)) {
-            if (qty && qty > 0) useGameStore.getState().addItem(itemId as ItemID, qty);
+            if (qty && qty > 0) {
+              useGameStore.getState().addItem(itemId as ItemID, qty);
+              alchemyForReport[itemId] = (alchemyForReport[itemId] ?? 0) + qty;
+            }
           }
           if (al.acXpGains.length > 0) {
             useGameStore.getState().applyAlchemyProduction({ acXpGains: al.acXpGains });
@@ -311,6 +341,37 @@ export function useGameTickLoop() {
     }
 
     handleTick(Date.now());
+
+    // Build the consolidated offline report from before/after diffs (injury recovery
+    // + skill training were applied by the handleTick above) plus the gathering /
+    // workshop / alchemy gains collected during catch-up. Shown once on return.
+    if (isOfflineSession) {
+      const after = useGameStore.getState();
+      const afterMembers = after.founder ? [after.founder, ...after.roster] : after.roster;
+      const recovered = afterMembers
+        .filter((m) => injuredBefore.has(m.id) && m.status !== 'injured')
+        .map((m) => m.name);
+      const trained: OfflineTrainedSkill[] = [];
+      for (const m of afterMembers) {
+        const before = ranksBefore.get(m.id) ?? {};
+        for (const [sid, entry] of Object.entries(m.skillRanks ?? {})) {
+          if (entry.rank > (before[sid] ?? 0)) {
+            const sk = getSkillFromPool(m.archetype, sid);
+            const skillName = tContent('skills', sid, 'name', sk?.name ?? sid);
+            trained.push({ memberName: m.name, skillId: sid, skillName, level: entry.rank });
+          }
+        }
+      }
+      const report = {
+        elapsedHours: elapsedMs / 3_600_000,
+        production: productionForReport,
+        crafted: craftedForReport,
+        alchemy: alchemyForReport,
+        trained,
+        recovered,
+      };
+      if (offlineReportHasContent(report)) useGameStore.setState({ offlineReport: report });
+    }
 
     const worker = new Worker(
       new URL('@/game/systems/workers/game-loop.worker.ts', import.meta.url),

@@ -1,0 +1,28 @@
+/* ─── Grade Badge (F→S letter badge, CSS-only) ────────────────────────────── */
+.grade-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--grade-color, #95a5a6);
+  border: 1px solid var(--grade-color, #95a5a6);
+  background: color-mix(in srgb, var(--grade-color, #95a5a6) 12%, transparent);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-family: var(--ink-font-mono);
+  font-size: var(--ink-fs-label);
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+}
+
+.grade-badge--sm { font-size: var(--ink-fs-label); }
+.grade-badge--md { font-size: var(--ink-fs-meta); padding: 2px 7px; }
+.grade-badge--lg { font-size: var(--ink-fs-small); padding: 4px 10px; }
+
+.grade-badge__merc-tag {
+  font-size: 0.65em;
+  opacity: 0.75;
+  margin-left: 2px;
+  letter-spacing: 0.04em;
+}

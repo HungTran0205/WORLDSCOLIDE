@@ -16,6 +16,8 @@ import type { TavernVisitor } from '@/game/state/game-state';
 import { totalCombatPower, ARCHETYPE_ROLE_MAP, hireMercCost } from '@/game/systems/tavern-negotiation';
 import { getSpritePath, getAvatarPath } from '@/scene/sprites/sprite-path-resolver';
 import { getTraitDef } from '@/game/data/traits';
+import { GRADE_HP_BONUS } from '@/game/data/grades';
+import { GradeBadge } from '@/ui/components/grade-badge';
 
 interface VisitorCardProps {
   visitor: TavernVisitor;
@@ -42,14 +44,13 @@ export function TavernVisitorCard({
   const highlightNegotiate = isGuaranteed && tutorialStep === 'recruit-first-member';
   const role = ARCHETYPE_ROLE_MAP[visitor.archetype];
   const power = totalCombatPower(visitor.stats, role);
-  // Combat-derived display values (HP/ATK/DEF) derived from power for visibility tier 10+
-  const hp = 100 + visitor.stats.END * 5 + visitor.level * 10;
+  // Combat-derived display values — HP previews true post-hire combat HP (base 60, grade bonus)
+  const hp = 60 + visitor.stats.END * 5 + GRADE_HP_BONUS[visitor.grade];
   const atk = Math.floor(visitor.stats.STR * 1.2 + visitor.stats.DEX * 0.4);
   const def = Math.floor(visitor.stats.END * 0.8 + visitor.stats.AGI * 0.3);
   const mercCost = hireMercCost(visitor);
   const base = getSpritePath(visitor.civilization, visitor.archetype, visitor.gender);
   const portraitSrc = getAvatarPath(base);
-  const stars = '★'.repeat(visitor.rarity) + '☆'.repeat(5 - visitor.rarity);
 
   return (
     <div className="tv-visitor-card" data-power={power}>
@@ -61,9 +62,8 @@ export function TavernVisitorCard({
       </div>
       <div className="tv-card-name">{visitor.name}</div>
       <div className="tv-card-meta">
-        <span className="tv-card-rarity">{stars}</span>
+        <GradeBadge grade={visitor.grade} size="sm" />
         <span>· {visitor.civilization}</span>
-        <span>· Lv{visitor.level}</span>
       </div>
 
       {/* Tier 10+: combat-derived */}

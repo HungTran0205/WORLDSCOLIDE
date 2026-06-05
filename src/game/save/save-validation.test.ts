@@ -68,11 +68,12 @@ describe('validateSemantics', () => {
     expect(errors.some((e) => e.includes('invalid tutorialStep'))).toBe(true);
   });
 
-  it('catches founder level < 1', () => {
+  it('catches founder with invalid grade', () => {
     const bad = structuredClone(VALID_GAME_SAVE_DATA);
-    bad.founder!.level = 0;
+    // Grade model: set an invalid grade string to trigger semantic error
+    (bad.founder as any).grade = 'Z';
     const errors = validateSemantics(bad);
-    expect(errors).toContain('founder level must be >= 1');
+    expect(errors.some((e) => e.includes('invalid grade'))).toBe(true);
   });
 });
 

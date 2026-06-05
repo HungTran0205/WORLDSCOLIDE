@@ -14,23 +14,25 @@ function makeTestMember(overrides: Partial<Member> = {}): Member {
   return {
     id: 'test-member',
     name: 'Hero',
-    level: 1,
-    exp: 0,
+    grade: 'F',
+    isMercenary: false,
     stats: { STR: 10, END: 10, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 10 },
     unallocatedPoints: 0,
     skill: { id: 'danh-manh', name: 'Danh Manh', damageMultiplier: 1.25, cooldownMs: 8000, autoEnabled: false },
     status: 'idle',
     injuredUntil: null,
-    civilization: 'Viet',
+    civilization: 'LinhSon',
     isFounder: true,
+    missionsCompleted: 0,
     ...overrides,
   };
 }
 
 describe('Combat Formulas', () => {
-  it('should calculate max HP from END + level', () => {
-    expect(calcMaxHp(10, 1)).toBe(110); // 50 + 10*5 + 1*10
-    expect(calcMaxHp(20, 5)).toBe(200); // 50 + 20*5 + 5*10
+  it('should calculate max HP from END + flatHpBonus', () => {
+    // base = 60; calcMaxHp(end, flatHpBonus) = floor(60 + end*5 + flatHpBonus)
+    expect(calcMaxHp(10, 0)).toBe(110); // 60 + 10*5 + 0
+    expect(calcMaxHp(20, 50)).toBe(210); // 60 + 20*5 + 50
   });
 
   it('should calculate attack interval with AGI scaling', () => {

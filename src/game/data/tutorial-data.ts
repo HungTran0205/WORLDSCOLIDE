@@ -17,17 +17,15 @@ export const KAEL_TEMPLATE: Omit<Member, 'id'> = {
   civilization: 'LinhSon',
   archetype: 'warrior',
   gender: 'M',
-  level: 1,
-  exp: 0,
+  grade: 'F',
+  isMercenary: false,
   stats: { STR: 8, END: 15, DEX: 5, AGI: 5, INT: 3, CHA: 4, LCK: 10 },
   unallocatedPoints: 0,
   skill: null,
   status: 'idle',
   injuredUntil: null,
   isFounder: false,
-  rank: 'MEMBER',
   missionsCompleted: 0,
-  rarity: 1,
   traits: [],
 };
 
@@ -47,16 +45,11 @@ export const KAEL_TEMPLATE: Omit<Member, 'id'> = {
  * forces a 100% negotiation success (see rollNegotiation) so the closing beat always
  * lands. Stable id keeps the spawn idempotent across re-assigns.
  */
-const MAI_RARITY = 2 as const;
-
 /**
- * Mai's stats — the baseline 50-pt budget distributed by scout archetype weights,
- * then boosted by LinhSon civ bonuses. Mai stays rarity-2 for display, but her budget
- * is intentionally pinned to INITIAL_STAT_POINTS (not the rarity-2 budget of 70) to
- * keep the scripted tutorial recruit balanced. A FIXED seed (derived from her stable
- * id) makes the roll deterministic: every playthrough gets the same Ranger build, so
- * tutorial combat balance stays predictable and tests stay stable. Same weighted-random
- * path as live tavern visitors (see generateTavernVisitor).
+ * Mai's stats — grade-F budget (50 pts) distributed by scout archetype weights,
+ * then boosted by LinhSon civ bonuses. Budget pinned to INITIAL_STAT_POINTS so
+ * tutorial combat balance stays predictable. A FIXED seed makes the roll
+ * deterministic: every playthrough gets the same Ranger build.
  */
 const MAI_STATS = applyCivBonuses(
   distributeStatsByWeightsRandom(
@@ -73,8 +66,7 @@ export const TUTORIAL_RECRUIT_VISITOR: TavernVisitor = {
   archetype: 'scout',
   civilization: 'LinhSon',
   gender: 'F',
-  rarity: MAI_RARITY,
-  level: 1,
+  grade: 'F',
   stats: MAI_STATS,
   derivedDemand: 20,
   dailyMoodBias: 0,

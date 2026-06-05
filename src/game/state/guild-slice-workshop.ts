@@ -103,6 +103,11 @@ function validateTaskStart(
       const tpl = getEquipmentTemplate(task.payload.templateId);
       const need: Partial<Record<ItemID, number>> = {};
       if (tpl.craftMaterial && tpl.craftCost) need[tpl.craftMaterial] = tpl.craftCost;
+      if (tpl.extraMaterials) {
+        for (const [id, qty] of Object.entries(tpl.extraMaterials) as [ItemID, number][]) {
+          need[id] = (need[id] ?? 0) + qty;
+        }
+      }
       if (task.payload.monsterMaterial) {
         need[task.payload.monsterMaterial] = (need[task.payload.monsterMaterial] ?? 0) + 1;
       }

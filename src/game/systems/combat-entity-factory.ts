@@ -7,12 +7,13 @@ import type { Member, MercContract } from '@/game/state/game-state';
 import type { EnemyTemplate } from '@/game/data/enemies';
 import type { ArenaEntity } from './combat-arena-types';
 import { getAttackRange, DEFAULT_MOVE_SPEED } from './combat-arena-types';
-// calcMaxHp / calcAttackInterval consumed via calcDerivedCombatStats — no direct import needed
 import { calcDerivedCombatStats } from './derived-combat-stats';
 import { createPassiveState, applyPassiveOnInit, snapshotBaseStats } from './combat-passives';
 import { calcGearBonuses } from './equipment-bonuses';
+import { GRADE_HP_BONUS, gradeOf } from '@/game/data/grades';
+import { applySkillRankMilestones } from './skill-training-system';
 
-/** Spatial spawn coordinate — y added in phase 05 for multi-platform stages. */
+/** Spatial spawn coordinate — y added for multi-platform stages. */
 export interface ArenaSpawnPos { x: number; y: number; z: number }
 
 /**
@@ -24,21 +25,23 @@ export function memberToArenaEntity(
   pos: ArenaSpawnPos,
   syringeCount = 0,
 ): ArenaEntity {
-  const derived = calcDerivedCombatStats(member.stats, member.level);
   const gear = calcGearBonuses(member.equipment);
+  const derived = calcDerivedCombatStats(member.stats, GRADE_HP_BONUS[member.grade], 1800, gear);
   const loadout = member.syringeLoadout;
   const entity: ArenaEntity = {
     id: member.id,
     name: member.name,
     isAlly: true,
-    maxHp: derived.maxHp + gear.flatHp,
-    currentHp: derived.maxHp + gear.flatHp,
+    maxHp: derived.maxHp,
+    currentHp: derived.maxHp,
     stats: { ...member.stats },
-    skill: member.skill ? { ...member.skill } : null,
-    level: member.level,
+    skill: member.skill
+      ? applySkillRankMilestones({ ...member.skill }, member.skillRanks?.[member.skill.id]?.rank ?? 1)
+      : null,
     attackIntervalMs: derived.attackIntervalMs,
     nextAttackAt: derived.attackIntervalMs,
-    skillCooldownUntil: 0,
+    // Skills start on cooldown — first cast only after one full cooldown elapses.
+    skillCooldownUntil: member.skill?.cooldownMs ?? 0,
     statusEffects: [],
     abilities: [],
     civilization: member.civilization,
@@ -53,6 +56,9 @@ export function memberToArenaEntity(
     blockRate: derived.blockRate,
     critDmg: derived.critDmg,
     hpRegenPerSec: derived.hpRegen,
+    accuracy: derived.accuracy,
+    shieldCharges: gear.shieldCharges,
+    shieldChargesMax: gear.shieldCharges,
     position: { x: pos.x, y: pos.y, z: pos.z },
     targetId: null,
     attackRange: getAttackRange(member.archetype),
@@ -67,6 +73,7 @@ export function memberToArenaEntity(
     ...(loadout && syringeCount > 0
       ? { syringeThresholdPct: loadout.autoUseThresholdPct, syringesLoaded: syringeCount }
       : {}),
+    statusResist: derived.statusResist,
   };
   applyPassiveOnInit(entity);
   return entity;
@@ -86,8 +93,8 @@ export function memberFromMercContract(contract: MercContract): Member {
   return {
     id: contract.id,
     name: `Merc-${contract.id.slice(-4)}`,
-    level: v.level,
-    exp: 0,
+    grade: gradeOf(v),
+    isMercenary: true,
     stats: { ...v.stats },
     unallocatedPoints: 0,
     skill: null,
@@ -96,9 +103,7 @@ export function memberFromMercContract(contract: MercContract): Member {
     civilization: v.civilization,
     archetype: v.archetype,
     isFounder: false,
-    rank: 'MERCENARY',
     missionsCompleted: 0,
-    rarity: v.rarity,
     traits: v.traits,
     equipment: null,
     syringeLoadout: null,
@@ -120,7 +125,7 @@ export function enemyToArenaEntity(
   pos: ArenaSpawnPos,
   hpMultiplier = 1.0,
 ): ArenaEntity {
-  const derived = calcDerivedCombatStats(template.stats, template.level);
+  const derived = calcDerivedCombatStats(template.stats, template.level * 10);
   const hp = Math.max(1, Math.floor(derived.maxHp * hpMultiplier));
   return {
     id: `enemy-${template.id}-${index}`,
@@ -133,13 +138,16 @@ export function enemyToArenaEntity(
     level: template.level,
     attackIntervalMs: derived.attackIntervalMs,
     nextAttackAt: derived.attackIntervalMs,
-    skillCooldownUntil: 0,
+    skillCooldownUntil: template.skill?.cooldownMs ?? 0,
     statusEffects: [],
     abilities: [...template.abilities],
     dodgeRate: derived.dodgeRate,
     blockRate: derived.blockRate,
     critDmg: derived.critDmg,
     hpRegenPerSec: derived.hpRegen,
+    accuracy: 0,
+    shieldCharges: 0,
+    shieldChargesMax: 0,
     position: { x: pos.x, y: pos.y, z: pos.z },
     targetId: null,
     attackRange: 1.5,

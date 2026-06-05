@@ -1,4 +1,4 @@
-import type { PlacedFurniture, Member } from '@/game/state/game-state';
+import type { PlacedFurniture } from '@/game/state/game-state';
 
 export interface FurnitureBonuses {
   upkeepReduction: number;
@@ -44,14 +44,3 @@ export function calcFurnitureBonuses(furniture: PlacedFurniture[]): FurnitureBon
   return bonuses;
 }
 
-/** Apply passive EXP to idle/training members */
-export function applyPassiveExp(
-  roster: Member[],
-  passiveExpPerDay: number,
-  gameDays: number,
-): Member[] {
-  return roster.map((m) => {
-    if (m.status !== 'idle' && m.status !== 'training') return m;
-    return { ...m, exp: m.exp + passiveExpPerDay * gameDays };
-  });
-}

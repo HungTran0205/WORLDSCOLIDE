@@ -43,11 +43,11 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
   'training-yard': {
     type: 'training-yard',
     name: 'Training Yard',
-    description: 'Members gain passive EXP daily. DEX + AGI increase gain rate.',
+    description: 'Trains a member to raise the rank of their carried combat skill. A trainee is benched from missions while training. Higher yard level = higher rank ceiling + faster training.',
     buildCost: 250,
     upgradeCosts: [300, 500],
     maxSlots: [2, 3, 4],
-    primaryStats: 'DEX + AGI',
+    primaryStats: '—',
     zonePosition: [2, 0, 2.5],
     tileFootprint: [3, 3],
     requiredGuildLevel: 3,

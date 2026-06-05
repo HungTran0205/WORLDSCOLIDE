@@ -1,17 +1,15 @@
 import { useTranslation } from 'react-i18next';
 import type { Member, StatKey } from '@/game/state/game-state';
 import { STAT_KEYS } from '@/game/systems/stat-allocation';
-import { RankPromotionSection } from '@/ui/components/rank-promotion-section';
 import { calcAttackInterval, calcCritRate, calcDefenseRating } from '@/game/systems/combat-formulas';
 import { calcDerivedGuildStats } from '@/game/systems/derived-guild-stats';
 import { calcMemberDerivedStats } from '@/game/systems/member-derived-stats';
+import { gradeIndex } from '@/game/data/grades';
 
 interface StatsTabProps {
   member: Member;
   isMerc: boolean;
   onAllocateStat: (stat: StatKey, amount?: number) => void;
-  onPromote?: () => void;
-  canAffordPromote?: boolean;
 }
 
 function DerivedRow({ label, value }: { label: string; value: string | number }) {
@@ -23,7 +21,7 @@ function DerivedRow({ label, value }: { label: string; value: string | number })
   );
 }
 
-export function StatsTab({ member, isMerc, onAllocateStat, onPromote, canAffordPromote }: StatsTabProps) {
+export function StatsTab({ member, isMerc, onAllocateStat }: StatsTabProps) {
   const { t } = useTranslation();
   const { STR, END, DEX, LCK, AGI } = member.stats;
   const { combat } = calcMemberDerivedStats(member);
@@ -31,7 +29,7 @@ export function StatsTab({ member, isMerc, onAllocateStat, onPromote, canAffordP
   const atkIntervalMs = calcAttackInterval(AGI);
   const critPct     = Math.round(calcCritRate(LCK) * 100);
   const defPct      = Math.round(calcDefenseRating(END) * 100);
-  const guild       = calcDerivedGuildStats(member.stats, member.level);
+  const guild       = calcDerivedGuildStats(member.stats, gradeIndex(member.grade));
 
   return (
     <div className="stats-tab-layout">
@@ -58,11 +56,7 @@ export function StatsTab({ member, isMerc, onAllocateStat, onPromote, canAffordP
             )}
           </div>
         ))}
-        {!isMerc && (
-          <div style={{ marginTop: 8 }}>
-            <RankPromotionSection member={member} onPromote={onPromote} canAffordPromote={canAffordPromote} />
-          </div>
-        )}
+        {/* Grade promotion section deferred to follow-up plan */}
       </div>
 
       {/* ── Right: Derived stats ── */}

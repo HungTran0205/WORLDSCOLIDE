@@ -33,6 +33,10 @@ export interface ArenaEntity extends CombatEntity {
    * - Never read by engine/AI/victory logic; ignored by cloneCombatEntity.
    */
   spawnSlideFromX?: number;
+  /** Riposte stance expiry timestamp. 0/undefined = not in stance. */
+  riposteUntil?: number;
+  /** Tracks which attacker IDs have already been countered in the current logic tick. Reset per-tick. */
+  riposteCountersThisTick?: Set<string>;
   /** Summoner Wars step-attack state machine */
   attackMoveState: AttackMoveState;
   /** Where the entity is stepping toward for this attack */

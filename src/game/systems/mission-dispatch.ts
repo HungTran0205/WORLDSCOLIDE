@@ -28,15 +28,9 @@ export function validateDispatch(
   if (selectedMembers.some((m) => m.status !== 'idle')) {
     return { valid: false, reason: 'Some members are unavailable' };
   }
-  if (selectedMembers.some((m) => m.level < mission.requiredLevel)) {
-    return { valid: false, reason: `Members must be level ${mission.requiredLevel}+` };
-  }
   // Mercs only quest-assignable while contract.status === 'available'.
   if (mercContracts.some((c) => c.status !== 'available')) {
     return { valid: false, reason: 'Some mercs are not available' };
-  }
-  if (mercContracts.some((c) => c.visitorSnapshot.level < mission.requiredLevel)) {
-    return { valid: false, reason: `Mercs must be level ${mission.requiredLevel}+` };
   }
   return { valid: true };
 }

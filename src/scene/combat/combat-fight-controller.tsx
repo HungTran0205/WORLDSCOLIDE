@@ -33,17 +33,30 @@ import { applyMissionResultSideEffects } from '@/game/systems/arena-result-handl
 import { simulateCombatFromSnapshot, cloneCombatEntity } from '@/game/systems/combat-simulator';
 import { resolveCombatMapId, getStageSpec } from './maps/combat-map-registry';
 import { useCombatProjectionStore } from './combat-projection-store';
+import { tContent } from '@/i18n/content-localization';
 import { resolveEnemyCombatSheet } from '@/scene/sprites/combat-sprite-resolver';
 import {
   COMBAT_VFX_PRESETS, COMBAT_VFX_COUNTS,
   COMBAT_CRIT_DOM_EVENT, COMBAT_SKIP_DOM_EVENT,
+  COMBAT_IMPACT_DELAY_S, COMBAT_HIT_SPARK_SIZE, COMBAT_HIT_SPARK_COLOR,
 } from './combat-vfx-bridge';
 import type { CombatEvent, CombatResult } from '@/game/systems/combat-types';
 import type { CombatEngine as CombatEngineType } from '@/game/systems/combat-engine';
 import type { ArenaEntitySnapshot } from '@/game/state/combat-arena-slice';
 
+/** Per-emit overrides forwarded to the r3f-vfx preset. colorStart tints the
+ *  start palette (ally hit-debris glow); size enlarges the particles. */
+interface VfxEmitOverrides {
+  colorStart?: string[];
+  size?: [number, number];
+}
+
 /** Emitter callbacks resolved per preset id at component mount via useVFXEmitter. */
-type VfxEmit = (position: [number, number, number], count?: number) => void;
+type VfxEmit = (
+  position: [number, number, number],
+  count?: number,
+  overrides?: VfxEmitOverrides,
+) => void;
 interface VfxEmitters {
   hit: VfxEmit;
   crit: VfxEmit;
@@ -89,7 +102,10 @@ export function CombatFightController() {
   const deathEmitter = useVFXEmitter(COMBAT_VFX_PRESETS.death);
   const vfxRef = useRef<VfxEmitters | null>(null);
   vfxRef.current = {
-    hit: (pos, count) => hitEmitter.emit(pos, count ?? COMBAT_VFX_COUNTS.hit),
+    // overrides forwarded through r3f-vfx's `null`-typed 3rd param (runtime
+    // forwards the object — the upstream type is too narrow).
+    hit: (pos, count, overrides) =>
+      hitEmitter.emit(pos, count ?? COMBAT_VFX_COUNTS.hit, (overrides ?? undefined) as unknown as null),
     crit: (pos, count) => critEmitter.emit(pos, count ?? COMBAT_VFX_COUNTS.crit),
     heal: (pos, count) => healEmitter.emit(pos, count ?? COMBAT_VFX_COUNTS.heal),
     death: (pos, count) => deathEmitter.emit(pos, count ?? COMBAT_VFX_COUNTS.death),
@@ -276,7 +292,7 @@ export function CombatFightController() {
     if (!id || !instId) return;
 
     const result = resultOverride ?? engine.getResult();
-    if (engine.syringesConsumed > 0) removeItem('HEALING_SYRINGE', engine.syringesConsumed);
+    if (engine.syringesConsumed > 0) removeItem(engine.loadedSyringeItemId, engine.syringesConsumed);
 
     // Combat resolved — drop snapshot so reload doesn't re-resolve from stale state.
     saveCombatSnapshot(instId, null, 0);
@@ -356,11 +372,19 @@ function emitVfxFromEvents(
       const target = engine.entities.find((e) => e.id === event.targetId);
       if (!target) continue;
       const pos: [number, number, number] = [target.position.x, 1.2, target.position.z];
-      vfx.hit(pos);
-      if (event.isCrit) {
-        vfx.crit(pos);
-        window.dispatchEvent(new CustomEvent(COMBAT_CRIT_DOM_EVENT));
-      }
+      // Uniform warm-orange hit debris for every attack. Single gen-hit emit owns
+      // the spark — CombatImpactLayer renders only the slash/beam mesh.
+      const isCrit = event.isCrit;
+      // Delay hit feedback to the animation's connect/release frame so the spark,
+      // crit burst, screen-shake, and the slash/beam mesh all land together on the
+      // visual hit rather than during the swing/draw windup.
+      setTimeout(() => {
+        vfx.hit(pos, undefined, { colorStart: COMBAT_HIT_SPARK_COLOR, size: COMBAT_HIT_SPARK_SIZE });
+        if (isCrit) {
+          vfx.crit(pos);
+          window.dispatchEvent(new CustomEvent(COMBAT_CRIT_DOM_EVENT));
+        }
+      }, COMBAT_IMPACT_DELAY_S * 1000);
     } else if (event.type === 'heal' || event.type === 'syringe-used') {
       const targetId = event.type === 'heal' ? event.targetId : event.entityId;
       const target = engine.entities.find((e) => e.id === targetId);
@@ -405,6 +429,9 @@ function preloadNextWaveTextures(wm: WaveManager): void {
 /** Translate combat events into floating damage / heal / poison popups. */
 function emitDamagePopups(events: CombatEvent[], engine: CombatEngineType): void {
   const spawn = useCombatProjectionStore.getState().spawnDamage;
+  // One skill-name banner per caster per batch — multi-hit skills (Barrage) emit one
+  // skill-use event per hit, but the name should pop once, not 5× stacked.
+  const bannerShown = new Set<string>();
   for (const event of events) {
     if (event.type === 'auto-attack' || event.type === 'skill-use') {
       spawn(event.targetId, String(event.damage), event.isCrit ? 'crit' : 'normal');
@@ -419,6 +446,19 @@ function emitDamagePopups(events: CombatEvent[], engine: CombatEngineType): void
       if (target) spawn(target.id, 'DODGE', 'normal');
     } else if (event.type === 'block') {
       spawn(event.targetId, `BLOCK ${event.reducedDamage}`, 'normal');
+    }
+
+    // Skill cast → floating skill-name banner on the caster (localized), shown
+    // alongside the damage numbers so the player can read what was triggered.
+    if (event.type === 'skill-use' || event.type === 'skill-buff-applied' || event.type === 'skill-debuff-applied') {
+      const casterId = event.type === 'skill-use' ? event.attackerId : event.casterId;
+      if (!bannerShown.has(casterId)) {
+        const caster = engine.entities.find((e) => e.id === casterId);
+        if (caster?.skill) {
+          bannerShown.add(casterId);
+          spawn(casterId, tContent('skills', caster.skill.id, 'name', caster.skill.name), 'skill');
+        }
+      }
     }
   }
 }

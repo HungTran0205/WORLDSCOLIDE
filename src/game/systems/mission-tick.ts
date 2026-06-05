@@ -107,7 +107,6 @@ export function processMissionTick(store: GameStore, now: number): MissionTickEv
             }
           }
           for (const memberId of memberSurvivors) {
-            store.addMemberExp(memberId, result.expPerMember);
             store.updateMemberStatus(memberId, 'idle');
           }
           store.completeMission(active.instanceId);

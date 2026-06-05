@@ -1,28 +1,7 @@
 import type { Skill } from '@/game/state/game-state';
-
-// --- Warrior skills ---
-export const SKILL_DANH_MANH: Skill = {
-  id: 'danh-manh', name: 'Đánh Mạnh',
-  damageMultiplier: 1.25, cooldownMs: 8000, autoEnabled: false,
-};
-export const SKILL_KIEM_GIA: Skill = {
-  id: 'kiem-gia', name: 'Kiếm Giá',
-  damageMultiplier: 1.5, cooldownMs: 12000, autoEnabled: false,
-};
-export const SKILL_CHEM_MANH: Skill = {
-  id: 'chem-manh', name: 'Chém Mạnh',
-  damageMultiplier: 1.6, cooldownMs: 15000, autoEnabled: false,
-};
-
-// --- Scout skills ---
-export const SKILL_BAN_TEN_NHANH: Skill = {
-  id: 'ban-ten-nhanh', name: 'Bắn Tên Nhanh',
-  damageMultiplier: 1.1, cooldownMs: 5000, autoEnabled: false,
-};
-export const SKILL_DAM_LUOT: Skill = {
-  id: 'dam-luot', name: 'Đâm Lướt',
-  damageMultiplier: 1.3, cooldownMs: 9000, autoEnabled: false,
-};
+import {
+  TEMPLAR_SKILL_POOL, FORESTER_SKILL_POOL, RANGER_SKILL_POOL,
+} from './linh-son-skills';
 
 // --- Scholar skills ---
 // Hoả Cầu (Fireball) is naturally an AOE — wires Phase 08 telegraph through the
@@ -37,20 +16,41 @@ export const SKILL_SUNG_SAC: Skill = {
   damageMultiplier: 0.8, cooldownMs: 6000, autoEnabled: false,
 };
 
-/** Skills grouped by archetype (includes civ-specific archetypes mapped to closest base) */
-export const SKILLS_BY_ARCHETYPE: Record<string, Skill[]> = {
-  warrior: [SKILL_DANH_MANH, SKILL_KIEM_GIA, SKILL_CHEM_MANH],
-  scout: [SKILL_BAN_TEN_NHANH, SKILL_DAM_LUOT],
-  scholar: [SKILL_HOA_CAU, SKILL_SUNG_SAC],
-  sword: [SKILL_DANH_MANH, SKILL_KIEM_GIA, SKILL_CHEM_MANH], // Linh Sơn Templar — sword melee, reuses warrior kit for MVP
-  // Civ-specific archetypes reuse closest base skills until dedicated skills are added
-  engineer: [SKILL_HOA_CAU, SKILL_SUNG_SAC],       // DeQuoc — tech-based, maps to scholar
-  dualblade: [SKILL_DAM_LUOT, SKILL_BAN_TEN_NHANH], // ThienLu — swift melee, maps to scout
-  philosopher: [SKILL_HOA_CAU, SKILL_SUNG_SAC],      // ThienLu — mystic, maps to scholar
+// Placeholder skills for non-LinhSon civ archetypes reusing scout-kit
+// until their dedicated kits are designed.
+const SKILL_DAM_LUOT: Skill = {
+  id: 'dam-luot', name: 'Đâm Lướt',
+  damageMultiplier: 1.3, cooldownMs: 9000, autoEnabled: false,
+};
+const SKILL_BAN_TEN_NHANH: Skill = {
+  id: 'ban-ten-nhanh', name: 'Bắn Tên Nhanh',
+  damageMultiplier: 1.1, cooldownMs: 5000, autoEnabled: false,
 };
 
-/** Get first skill for an archetype (M2 simplicity — one skill per member) */
+/** Skills grouped by archetype */
+export const SKILLS_BY_ARCHETYPE: Record<string, Skill[]> = {
+  sword:       TEMPLAR_SKILL_POOL,   // Linh Sơn Templar
+  warrior:     FORESTER_SKILL_POOL,  // Linh Sơn Forester
+  scout:       RANGER_SKILL_POOL,    // Linh Sơn Ranger
+  scholar:     [SKILL_HOA_CAU, SKILL_SUNG_SAC],
+  engineer:    [SKILL_HOA_CAU, SKILL_SUNG_SAC],        // DeQuoc — maps to scholar
+  dualblade:   [SKILL_DAM_LUOT, SKILL_BAN_TEN_NHANH],  // ThienLu — swift melee
+  philosopher: [SKILL_HOA_CAU, SKILL_SUNG_SAC],         // ThienLu — mystic
+};
+
+/** Get first skill for an archetype (default carried skill for a new member) */
 export function getDefaultSkill(archetypeName: string): Skill {
   const skills = SKILLS_BY_ARCHETYPE[archetypeName];
-  return skills?.[0] ? { ...skills[0] } : { ...SKILL_DANH_MANH };
+  return skills?.[0] ? { ...skills[0] } : { ...SKILL_HOA_CAU };
+}
+
+/** Full selectable skill pool for an archetype (Training Yard skill picker). */
+export function getArchetypeSkillPool(archetypeName: string): Skill[] {
+  return (SKILLS_BY_ARCHETYPE[archetypeName] ?? [SKILL_HOA_CAU, SKILL_SUNG_SAC]).map((s) => ({ ...s }));
+}
+
+/** Resolve a single pool skill by id for an archetype, or null if it isn't in the pool. */
+export function getSkillFromPool(archetypeName: string, skillId: string): Skill | null {
+  const found = (SKILLS_BY_ARCHETYPE[archetypeName] ?? []).find((s) => s.id === skillId);
+  return found ? { ...found } : null;
 }

@@ -15,9 +15,17 @@ import type { GuildFacility, EquipmentItem } from '@/game/state/game-state';
 import { InkConfirmDialog } from '@/ui/components/ink-confirm-dialog';
 import { GameIcon } from '@/ui/components/game-icon';
 import { itemName } from '@/i18n/content-wrappers';
+import { WorkshopEquipmentGrid } from './workshop-equipment-grid';
 
-const MONSTER_MATERIALS: ItemID[] = ['SLIME_GEL'];
+const MONSTER_MATERIALS: ItemID[] = [
+  'SLIME_GEL', 'BAT_WING', 'SPIDER_LEGS', 'METAL_PLATE', 'DRONE_SENSOR',
+];
 type Mode = 'add' | 'reroll';
+
+function formatSlotValue(statKey: string, value: number): string {
+  if (statKey === 'HP') return `+${value}`;
+  return `+${(value * 100).toFixed(1)}%`;
+}
 
 interface Props { facility: GuildFacility; }
 
@@ -29,7 +37,6 @@ export function WorkshopEnhanceTab({ facility }: Props) {
 
   const [mode, setMode] = useState<Mode>('add');
   const [selEqId, setSelEqId] = useState<string | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [monsterMat, setMonsterMat] = useState<ItemID>('SLIME_GEL');
   const [rerollSlotIdx, setRerollSlotIdx] = useState<number>(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -42,9 +49,10 @@ export function WorkshopEnhanceTab({ facility }: Props) {
     return slots.length > 0;
   }), [equipmentInventory, mode, maxSlots]);
 
+  const eligibleIds = useMemo(() => new Set(eligible.map((e) => e.id)), [eligible]);
+
   const selEq: EquipmentItem | null = eligible.find((e) => e.id === selEqId) ?? null;
   const selEqTpl = selEq ? EQUIPMENT_DATABASE[selEq.templateId] : null;
-  // Clamp slot index defensively — selected eq may have fewer slots than last picked
   const slotCount = selEq?.slots?.length ?? 0;
   const safeSlotIdx = slotCount > 0 ? Math.min(rerollSlotIdx, slotCount - 1) : 0;
   const aff = getAffinity(monsterMat);
@@ -52,17 +60,16 @@ export function WorkshopEnhanceTab({ facility }: Props) {
   const matEnabled = isMaterialEnabled(monsterMat);
   const canAct = !!selEq && haveMat && matEnabled;
 
-  function selectEquipment(id: string | null) {
-    setSelEqId(id);
+  function handleSelect(entry: { item: EquipmentItem }) {
+    const id = entry.item.id;
+    setSelEqId((prev) => (prev === id ? null : id));
     setRerollSlotIdx(0);
-    if (id !== null) setPickerOpen(false);
   }
 
   function switchMode(next: Mode) {
     setMode(next);
     setSelEqId(null);
     setRerollSlotIdx(0);
-    setPickerOpen(false);
   }
 
   function handleEnhance() {
@@ -73,7 +80,7 @@ export function WorkshopEnhanceTab({ facility }: Props) {
         equipmentInstanceId: selEq.id,
         monsterMaterial: monsterMat,
       });
-      selectEquipment(null);
+      setSelEqId(null);
     } else {
       setConfirmOpen(true);
     }
@@ -88,7 +95,7 @@ export function WorkshopEnhanceTab({ facility }: Props) {
       monsterMaterial: monsterMat,
     });
     setConfirmOpen(false);
-    selectEquipment(null);
+    setSelEqId(null);
   }
 
   return (
@@ -103,61 +110,23 @@ export function WorkshopEnhanceTab({ facility }: Props) {
         </button>
       </div>
 
-      {/* Equipment slot + inline picker */}
+      {/* Equipment inventory grid */}
       <div className="ws-section">
         <div className="ws-section-title">
           {mode === 'add' ? t('workshop.enhance.equipWithFreeSlot') : t('workshop.enhance.equipWithSlot')}
         </div>
-        <div
-          className={`ws-enhance-slot ${selEq ? 'has-item' : 'empty'}`}
-          onClick={() => { if (!selEq) setPickerOpen((o) => !o); }}
-        >
-          {selEq ? (
-            <>
-              <GameIcon category="item" id={selEq.templateId} size={28} fallbackText={selEqTpl?.name.slice(0, 2) ?? '?'} />
-              <span className="ws-enhance-slot-name">{selEqTpl?.name}</span>
-              <span className="ws-eq-slots">
-                {(selEq.slots ?? []).map((s, i) => (
-                  <span key={i} className="ws-slot-chip">{s.statKey}+{s.value}</span>
-                ))}
-              </span>
-              <button
-                className="ws-enhance-slot-clear"
-                onClick={(e) => { e.stopPropagation(); selectEquipment(null); }}
-              >×</button>
-            </>
-          ) : (
-            <span className="ws-enhance-slot-hint">
-              {pickerOpen ? t('workshop.enhance.selectBelow') : t('workshop.enhance.clickToPick')}
-            </span>
-          )}
-        </div>
-        {pickerOpen && !selEq && (
-          <div className="ws-eq-list">
-            {eligible.length === 0 && (
-              <div className="ws-empty">{t('workshop.enhance.noEligible')}</div>
-            )}
-            {eligible.map((e) => {
-              const tpl = EQUIPMENT_DATABASE[e.templateId];
-              const slots = e.slots ?? [];
-              return (
-                <div key={e.id} className="ws-eq-row" onClick={() => selectEquipment(e.id)}>
-                  <span className="ws-eq-name">{tpl.name}</span>
-                  <span className="ws-eq-slots">
-                    {t('workshop.enhance.slotsLabel', { used: slots.length, max: maxSlots })}
-                    {slots.map((s, i) => (
-                      <span key={i} className="ws-slot-chip">{s.statKey}+{s.value}</span>
-                    ))}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <WorkshopEquipmentGrid
+          unequippedItems={equipmentInventory}
+          eligibleIds={eligibleIds}
+          selectedId={selEqId}
+          onSelect={handleSelect}
+          maxSlots={maxSlots}
+          emptyLabel={t('workshop.enhance.noEligible')}
+        />
       </div>
 
       {/* Slot selector for reroll */}
-      {mode === 'reroll' && selEq && (selEq.slots?.length ?? 0) > 1 && (
+      {mode === 'reroll' && selEq && slotCount > 1 && (
         <div className="ws-section">
           <div className="ws-section-title">{t('workshop.enhance.slotToReroll')}</div>
           <div className="ws-mat-row">
@@ -167,9 +136,26 @@ export function WorkshopEnhanceTab({ facility }: Props) {
                 className={`ws-mat-cell ${safeSlotIdx === i ? 'is-selected' : ''}`}
                 onClick={() => setRerollSlotIdx(i)}
               >
-                <span className="ws-slot-chip">{s.statKey}+{s.value}</span>
+                <span className="ws-slot-chip">{s.statKey}{formatSlotValue(s.statKey, s.value)}</span>
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Selected item info strip */}
+      {selEq && (
+        <div className="ws-path-card">
+          <div className="ws-path-label">{selEqTpl?.name}</div>
+          <div className="ws-path-detail">
+            {(selEq.slots ?? []).length > 0
+              ? (selEq.slots ?? []).map((s, i) => (
+                  <span key={i} className="ws-slot-chip" style={{ marginRight: 4 }}>
+                    {s.statKey}{formatSlotValue(s.statKey, s.value)}
+                  </span>
+                ))
+              : <span style={{ fontStyle: 'italic' }}>{t('workshop.enhance.noSlots')}</span>
+            }
           </div>
         </div>
       )}

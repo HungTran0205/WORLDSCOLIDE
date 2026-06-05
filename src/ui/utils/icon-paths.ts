@@ -19,11 +19,14 @@ const ID_TO_FILENAME: Record<string, string> = {
   STONE_AXE: 'stone-axe', STONE_SWORD: 'stone-sword', STONE_CROSSBOW: 'stone-crossbow',
   IRON_AXE: 'iron-axe', IRON_SWORD: 'iron-sword', IRON_CROSSBOW: 'iron-crossbow',
   // Equipment armor
-  CLOTH_VEST: 'cloth-vest', LEATHER_ARMOR: 'leather-armor', IRON_ARMOR: 'iron-armor',
+  BOAR_FUR_COAT: 'boar-fur-coat', BEAR_COAT: 'bear-coat', IRON_ARMOR: 'iron-armor',
   // ItemID UPPER_SNAKE → kebab
-  WOOD: 'wood', STONE: 'stone', IRON_ORE: 'iron-ore',
-  SLIME_GEL: 'slime-gel', BOAR_PELT: 'boar-pelt',
+  WOOD: 'wood', STONE: 'stone', IRON_ORE: 'iron-ore', GEM: 'gem',
+  SLIME_GEL: 'slime-gel', BOAR_PELT: 'boar-pelt', BEAR_PELT: 'bear-pelt',
   WOLF_FANG: 'wolf-fang', GOBLIN_EAR: 'goblin-ear', ORC_TUSK: 'orc-tusk',
+  BAT_WING: 'bat-wing', SPIDER_LEGS: 'spider-legs', METAL_PLATE: 'metal-plate',
+  DRONE_SENSOR: 'drone-sensor', SLIME_KING_CORE: 'slime-king-core',
+  LOGGING_SITE_ACCESS: 'logging-site-access',
   HEALING_SYRINGE: 'healing-syringe', HEALING_SYRINGE_2: 'healing-syringe-2', HEALING_SYRINGE_3: 'healing-syringe-3',
   // Civilization PascalCase → kebab
   LinhSon: 'linh-son', DeQuoc: 'de-quoc', ThienLu: 'thien-lu',

@@ -259,3 +259,61 @@
   color: var(--ink-text-muted);
   margin-left: 4px;
 }
+
+/* ── Skill detail chips (shared with Training Yard panel) ── */
+.skill-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 2px 0 4px;
+}
+.skill-detail-tag {
+  font-family: var(--ink-font-mono);
+  font-size: 0.55rem;
+  color: var(--ink-text-dim);
+  background: rgba(212, 168, 67, 0.06);
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+/* ── Class skill pool rows (Skills tab) ── */
+.skill-pool-row {
+  border: 1px solid var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  padding: 7px 9px;
+  background: rgba(0, 0, 0, 0.15);
+}
+.skill-pool-row.is-carried {
+  border-color: var(--ink-gold);
+  background: rgba(212, 168, 67, 0.08);
+}
+.skill-carried-badge {
+  font-family: var(--ink-font-mono);
+  font-size: 0.55rem;
+  color: var(--ink-gold);
+  border: 1px solid var(--ink-gold);
+  border-radius: var(--ink-radius-sm);
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+
+.skill-pool-row.is-locked { opacity: 0.65; }
+.skill-locked-badge {
+  font-family: var(--ink-font-mono);
+  font-size: 0.5rem;
+  color: var(--ink-text-muted);
+  border: 1px dashed var(--ink-gold-dim);
+  border-radius: var(--ink-radius-sm);
+  padding: 2px 6px;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.skill-desc {
+  font-size: 0.7rem;
+  color: var(--ink-text-dim);
+  line-height: 1.5;
+  margin: 2px 0 4px;
+}

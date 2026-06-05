@@ -6,12 +6,12 @@ import type { Formation } from '@/game/systems/combat-arena-types';
 
 function makeMember(id: string, archetype: 'scholar' | 'warrior' = 'scholar'): Member {
   return {
-    id, name: id, level: 10, exp: 0,
+    id, name: id, grade: 'D', isMercenary: false,
     stats: { STR: 15, END: 10, INT: 5, DEX: 5, CHA: 5, LCK: 1, AGI: 5 },
     unallocatedPoints: 0, skill: null,
     status: 'idle', injuredUntil: null,
-    civilization: 'human', archetype,
-    isFounder: false, rank: 'MEMBER', missionsCompleted: 0,
+    civilization: 'LinhSon', archetype,
+    isFounder: false, missionsCompleted: 0,
   };
 }
 

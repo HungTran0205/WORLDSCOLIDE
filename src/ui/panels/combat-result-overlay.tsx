@@ -62,9 +62,6 @@ export function CombatResultOverlay() {
             <div style={{ color: '#e0e0e0', fontSize: '0.85rem' }}>
               {t('combatResultOverlay.gold', { min: mission.goldRewardMin, max: mission.goldRewardMax })}
             </div>
-            <div style={{ color: '#e0e0e0', fontSize: '0.85rem' }}>
-              {t('combatResultOverlay.exp', { amount: mission.expReward })}
-            </div>
             {/* Tutorial-specific bonus reward */}
             {arenaMissionId === TUTORIAL_BEAR_MISSION_ID && (
               <div style={{ marginTop: 8, borderTop: '1px solid rgba(255,215,0,0.2)', paddingTop: 8 }}>
