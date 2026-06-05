@@ -21,11 +21,11 @@
   --iron-rivet:        #3a3025;
   --torch-glow:        #ff8a3c;
 
-  /* Typography (Cormorant SC + EB Garamond + IBM Plex Mono loaded via game-ui-tokens.css —
-     Vietnamese-capable; the prior Cinzel/IM Fell English lacked the vietnamese subset). */
-  --font-display:      'Cormorant SC', 'Times New Roman', serif;
-  --font-body:         'EB Garamond', Georgia, serif;
-  --font-numeric:      'Cormorant SC', serif;
+  /* Typography — Galmuri pixel fonts loaded via game-ui-tokens.css (Vietnamese-capable;
+     pixel look replaces the prior Cormorant/EB Garamond manuscript serifs). */
+  --font-display:      'Galmuri11', 'Galmuri9', monospace;
+  --font-body:         'Galmuri11', 'Galmuri9', monospace;
+  --font-numeric:      'Galmuri9', 'Galmuri11', monospace;
 
   /* Effects */
   --parchment-radius:        4px;

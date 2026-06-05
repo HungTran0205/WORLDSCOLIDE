@@ -1,9 +1,24 @@
-/* Vietnamese-capable fonts: Cinzel / IM Fell English / Share Tech Mono ship no
-   vietnamese subset, so stacked diacritics (ấ, ợ, ữ…) broke into base+floating
-   tone marks. Cormorant SC (display, small-caps to match the prior caps look),
-   EB Garamond (body), and IBM Plex Mono (numerals/labels) all include the
-   vietnamese unicode-range while keeping the parchment/manuscript aesthetic. */
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+SC:wght@400;500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+/* Pixel game fonts — Galmuri (quiple, OFL 1.1). Self-hosted woff2 subset to
+   Latin + Vietnamese (Latin Extended Additional U+1EA0–1EFF), so stacked
+   diacritics (ấ, ợ, ữ…) render as single pixel glyphs instead of breaking into
+   base+floating tone marks the way Cinzel / Press Start 2P / VT323 do (those
+   ship no vietnamese subset). Galmuri11 = display/body/ui, Galmuri9 = the
+   compact numerals/labels role. Both verified to cover the full vietnamese set.
+   Source/license: public/fonts/OFL.txt, https://github.com/quiple/galmuri */
+@font-face {
+  font-family: 'Galmuri11';
+  src: url('/fonts/galmuri11-vn.woff2') format('woff2');
+  font-weight: 400 700;   /* single pixel weight — range stops faux-bold synthesis */
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galmuri9';
+  src: url('/fonts/galmuri9-vn.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* ─── HD-2D Ink Design Tokens ─────────────────────────────────────────────── */
 :root {
@@ -40,10 +55,10 @@
   --ink-faction-rogue:   rgba(120, 200, 140, 0.18);
   --ink-faction-merc:    rgba(200, 120, 100, 0.18);
 
-  /* Typography */
-  --ink-font-title: 'Cormorant SC', 'Times New Roman', serif;
-  --ink-font-mono:  'IBM Plex Mono', 'Consolas', monospace;
-  --ink-font-body:  'EB Garamond', 'Georgia', serif;
+  /* Typography — pixel game fonts (fallbacks keep ₫ U+20AB + any missing glyph readable) */
+  --ink-font-title: 'Galmuri11', 'Galmuri9', monospace;
+  --ink-font-mono:  'Galmuri9', 'Galmuri11', monospace;
+  --ink-font-body:  'Galmuri11', 'Galmuri9', monospace;
 
   /* Radii / Spacing */
   --ink-radius-sm:    2px;
@@ -98,8 +113,8 @@
   --ink-tier-a: #d4a843;
   --ink-tier-s: #ffd700;
 
-  /* ── Additional UI sans (HUD top bar + title screen) ─────────────────── */
-  --ink-font-ui:    'Segoe UI', system-ui, sans-serif;
+  /* ── Additional UI font (HUD top bar + title screen) ─────────────────── */
+  --ink-font-ui:    'Galmuri11', 'Galmuri9', monospace;
 
   /* ── Type scale (rem so --ui-scale doesn't double-apply) ─────────────── */
   --ink-fs-display:  3rem;
