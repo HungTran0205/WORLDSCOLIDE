@@ -38,13 +38,25 @@ import { resolveEnemyCombatSheet } from '@/scene/sprites/combat-sprite-resolver'
 import {
   COMBAT_VFX_PRESETS, COMBAT_VFX_COUNTS,
   COMBAT_CRIT_DOM_EVENT, COMBAT_SKIP_DOM_EVENT,
+  COMBAT_IMPACT_DELAY_S, COMBAT_HIT_SPARK_SIZE, COMBAT_HIT_SPARK_COLOR,
 } from './combat-vfx-bridge';
 import type { CombatEvent, CombatResult } from '@/game/systems/combat-types';
 import type { CombatEngine as CombatEngineType } from '@/game/systems/combat-engine';
 import type { ArenaEntitySnapshot } from '@/game/state/combat-arena-slice';
 
+/** Per-emit overrides forwarded to the r3f-vfx preset. colorStart tints the
+ *  start palette (ally hit-debris glow); size enlarges the particles. */
+interface VfxEmitOverrides {
+  colorStart?: string[];
+  size?: [number, number];
+}
+
 /** Emitter callbacks resolved per preset id at component mount via useVFXEmitter. */
-type VfxEmit = (position: [number, number, number], count?: number) => void;
+type VfxEmit = (
+  position: [number, number, number],
+  count?: number,
+  overrides?: VfxEmitOverrides,
+) => void;
 interface VfxEmitters {
   hit: VfxEmit;
   crit: VfxEmit;
@@ -90,7 +102,10 @@ export function CombatFightController() {
   const deathEmitter = useVFXEmitter(COMBAT_VFX_PRESETS.death);
   const vfxRef = useRef<VfxEmitters | null>(null);
   vfxRef.current = {
-    hit: (pos, count) => hitEmitter.emit(pos, count ?? COMBAT_VFX_COUNTS.hit),
+    // overrides forwarded through r3f-vfx's `null`-typed 3rd param (runtime
+    // forwards the object — the upstream type is too narrow).
+    hit: (pos, count, overrides) =>
+      hitEmitter.emit(pos, count ?? COMBAT_VFX_COUNTS.hit, (overrides ?? undefined) as unknown as null),
     crit: (pos, count) => critEmitter.emit(pos, count ?? COMBAT_VFX_COUNTS.crit),
     heal: (pos, count) => healEmitter.emit(pos, count ?? COMBAT_VFX_COUNTS.heal),
     death: (pos, count) => deathEmitter.emit(pos, count ?? COMBAT_VFX_COUNTS.death),
@@ -357,11 +372,19 @@ function emitVfxFromEvents(
       const target = engine.entities.find((e) => e.id === event.targetId);
       if (!target) continue;
       const pos: [number, number, number] = [target.position.x, 1.2, target.position.z];
-      vfx.hit(pos);
-      if (event.isCrit) {
-        vfx.crit(pos);
-        window.dispatchEvent(new CustomEvent(COMBAT_CRIT_DOM_EVENT));
-      }
+      // Uniform warm-orange hit debris for every attack. Single gen-hit emit owns
+      // the spark — CombatImpactLayer renders only the slash/beam mesh.
+      const isCrit = event.isCrit;
+      // Delay hit feedback to the animation's connect/release frame so the spark,
+      // crit burst, screen-shake, and the slash/beam mesh all land together on the
+      // visual hit rather than during the swing/draw windup.
+      setTimeout(() => {
+        vfx.hit(pos, undefined, { colorStart: COMBAT_HIT_SPARK_COLOR, size: COMBAT_HIT_SPARK_SIZE });
+        if (isCrit) {
+          vfx.crit(pos);
+          window.dispatchEvent(new CustomEvent(COMBAT_CRIT_DOM_EVENT));
+        }
+      }, COMBAT_IMPACT_DELAY_S * 1000);
     } else if (event.type === 'heal' || event.type === 'syringe-used') {
       const targetId = event.type === 'heal' ? event.targetId : event.entityId;
       const target = engine.entities.find((e) => e.id === targetId);

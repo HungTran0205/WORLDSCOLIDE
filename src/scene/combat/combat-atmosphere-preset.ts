@@ -33,8 +33,9 @@ export const COMBAT_PRESET: AtmospherePreset = {
   id: 'training-yard',
   mood: 'HD-2D combat — unified diorama band, cohesive palette',
   // Soft morning glow — low-ish threshold so the brighter morning BG haloes
-  // gently without washing the pixel sprites.
-  bloom: { threshold: 0.82, intensity: 0.45, radius: 0.5 },
+  // gently without washing the pixel sprites. Lowered 0.82 → 0.75 so the bright
+  // additive attack VFX (flash / spark / impact mesh) catch more bloom.
+  bloom: { threshold: 0.75, intensity: 0.45, radius: 0.5 },
   // Miniature-diorama focus band. This is the HD-2D depth cue on WebGPU since
   // DOF (combat-dof-post) only runs on WebGL.
   tiltShift: { strength: 0.45, enabled: true },

@@ -40,6 +40,7 @@ import {
   subscribeToAtlasInvalidations,
   getAtlasInvalidationVersion,
 } from './combat-mask-composite-atlas';
+import { COMBAT_IMPACT_DELAY_S } from './combat-vfx-bridge';
 
 const IDLE_FPS = 6.5;
 const ATTACK_FPS = 12;
@@ -47,7 +48,8 @@ const BLOCKING_FPS = 10;
 const DEATH_FPS = 8;
 const FLASH_DURATION_MS = 110;
 
-const FLASH_R = 2.4, FLASH_G = 2.4, FLASH_B = 2.4;
+// Red hit flash — R over-bright, G/B suppressed (multiplicative tint).
+const FLASH_R = 2.8, FLASH_G = 0.4, FLASH_B = 0.4;
 const DEAD_R = 0.7, DEAD_G = 0.7, DEAD_B = 0.7;
 const NORMAL_R = 0.97, NORMAL_G = 0.98, NORMAL_B = 1.0;
 
@@ -154,12 +156,18 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maskId, charId, maskTexture, blockingSheetTex, blockingInfo.row, blockingInfo.frameCount, atlasVersion]);
 
-  // Hit flash trigger
+  // Hit flash trigger — delayed to the attack's connect frame so the flash lands
+  // together with the impact mesh + hit particles (both delayed by
+  // COMBAT_IMPACT_DELAY_S). Damage is applied instantly in the engine tick, so
+  // firing the flash on the HP drop made it read ~0.33s before the visual hit.
   useEffect(() => {
-    if (entity.currentHp < lastHpRef.current) {
-      flashUntilRef.current = performance.now() + FLASH_DURATION_MS;
-    }
+    const dropped = entity.currentHp < lastHpRef.current;
     lastHpRef.current = entity.currentHp;
+    if (!dropped) return;
+    const timer = setTimeout(() => {
+      flashUntilRef.current = performance.now() + FLASH_DURATION_MS;
+    }, COMBAT_IMPACT_DELAY_S * 1000);
+    return () => clearTimeout(timer);
   }, [entity.currentHp]);
 
   // Build per-entity material handle once when idle atlas is ready.
