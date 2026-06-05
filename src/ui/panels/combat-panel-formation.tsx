@@ -55,6 +55,7 @@ export function CombatPanelFormation() {
 
   const formation = useGameStore((s) => s.formation);
   const setFormationSlot = useGameStore((s) => s.setFormationSlot);
+  const startBattle = useGameStore((s) => s.startBattle);
   const founder = useGameStore((s) => s.founder);
   const roster = useGameStore((s) => s.roster);
   const activeMissions = useGameStore((s) => s.activeMissions);
@@ -88,8 +89,12 @@ export function CombatPanelFormation() {
     // Flip mission.phase to 'in-combat' here (not on Enter-Battle click) so a
     // mid-formation close leaves the mission resumable instead of auto-resolving.
     if (instanceId) updateMissionPhase(instanceId, 'in-combat');
+    // Drive arenaPhase → 'fighting' so the R3F combat layers gated on it
+    // (impact VFX, AOE telegraphs) activate. endCombat/exitArena reset it on
+    // finish/close. Panel sub-phase is tracked separately by the panel store.
+    startBattle();
     setPhase('battle');
-  }, [instanceId, updateMissionPhase, setPhase]);
+  }, [instanceId, updateMissionPhase, startBattle, setPhase]);
 
   const handlePriority = useCallback((priority: TargetPriority) => {
     if (instanceId) setTargetPriority(instanceId, priority);

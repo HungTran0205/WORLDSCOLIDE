@@ -4,15 +4,9 @@ import type { VfxPreset } from '../preset-types'
 // Linh Sơn — Earth/Mountain/Jungle warriors
 // Colors: primary=#f5f0e6, secondary=#8B6914, accent=#D4A017
 //
-// CONTAINS: existing core presets (fire, smoke, earth-slam, heal)
-//         + 3 new ultimate-skill presets for "Đồng Cổ Thất Trảm":
-//           • ls-bronze-drum-mark   (meshline circle on ground — sigil)
-//           • ls-drum-pulse         (small upward burst on each strike)
-//           • ls-flame-wave         (linear meshline + fire wave for strike 7)
-//
-// Note: meshline category is 'weapon-fx' per preset-types.ts. The 3 new
-// meshline entries below use that category — they will land in the Weapon FX
-// sidebar group, but are theme-tagged Linh Sơn via name + emoji + colors.
+// CONTAINS: core particle presets (fire, smoke, earth-slam, heal)
+//         + ultimate-skill particle presets for "Đồng Cổ Thất Trảm"
+//           (ls-drum-pulse, ls-flame-wave-fire).
 export const linhSonPresets: VfxPreset[] = [
   // ─── Core Linh Sơn particle presets ──────────────────────────────────
   {
@@ -139,9 +133,9 @@ export const linhSonPresets: VfxPreset[] = [
 
   /**
    * ls-flame-wave-fire — fire-particle stream that travels with the linear
-   * flame wave on strike 7. Pair with ls-flame-wave (meshline) and animate
-   * the EffectTarget along a linear motion path (forward, ~8 units, 900ms).
-   * Higher density + longer lifetime than ls-fire so the wave reads big.
+   * flame wave on strike 7. Animate the EffectTarget along a linear motion
+   * path (forward, ~8 units, 900ms). Higher density + longer lifetime than
+   * ls-fire so the wave reads big.
    */
   {
     id: 'ls-flame-wave-fire',
