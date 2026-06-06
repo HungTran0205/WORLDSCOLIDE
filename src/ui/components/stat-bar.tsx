@@ -52,17 +52,23 @@ export function StatBar({ stat, value, max = 100 }: StatBarProps) {
 }
 
 interface HpExpBarProps {
-  kind: 'hp' | 'exp';
+  kind: 'hp' | 'exp' | 'blessed';
   current: number;
   max: number;
   variant?: 'compact' | 'default' | 'combat';
   label?: string;
 }
 
-/** HP / EXP value bar with gold or purple gradient and 300ms fill animation */
+const DEFAULT_BAR_LABEL: Record<HpExpBarProps['kind'], string> = {
+  hp: 'HP',
+  exp: 'EXP',
+  blessed: 'Blessed',
+};
+
+/** HP / EXP / Blessed value bar with themed gradient and 300ms fill animation */
 export function HpExpBar({ kind, current, max, variant = 'default', label }: HpExpBarProps) {
   const pct = max > 0 ? Math.min(100, (current / max) * 100) : 0;
-  const displayLabel = label ?? (kind === 'hp' ? 'HP' : 'EXP');
+  const displayLabel = label ?? DEFAULT_BAR_LABEL[kind];
   const showLabel = variant !== 'compact';
 
   return (

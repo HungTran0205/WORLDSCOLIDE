@@ -7,6 +7,192 @@ All notable changes to 2000s A.C — After the Collapse are documented in this f
 
 ---
 
+## [Unreleased] — 2026-06-06 (Ancestral Blessings — Phase 6: Golden Aura Particles)
+
+### feat(combat-vfx): rising golden aura while Ancestral Blessings is active
+
+A blessed entity now emits slow gold motes that rise through its body for the rest of
+the fight — the motion/glow the baked Phase 5 gold-outline overlay (static composite)
+can't provide.
+
+- New `ls-blessing-aura` preset (`linh-son-presets.ts`): DISK emitter, anti-gravity
+  `gravity:[0,1.2,0]`, additive, small motes (`size:[0.05,0.14]`, life `1.5–3s`),
+  `maxParticles:400`. Auto-registered — `linhSonPresets` spreads into `allPresets`
+  and `combat-vfx-root` mounts every `category:'linh-son'` preset (no registry edit).
+- `combat-fight-controller` resolves `useVFXEmitter('ls-blessing-aura')` and, in the
+  `useFrame` tick, emits `AURA_EMIT_COUNT=4` motes at each `blessed && currentHp>0`
+  entity's feet, throttled `~0.3s` on `engine.time` (respects pause + speed multiplier).
+  Disk is feet-anchored (`(position.y ?? 0) + 0.3`) so motes rise through the sprite.
+- Stops cleanly: dead entities excluded by the `currentHp>0` guard; combat end nulls
+  `engineRef` → `useFrame` early-returns. Reuses the persistent `CombatVfxRoot`
+  `<VFXParticles autoStart={false}>` — no per-emit mount/unmount (WebGPU-safe).
+- Scope: live arena only; headless auto-resolve applies the buff with no VFX (POC).
+
+**Key Files**: `src/scene/effects/presets/linh-son-presets.ts`,
+`src/scene/combat/combat-fight-controller.tsx`
+
+---
+
+## [Unreleased] — 2026-06-06 (Ancestral Blessings — Cast skill-name banner)
+
+### feat(combat-vfx): floating skill-name banner when Ancestral Blessings fires
+
+A prominent red-on-orange skill-name banner pops over the caster's head the moment
+Ancestral Blessings fires, alongside the Phase 4 casting clip. Reuses the existing
+combat HUD popup pipeline (`combat-projection-store` → `combat-panel-hud`).
+
+- New `CombatEvent` `{type:'ancestral-cast', casterId}` pushed by `combat-engine` the
+  tick the buff fires (live arena only; one-shot — verified by 3 engine tests).
+- `emitDamagePopups` spawns the banner with the localized passive name
+  (`tContent('civ', …, 'passiveName')` → "Ancestral Blessings").
+- New popup `kind: 'ancestral'` (centered, no jitter) + `.combat-hud__damage--ancestral`
+  CSS: vivid red fill (`#ff2e1f`), orange outline (`-webkit-text-stroke` + `paint-order`),
+  radiating orange gradient glow (layered text-shadows), 22px/900 weight, bigger pop
+  animation than a normal skill banner.
+
+**Key Files**: `src/game/systems/combat-types.ts`, `combat-engine.ts`,
+`src/scene/combat/combat-fight-controller.tsx`, `combat-projection-store.ts`,
+`src/ui/styles/combat-panel.css`
+
+---
+
+## [Unreleased] — 2026-06-06 (Ancestral Blessings — Phase 4: Casting Anim State & Manifest)
+
+### feat(combat-vfx): one-shot casting animation when Ancestral Blessings fires
+
+LS-SWORD-M now plays an 8-frame casting clip in the live arena the moment the buff
+fires, before the (Phase 5/6) blessed overlay/aura take over.
+
+- Registered `Ancestral-casting.png` (1024×128, 8×1, east) in `sprite-sheet-manifest.ts`
+  (hand-added — the packer can't discover a custom-named single sheet).
+- Resolver gained a `'casting'` `CombatAnimState`, `COMBAT_CASTING_FRAME_COUNT=8`,
+  `charsWithCastingEast: {LS-SWORD-M}`, and casting branches in
+  `resolveAllyCombatSheet` / `getAllyCombatFrameCount` (fallback → idle, no 404).
+- `combat-idle-sprite.tsx` loads the casting sheet (unconditional `useLoader`, in the
+  mount Suspense batch), builds a casting atlas (no identity-mask composite — mirrors
+  death), and plays it ONCE at `CASTING_FPS=12` (≈667ms ≈ `ANCESTRAL_CASTING_MS`),
+  freezing on the last frame until the engine reverts `animState` off `'casting'`.
+- **Cast is hit-proof**: incoming hit/block no longer clobbers `animState='casting'`
+  (combat-engine damage guard), so the clip plays through the hits that are likely at
+  its ≤30%-HP trigger — damage still applies, only the hit/block *reaction* is skipped
+  during the cast.
+- Scope: live arena only; headless auto-resolve applies the buff with no VFX (POC).
+
+**Key Files**: `src/scene/sprites/sprite-sheet-manifest.ts`,
+`src/scene/sprites/combat-sprite-resolver.ts`,
+`src/scene/combat/combat-idle-sprite.tsx`, `src/game/systems/combat-engine.ts`
+
+---
+
+## [Unreleased] — 2026-06-06 (Ancestral Blessings — Phase 3: Passive Rename & Buff Trigger)
+
+### feat(combat): rework Linh Sơn passive into Ancestral Blessings (gated last-stand buff)
+
+The Linh Sơn passive `son-the` (Sơn Thể) becomes **Ancestral Blessings (Tổ Tiên Phù
+Độ)** — a one-shot, till-end-of-combat buff gated by the Blessed bar.
+
+- Old `son-the` toggled END +30% every tick at HP ≤ 30%. New model is a **fire-once
+  latch**: at HP ≤ 30% with a full Blessed bar (`blessedReady`, captured at combat
+  init — POC gate: LS-SWORD-M only), it fires once → **+20% END/STR/AGI till end of
+  combat**, never reverting on heal. baseStats stays immutable so the ×1.2 never
+  compounds.
+- Fire sets `animState='casting'` (sprite manifest lands in Phase 4; renderer falls
+  back to idle until then) + `blessed` flag (drives Phase 5/6 VFX).
+- **Bar consumption**: members who fired have their `blessedPct` drained to 0 after
+  combat (win OR loss), via new `CombatResult.blessedConsumedIds` populated in both
+  the live-arena engine (`getResult`) and headless simulator, applied at both
+  result-writeback sites (`arena-result-handler`, `mission-tick`) through new
+  roster-slice action `consumeBlessed`.
+- `applyPassiveTick(entity)` → `applyPassiveTick(entity, now)` (DeQuoc/ThienLu
+  branches untouched).
+- Unit tests: latch lifecycle (fire-once, ×1.2, persist-after-heal, no-compound,
+  gate) + `blessedReady` factory gate + `collectBlessedConsumed` + `consumeBlessed`.
+
+**⚠ Balance note (intentional, tracked):** non-sword Linh Sơn (SCOUT/WARRIOR) lose
+their old universal END+30% last-stand survivability until their archetype phases
+land — only full-bar SWORD members get Ancestral Blessings in this POC.
+
+**Key Files**: `src/game/data/civilization-config.ts`, `src/i18n/content.en.json`,
+`src/game/systems/combat-passives.ts`, `combat-engine.ts`, `combat-simulator.ts`,
+`combat-types.ts`, `combat-entity-factory.ts`, `src/game/state/roster-slice.ts`,
+`arena-result-handler.ts`, `mission-tick.ts`
+
+---
+
+## [Unreleased] — 2026-06-06 (Ancestral Blessings — Phase 2: Blessed Regen & UI Bar)
+
+### feat(blessed): real-time Blessed regen + gold bar for Linh Sơn
+
+The Blessed resource (Phase 1 data) now refills over real time and renders in the
+character panel.
+
+- New `blessed-regen-system.ts` — `BLESSED_FULL_MS = 30 min` (== 1 game-day);
+  `processBlessedRegen(store, dt)` accrues `dt / BLESSED_FULL_MS` (capped 1) for every
+  idle Linh Sơn member. Members dispatched on an active mission are frozen (busy-set
+  from `activeMissions.flatMap(m => m.memberIds)`).
+- Hooked into the 1s tick loop next to injury recovery. **Offline catch-up is free**:
+  the first post-load tick runs with `dt = full offline window` (same single-source
+  pattern as injury/training), so idle members are credited for time away — no change
+  to `offline-progression.ts` (its `processOfflineTime` is unused dead code).
+- New `roster-slice` action `applyBlessedRegen` (mirrors `applyInjuryRecovery`).
+- `HpExpBar` gains a `'blessed'` kind (gold gradient via `--ink-blessed-from/to`);
+  character-detail renders the Blessed bar under HP, gated to Linh Sơn members.
+- 10 unit tests (`tests/blessed-regen-system.test.ts`): rate, cap, busy-set/flatMap,
+  Linh Sơn gate, founder, dt≤0 no-op.
+
+**Key Files**: `src/game/systems/blessed-regen-system.ts`,
+`src/game/state/roster-slice.ts`, `src/ui/hooks/use-game-tick-loop.ts`,
+`src/ui/components/stat-bar.tsx`, `src/ui/styles/{stat-bar,game-ui-tokens}.css`,
+`src/ui/panels/character-detail-panel.tsx`
+
+### fix(build): repair pre-existing TypeScript build break on `develop`
+
+`tsc -b` / `npm run build` was broken by stale references unrelated to this feature.
+All resolved (build now clean):
+
+- `member.level` (removed from `Member`) → `member.grade` in facility-detail-tray,
+  combat-panel-formation, combat-prep-panel.
+- `member.rank === 'MERCENARY'` → `member.isMercenary` in quest-detail-pane.
+- `getSkillFromPool` / `getArchetypeSkillPool` now accept `string | undefined`
+  (member `archetype` is optional) — fixes 6 call-sites at the source.
+- `guild-slice` cross-slice `inventory` write: drop the over-narrow
+  `Partial<GuildSlice>` annotation (returns already cast for `set()`).
+- `ui-store.test` `FacilityHintSeen` fixture: add `'training-yard'` key.
+- Remove unused imports/props (`gradeIndex`, `GRADE_ORDER`, `CIV_CONFIG`,
+  `onPromote`, `canAffordPromote`).
+
+---
+
+## [Unreleased] — 2026-06-06 (Ancestral Blessings — Phase 1: Blessed Resource Data Scaffolding)
+
+### feat(save): add Blessed resource state + SAVE_VERSION 35→36
+
+Foundation slice for the Linh Sơn **Ancestral Blessings** rework (buff + Blessed
+resource bar + VFX — later phases). Pure data/type scaffolding; no player-facing
+behaviour yet.
+
+- `Member` gains optional `blessedPct?: number` (0..1, the Blessed bar fill).
+  `getBlessedPct(member)` helper treats `undefined` as `1` so reads stay finite
+  before the migration/regen populate it.
+- `CombatEntity` gains `blessedReady?` / `blessed?` / `ancestralFired?` flags and
+  `'casting'` in its `animState` union; `ArenaEntity.animState` mirrors `'casting'`.
+- `ArenaEntitySnapshot` gains `blessed?` (wired through `buildSnapshots`).
+- New members (founder + recruit) start with a full bar (`blessedPct: 1`).
+- **Save migration v35→v36** (`migrateV35toV36`): backfills every member's
+  `blessedPct` to `1` when absent — idempotent + null-guarded.
+
+**Key Files**:
+- `src/game/state/game-state.ts` — `Member.blessedPct`, `getBlessedPct`
+- `src/game/systems/combat-types.ts` — `CombatEntity` flags + `'casting'`
+- `src/game/systems/combat-arena-types.ts` — `ArenaEntity.animState` `'casting'`
+- `src/game/state/combat-arena-slice.ts` — `ArenaEntitySnapshot.blessed`
+- `src/scene/combat/combat-fight-controller.tsx` — `buildSnapshots` maps `blessed`
+- `src/game/systems/character-creation.ts` — init `blessedPct: 1`
+- `src/game/save/save-migrations.ts`, `save-types.ts` — `migrateV35toV36`, `SAVE_VERSION` 36
+- `src/game/save/save-migrations.test.ts`, `test-fixtures.ts` — v35→v36 tests + fixture bump
+
+---
+
 ## [Unreleased] — 2026-05-30 (Alchemy Ingredient Slots Follow Lab Level)
 
 ### fix(alchemy): ingredient slots gated by lab level, not just alchemist skill

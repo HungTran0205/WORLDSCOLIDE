@@ -127,6 +127,11 @@ export function processMissionTick(store: GameStore, now: number): MissionTickEv
           store.injureMember(memberId, baseRecoveryMs, now);
         }
 
+        // Ancestral Blessings: drain the Blessed bar for anyone who fired it (win OR loss).
+        if (result.combatResult.blessedConsumedIds?.length) {
+          store.consumeBlessed(result.combatResult.blessedConsumedIds);
+        }
+
         // Phase 04: route merc outcomes (survival/defeat) to tavern lifecycle.
         applyMercResultsForMission(active, result);
 

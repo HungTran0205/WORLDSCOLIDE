@@ -46,7 +46,7 @@ beforeEach(() => {
   window.localStorage.clear();
   useUiStore.setState({
     questBoardTutorialSeen: false,
-    facilityHintSeen: { workshop: false, 'alchemy-lab': false, tavern: false },
+    facilityHintSeen: { workshop: false, 'alchemy-lab': false, tavern: false, 'training-yard': false },
   });
 });
 

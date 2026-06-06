@@ -38,8 +38,8 @@
     "LinhSon": {
       "name": "The LinhSon",
       "description": "Ancient warriors rooted in mountain and forest, unyielding as stone, loyal to their ancestors.",
-      "passiveName": "Spirit Form",
-      "passiveDescription": "HP < 30%: END +30%, knockback resist"
+      "passiveName": "Ancestral Blessings",
+      "passiveDescription": "HP < 30% + Blessed full: +20% END/STR/AGI till end of combat"
     },
     "DeQuoc": {
       "name": "The Republic Empire",

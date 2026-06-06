@@ -8,6 +8,7 @@ import { useGameStore } from '@/game/state/store';
 import { GAME_TIME_MULTIPLIER, MS_PER_GAME_DAY } from '@/game/state/clock-slice';
 import { processMissionTick } from '@/game/systems/mission-tick';
 import { processInjuryRecovery } from '@/game/systems/infirmary-recovery';
+import { processBlessedRegen } from '@/game/systems/blessed-regen-system';
 import { processSkillTraining } from '@/game/systems/skill-training-system';
 import { shouldAdvanceTutorial, getNextStep } from '@/game/systems/tutorial-manager';
 import { processFacilityProduction, processLoggingSiteTick } from '@/game/systems/facility-production-system';
@@ -115,6 +116,12 @@ export function useGameTickLoop() {
 
     // Accrue infirmary recovery progress for injured members (bed/queue derived per tick)
     processInjuryRecovery(store, dt);
+
+    // Refill the Blessed bar for idle Linh Sơn members. Re-read fresh state so the
+    // busy-set reflects missions just resolved by processMissionTick above — a member
+    // whose mission completed this tick is now idle and should accrue. On the first
+    // post-load tick dt == the full offline window, so this also credits idle time away.
+    processBlessedRegen(useGameStore.getState(), dt);
 
     // Advance skill-rank training progress for all active Training Yard slots
     const trainingResults = store.facilities

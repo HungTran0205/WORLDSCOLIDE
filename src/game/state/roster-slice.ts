@@ -29,6 +29,12 @@ export interface RosterSlice {
     progressUpdates: { id: string; progress: number }[],
     recoveredIds: string[],
   ) => void;
+  /** Apply one Blessed-regen tick: write `blessedPct` on the listed members.
+   *  Keyed by id so founder + roster share one set(); caller owns the 0..1 cap. */
+  applyBlessedRegen: (updates: { id: string; pct: number }[]) => void;
+  /** Drain the Blessed bar to 0 for members whose Ancestral Blessings fired in combat
+   *  (called once per combat resolution, win OR loss). Merc ids are silently ignored. */
+  consumeBlessed: (memberIds: string[]) => void;
 }
 
 function updateMember(members: Member[], id: string, updater: (m: Member) => Member): Member[] {
@@ -179,6 +185,31 @@ export const createRosterSlice: StateCreator<RosterSlice> = (set) => ({
       return {
         founder: s.founder ? apply(s.founder) : s.founder,
         roster: s.roster.map(apply),
+      };
+    }),
+
+  applyBlessedRegen: (updates) =>
+    set((s) => {
+      if (updates.length === 0) return s;
+      const pctById = new Map(updates.map((u) => [u.id, u.pct]));
+      const apply = (m: Member): Member => {
+        const next = pctById.get(m.id);
+        return next === undefined ? m : { ...m, blessedPct: next };
+      };
+      return {
+        founder: s.founder ? apply(s.founder) : s.founder,
+        roster: s.roster.map(apply),
+      };
+    }),
+
+  consumeBlessed: (memberIds) =>
+    set((s) => {
+      if (memberIds.length === 0) return s;
+      const idSet = new Set(memberIds);
+      const drain = (m: Member): Member => (idSet.has(m.id) ? { ...m, blessedPct: 0 } : m);
+      return {
+        founder: s.founder ? drain(s.founder) : s.founder,
+        roster: s.roster.map(drain),
       };
     }),
 });

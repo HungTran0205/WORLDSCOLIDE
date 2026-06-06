@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Member, SyringeLoadout } from '@/game/state/game-state';
 import type { StatKey } from '@/game/state/game-state';
+import { getBlessedPct } from '@/game/state/game-state';
+import { HpExpBar } from '@/ui/components/stat-bar';
 import { getSpritePath } from '@/scene/sprites/sprite-path-resolver';
 import { CIV_CONFIG } from '@/game/data/civilization-config';
 import type { Civilization } from '@/game/data/civilization-config';
@@ -50,7 +52,7 @@ export interface CharacterDetailPanelProps {
 export function CharacterDetailPanel({
   member, onAllocateStat, onToggleAutoCast, onEquipSkill,
   onInviteMercenary, inviteCost, canAffordInvite,
-  onPromote, canAffordPromote, onClose,
+  onClose,
   syringeCount = 0, onSetSyringeLoadout,
   onUnequipGear, onOpenEquipMode, onRename,
 }: CharacterDetailPanelProps) {
@@ -139,6 +141,9 @@ export function CharacterDetailPanel({
               <div className="char-bar-label"><span>{t('characterDetail.barHp')}</span><span>{maxHp}</span></div>
               <div className="ink-bar-track"><div className="ink-bar-fill ink-bar-hp" style={{ width: '100%' }} /></div>
             </div>
+            {member.civilization === 'LinhSon' && (
+              <HpExpBar kind="blessed" current={Math.round(getBlessedPct(member) * 100)} max={100} />
+            )}
           </div>
         </div>
         <button className="char-btn" onClick={onClose} type="button">{t('characterDetail.back')}</button>

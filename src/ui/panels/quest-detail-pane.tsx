@@ -57,7 +57,7 @@ export function QuestDetailPane({
     if (!mission) return 0;
     const hasMerc = availableMembers
       .filter((m) => selectedMemberIds.includes(m.id))
-      .some((m) => m.rank === 'MERCENARY');
+      .some((m) => m.isMercenary);
     return hasMerc ? Math.floor(mission.goldRewardMin * 0.5) : 0;
   }, [mission, availableMembers, selectedMemberIds]);
 

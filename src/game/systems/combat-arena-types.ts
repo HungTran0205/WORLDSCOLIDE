@@ -13,7 +13,7 @@ export interface ArenaEntity extends CombatEntity {
   targetId: string | null;
   attackRange: number;
   moveSpeed: number;
-  animState: 'idle' | 'walking' | 'attacking' | 'skill' | 'hit' | 'dead' | 'battle-idle' | 'blocking' | 'back';
+  animState: 'idle' | 'walking' | 'attacking' | 'skill' | 'hit' | 'dead' | 'battle-idle' | 'blocking' | 'back' | 'casting';
   facingRight: boolean;
   /** Timestamp when current animState should revert to idle */
   animStateUntil: number;

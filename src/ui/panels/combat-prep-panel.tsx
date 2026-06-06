@@ -118,7 +118,7 @@ export function CombatPrepPanel() {
               >
                 <div style={{ fontWeight: 'bold', fontSize: '0.8rem' }}>{m.name}</div>
                 <div style={{ fontSize: '0.7rem', color: '#aaa' }}>
-                  Lv.{m.level} {m.archetype ?? 'warrior'}
+                  {m.grade} · {m.archetype ?? 'warrior'}
                 </div>
               </div>
             ))}

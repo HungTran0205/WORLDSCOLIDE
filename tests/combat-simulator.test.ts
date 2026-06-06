@@ -72,7 +72,13 @@ describe('Combat Formulas', () => {
 
 describe('Combat Simulator', () => {
   it('should defeat slimes with a decent founder', () => {
-    const founder = makeTestMember();
+    // A genuinely "decent" founder wins this 1v3 on stats alone. (The old Son The
+    // END+30% last-stand previously carried a floor-grade unit here; that passive is
+    // now the gated, sword-only Ancestral Blessings, so the smoke test stands on merit.)
+    const founder = makeTestMember({
+      grade: 'B',
+      stats: { STR: 22, END: 22, INT: 5, DEX: 10, CHA: 5, LCK: 10, AGI: 14 },
+    });
     const enemies = [ENEMIES['slime'], ENEMIES['slime'], ENEMIES['slime']];
     const result = simulateCombat([founder], enemies);
 
@@ -141,25 +147,50 @@ function makeEntity(civId: string, hp = 100, maxHp = 100): CombatEntity {
   };
 }
 
-describe('LinhSon passive — Son The', () => {
-  it('should NOT buff END when HP > 30%', () => {
+describe('LinhSon passive — Ancestral Blessings', () => {
+  it('does NOT fire when HP > 30%, even with a full bar', () => {
     const entity = makeEntity('LinhSon', 60, 100); // 60% HP
-    applyPassiveTick(entity);
+    entity.blessedReady = true;
+    applyPassiveTick(entity, 0);
+    expect(entity.ancestralFired).toBeFalsy();
     expect(entity.stats.END).toBe(entity.baseStats!.END);
   });
 
-  it('should buff END +30% when HP <= 30%', () => {
+  it('fires once at HP <= 30% with a full bar → END/STR/AGI ×1.2 + casting', () => {
     const entity = makeEntity('LinhSon', 25, 100); // 25% HP
-    applyPassiveTick(entity);
-    expect(entity.stats.END).toBe(Math.floor(entity.baseStats!.END * 1.3));
+    entity.blessedReady = true;
+    applyPassiveTick(entity, 500);
+    expect(entity.ancestralFired).toBe(true);
+    expect(entity.blessed).toBe(true);
+    expect(entity.animState).toBe('casting');
+    expect(entity.stats.END).toBe(Math.floor(entity.baseStats!.END * 1.2));
+    expect(entity.stats.STR).toBe(Math.floor(entity.baseStats!.STR * 1.2));
+    expect(entity.stats.AGI).toBe(Math.floor(entity.baseStats!.AGI * 1.2));
   });
 
-  it('should revert END when HP recovers above 30%', () => {
+  it('does NOT fire without a full bar (blessedReady false)', () => {
     const entity = makeEntity('LinhSon', 25, 100);
-    applyPassiveTick(entity); // buff active
-    entity.currentHp = 60;   // HP recovers
-    applyPassiveTick(entity);
+    entity.blessedReady = false;
+    applyPassiveTick(entity, 0);
+    expect(entity.ancestralFired).toBeFalsy();
     expect(entity.stats.END).toBe(entity.baseStats!.END);
+  });
+
+  it('buff persists after healing above 30% (latch never reverts)', () => {
+    const entity = makeEntity('LinhSon', 25, 100);
+    entity.blessedReady = true;
+    applyPassiveTick(entity, 0); // fires
+    entity.currentHp = 60;       // heal back above the gate
+    applyPassiveTick(entity, 1000);
+    expect(entity.blessed).toBe(true);
+    expect(entity.stats.END).toBe(Math.floor(entity.baseStats!.END * 1.2));
+  });
+
+  it('does not compound: ×1.2 stays stable across many ticks', () => {
+    const entity = makeEntity('LinhSon', 25, 100);
+    entity.blessedReady = true;
+    for (let i = 0; i < 10; i++) applyPassiveTick(entity, i * 100);
+    expect(entity.stats.END).toBe(Math.floor(entity.baseStats!.END * 1.2));
   });
 });
 

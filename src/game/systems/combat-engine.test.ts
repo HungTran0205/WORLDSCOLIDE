@@ -353,3 +353,59 @@ describe('CombatEngine: initialization state', () => {
     expect(wave2Ent?.animState).toBe('battle-idle');
   });
 });
+
+describe('CombatEngine: Ancestral Blessings cast event', () => {
+  let engine: CombatEngine;
+
+  beforeEach(() => {
+    engine = new CombatEngine();
+  });
+
+  /** SWORD member with a full Blessed bar → blessedReady armed at init. */
+  function makeTemplar(id = 'templar'): Member {
+    const m = makeMember(id);
+    m.archetype = 'sword';
+    m.blessedPct = 1;
+    return m;
+  }
+
+  it('emits one ancestral-cast event the tick the buff fires (SWORD, full bar, HP≤30%)', () => {
+    engine.init([makeTemplar()], ['templar', null, null, null, null, null], [makeEnemy()], 1.0);
+    const ally = engine.entities.find((e) => e.isAlly)!;
+    expect(ally.blessedReady).toBe(true);
+
+    ally.currentHp = Math.max(1, Math.floor(ally.maxHp * 0.25)); // drop below the 30% gate
+    const events = engine.tick(100);
+
+    expect(events.filter((e) => e.type === 'ancestral-cast').length).toBe(1);
+    expect(events.some((e) => e.type === 'ancestral-cast' && e.casterId === 'templar')).toBe(true);
+    expect(ally.blessed).toBe(true);
+  });
+
+  it('does NOT re-emit the cast event on later ticks (one-shot latch)', () => {
+    engine.init([makeTemplar()], ['templar', null, null, null, null, null], [makeEnemy()], 1.0);
+    const ally = engine.entities.find((e) => e.isAlly)!;
+    ally.currentHp = Math.max(1, Math.floor(ally.maxHp * 0.25));
+
+    engine.tick(100); // fires here
+    ally.currentHp = Math.max(1, Math.floor(ally.maxHp * 0.25)); // still low
+    const events2 = engine.tick(100);
+
+    expect(events2.some((e) => e.type === 'ancestral-cast')).toBe(false);
+  });
+
+  it('does NOT emit for a non-sword Linh Sơn member (POC gate)', () => {
+    const warrior = makeMember('warrior');
+    warrior.archetype = 'warrior';
+    warrior.blessedPct = 1;
+    engine.init([warrior], ['warrior', null, null, null, null, null], [makeEnemy()], 1.0);
+    const ally = engine.entities.find((e) => e.isAlly)!;
+    expect(ally.blessedReady).toBeFalsy();
+
+    ally.currentHp = Math.max(1, Math.floor(ally.maxHp * 0.25));
+    const events = engine.tick(100);
+
+    expect(events.some((e) => e.type === 'ancestral-cast')).toBe(false);
+    expect(ally.blessed).toBeFalsy();
+  });
+});

@@ -26,6 +26,32 @@ export function createPassiveState(civId: string): PassiveState {
   return { civId, stacks: 0, shockReady: false, teamBuffUntil: 0, critBonus: 0, critBonusUntil: 0, cloneUntil: 0 };
 }
 
+/** END/STR/AGI multiplier while Ancestral Blessings is active. Stacks on creation civ bonuses. */
+const ANCESTRAL_BUFF_MULT = 1.2;
+
+/** Casting-animation window after the buff fires (ms). The engine reverts animState
+ *  to battle-idle after this; Phase 4 owns the matching sprite manifest/timing. */
+export const ANCESTRAL_CASTING_MS = 667; // ≈ 8 frames @ 12 fps
+
+/**
+ * Apply the Ancestral Blessings stat buff (END/STR/AGI ×1.2) from the immutable
+ * baseStats snapshot. Idempotent — always derives from baseStats so re-running each
+ * tick never compounds. No-op until the buff has fired (entity.blessed).
+ */
+function applyAncestralBuff(entity: CombatEntity): void {
+  if (!entity.blessed || !entity.baseStats) return;
+  entity.stats.END = Math.floor(entity.baseStats.END * ANCESTRAL_BUFF_MULT);
+  entity.stats.STR = Math.floor(entity.baseStats.STR * ANCESTRAL_BUFF_MULT);
+  entity.stats.AGI = Math.floor(entity.baseStats.AGI * ANCESTRAL_BUFF_MULT);
+}
+
+/** Ally ids whose Ancestral Blessings fired this combat — drives post-combat bar drain. */
+export function collectBlessedConsumed(
+  entities: Pick<CombatEntity, 'isAlly' | 'ancestralFired' | 'id'>[],
+): string[] {
+  return entities.filter((e) => e.isAlly && e.ancestralFired).map((e) => e.id);
+}
+
 /** Apply permanent passive bonuses on entity init — no init-time passives currently needed */
 export function applyPassiveOnInit(entity: CombatEntity): void {
   if (!entity.passiveState || !entity.baseStats) return;
@@ -33,20 +59,24 @@ export function applyPassiveOnInit(entity: CombatEntity): void {
   // (All passives are now combat-tick or on-hit triggered)
 }
 
-/** Apply conditional passive buffs each tick */
-export function applyPassiveTick(entity: CombatEntity): void {
+/** Apply conditional passive buffs each tick. `now` = current combat time (ms) for
+ *  one-shot anim timing. */
+export function applyPassiveTick(entity: CombatEntity, now: number): void {
   if (!entity.passiveState || !entity.baseStats) return;
   const { civId } = entity.passiveState;
 
-  // LinhSon — Son The: END +30% when HP <= 30% (last stand fantasy)
+  // LinhSon — Ancestral Blessings: fire ONCE at HP <= 30% with a full Blessed bar
+  // (captured at init as blessedReady) → +20% END/STR/AGI till end of combat. The
+  // buff is a permanent latch: never reverts on heal; baseStats stays immutable so
+  // the multiplier can't compound across ticks.
   if (civId === 'LinhSon') {
-    // TODO: Add knockback resist when knockback mechanic exists
-    // Son The should also grant knockback resistance at HP <= 30%
-    if (entity.currentHp <= entity.maxHp * 0.3) {
-      entity.stats.END = Math.floor(entity.baseStats.END * 1.3);
-    } else {
-      entity.stats.END = entity.baseStats.END;
+    if (!entity.ancestralFired && entity.blessedReady && entity.currentHp <= entity.maxHp * 0.3) {
+      entity.ancestralFired = true;
+      entity.blessed = true;
+      entity.animState = 'casting';
+      entity.animStateUntil = now + ANCESTRAL_CASTING_MS;
     }
+    applyAncestralBuff(entity);
   }
 
   // DeQuoc — Dien The Chi Huy: 3 stacks → Shock + team buff

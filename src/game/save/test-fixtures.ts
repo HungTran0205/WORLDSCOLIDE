@@ -24,6 +24,7 @@ export const VALID_MEMBER: Member = {
   missionsCompleted: 0,
   craftSkills: { woodcutting: { level: 0, xpAccumulated: 0 }, mining: { level: 0, xpAccumulated: 0 }, alchemy: { level: 0, xpAccumulated: 0 } },
   traits: [],
+  blessedPct: 1,
 };
 
 export const VALID_ROSTER_MEMBER: Member = {
@@ -44,6 +45,7 @@ export const VALID_ROSTER_MEMBER: Member = {
   missionsCompleted: 0,
   craftSkills: { woodcutting: { level: 0, xpAccumulated: 0 }, mining: { level: 0, xpAccumulated: 0 }, alchemy: { level: 0, xpAccumulated: 0 } },
   traits: [],
+  blessedPct: 1,
 };
 
 /** Generate a 6x6 grid of floor tiles starting at (0,0) */
@@ -142,7 +144,7 @@ export const VALID_METADATA: SaveSlotMetadata = {
 };
 
 export const VALID_SAVE_ENVELOPE: SaveEnvelope = {
-  version: 12,
+  version: 36,
   savedAt: Date.now(),
   metadata: VALID_METADATA,
   gameState: VALID_GAME_SAVE_DATA,

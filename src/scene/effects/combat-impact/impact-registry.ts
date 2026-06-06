@@ -65,7 +65,7 @@ export const IMPACT_REGISTRY: Record<ImpactKind, ImpactDef> = {
   // jitter: a thrust is deliberate, not a wild swing.
   'sword-thrust': {
     shape: 'billboard',
-    size: [2.8, 1.8],
+    size: [3, 2],
     durationS: 0.24,
     baseAngle: 0.12,
     jitterAngle: 0,
@@ -76,7 +76,7 @@ export const IMPACT_REGISTRY: Record<ImpactKind, ImpactDef> = {
   'axe-chop': {
     shape: 'billboard',
     size: [2.0, 3.0],
-    durationS: 0.3,
+    durationS: 0.4,
     baseAngle: 0,
     jitterAngle: 0.12,
     build: createAxeChopMaterial,

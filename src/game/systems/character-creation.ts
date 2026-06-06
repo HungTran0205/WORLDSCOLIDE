@@ -58,6 +58,7 @@ export function createFounder(
     equipment: startingWeapon ? { weapon: startingWeapon } : null,
     maskSpriteId,
     medicineSlots: structuredClone(DEFAULT_MEDICINE_SLOTS),
+    blessedPct: 1, // Blessed bar starts full
   };
 }
 
@@ -94,5 +95,6 @@ export function generateRecruit(guildLevel: number): Member {
     traits: [],
     equipment: startingWeapon ? { weapon: startingWeapon } : null,
     medicineSlots: structuredClone(DEFAULT_MEDICINE_SLOTS),
+    blessedPct: 1, // Blessed bar starts full
   };
 }

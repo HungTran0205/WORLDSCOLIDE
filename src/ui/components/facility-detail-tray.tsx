@@ -130,7 +130,7 @@ function BuiltRoomTray({ facility, onClose }: { facility: GuildFacility; onClose
                   }
                 }}>
                   <option value="">—</option>
-                  {eligible.map(m => <option key={m.id} value={m.id}>{m.name} Lv.{m.level}</option>)}
+                  {eligible.map(m => <option key={m.id} value={m.id}>{m.name} · {m.grade}</option>)}
                 </select>
               )}
             </div>

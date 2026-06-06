@@ -32,6 +32,9 @@ export interface ArenaEntitySnapshot {
   spriteId?: string;
   /** Flying enemy — sprite renders elevated above ground */
   flying?: boolean;
+  /** Ancestral Blessings buff active — drives the persistent blessed VFX overlay/aura.
+   *  (animState above is typed `string`, so it already carries 'casting'.) */
+  blessed?: boolean;
   /** ATB timeline fields */
   nextAttackAt: number;
   attackIntervalMs: number;

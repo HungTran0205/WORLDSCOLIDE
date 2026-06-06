@@ -129,7 +129,7 @@ export function CombatPanelFormation() {
               >
                 <div className="combat-panel-formation__member-name">{m.name}</div>
                 <div className="combat-panel-formation__member-meta">
-                  {t('combatPanel.formation.memberMeta', { level: m.level, archetype: t(`archetype.${m.archetype ?? 'warrior'}`) })}
+                  {t('combatPanel.formation.memberMeta', { level: m.grade, archetype: t(`archetype.${m.archetype ?? 'warrior'}`) })}
                 </div>
               </div>
             ))}

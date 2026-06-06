@@ -19,12 +19,13 @@
 import { assetUrl } from '@/lib/asset-url';
 import { getSheetEntry } from './sprite-sheet-manifest';
 
-export type CombatAnimState = 'idle' | 'attack' | 'blocking' | 'death';
+export type CombatAnimState = 'idle' | 'attack' | 'blocking' | 'death' | 'casting';
 
 export const COMBAT_IDLE_FRAME_COUNT = 8;
 export const COMBAT_ATTACK_FRAME_COUNT = 8;
 export const COMBAT_BLOCKING_FRAME_COUNT = 4;
 export const COMBAT_DEATH_FRAME_COUNT = 8;
+export const COMBAT_CASTING_FRAME_COUNT = 8;
 
 /** Compile-time map of which entities have which combat-panel assets on disk. */
 export const COMBAT_SPRITE_MANIFEST = {
@@ -52,6 +53,10 @@ export const COMBAT_SPRITE_MANIFEST = {
   /** Char IDs with `animations/blocking/east/frame_0..3.png`. */
   charsWithBlockingEast: new Set<string>([
     'LS-SCOUT-F', 'LS-WARRIOR-M', 'LS-SWORD-M',
+  ]),
+  /** Char IDs with an Ancestral Blessings casting sheet (8 frames, east). POC: SWORD only. */
+  charsWithCastingEast: new Set<string>([
+    'LS-SWORD-M',
   ]),
   /** Char IDs with `animations/death/east/frame_0..7.png`. */
   charsWithDeathEast: new Set<string>([
@@ -209,6 +214,10 @@ export function getAllyCombatFrameCount(basePath: string, state: CombatAnimState
     if (COMBAT_SPRITE_MANIFEST.charsWithBlockingEast.has(charId)) return COMBAT_BLOCKING_FRAME_COUNT;
     return getAllyCombatFrameCount(basePath, 'idle');
   }
+  if (state === 'casting') {
+    if (COMBAT_SPRITE_MANIFEST.charsWithCastingEast.has(charId)) return COMBAT_CASTING_FRAME_COUNT;
+    return getAllyCombatFrameCount(basePath, 'idle');
+  }
   return COMBAT_SPRITE_MANIFEST.charsWithDeathEast.has(charId) ? COMBAT_DEATH_FRAME_COUNT : 1;
 }
 
@@ -319,6 +328,15 @@ export function resolveAllyCombatSheet(
       const info = resolve('blocking', 'east');
       if (info) return info;
     }
+    return resolveAllyCombatSheet(basePath, 'idle');
+  }
+
+  if (state === 'casting') {
+    if (COMBAT_SPRITE_MANIFEST.charsWithCastingEast.has(charId)) {
+      const info = resolve('casting', 'east');
+      if (info) return info;
+    }
+    // No casting sheet → reuse idle (the cast simply doesn't render a distinct clip).
     return resolveAllyCombatSheet(basePath, 'idle');
   }
 

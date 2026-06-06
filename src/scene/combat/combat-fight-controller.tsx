@@ -73,6 +73,14 @@ const WAVE_TRANSITION_MS = 1000;
 /** Autosave engine entity snapshot to the active mission every 2s — keeps
  *  mid-fight reload (D12) cheap (~3.6KB serialized, ≪ once-per-tick churn). */
 const SNAPSHOT_INTERVAL_MS = 2000;
+/** Golden aura (Ancestral Blessings) — throttle the continuous mote emission to
+ *  ~0.3s with a few motes per blessed entity each tick. Tied to engine.time so
+ *  it respects pause + speed multiplier and stops cleanly when the fight ends. */
+const AURA_EMIT_INTERVAL_MS = 300;
+const AURA_EMIT_COUNT = 4;
+/** Emit the aura disk near the entity's feet so the anti-gravity motes rise up
+ *  through the sprite body (hit sparks use y=1.2 chest height for reference). */
+const AURA_EMIT_Y = 0.3;
 
 export function CombatFightController() {
   const engineRef = useRef<CombatEngine | null>(null);
@@ -100,6 +108,11 @@ export function CombatFightController() {
   const critEmitter = useVFXEmitter(COMBAT_VFX_PRESETS.crit);
   const healEmitter = useVFXEmitter(COMBAT_VFX_PRESETS.heal);
   const deathEmitter = useVFXEmitter(COMBAT_VFX_PRESETS.death);
+  // Persistent golden aura for Ancestral Blessings — loop-driven (not event-
+  // driven like the four above), emitted each frame in useFrame while an
+  // entity stays blessed. Throttled via lastAuraEmitRef on the combat clock.
+  const auraEmitter = useVFXEmitter('ls-blessing-aura');
+  const lastAuraEmitRef = useRef(0);
   const vfxRef = useRef<VfxEmitters | null>(null);
   vfxRef.current = {
     // overrides forwarded through r3f-vfx's `null`-typed 3rd param (runtime
@@ -133,6 +146,7 @@ export function CombatFightController() {
       waveTransitioningRef.current = false;
       lastSyncRef.current = 0;
       lastSnapshotRef.current = 0;
+      lastAuraEmitRef.current = 0;
       engineBoundMissionIdRef.current = null;
       return;
     }
@@ -274,6 +288,23 @@ export function CombatFightController() {
       );
     }
 
+    // Golden aura (Ancestral Blessings): throttled continuous emit at each
+    // blessed, living entity. Loop-driven persistent VFX — the baked overlay is
+    // static, this supplies the rising glow/motion. Skips dead + unpositioned
+    // entities; naturally stops on death (currentHp<=0) and combat end (engine
+    // cleared). Disk emits at the feet so anti-gravity motes rise through body.
+    if (engine.time - lastAuraEmitRef.current >= AURA_EMIT_INTERVAL_MS) {
+      lastAuraEmitRef.current = engine.time;
+      for (const e of engine.entities) {
+        if (e.blessed && e.currentHp > 0 && e.position) {
+          auraEmitter.emit(
+            [e.position.x, (e.position.y ?? 0) + AURA_EMIT_Y, e.position.z],
+            AURA_EMIT_COUNT,
+          );
+        }
+      }
+    }
+
     // Cleanup transient damage popups (>1s old).
     useCombatProjectionStore.getState().pruneDamages(1000);
 
@@ -348,6 +379,7 @@ function buildSnapshots(engine: CombatEngineType): ArenaEntitySnapshot[] {
     nextAttackAt: e.nextAttackAt,
     attackIntervalMs: e.attackIntervalMs,
     isBoss: e.isBoss,
+    blessed: e.blessed,
     attackMoveState: e.attackMoveState,
     // Cosmetic slide hint — carried once (on the wave-spawn sync); subsequent
     // syncs overwrite with the same undefined (entity is already on-screen).
@@ -446,6 +478,11 @@ function emitDamagePopups(events: CombatEvent[], engine: CombatEngineType): void
       if (target) spawn(target.id, 'DODGE', 'normal');
     } else if (event.type === 'block') {
       spawn(event.targetId, `BLOCK ${event.reducedDamage}`, 'normal');
+    } else if (event.type === 'ancestral-cast') {
+      // Ancestral Blessings cast → prominent red/orange skill-name banner.
+      const caster = engine.entities.find((e) => e.id === event.casterId);
+      const civ = caster?.civilization ?? 'LinhSon';
+      spawn(event.casterId, tContent('civ', civ, 'passiveName', 'Ancestral Blessings'), 'ancestral');
     }
 
     // Skill cast → floating skill-name banner on the caster (localized), shown

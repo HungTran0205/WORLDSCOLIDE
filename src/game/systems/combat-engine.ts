@@ -18,7 +18,7 @@ import { applyEffectTick } from './combat-effects';
 import {
   applyPassiveTick, onDamageDealt,
   consumeShock, activateTeamBuff, isTeamBuffActive,
-  resolveThienLuTimers, isCloneActive,
+  resolveThienLuTimers, isCloneActive, collectBlessedConsumed,
 } from './combat-passives';
 import { findTarget, processAbilities } from './combat-ai';
 import { pickFocusPrimary } from './target-priority-resolver';
@@ -248,6 +248,7 @@ export class CombatEngine {
       injured,
       totalDamageDealt: this.totalDamageDealt,
       durationMs: this.time,
+      blessedConsumedIds: collectBlessedConsumed(this.entities),
     };
   }
 
@@ -342,7 +343,13 @@ export class CombatEngine {
       entity.animStateUntil = 0;
     }
 
-    if (entity.passiveState) applyPassiveTick(entity);
+    const wasBlessed = entity.blessed;
+    if (entity.passiveState) applyPassiveTick(entity, this.time);
+    // Ancestral Blessings just fired this tick → emit a one-shot cast event so the
+    // HUD can pop the skill-name banner over the caster (live arena only).
+    if (entity.blessed && !wasBlessed) {
+      this.eventQueue.push({ type: 'ancestral-cast', casterId: entity.id });
+    }
 
     const deQuocAlly = this.entities.find(e =>
       e.isAlly === entity.isAlly &&
@@ -557,8 +564,10 @@ export class CombatEngine {
 
     // Block animation has highest priority — overrides attacking/skill so the
     // player actually sees the defensive reaction. Hit still defers to ongoing
-    // attack/skill swings to avoid interrupting player animations.
-    if (target.currentHp > 0 && target.animState !== 'dead') {
+    // attack/skill swings to avoid interrupting player animations. A one-shot
+    // Ancestral Blessings cast is also protected so the clip plays through the
+    // incoming hits that are likely at its ≤30%-HP trigger (damage still applies).
+    if (target.currentHp > 0 && target.animState !== 'dead' && target.animState !== 'casting') {
       if (blocked) {
         target.animState = 'blocking';
         target.animStateUntil = this.time + 400;

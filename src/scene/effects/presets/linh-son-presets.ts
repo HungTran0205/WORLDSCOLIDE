@@ -1,4 +1,4 @@
-import { EmitterShape } from 'r3f-vfx'
+import { EmitterShape, Blending } from 'r3f-vfx'
 import type { VfxPreset } from '../preset-types'
 
 // Linh Sơn — Earth/Mountain/Jungle warriors
@@ -93,6 +93,44 @@ export const linhSonPresets: VfxPreset[] = [
       speed: [0.01, 0.03],
       turbulence: { intensity: 0.5, frequency: 1.2, speed: 0.2 },
       intensity: 3,
+    },
+  },
+
+  // ─── Ancestral Blessings aura ────────────────────────────────────────
+
+  /**
+   * ls-blessing-aura — slow gold motes rising from a blessed entity while the
+   * Ancestral Blessings buff is active. Supplies the motion + glow the baked
+   * gold-outline overlay can't (the overlay is a static composite). Emitted
+   * continuously (throttled) by combat-fight-controller at each blessed, living
+   * entity's feet; anti-gravity (+y) carries the motes up through the body.
+   * Additive + small size + low per-emit count → cheap enough for a persistent
+   * loop that may run for the whole fight.
+   */
+  {
+    id: 'ls-blessing-aura',
+    name: 'Phước Lành (Blessing Aura)',
+    category: 'linh-son',
+    categoryLabel: 'Linh Sơn',
+    emoji: '✨',
+    description: 'Rising gold motes around a blessed entity (Ancestral Blessings)',
+    props: {
+      maxParticles: 400,
+      size: [0.05, 0.14],
+      colorStart: ['#ffe88a', '#ffcc44', '#D4A017'],
+      colorEnd: ['#ff9933', '#553311'],
+      fadeSize: [0.9, 0.3],
+      fadeOpacity: [0.9, 0],
+      gravity: [0, 1.2, 0],
+      lifetime: [1.5, 3],
+      direction: [[-0.25, 0.25], [0.6, 1], [-0.25, 0.25]],
+      speed: [0.02, 0.06],
+      emitterShape: EmitterShape.DISK,
+      emitterRadius: [0, 0.5],
+      startPositionAsDirection: false,
+      turbulence: { intensity: 0.4, frequency: 1.0, speed: 0.25 },
+      blending: Blending.ADDITIVE,
+      intensity: 4,
     },
   },
 

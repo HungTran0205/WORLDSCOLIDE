@@ -4,6 +4,7 @@
  */
 
 import type { Member, MercContract } from '@/game/state/game-state';
+import { getBlessedPct } from '@/game/state/game-state';
 import type { EnemyTemplate } from '@/game/data/enemies';
 import type { ArenaEntity } from './combat-arena-types';
 import { getAttackRange, DEFAULT_MOVE_SPEED } from './combat-arena-types';
@@ -52,6 +53,9 @@ export function memberToArenaEntity(
     gearFlatDefense: gear.flatDefense,
     baseStats: snapshotBaseStats(member.stats),
     passiveState: createPassiveState(member.civilization),
+    // Ancestral Blessings gate captured at combat init (POC: LS-SWORD-M only).
+    // A full Blessed bar here arms the buff; it can fire once when HP drops ≤ 30%.
+    blessedReady: getBlessedPct(member) >= 1 && member.archetype === 'sword',
     dodgeRate: derived.dodgeRate,
     blockRate: derived.blockRate,
     critDmg: derived.critDmg,

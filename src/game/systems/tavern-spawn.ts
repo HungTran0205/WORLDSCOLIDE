@@ -14,7 +14,7 @@ import { CIV_CONFIG, applyCivBonuses, CIVILIZATIONS, RECRUITABLE_UNITS } from '@
 import type { Civilization } from '@/game/data/civilization-config';
 import { CIV_ARCHETYPE_PROFILES } from '@/game/data/characters';
 import type { Grade } from '@/game/data/grades';
-import { GRADE_ORDER, GRADE_BUDGET, gradeIndex } from '@/game/data/grades';
+import { GRADE_ORDER, GRADE_BUDGET } from '@/game/data/grades';
 import { distributeStatsByWeightsRandom } from './stat-allocation';
 import { mulberry32, hashSeed, pickFromList, pickDistinct, weightedPick } from './seeded-rng';
 import { targetDemand } from './tavern-negotiation';

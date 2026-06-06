@@ -696,6 +696,33 @@
   100% { transform: translate(-50%, -250%);             opacity: 0; }
 }
 
+/* Ancestral Blessings cast banner — vivid red fill + orange gradient outline (crisp
+   stroke + radiating glow), bigger/bolder than a normal skill banner so the dramatic
+   moment stands out. */
+.combat-hud__damage--ancestral {
+  color: #ff2e1f;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  -webkit-text-stroke: 2px #ff8a1e;
+  paint-order: stroke fill; /* keep the red fill crisp on top of the orange stroke */
+  text-shadow:
+    0 0 4px #ffc24a,
+    0 0 9px #ff8a1e,
+    0 0 16px rgba(255, 96, 0, 0.85),
+    0 0 26px rgba(255, 64, 0, 0.55),
+    0 2px 6px rgba(0, 0, 0, 0.95);
+  animation: combat-hud-ancestral-rise 800ms ease-out forwards;
+}
+
+@keyframes combat-hud-ancestral-rise {
+  0%   { transform: translate(-50%, -150%) scale(0.70); opacity: 0; }
+  18%  { transform: translate(-50%, -198%) scale(1.20); opacity: 1; }
+  70%  { transform: translate(-50%, -228%) scale(1.00); opacity: 1; }
+  100% { transform: translate(-50%, -262%) scale(1.00); opacity: 0; }
+}
+
 @keyframes combat-hud-damage-rise {
   0%   { transform: translate(-50%, -100%);            opacity: 1; }
   20%  { transform: translate(-50%, -130%) scale(1.1); opacity: 1; }

@@ -65,6 +65,11 @@ export function applyMissionResultSideEffects(
     store.injureMember(memberId, baseRecoveryMs, now);
   }
 
+  // Ancestral Blessings: drain the Blessed bar for anyone who fired it (win OR loss).
+  if (combatResult.blessedConsumedIds?.length) {
+    store.consumeBlessed(combatResult.blessedConsumedIds);
+  }
+
   // Phase 04: tavern merc-contract bookkeeping (RP, defeat rep, veteranPool).
   applyMercResultsForMission(active, result);
 

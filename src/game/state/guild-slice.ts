@@ -1071,7 +1071,9 @@ export const createGuildSlice: StateCreator<GuildSlice & InventorySlice & Roster
         m.id === memberId ? { ...m, status: 'training' as const } : m;
 
       success = true;
-      const patch: Partial<GuildSlice> = {
+      // Cross-slice write (inventory lives on InventorySlice); the returns below
+      // cast to Partial<GuildSlice> for set(), so leave patch inferred here.
+      const patch = {
         gold: newGold,
         facilities: updatedFacilities,
         inventory: { ...inv, items: newItems },

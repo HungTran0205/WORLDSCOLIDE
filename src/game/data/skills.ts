@@ -44,13 +44,15 @@ export function getDefaultSkill(archetypeName: string): Skill {
   return skills?.[0] ? { ...skills[0] } : { ...SKILL_HOA_CAU };
 }
 
-/** Full selectable skill pool for an archetype (Training Yard skill picker). */
-export function getArchetypeSkillPool(archetypeName: string): Skill[] {
-  return (SKILLS_BY_ARCHETYPE[archetypeName] ?? [SKILL_HOA_CAU, SKILL_SUNG_SAC]).map((s) => ({ ...s }));
+/** Full selectable skill pool for an archetype (Training Yard skill picker).
+ *  archetype may be undefined on old saves — falls back to the default pool. */
+export function getArchetypeSkillPool(archetypeName: string | undefined): Skill[] {
+  return (SKILLS_BY_ARCHETYPE[archetypeName ?? ''] ?? [SKILL_HOA_CAU, SKILL_SUNG_SAC]).map((s) => ({ ...s }));
 }
 
-/** Resolve a single pool skill by id for an archetype, or null if it isn't in the pool. */
-export function getSkillFromPool(archetypeName: string, skillId: string): Skill | null {
-  const found = (SKILLS_BY_ARCHETYPE[archetypeName] ?? []).find((s) => s.id === skillId);
+/** Resolve a single pool skill by id for an archetype, or null if it isn't in the pool.
+ *  archetype may be undefined on old saves — treated as an empty pool (→ null). */
+export function getSkillFromPool(archetypeName: string | undefined, skillId: string): Skill | null {
+  const found = (SKILLS_BY_ARCHETYPE[archetypeName ?? ''] ?? []).find((s) => s.id === skillId);
   return found ? { ...found } : null;
 }

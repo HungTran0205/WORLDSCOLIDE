@@ -9,6 +9,7 @@ import { applyEffectTick } from './combat-effects';
 import {
   createPassiveState, applyPassiveOnInit, applyPassiveTick, onDamageDealt, snapshotBaseStats,
   consumeShock, activateTeamBuff, isTeamBuffActive, resolveThienLuTimers, isCloneActive,
+  collectBlessedConsumed,
 } from './combat-passives';
 
 const TICK_MS = 500;
@@ -190,7 +191,7 @@ function runCombatLoop(
       if (entity.currentHp <= 0) continue;
 
       // Refresh conditional passive buffs each tick
-      if (entity.passiveState) applyPassiveTick(entity);
+      if (entity.passiveState) applyPassiveTick(entity, time);
 
       // HP regen tick
       if (entity.hpRegenPerSec > 0) {
@@ -336,16 +337,16 @@ function runCombatLoop(
       const injured = entities.filter((e) => e.isAlly && e.currentHp <= 0).map((e) => e.id);
       const outcome: CombatOutcome = injured.length === 0 ? 'victory' : 'partial-victory';
       ticks.push({ time, events: [{ type: 'victory' }] });
-      return { outcome, ticks, survivors: alliesAlive.map((e) => e.id), injured, totalDamageDealt, durationMs: time };
+      return { outcome, ticks, survivors: alliesAlive.map((e) => e.id), injured, totalDamageDealt, durationMs: time, blessedConsumedIds: collectBlessedConsumed(entities) };
     }
 
     if (alliesAlive.length === 0) {
       ticks.push({ time, events: [{ type: 'wipe' }] });
-      return { outcome: 'full-wipe', ticks, survivors: [], injured: entities.filter((e) => e.isAlly).map((e) => e.id), totalDamageDealt, durationMs: time };
+      return { outcome: 'full-wipe', ticks, survivors: [], injured: entities.filter((e) => e.isAlly).map((e) => e.id), totalDamageDealt, durationMs: time, blessedConsumedIds: collectBlessedConsumed(entities) };
     }
   }
 
-  return { outcome: 'full-wipe', ticks, survivors: [], injured: entities.filter((e) => e.isAlly).map((e) => e.id), totalDamageDealt, durationMs: time };
+  return { outcome: 'full-wipe', ticks, survivors: [], injured: entities.filter((e) => e.isAlly).map((e) => e.id), totalDamageDealt, durationMs: time, blessedConsumedIds: collectBlessedConsumed(entities) };
 }
 
 /** Process enemy abilities after an attack. Target picker is injected so the

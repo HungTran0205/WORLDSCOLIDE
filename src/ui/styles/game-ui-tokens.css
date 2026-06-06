@@ -45,6 +45,8 @@
   --ink-hp-to:           #c8a060;
   --ink-exp-from:        #6b4a9f;
   --ink-exp-to:          #9f7acc;
+  --ink-blessed-from:    #ffe08a;
+  --ink-blessed-to:      #ffb52e;
   --ink-status-ok:       #6dbf6d;
   --ink-status-warn:     #d4a843;
   --ink-status-bad:      #c44a4a;

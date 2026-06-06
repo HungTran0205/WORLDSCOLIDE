@@ -25,7 +25,7 @@ export interface DamageNumber {
   /** Display text (e.g. "120", "120 CRIT", "+45") */
   text: string;
   /** Color category — drives CSS class */
-  kind: 'normal' | 'crit' | 'heal' | 'poison' | 'skill';
+  kind: 'normal' | 'crit' | 'heal' | 'poison' | 'skill' | 'ancestral';
   /** Per-popup screen offset (px) so multi-hit numbers in one frame fan out instead of stacking. */
   offsetX: number;
   offsetY: number;
@@ -58,7 +58,7 @@ export const useCombatProjectionStore = create<CombatProjectionStore>()((set) =>
     set((s) => {
       // Damage numbers jitter so a multi-hit (e.g. Barrage's 5 hits in one frame) fans
       // out and stays readable; skill-name banners + heals stay centered.
-      const jitter = kind === 'skill' || kind === 'heal';
+      const jitter = kind === 'skill' || kind === 'heal' || kind === 'ancestral';
       const offsetX = jitter ? 0 : Math.round((Math.random() - 0.5) * 44);
       const offsetY = jitter ? 0 : Math.round((Math.random() - 0.5) * 18);
       const next: DamageNumber[] = [

@@ -11,7 +11,6 @@ import type { Civilization } from '@/game/data/civilization-config';
 import { hashSeed } from '@/game/systems/seeded-rng';
 import {
   type Grade,
-  GRADE_ORDER,
   GRADE_BUDGET,
   gradeFromStatBudget,
 } from '@/game/data/grades';
@@ -1104,6 +1103,32 @@ function migrateV34toV35(envelope: SaveEnvelope): SaveEnvelope {
 
 // ── end v34→v35 ───────────────────────────────────────────────────────────────
 
+/**
+ * v35→v36: Add the Blessed resource bar. Every member's `blessedPct` defaults to
+ * full (1) so existing rosters start with the Ancestral Blessings gate satisfied.
+ * Idempotent + null-guarded: only fills the field when absent, so re-running is a
+ * no-op and reads via getBlessedPct stay finite for any save that skipped it.
+ */
+function migrateV35toV36(envelope: SaveEnvelope): SaveEnvelope {
+  const gs = envelope.gameState as unknown as AnyRecord;
+
+  const fillBlessed = (m: AnyRecord): AnyRecord =>
+    m.blessedPct == null ? { ...m, blessedPct: 1 } : m;
+
+  const founder = gs.founder ? fillBlessed(gs.founder as AnyRecord) : null;
+  const roster = Array.isArray(gs.roster)
+    ? (gs.roster as AnyRecord[]).map(fillBlessed)
+    : gs.roster;
+
+  return {
+    ...envelope,
+    version: 36,
+    gameState: { ...gs, founder, roster } as unknown as SaveEnvelope['gameState'],
+  };
+}
+
+// ── end v35→v36 ───────────────────────────────────────────────────────────────
+
 /** Migration chain: index = source version, fn upgrades to next version */
 const MIGRATIONS: Record<number, MigrationFn> = {
   7: migrateV7toV8,
@@ -1134,6 +1159,7 @@ const MIGRATIONS: Record<number, MigrationFn> = {
   32: migrateV32toV33,
   33: migrateV33toV34,
   34: migrateV34toV35,
+  35: migrateV35toV36,
 };
 
 /**

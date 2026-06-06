@@ -19,6 +19,14 @@ export interface CombatEntity {
   passiveState?: PassiveState;
   baseStats?: Stats;
 
+  // Ancestral Blessings (Linh Sơn) — Blessed resource + buff lifecycle.
+  // Snapshot of the member's full-bar gate, captured at combat init.
+  blessedReady?: boolean;
+  // Buff is active this combat (drives persistent VFX overlay/aura).
+  blessed?: boolean;
+  // Guards one-shot firing so the buff triggers at most once per combat.
+  ancestralFired?: boolean;
+
   // Temporary combat flags (set each tick by engine/simulator)
   _hasDeQuocBuff?: boolean;  // DeQuoc ally team buff: +5% crit/dmg
   _linhSonDefBuff?: number;  // active teamDefUp magnitude (0.20 base)
@@ -60,7 +68,10 @@ export interface CombatEntity {
   targetId?: string | null;
   attackRange?: number;
   moveSpeed?: number;
-  animState?: 'idle' | 'walking' | 'attacking' | 'skill' | 'hit' | 'dead' | 'battle-idle' | 'blocking' | 'back';
+  animState?: 'idle' | 'walking' | 'attacking' | 'skill' | 'hit' | 'dead' | 'battle-idle' | 'blocking' | 'back' | 'casting';
+  /** Timestamp (combat ms) when a transient animState reverts to battle-idle.
+   *  Required on ArenaEntity; optional here so headless-sim entities can set it too. */
+  animStateUntil?: number;
   facingRight?: boolean;
   archetype?: string;
   gender?: 'M' | 'F';
@@ -113,6 +124,7 @@ export type CombatEvent =
   | { type: 'wipe' }
   | { type: 'skill-buff-applied'; casterId: string; buffEffect: string; scope: 'self' | 'team'; durationMs: number }
   | { type: 'skill-debuff-applied'; casterId: string; targetId: string; effect: string; durationMs: number }
+  | { type: 'ancestral-cast'; casterId: string }
   | {
       type: 'aoe-telegraph';
       /** Casting entity id (deduplication / debug source). */
@@ -140,4 +152,7 @@ export interface CombatResult {
   injured: string[];
   totalDamageDealt: number;
   durationMs: number;
+  /** Ally ids whose Ancestral Blessings fired this combat — their Blessed bar is
+   *  drained to 0 post-combat (win OR loss). Absent/empty when nobody fired. */
+  blessedConsumedIds?: string[];
 }

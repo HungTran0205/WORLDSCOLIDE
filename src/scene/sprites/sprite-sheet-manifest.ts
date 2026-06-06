@@ -112,6 +112,15 @@ export const SPRITE_SHEET_MANIFEST: Record<string, SheetEntry> = {
     dirRows: ['flat'],
     frameCounts: { 'flat': 8 },
   },
+  // HAND-ADDED (not produced by pack-sprite-sheets.py): the Ancestral Blessings
+  // casting sheet is a custom-named single file, not a per-anim folder, so the
+  // packer can't discover it. Re-add this entry if the manifest is ever regenerated.
+  'characters/LS-SWORD-M/casting': {
+    path: '/sprites/characters/LS-SWORD-M/animations/Ancestral-casting.png',
+    cols: 8, rows: 1,
+    dirRows: ['east'],
+    frameCounts: { 'east': 8 },
+  },
   'characters/LS-WARRIOR-M/attack': {
     path: '/sprites/characters/LS-WARRIOR-M/animations/attack.png',
     cols: 8, rows: 1,

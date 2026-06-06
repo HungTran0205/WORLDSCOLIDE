@@ -236,6 +236,16 @@ export interface Member {
   maskSpriteId?: string;
   /** Skill rank progression per skill id. Empty map = Rank 1 everywhere. */
   skillRanks?: Record<string, SkillRankEntry>;
+  /** Blessed resource fill (0..1). Full bar gates the Ancestral Blessings buff.
+   *  Optional for backward-compat; absent reads default to 1 via getBlessedPct. */
+  blessedPct?: number;
+}
+
+/** Blessed bar fill for a member, treating a missing field as full (1).
+ *  Always read the Blessed resource through this — never the raw field — so
+ *  reads stay finite before the save migration / regen system populates it. */
+export function getBlessedPct(member: Pick<Member, 'blessedPct'>): number {
+  return member.blessedPct ?? 1;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
