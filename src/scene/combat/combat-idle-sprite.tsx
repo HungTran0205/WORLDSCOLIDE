@@ -40,12 +40,14 @@ import {
   subscribeToAtlasInvalidations,
   getAtlasInvalidationVersion,
 } from './combat-mask-composite-atlas';
+import { getBlessedOverlayDescriptor } from './blessed-overlay-manifest';
 import { COMBAT_IMPACT_DELAY_S } from './combat-vfx-bridge';
 
 const IDLE_FPS = 6.5;
 const ATTACK_FPS = 12;
 const BLOCKING_FPS = 10;
 const DEATH_FPS = 8;
+const CASTING_FPS = 12; // 8 frames ≈ 667 ms, matches ANCESTRAL_CASTING_MS in combat-passives
 const FLASH_DURATION_MS = 110;
 
 // Red hit flash — R over-bright, G/B suppressed (multiplicative tint).
@@ -80,14 +82,15 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
   const frameIndexRef = useRef(0);
   const elapsedRef = useRef(0);
   const deathFrozenRef = useRef(false);
+  const castingFrozenRef = useRef(false);
   const lastHpRef = useRef(entity.currentHp);
   const flashUntilRef = useRef(0);
   const wasDeadRef = useRef(entity.currentHp <= 0);
   const lastMapRef = useRef<import('three').Texture | null>(null);
-  const lastAnimStateRef = useRef<'idle' | 'attack' | 'blocking' | 'death'>('idle');
+  const lastAnimStateRef = useRef<'idle' | 'attack' | 'blocking' | 'death' | 'casting'>('idle');
 
   // Resolve sheet info for each animation state
-  const { charId, idleInfo, attackInfo, blockingInfo, deathInfo, hasDedicatedAttack, hasDedicatedBlocking } =
+  const { charId, idleInfo, attackInfo, blockingInfo, deathInfo, castingInfo, hasDedicatedAttack, hasDedicatedBlocking, hasDedicatedCasting } =
     useCombatSheetInfo(entity.isAlly, entity.archetype, entity.civilization, entity.gender, entity.spriteId);
 
   // Load ONE sheet per state (useLoader deduplicates by URL — same path = cache hit)
@@ -95,10 +98,21 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
   const attackSheetTex = useLoader(TextureLoader, attackInfo.sheetPath);
   const blockingSheetTex = useLoader(TextureLoader, blockingInfo.sheetPath);
   const deathSheetTex  = useLoader(TextureLoader, deathInfo.sheetPath);
+  const castingSheetTex = useLoader(TextureLoader, castingInfo.sheetPath);
 
   // Mask texture — always load unconditionally (React hook rules)
   const maskPath = maskId ? getMaskAssetPath(maskId, 'east') : SENTINEL_MASK_PATH;
   const maskTexture = useLoader(TextureLoader, maskPath);
+
+  // Blessed overlay (Ancestral Blessings gold outline + tattoo) — POC: LS-SWORD-M.
+  // Resolve the descriptor for this char; load its sheet (or the always-present
+  // sentinel when none exists) so useLoader is called unconditionally.
+  const overlayDescriptor = useMemo(
+    () => (charId ? getBlessedOverlayDescriptor(charId) : undefined),
+    [charId],
+  );
+  const overlayPath = overlayDescriptor?.path ?? SENTINEL_MASK_PATH;
+  const overlaySheetTex = useLoader(TextureLoader, overlayPath);
 
   // Build body atlases from sheets
   const idleAtlas = useMemo<SpriteAtlas>(
@@ -123,6 +137,16 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
     () => buildAtlasFromSheet(deathSheetTex, deathInfo.cols, deathInfo.rows, deathInfo.frameCount),
     [deathSheetTex, deathInfo.cols, deathInfo.rows, deathInfo.frameCount],
   );
+
+  // Casting (Ancestral Blessings cast) — dedicated one-shot clip for chars that have it
+  // (POC: LS-SWORD-M). No identity-mask composite during the cast (mirrors death); the
+  // brief casting pose is a custom sheet, and the blessed overlay starts after (Phase 5).
+  const dedicatedCastingAtlas = useMemo<SpriteAtlas | null>(() => {
+    if (!hasDedicatedCasting) return null;
+    return buildAtlasFromSheet(castingSheetTex, castingInfo.cols, castingInfo.rows, castingInfo.frameCount);
+  }, [castingSheetTex, castingInfo.cols, castingInfo.rows, castingInfo.frameCount, hasDedicatedCasting]);
+
+  const castingAtlas = dedicatedCastingAtlas ?? idleAtlas;
 
   // Composite masked atlases — built for live ally non-death animations only.
   // buildCombatMaskCompositeAtlas is cached by charId|maskId|anim|row|frameCount.
@@ -155,6 +179,46 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maskId, charId, maskTexture, blockingSheetTex, blockingInfo.row, blockingInfo.frameCount, atlasVersion]);
+
+  // Blessed composite atlases — body (+identity mask) with the gold outline + tattoo
+  // overlay baked on top. Built only for chars with an overlay descriptor (POC:
+  // LS-SWORD-M) and reused for the whole combat once blessed turns on (cached by
+  // the blessed cache-key discriminator). Mask is omitted when the char has none.
+  const blessedIdleAtlas = useMemo<SpriteAtlas | null>(() => {
+    if (!overlayDescriptor || !charId) return null;
+    const seg = overlayDescriptor.segments.idle;
+    return buildCombatMaskCompositeAtlas({
+      charId, anim: 'idle', maskId,
+      sheetSource: { sheetTexture: idleSheetTex, cols: idleInfo.cols, rows: idleInfo.rows, row: idleInfo.row, frameCount: idleInfo.frameCount },
+      maskTexture: maskId ? maskTexture : undefined,
+      blessedOverlay: { sheetTexture: overlaySheetTex, segmentOffset: seg.offset, frameCount: seg.count },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overlayDescriptor, charId, maskId, maskTexture, idleSheetTex, idleInfo.row, idleInfo.frameCount, overlaySheetTex, atlasVersion]);
+
+  const blessedAttackAtlas = useMemo<SpriteAtlas | null>(() => {
+    if (!overlayDescriptor || !charId) return null;
+    const seg = overlayDescriptor.segments.attack;
+    return buildCombatMaskCompositeAtlas({
+      charId, anim: 'attack', maskId,
+      sheetSource: { sheetTexture: attackSheetTex, cols: attackInfo.cols, rows: attackInfo.rows, row: attackInfo.row, frameCount: attackInfo.frameCount },
+      maskTexture: maskId ? maskTexture : undefined,
+      blessedOverlay: { sheetTexture: overlaySheetTex, segmentOffset: seg.offset, frameCount: seg.count },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overlayDescriptor, charId, maskId, maskTexture, attackSheetTex, attackInfo.row, attackInfo.frameCount, overlaySheetTex, atlasVersion]);
+
+  const blessedBlockingAtlas = useMemo<SpriteAtlas | null>(() => {
+    if (!overlayDescriptor || !charId) return null;
+    const seg = overlayDescriptor.segments.blocking;
+    return buildCombatMaskCompositeAtlas({
+      charId, anim: 'blocking', maskId,
+      sheetSource: { sheetTexture: blockingSheetTex, cols: blockingInfo.cols, rows: blockingInfo.rows, row: blockingInfo.row, frameCount: blockingInfo.frameCount },
+      maskTexture: maskId ? maskTexture : undefined,
+      blessedOverlay: { sheetTexture: overlaySheetTex, segmentOffset: seg.offset, frameCount: seg.count },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overlayDescriptor, charId, maskId, maskTexture, blockingSheetTex, blockingInfo.row, blockingInfo.frameCount, overlaySheetTex, atlasVersion]);
 
   // Hit flash trigger — delayed to the attack's connect frame so the flash lands
   // together with the impact mesh + hit particles (both delayed by
@@ -201,11 +265,16 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
     group.position.x = dispX;
 
     const isDead = entity.currentHp <= 0;
+    const isCasting = !isDead && entity.animState === 'casting';
     const isAttackingState = entity.animState === 'attacking' || entity.animState === 'skill';
     const isBlockingState = entity.animState === 'blocking';
+    // Ancestral Blessings overlay: applies to idle/attack/blocking only — death and
+    // casting branches come first below, so they keep their plain/dedicated atlas.
+    const isBlessed = !!entity.blessed;
 
-    const currentAnim: 'idle' | 'attack' | 'blocking' | 'death' = isDead
+    const currentAnim: 'idle' | 'attack' | 'blocking' | 'death' | 'casting' = isDead
       ? 'death'
+      : isCasting ? 'casting'
       : isAttackingState ? 'attack'
       : isBlockingState ? 'blocking'
       : 'idle';
@@ -225,6 +294,7 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
     if (currentAnim !== lastAnimStateRef.current && currentAnim !== 'death') {
       frameIndexRef.current = 0;
       elapsedRef.current = 0;
+      castingFrozenRef.current = false; // re-arm the one-shot cast on (re)entry
     }
     lastAnimStateRef.current = currentAnim;
 
@@ -248,22 +318,31 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
       frameCount = deathInfo.frameCount;
       fps = DEATH_FPS;
       sheetRow = deathInfo.row;
+    } else if (isCasting) {
+      atlas = castingAtlas;
+      frameCount = castingInfo.frameCount;
+      fps = CASTING_FPS;
+      sheetRow = castingInfo.row; // fallback castingInfo === idleInfo, so row matches either way
     } else if (isAttackingState) {
-      atlas = maskedAttackAtlas ?? attackAtlas;
+      // Prefer blessed (overlay) → identity-mask → plain body. Both composites are
+      // single-row strips; only the plain body atlas addresses by sheet row.
+      const composite = (isBlessed ? blessedAttackAtlas : null) ?? maskedAttackAtlas;
+      atlas = composite ?? attackAtlas;
       frameCount = attackInfo.frameCount;
       fps = ATTACK_FPS;
-      // Composite atlas is a single-row strip; body sheet atlas uses attackInfo.row
-      sheetRow = maskedAttackAtlas ? 0 : attackInfo.row;
+      sheetRow = composite ? 0 : attackInfo.row;
     } else if (isBlockingState) {
-      atlas = maskedBlockingAtlas ?? blockingAtlas;
+      const composite = (isBlessed ? blessedBlockingAtlas : null) ?? maskedBlockingAtlas;
+      atlas = composite ?? blockingAtlas;
       frameCount = blockingInfo.frameCount;
       fps = BLOCKING_FPS;
-      sheetRow = maskedBlockingAtlas ? 0 : blockingInfo.row;
+      sheetRow = composite ? 0 : blockingInfo.row;
     } else {
-      atlas = maskedIdleAtlas ?? idleAtlas;
+      const composite = (isBlessed ? blessedIdleAtlas : null) ?? maskedIdleAtlas;
+      atlas = composite ?? idleAtlas;
       frameCount = idleInfo.frameCount;
       fps = IDLE_FPS;
-      sheetRow = maskedIdleAtlas ? 0 : idleInfo.row;
+      sheetRow = composite ? 0 : idleInfo.row;
     }
 
     if (lastMapRef.current !== atlas.texture) {
@@ -281,6 +360,21 @@ export function CombatIdleSprite({ entity }: CombatIdleSpriteProps) {
           if (frameIndexRef.current >= frameCount) {
             frameIndexRef.current = frameCount - 1;
             deathFrozenRef.current = true;
+          }
+        }
+      }
+    } else if (isCasting) {
+      // One-shot: advance to the last frame and hold; the engine reverts animState
+      // off 'casting' after ANCESTRAL_CASTING_MS, which re-arms the latch above.
+      if (!castingFrozenRef.current) {
+        elapsedRef.current += dt;
+        const interval = 1 / fps;
+        while (elapsedRef.current >= interval && !castingFrozenRef.current) {
+          elapsedRef.current -= interval;
+          frameIndexRef.current++;
+          if (frameIndexRef.current >= frameCount) {
+            frameIndexRef.current = frameCount - 1;
+            castingFrozenRef.current = true;
           }
         }
       }
@@ -339,11 +433,13 @@ interface CombatSheetSet {
   attackInfo: CombatSheetInfo;
   blockingInfo: CombatSheetInfo;
   deathInfo: CombatSheetInfo;
+  castingInfo: CombatSheetInfo;
   hasDedicatedAttack: boolean;
   hasDedicatedBlocking: boolean;
+  hasDedicatedCasting: boolean;
 }
 
-/** Resolve sheet info for all four combat animation states. Stable across snapshot syncs. */
+/** Resolve sheet info for all five combat animation states. Stable across snapshot syncs. */
 function useCombatSheetInfo(
   isAlly: boolean,
   archetype: string | undefined,
@@ -361,10 +457,12 @@ function useCombatSheetInfo(
       const attackResolved = resolveAllyCombatSheet(base, 'attack');
       const blockingResolved = resolveAllyCombatSheet(base, 'blocking');
       const deathInfo    = resolveAllyCombatSheet(base, 'death');
+      const castingResolved = resolveAllyCombatSheet(base, 'casting');
 
-      // hasDedicatedAttack: attack sheet path differs from idle sheet path
+      // hasDedicated*: dedicated sheet path differs from the idle fallback path
       const hasDedicatedAttack = attackResolved.sheetPath !== idleInfo.sheetPath;
       const hasDedicatedBlocking = blockingResolved.sheetPath !== idleInfo.sheetPath;
+      const hasDedicatedCasting = castingResolved.sheetPath !== idleInfo.sheetPath;
 
       return {
         charId,
@@ -372,8 +470,10 @@ function useCombatSheetInfo(
         attackInfo: attackResolved,
         blockingInfo: blockingResolved,
         deathInfo,
+        castingInfo: castingResolved,
         hasDedicatedAttack,
         hasDedicatedBlocking,
+        hasDedicatedCasting,
       };
     }
 
@@ -387,11 +487,13 @@ function useCombatSheetInfo(
       charId: '',
       idleInfo,
       attackInfo: attackResolved,
-      // Enemies never block — reuse idle so Three.js returns a cached texture
+      // Enemies never block or cast — reuse idle so Three.js returns a cached texture
       blockingInfo: idleInfo,
       deathInfo,
+      castingInfo: idleInfo,
       hasDedicatedAttack,
       hasDedicatedBlocking: false,
+      hasDedicatedCasting: false,
     };
   }, [isAlly, archetype, civilization, gender, spriteId]);
 }

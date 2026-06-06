@@ -64,6 +64,13 @@ function makeMaskTexture() {
   return { image: { width: 32, height: 32 } } as unknown as import('three').Texture;
 }
 
+/** Overlay sheet mock: single row of square frames (e.g. 20×128 for LS-SWORD-M). */
+function makeOverlayTexture(cols = 20, frameSize = 128) {
+  return {
+    image: { width: cols * frameSize, height: frameSize },
+  } as unknown as import('three').Texture;
+}
+
 function makeSheetSource(overrides: Partial<SheetCompositeSource> = {}): SheetCompositeSource {
   return {
     sheetTexture: makeSheetTexture(),
@@ -153,6 +160,60 @@ describe('buildCombatMaskCompositeAtlas', () => {
     buildCombatMaskCompositeAtlas(makeArgs({ sheetSource: makeSheetSource({ frameCount: 4 }) }));
     // 4 frames × 2 draws (body slice + mask) = 8
     expect(mockCtx.drawImage).toHaveBeenCalledTimes(8);
+  });
+});
+
+describe('buildCombatMaskCompositeAtlas — blessed overlay', () => {
+  it('draws body + mask + overlay for each frame (3 drawImage calls per frame)', () => {
+    buildCombatMaskCompositeAtlas(makeArgs({
+      sheetSource: makeSheetSource({ frameCount: 4 }),
+      blessedOverlay: { sheetTexture: makeOverlayTexture(), segmentOffset: 0, frameCount: 4 },
+    }));
+    // 4 frames × 3 draws (body + mask + overlay) = 12
+    expect(mockCtx.drawImage).toHaveBeenCalledTimes(12);
+  });
+
+  it('blessed-only (no mask) draws body + overlay for each frame (2 per frame)', () => {
+    buildCombatMaskCompositeAtlas({
+      charId: 'LS-SWORD-M',
+      anim: 'idle',
+      maskId: null,
+      maskTexture: undefined,
+      sheetSource: makeSheetSource({ frameCount: 4 }),
+      blessedOverlay: { sheetTexture: makeOverlayTexture(), segmentOffset: 0, frameCount: 4 },
+    });
+    // 4 frames × 2 draws (body + overlay, no mask) = 8
+    expect(mockCtx.drawImage).toHaveBeenCalledTimes(8);
+  });
+
+  it('blessed atlas differs from the plain identity-mask atlas', () => {
+    const masked = buildCombatMaskCompositeAtlas(makeArgs());
+    const blessed = buildCombatMaskCompositeAtlas(makeArgs({
+      blessedOverlay: { sheetTexture: makeOverlayTexture(), segmentOffset: 0, frameCount: 8 },
+    }));
+    expect(masked).not.toBe(blessed);
+  });
+
+  it('different overlay segmentOffset → different atlas', () => {
+    const a = buildCombatMaskCompositeAtlas(makeArgs({
+      blessedOverlay: { sheetTexture: makeOverlayTexture(), segmentOffset: 0, frameCount: 8 },
+    }));
+    const b = buildCombatMaskCompositeAtlas(makeArgs({
+      blessedOverlay: { sheetTexture: makeOverlayTexture(), segmentOffset: 8, frameCount: 8 },
+    }));
+    expect(a).not.toBe(b);
+  });
+
+  it('throws when neither maskTexture nor blessedOverlay is supplied', () => {
+    expect(() =>
+      buildCombatMaskCompositeAtlas({
+        charId: 'LS-SWORD-M',
+        anim: 'idle',
+        maskId: null,
+        maskTexture: undefined,
+        sheetSource: makeSheetSource(),
+      })
+    ).toThrow('requires maskTexture and/or blessedOverlay');
   });
 });
 
