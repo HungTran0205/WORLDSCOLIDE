@@ -16,6 +16,7 @@
 
 import type {
   MercContract,
+  Member,
   TavernState,
   TavernVisitor,
   VeteranMercSummary,
@@ -146,6 +147,38 @@ export function makeMercContract(
     questId: null,
     relationshipPoints: 0,
     status: 'available',
+  };
+}
+
+/**
+ * Adapt an available merc contract into a Member-shaped object so the quest-board
+ * party picker / roster picker can list and select hired mercs alongside guild
+ * members. `id === contract.id` so dispatch routes the selection straight back to
+ * the contract; `status: 'idle'` so the picker and auto-assign treat it as
+ * selectable. Distinct from combat's `memberFromMercContract` (which freezes
+ * `status: 'on-mission'` and uses a combat alias name) — this one surfaces the
+ * visitor's real name and idle status for the recruitment UI.
+ */
+export function mercContractToPartyMember(contract: MercContract): Member {
+  const v = contract.visitorSnapshot;
+  return {
+    id: contract.id,
+    name: v.name,
+    grade: v.grade,
+    isMercenary: true,
+    stats: { ...v.stats },
+    unallocatedPoints: 0,
+    skill: null,
+    status: 'idle',
+    injuredUntil: null,
+    civilization: v.civilization,
+    archetype: v.archetype,
+    gender: v.gender,
+    isFounder: false,
+    missionsCompleted: 0,
+    traits: v.traits,
+    equipment: null,
+    syringeLoadout: null,
   };
 }
 

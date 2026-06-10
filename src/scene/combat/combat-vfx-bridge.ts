@@ -39,14 +39,14 @@ export const COMBAT_IMPACT_DELAY_S = 0.33;
  * defaults to tiny debris (0.05–0.15); this enlarges it so the spark reads
  * clearly against large enemy sprites without re-baking the preset geometry.
  */
-export const COMBAT_HIT_SPARK_SIZE: [number, number] = [0.1, 0.3];
+export const COMBAT_HIT_SPARK_SIZE: [number, number] = [0.05, 0.2];
 
 /**
  * Hit-spark debris color (colorStart pool). Warm orange — applied to BOTH ally
  * and enemy attacks, overriding the gen-hit preset's red/yellow start so every
  * auto-attack spark reads orange. The preset's colorEnd (also orange) is kept.
  */
-export const COMBAT_HIT_SPARK_COLOR: string[] = ['#ff8a1e', '#ffb347'];
+export const COMBAT_HIT_SPARK_COLOR: string[] = ['#c5253a', '#fd6a26'];
 
 /**
  * Shared impact palette for the combat attack VFX — the slash/beam meshes

@@ -30,6 +30,7 @@ import { ENEMIES } from '@/game/data/enemies';
 import { TUTORIAL_BEAR_MISSION_ID } from '@/game/data/tutorial-data';
 import { WaveManager, legacyToWaves } from '@/game/systems/combat-wave-manager';
 import { applyMissionResultSideEffects } from '@/game/systems/arena-result-handler';
+import { memberFromMercContract } from '@/game/systems/combat-entity-factory';
 import { simulateCombatFromSnapshot, cloneCombatEntity } from '@/game/systems/combat-simulator';
 import { resolveCombatMapId, getStageSpec } from './maps/combat-map-registry';
 import { useCombatProjectionStore } from './combat-projection-store';
@@ -81,6 +82,13 @@ const AURA_EMIT_COUNT = 4;
 /** Emit the aura disk near the entity's feet so the anti-gravity motes rise up
  *  through the sprite body (hit sparks use y=1.2 chest height for reference). */
 const AURA_EMIT_Y = 0.3;
+/** Ancestral smoke ring — each emission spawns one expanding ring, on a slower
+ *  cadence than the wisps so the rings read as distinct pulsing waves. A high
+ *  count fills the circle so it reads as a continuous ring, not dots. Emitted at
+ *  near-ground height so the ring hugs the floor. */
+const DUST_EMIT_INTERVAL_MS = 600;
+const DUST_EMIT_COUNT = 28;
+const DUST_EMIT_Y = 0.15;
 
 export function CombatFightController() {
   const engineRef = useRef<CombatEngine | null>(null);
@@ -113,6 +121,9 @@ export function CombatFightController() {
   // entity stays blessed. Throttled via lastAuraEmitRef on the combat clock.
   const auraEmitter = useVFXEmitter('ls-blessing-aura');
   const lastAuraEmitRef = useRef(0);
+  // Ground dust gust layer — horizontal counterpart to the vertical aura wisps.
+  const dustEmitter = useVFXEmitter('ls-blessing-dust');
+  const lastDustEmitRef = useRef(0);
   const vfxRef = useRef<VfxEmitters | null>(null);
   vfxRef.current = {
     // overrides forwarded through r3f-vfx's `null`-typed 3rd param (runtime
@@ -134,6 +145,7 @@ export function CombatFightController() {
   const endCombat = useGameStore((s) => s.endCombat);
   const founder = useGameStore((s) => s.founder);
   const roster = useGameStore((s) => s.roster);
+  const mercContracts = useGameStore((s) => s.tavern.mercContracts);
   const inventory = useGameStore((s) => s.inventory);
   const removeItem = useGameStore((s) => s.removeItem);
   const saveCombatSnapshot = useGameStore((s) => s.saveCombatSnapshot);
@@ -147,6 +159,7 @@ export function CombatFightController() {
       lastSyncRef.current = 0;
       lastSnapshotRef.current = 0;
       lastAuraEmitRef.current = 0;
+      lastDustEmitRef.current = 0;
       engineBoundMissionIdRef.current = null;
       return;
     }
@@ -155,7 +168,14 @@ export function CombatFightController() {
     const missionData = MISSIONS.find((m) => m.id === missionId);
     if (!missionData) return;
 
-    const members = allMembers.filter((m) => formation.includes(m.id));
+    // Party pool = guild members + this mission's hired mercs (id === contract.id).
+    // Without the merc shapes here, formation slots holding a merc would resolve to
+    // nothing and the merc would silently miss the fight (then be scored defeated).
+    const active = useGameStore.getState().activeMissions.find((m) => m.instanceId === instanceId);
+    const mercMembers = mercContracts
+      .filter((c) => active?.mercContractIds.includes(c.id))
+      .map(memberFromMercContract);
+    const members = [...allMembers, ...mercMembers].filter((m) => formation.includes(m.id));
     const waves = missionData.waves ?? legacyToWaves(missionData.enemyIds);
     const waveManager = new WaveManager(waves);
     waveManagerRef.current = waveManager;
@@ -288,19 +308,25 @@ export function CombatFightController() {
       );
     }
 
-    // Golden aura (Ancestral Blessings): throttled continuous emit at each
-    // blessed, living entity. Loop-driven persistent VFX — the baked overlay is
-    // static, this supplies the rising glow/motion. Skips dead + unpositioned
-    // entities; naturally stops on death (currentHp<=0) and combat end (engine
-    // cleared). Disk emits at the feet so anti-gravity motes rise through body.
-    if (engine.time - lastAuraEmitRef.current >= AURA_EMIT_INTERVAL_MS) {
-      lastAuraEmitRef.current = engine.time;
+    // Ancestral Blessings persistent VFX: two loop-driven layers emitted at each
+    // blessed, living entity — rising gold wisps (vertical) + a ground dust gust
+    // (horizontal, slower cadence). Both supply the motion the static baked
+    // overlay can't. Single entity walk, independent throttles on the combat
+    // clock. Skips dead + unpositioned entities; naturally stops on death
+    // (currentHp<=0) and combat end (engine cleared → useFrame early-returns).
+    const emitAura = engine.time - lastAuraEmitRef.current >= AURA_EMIT_INTERVAL_MS;
+    const emitDust = engine.time - lastDustEmitRef.current >= DUST_EMIT_INTERVAL_MS;
+    if (emitAura) lastAuraEmitRef.current = engine.time;
+    if (emitDust) lastDustEmitRef.current = engine.time;
+    if (emitAura || emitDust) {
       for (const e of engine.entities) {
-        if (e.blessed && e.currentHp > 0 && e.position) {
-          auraEmitter.emit(
-            [e.position.x, (e.position.y ?? 0) + AURA_EMIT_Y, e.position.z],
-            AURA_EMIT_COUNT,
-          );
+        if (!e.blessed || e.currentHp <= 0 || !e.position) continue;
+        const baseY = e.position.y ?? 0;
+        if (emitAura) {
+          auraEmitter.emit([e.position.x, baseY + AURA_EMIT_Y, e.position.z], AURA_EMIT_COUNT);
+        }
+        if (emitDust) {
+          dustEmitter.emit([e.position.x, baseY + DUST_EMIT_Y, e.position.z], DUST_EMIT_COUNT);
         }
       }
     }
@@ -338,7 +364,11 @@ export function CombatFightController() {
       return;
     }
     const allMembers = store.founder ? [store.founder, ...store.roster] : store.roster;
-    const members = allMembers.filter((m) => active.memberIds.includes(m.id));
+    const realMembers = allMembers.filter((m) => active.memberIds.includes(m.id));
+    const mercMembers = store.tavern.mercContracts
+      .filter((c) => active.mercContractIds.includes(c.id))
+      .map(memberFromMercContract);
+    const members = [...realMembers, ...mercMembers];
 
     const missionResult = applyMissionResultSideEffects(mission, active, members, result);
     // Story beat: main quests with post-combat dialog play it before the

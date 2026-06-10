@@ -59,11 +59,20 @@ function GrassVariant({
   cx,
   cz,
   seed,
+  holeRadius,
+  scatterHalf,
+  count,
 }: {
   texPath: string;
   cx: number;
   cz: number;
   seed: number;
+  /** Keep tufts out of a centered circle (e.g. a bare sparring ring). 0 = off. */
+  holeRadius: number;
+  /** XZ half-extent of the scatter (inset from the 3.5 room half). */
+  scatterHalf: number;
+  /** Tufts for this variant's InstancedMesh. */
+  count: number;
 }) {
   const loaded = useLoader(THREE.TextureLoader, assetUrl(texPath));
   const { gl } = useThree();
@@ -117,12 +126,22 @@ function GrassVariant({
     const rng = mulberry32(seed ^ (Math.floor(cx * 73.1 + cz * 131.7) >>> 0));
     const dummy = new THREE.Object3D();
     const out: THREE.Matrix4[] = [];
-    for (let i = 0; i < TUFTS_PER_VARIANT; i++) {
-      dummy.position.set(
-        cx + (rng() * 2 - 1) * SCATTER_HALF,
-        0,
-        cz + (rng() * 2 - 1) * SCATTER_HALF,
-      );
+    const holeSq = holeRadius * holeRadius;
+    for (let i = 0; i < count; i++) {
+      // Sample a position; if a center hole is requested, reject samples inside
+      // it (capped retries so determinism + cost stay bounded). The first
+      // sample's two rng() draws are always consumed, so holeRadius=0 keeps the
+      // exact stream the logging-site scatter already relies on.
+      let px = cx + (rng() * 2 - 1) * scatterHalf;
+      let pz = cz + (rng() * 2 - 1) * scatterHalf;
+      for (let tries = 0; holeSq > 0 && tries < 6; tries++) {
+        const ddx = px - cx;
+        const ddz = pz - cz;
+        if (ddx * ddx + ddz * ddz >= holeSq) break;
+        px = cx + (rng() * 2 - 1) * scatterHalf;
+        pz = cz + (rng() * 2 - 1) * scatterHalf;
+      }
+      dummy.position.set(px, 0, pz);
       dummy.rotation.set(0, FACE_YAW + (rng() * 2 - 1) * YAW_JITTER, 0);
       const s = SCALE_MIN + rng() * (SCALE_MAX - SCALE_MIN);
       dummy.scale.set(s, s, s);
@@ -130,7 +149,7 @@ function GrassVariant({
       out.push(dummy.matrix.clone());
     }
     return out;
-  }, [cx, cz, seed]);
+  }, [cx, cz, seed, holeRadius, scatterHalf, count]);
 
   // Push matrices once the mesh exists (handle gate guarantees it's mounted).
   useEffect(() => {
@@ -150,18 +169,41 @@ function GrassVariant({
   return (
     <instancedMesh
       ref={meshRef}
-      args={[geometry, handle.material, TUFTS_PER_VARIANT]}
+      args={[geometry, handle.material, count]}
       frustumCulled={false}
     />
   );
 }
 
-/** Mount one scatter per texture variant, centered on the room (cx, cz). */
-export function GrassScatter({ cx, cz }: { cx: number; cz: number }) {
+/** Mount one scatter per texture variant, centered on the room (cx, cz).
+ *  `holeRadius` clears a centered circle (training-yard sparring ring).
+ *  `scatterHalf` / `tuftsPerVariant` widen + thicken coverage per facility. */
+export function GrassScatter({
+  cx,
+  cz,
+  holeRadius = 0,
+  scatterHalf = SCATTER_HALF,
+  tuftsPerVariant = TUFTS_PER_VARIANT,
+}: {
+  cx: number;
+  cz: number;
+  holeRadius?: number;
+  scatterHalf?: number;
+  tuftsPerVariant?: number;
+}) {
   return (
     <group>
       {GRASS_TEXTURES.map((p, i) => (
-        <GrassVariant key={p} texPath={p} cx={cx} cz={cz} seed={(i + 1) * 9871} />
+        <GrassVariant
+          key={p}
+          texPath={p}
+          cx={cx}
+          cz={cz}
+          seed={(i + 1) * 9871}
+          holeRadius={holeRadius}
+          scatterHalf={scatterHalf}
+          count={tuftsPerVariant}
+        />
       ))}
     </group>
   );

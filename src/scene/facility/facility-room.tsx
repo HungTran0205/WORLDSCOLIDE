@@ -23,10 +23,14 @@ import { InfirmaryZoneCard } from '../infirmary/facility-room-infirmary-decor';
 import { AlchemyWalls } from '../alchemy/facility-room-alchemy-walls';
 import { WorkshopWalls } from '../workshop/workshop-walls';
 import { TavernWalls } from '../tavern/tavern-walls';
+import { TavernMercSprites } from '../tavern/tavern-merc-sprites';
 import { InfirmaryWalls } from '../infirmary/infirmary-walls';
+import { TrainingYardWalls } from '../training-yard/training-yard-walls';
+import { TrainingYardFoundation } from '../training-yard/training-yard-foundation';
 import { InfirmaryLights } from '../infirmary/infirmary-lights';
 import { TorchFireEffect } from '../vfx/torch-fire-particles';
 import { TiledFloor, type TileTextureSpec } from '@/scene/sprites/tiled-floor';
+import { FloorDecal } from '@/scene/sprites/floor-decal';
 import type { GuildFacility, FacilityType } from '@/game/state/game-state';
 
 const ROOM_SIZE = 7;
@@ -42,7 +46,17 @@ const WALL_THICKNESS = 0.2;
  */
 const FACILITY_TILE_PATH: Record<FacilityType, TileTextureSpec> = {
   tavern: '/tiles/2d/32px/dirt-base_0001.png',
-  'training-yard': '/tiles/2d/32px/paving-stone-32_0002.png',
+  // Outdoor grass yard — grass tileset (palette sync w/ logging-site); the bare
+  // sparring ring in the center is a FloorDecal overlay, not a tile. The dry
+  // yellow variant (_0002) is omitted so the yard reads as one even green.
+  'training-yard': {
+    main: '/tiles/2d/32px/forest-grass-32_0003.png',
+    variants: [
+      '/tiles/2d/32px/forest-grass-32_0001.png',
+      '/tiles/2d/32px/forest-grass-32_0004.png',
+      '/tiles/2d/32px/forest-grass-32_0005.png',
+    ],
+  },
   infirmary: '/tiles/2d/64px/wood-guild-floor_0004.png',
   'logging-site': {
     main: '/tiles/2d/32px/forest-grass-32_0003.png',
@@ -85,6 +99,8 @@ const FACILITY_TILE_WORLD_SIZE: Partial<Record<FacilityType, number>> = {
  */
 const FACILITY_EMISSIVE_INTENSITY: Partial<Record<FacilityType, number>> = {
   'alchemy-lab': 0.55,
+  // Brighter self-lit baseline so the open-air grass doesn't read dark.
+  'training-yard': 0.85,
 };
 
 const ROOM_WALL_COLORS: Record<FacilityType, string> = {
@@ -100,7 +116,8 @@ const ROOM_WALL_COLORS: Record<FacilityType, string> = {
 /** Per-facility point light config — color + intensity when room is active */
 const ROOM_LIGHT: Record<FacilityType, { color: string; intensity: number }> = {
   tavern: { color: '#ffaa44', intensity: 6 },
-  'training-yard': { color: '#ff6633', intensity: 5 },
+  // Open-air daylight (matches logging-site rig); warm-neutral so grass stays green.
+  'training-yard': { color: '#fff4dc', intensity: 22 },
   infirmary: { color: '#88aaff', intensity: 6 },
   // Workshop: ceiling light dimmed to fill role; forge fire is the key light.
   workshop: { color: '#ffb066', intensity: 2 },
@@ -176,6 +193,10 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
   const wallColor = ROOM_WALL_COLORS[facility.type];
   const light = ROOM_LIGHT[facility.type];
   const isLoggingSite = facility.type === 'logging-site';
+  const isTrainingYard = facility.type === 'training-yard';
+  // Outdoor grass rooms share the high, bright, slow-decay daylight rig so the
+  // grass + sparring-ring read as open-air (not a warm indoor pool).
+  const isOutdoor = isLoggingSite || isTrainingYard;
   const isQuarry = facility.type === 'stone-quarry';
   const isAlchemy = facility.type === 'alchemy-lab';
   const isWorkshop = facility.type === 'workshop';
@@ -188,11 +209,11 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
           Infirmary opts out: its light comes from the central ether crystal (InfirmaryLights). */}
       {!isAlchemy && !isInfirmary && (
         <pointLight
-          position={[cx, isLoggingSite ? 8 : 2.5, cz]}
+          position={[cx, isOutdoor ? 8 : 2.5, cz]}
           color={light.color}
           intensity={isActive ? light.intensity : 0}
-          distance={isLoggingSite ? 20 : 10}
-          decay={isLoggingSite ? 1 : 2}
+          distance={isOutdoor ? 20 : 10}
+          decay={isOutdoor ? 1 : 2}
         />
       )}
       {/* Infirmary — golden ether crystal key + radiate fill + pod flicker */}
@@ -275,6 +296,8 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
         <TavernWalls cx={cx} cz={cz} />
       ) : isInfirmary ? (
         <InfirmaryWalls cx={cx} cz={cz} />
+      ) : isTrainingYard ? (
+        <TrainingYardWalls cx={cx} cz={cz} />
       ) : (
         <>
           <mesh position={[cx, WALL_HEIGHT / 2, oz]}>
@@ -291,6 +314,19 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
       {/* Per-facility decor / furniture */}
       {isLoggingSite && <ForestRoomDecor cx={cx} cz={cz} />}
       {isLoggingSite && <GrassScatter cx={cx} cz={cz} />}
+      {/* Training yard ground: worn dirt sparring ring overlaid on grass, with
+          swaying tufts cleared from the ring (holeRadius ≈ ring radius). */}
+      {isTrainingYard && (
+        <>
+          <TrainingYardFoundation cx={cx} cz={cz} />
+          <FloorDecal
+            position={[cx, 0.02, cz]}
+            size={[4, 4]}
+            texture="/decals/floor/training-yard-dirt-circle.png"
+          />
+          <GrassScatter cx={cx} cz={cz} holeRadius={1.8} scatterHalf={3.35} tuftsPerVariant={150} />
+        </>
+      )}
       {isQuarry && <QuarryRoomDecor cx={cx} cz={cz} />}
       {!isLoggingSite && !isQuarry && <FacilityRoomFurniture type={facility.type} cx={cx} cz={cz} />}
 
@@ -303,6 +339,9 @@ export function FacilityRoom({ facility }: FacilityRoomProps) {
           facilityType={facility.type}
         />
       )}
+
+      {/* Hired mercs wander the tavern floor (free movement, like the guild hall) */}
+      {isTavern && <TavernMercSprites cx={cx} cz={cz} />}
 
       {/* Info label — zone cards only render after camera has settled to avoid mid-lerp misplacement */}
       {!isCombatOpen && (

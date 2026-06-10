@@ -4,7 +4,6 @@
  * Empty state when no quest is selected.
  */
 
-import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Member, Mission } from '@/game/state/game-state';
 import { ENEMIES } from '@/game/data/enemies';
@@ -15,7 +14,6 @@ import { QuestPartySlots } from './quest-party-slots';
 interface QuestDetailPaneProps {
   mission: Mission | null;
   availableMembers: Member[];
-  gold: number;
   /** Party selection (owned by QuestBoard so the roster picker can sit beside the board). */
   selectedMemberIds: string[];
   /** Toggle a member in/out of the party (also drives the slot × remove). */
@@ -42,7 +40,6 @@ function getEnemyPreview(enemyIds: string[]) {
 export function QuestDetailPane({
   mission,
   availableMembers,
-  gold,
   selectedMemberIds,
   onToggleMember,
   onOpenPicker,
@@ -52,16 +49,6 @@ export function QuestDetailPane({
 }: QuestDetailPaneProps) {
   const { t } = useTranslation();
 
-  // Mercenary fee preview
-  const mercFee = useMemo(() => {
-    if (!mission) return 0;
-    const hasMerc = availableMembers
-      .filter((m) => selectedMemberIds.includes(m.id))
-      .some((m) => m.isMercenary);
-    return hasMerc ? Math.floor(mission.goldRewardMin * 0.5) : 0;
-  }, [mission, availableMembers, selectedMemberIds]);
-
-  const canAffordFee = gold >= mercFee;
   const canDispatch = !!mission && selectedMemberIds.length >= mission.requiredMembers;
 
   if (!mission) {
@@ -129,13 +116,6 @@ export function QuestDetailPane({
           onRemove={onToggleMember}
           onOpenPicker={onOpenPicker}
         />
-        {mercFee > 0 && (
-          <div className={`quest-detail-pane__merc-fee${canAffordFee ? '' : ' quest-detail-pane__merc-fee--insufficient'}`}>
-            {canAffordFee
-              ? t('questBoard.detail.mercFee', { fee: mercFee })
-              : t('questBoard.detail.mercFeeInsufficient', { fee: mercFee })}
-          </div>
-        )}
       </section>
 
       <div className="quest-detail-pane__actions">
@@ -149,7 +129,7 @@ export function QuestDetailPane({
         <button
           type="button"
           className="parchment-btn parchment-btn--primary dispatch-button"
-          disabled={!canDispatch || (mercFee > 0 && !canAffordFee)}
+          disabled={!canDispatch}
           onClick={onDispatch}
         >
           <span className="dispatch-button__seal" aria-hidden="true" />

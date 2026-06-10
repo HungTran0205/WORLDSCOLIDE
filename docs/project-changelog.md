@@ -7,6 +7,49 @@ All notable changes to 2000s A.C — After the Collapse are documented in this f
 
 ---
 
+## [Unreleased] — 2026-06-09 (feat: hired mercs wander the tavern floor)
+
+### feat(tavern): hired mercs appear and wander in the tavern room
+
+Available merc contracts now spawn as billboard sprites that wander the tavern's
+open floor — the guild-hall member-wander mechanism, scoped to this 7×7 room.
+
+- `tavern-merc-wander.ts` — pure bounded-wander helpers (walkable cell grid +
+  circular furniture keep-out kept in sync with `tavern-furniture.tsx`; facility
+  rooms have no live collision registry, so the keep-out is static).
+- `tavern-merc-sprites.tsx` — `TavernMercSprites` renders `tavern.mercContracts`
+  with `status === 'available'` (sprite art from each contract's frozen
+  `visitorSnapshot`), reusing `GuildHallSpriteAnimator` + the guild-hall wander
+  loop (target-seek, collision slide, wedge-retarget, spawn-snap). Drives the
+  render loop at 20fps only while the camera is inside the tavern.
+- Mounted in `facility-room.tsx` for the tavern. Mercs disappear while away on a
+  quest (`on-quest`) and after the contract resolves.
+- Known caveat: `GuildHallSpriteAnimator` has the documented multi-instance
+  WebGPU UV freeze for 3+ identical sprites; merc cap is 3-4 and archetypes
+  usually vary, so it's rarely hit (uniform-UV fix is the porting target).
+
+## [Unreleased] — 2026-06-09 (Fix: hired tavern mercs were invisible/unusable)
+
+### fix(tavern): surface hired mercs in quest dispatch + live combat
+
+Hiring a merc (counter-offer accept **or** direct "Hire Merc") deducted gold and created
+a contract in `tavern.mercContracts`, but no player-facing UI read that list — the merc
+could not be seen or used anywhere. The hire/contract/combat-result backend was fully
+wired; only the party-selection surfaces were missing.
+
+- **Quest board** (`quest-board.tsx`): `availableMembers` now also lists available merc
+  contracts as Member-shaped tiles (id === contract.id) via the new
+  `mercContractToPartyMember` helper; dispatch re-splits the selection into member ids
+  vs merc contract ids, validates the chosen mercs, passes `mercContractIds` to
+  `createActiveMission`, and flips them to `on-quest` via `markMercsOnQuest`.
+- **Live combat** (`combat-panel-formation.tsx`, `combat-fight-controller.tsx`): the
+  formation picker, engine init, and result handler now include the mission's mercs
+  (`memberFromMercContract`), so a placed merc actually fights and is scored correctly
+  (previously it would be dropped from the fight and then counted defeated).
+- **Cleanup** (`quest-detail-pane.tsx`): removed the stale per-quest 50% "merc fee"
+  preview — mercs are paid upfront at hire, no per-quest fee is charged, and the preview
+  would have falsely blocked dispatch once mercs became selectable.
+
 ## [Unreleased] — 2026-06-06 (Ancestral Blessings — Phase 6: Golden Aura Particles)
 
 ### feat(combat-vfx): rising golden aura while Ancestral Blessings is active

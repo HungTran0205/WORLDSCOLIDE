@@ -99,13 +99,14 @@ export const linhSonPresets: VfxPreset[] = [
   // ─── Ancestral Blessings aura ────────────────────────────────────────
 
   /**
-   * ls-blessing-aura — slow gold motes rising from a blessed entity while the
+   * ls-blessing-aura — slow gold wisps rising from a blessed entity while the
    * Ancestral Blessings buff is active. Supplies the motion + glow the baked
    * gold-outline overlay can't (the overlay is a static composite). Emitted
    * continuously (throttled) by combat-fight-controller at each blessed, living
-   * entity's feet; anti-gravity (+y) carries the motes up through the body.
-   * Additive + small size + low per-emit count → cheap enough for a persistent
-   * loop that may run for the whole fight.
+   * entity's feet; gentle anti-gravity (+y) carries the wisps up through the body.
+   * `stretchBySpeed` elongates each mote along its velocity so the rising gold
+   * reads as thin strands ("hair"/wisps) instead of round dots. Additive + small
+   * size + low per-emit count → cheap enough for a persistent whole-fight loop.
    */
   {
     id: 'ls-blessing-aura',
@@ -113,24 +114,79 @@ export const linhSonPresets: VfxPreset[] = [
     category: 'linh-son',
     categoryLabel: 'Linh Sơn',
     emoji: '✨',
-    description: 'Rising gold motes around a blessed entity (Ancestral Blessings)',
+    description: 'Rising gold wisps around a blessed entity (Ancestral Blessings)',
     props: {
       maxParticles: 400,
-      size: [0.05, 0.14],
-      colorStart: ['#ffe88a', '#ffcc44', '#D4A017'],
-      colorEnd: ['#ff9933', '#553311'],
+      size: [0.08, 0.2],
+      colorStart: ['#ccb03f', '#ffcc44', '#D4A017'],
+      colorEnd: ['#ff9933', '#b9253d'],
       fadeSize: [0.9, 0.3],
       fadeOpacity: [0.9, 0],
-      gravity: [0, 1.2, 0],
-      lifetime: [1.5, 3],
-      direction: [[-0.25, 0.25], [0.6, 1], [-0.25, 0.25]],
-      speed: [0.02, 0.06],
+      // Gentle rise (down from 1.2) so the wisps drift up slowly.
+      gravity: [0, 0.7, 0],
+      // Longer life + mostly-vertical motion → taller, slower-reading strands.
+      lifetime: [2, 3.5],
+      direction: [[-0.2, 0.2], [0.7, 1], [-0.2, 0.2]],
+      speed: [0.015, 0.045],
       emitterShape: EmitterShape.DISK,
       emitterRadius: [0, 0.5],
       startPositionAsDirection: false,
-      turbulence: { intensity: 0.4, frequency: 1.0, speed: 0.25 },
+      turbulence: { intensity: 0.5, frequency: 0.9, speed: 0.3 },
+      // Stretch motes along velocity → thin hair-like gold strands, not dots.
+      stretchBySpeed: { factor: 7, maxStretch: 9 },
       blending: Blending.ADDITIVE,
       intensity: 4,
+    },
+  },
+
+  /**
+   * ls-blessing-dust — an expanding RING of fine golden smoke that pulses
+   * outward along the ground around a blessed entity (a shockwave-style ring,
+   * not scattered puffs). Pairs with the rising `ls-blessing-aura` wisps
+   * (vertical) — this is the horizontal ground layer. Each emission spawns the
+   * grains together on a thin perimeter circle (`emitterSurfaceOnly` + a narrow
+   * `emitterRadius` annulus); `startPositionAsDirection` on the flat DISK makes
+   * every grain expand radially so the whole circle grows as one ring. Low
+   * turbulence + a narrow speed range keep the ring coherent instead of breaking
+   * into clumps; friction slows the ring as it spreads, then it fades. Emitted by
+   * combat-fight-controller on a ~0.6s cadence → repeating ring waves.
+   * (CombatVfxRoot forces additive, so the smoke glows gold — on-theme for the
+   * blessed buff rather than earthy brown.)
+   */
+  {
+    id: 'ls-blessing-dust',
+    name: 'Vòng Tổ Tiên (Ancestral Ring)',
+    category: 'linh-son',
+    categoryLabel: 'Linh Sơn',
+    emoji: '🌀',
+    description: 'Expanding golden smoke ring pulsing outward around a blessed entity',
+    props: {
+      maxParticles: 600,
+      // Fine soft grains — fadeSize growth merges them into a smooth ring band.
+      size: [0.05, 0.12],
+      colorStart: ['#e8cf8a', '#d4a017', '#c2a878'],
+      colorEnd: ['#8B6914', '#3a2a10'],
+      // Grow + soft semi-transparent start → diffuse, smoke-like ring.
+      fadeSize: [0.7, 1.8],
+      fadeOpacity: [0.6, 0],
+      // Near-flat ground ring (tiny settle, not a falling burst).
+      gravity: [0, -0.1, 0],
+      lifetime: [0.8, 1.3],
+      // Narrow speed range → the ring stays a coherent circle as it expands.
+      speed: [0.25, 0.4],
+      emitterShape: EmitterShape.DISK,
+      // Thin perimeter annulus → grains start on a circle, not a filled disk.
+      emitterRadius: [0.38, 0.7],
+      emitterSurfaceOnly: true,
+      // Spawn offset doubles as velocity → the circle expands outward as a ring
+      // (no explicit `direction`, same radial pattern as ls-earth-slam).
+      startPositionAsDirection: true,
+      // Low swirl only — high turbulence would shatter the ring into clumps.
+      turbulence: { intensity: 0.25, frequency: 0.8, speed: 0.3 },
+      // Ring slows as it spreads, then fades in place.
+      friction: { intensity: 0.08, easing: 'easeOut' },
+      blending: Blending.ADDITIVE,
+      intensity: 5,
     },
   },
 

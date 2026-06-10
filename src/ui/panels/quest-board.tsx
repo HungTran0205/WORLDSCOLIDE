@@ -10,6 +10,7 @@ import type { QuestTier, Mission } from '@/game/state/game-state';
 import { useGameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
 import { validateDispatch, createActiveMission } from '@/game/systems/mission-dispatch';
+import { mercContractToPartyMember } from '@/game/systems/tavern-merc-lifecycle';
 import { autoAssignMembers } from '@/game/utils/auto-assign-members';
 import { QUEST_BOARD_TIER_BY_LEVEL } from '@/game/data/buildings';
 import { GameIcon } from '@/ui/components/game-icon';
@@ -38,14 +39,23 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
   const gold = useGameStore((s) => s.gold);
   const dispatchMission = useGameStore((s) => s.dispatchMission);
   const updateMemberStatus = useGameStore((s) => s.updateMemberStatus);
+  const markMercsOnQuest = useGameStore((s) => s.markMercsOnQuest);
+  const mercContracts = useGameStore((s) => s.tavern.mercContracts);
   const completedMissions = useGameStore((s) => s.completedMissions);
   const tutorialStep = useGameStore((s) => s.tutorialStep);
   const setTutorialStep = useGameStore((s) => s.setTutorialStep);
 
+  // Party pool = idle guild members + available tavern mercs (one-quest contracts).
+  // Mercs surface as Member-shaped tiles (id === contract.id) so the picker, slots,
+  // and auto-assign treat them uniformly; dispatch re-splits them by contract id.
   const availableMembers = useMemo(() => {
     const all = founder ? [founder, ...roster] : roster;
-    return all.filter((m) => m.status === 'idle');
-  }, [founder, roster]);
+    const idleMembers = all.filter((m) => m.status === 'idle');
+    const availableMercs = mercContracts
+      .filter((c) => c.status === 'available')
+      .map(mercContractToPartyMember);
+    return [...idleMembers, ...availableMercs];
+  }, [founder, roster, mercContracts]);
 
   const unlockedTiers = useMemo(() => {
     const questBoardFurniture = guildHall.furniture.find((f) => f.type === 'quest-board');
@@ -201,17 +211,21 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
 
   const handleDispatch = () => {
     if (!selectedMission) return;
-    const memberIds = selectedMemberIds;
-    // Tavern mercs are not surfaced in the quest-board party UI today, so the
-    // party is members-only. Kept as an empty list for createActiveMission.
-    const mercContractIds: string[] = [];
+    // Selection mixes guild members and tavern mercs (merc tile id === contract id).
+    // Split them so members update roster status and mercs flip their contract to
+    // 'on-quest' — combat resolves both via active.mercContractIds downstream.
+    const mercIdSet = new Set(mercContracts.map((c) => c.id));
+    const mercContractIds = selectedMemberIds.filter((id) => mercIdSet.has(id));
+    const memberIds = selectedMemberIds.filter((id) => !mercIdSet.has(id));
     const allMembers = [...(founder ? [founder] : []), ...roster];
     const party = allMembers.filter((m) => memberIds.includes(m.id));
-    const validation = validateDispatch(selectedMission, party, [], gold);
+    const selectedMercs = mercContracts.filter((c) => mercContractIds.includes(c.id));
+    const validation = validateDispatch(selectedMission, party, selectedMercs, gold);
     if (!validation.valid) return;
     const now = Date.now();
     dispatchMission(createActiveMission(selectedMission, memberIds, mercContractIds, now));
     memberIds.forEach((id) => updateMemberStatus(id, 'on-mission'));
+    if (mercContractIds.length > 0) markMercsOnQuest(mercContractIds, selectedMission.id);
     setSelectedId(null);
     setSelectedMemberIds([]);
     setPickerSlot(null);
@@ -311,7 +325,6 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
           <QuestDetailPane
             mission={selectedMission}
             availableMembers={availableMembers}
-            gold={gold}
             selectedMemberIds={selectedMemberIds}
             onToggleMember={toggleMember}
             onOpenPicker={setPickerSlot}
