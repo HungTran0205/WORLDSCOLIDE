@@ -5,7 +5,7 @@ import {
   nearestTavernCell,
   pickTavernTarget,
   BLOCKED_RETARGET_FRAMES,
-} from '@/scene/tavern/tavern-merc-wander';
+} from '../src/scene/tavern/tavern-merc-wander';
 
 // Room center used across cases — keep-out math is relative to (cx,cz).
 const CX = 10;

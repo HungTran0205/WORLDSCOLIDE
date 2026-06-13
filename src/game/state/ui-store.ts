@@ -113,3 +113,8 @@ export const useUiStore = create<UiStore>()((set, get) => ({
     set({ questBoardTutorialSeen: false, facilityHintSeen: { ...FACILITY_HINT_DEFAULT } });
   },
 }));
+
+// Dev-only: expose uiStore for E2E test scripts to poll worldReady / other UI state.
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  (window as unknown as { useUiStore: typeof useUiStore }).useUiStore = useUiStore;
+}
