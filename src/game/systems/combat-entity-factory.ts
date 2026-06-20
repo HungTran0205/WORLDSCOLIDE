@@ -53,9 +53,12 @@ export function memberToArenaEntity(
     gearFlatDefense: gear.flatDefense,
     baseStats: snapshotBaseStats(member.stats),
     passiveState: createPassiveState(member.civilization),
-    // Ancestral Blessings gate captured at combat init (POC: LS-SWORD-M only).
-    // A full Blessed bar here arms the buff; it can fire once when HP drops ≤ 30%.
-    blessedReady: getBlessedPct(member) >= 1 && member.archetype === 'sword',
+    // Ancestral Blessings gate captured at combat init. A full Blessed bar arms
+    // the buff; it fires once when HP drops ≤ 30%. Civ-wide for Linh Sơn — the
+    // Blessed resource only accrues for that civilization, so the bar check
+    // scopes it; archetypes with overlay art (sword/scout/warrior) also show the
+    // gold-outline cast, others get the stat buff without the dedicated clip.
+    blessedReady: member.civilization === 'LinhSon' && getBlessedPct(member) >= 1,
     dodgeRate: derived.dodgeRate,
     blockRate: derived.blockRate,
     critDmg: derived.critDmg,

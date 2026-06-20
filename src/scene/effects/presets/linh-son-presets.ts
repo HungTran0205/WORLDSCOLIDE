@@ -96,6 +96,72 @@ export const linhSonPresets: VfxPreset[] = [
     },
   },
 
+  // ─── Templar skill presets ───────────────────────────────────────────
+
+  /**
+   * ls-parry-glint — sharp blue-silver spark burst when entering the Riposte
+   * counter-stance. Short-lived, additive, small grains → reads as a metallic
+   * blade glint, not a soft aura. Used by the riposte cast cue + (optionally)
+   * the parry-flash on a successful counter.
+   */
+  {
+    id: 'ls-parry-glint',
+    name: 'Phản Đòn (Parry Glint)',
+    category: 'linh-son',
+    categoryLabel: 'Linh Sơn',
+    emoji: '🛡️',
+    description: 'Sharp blue-silver spark burst on entering Riposte stance',
+    props: {
+      maxParticles: 400,
+      size: [0.05, 0.14],
+      colorStart: ['#7ab8ff', '#eaf4ff', '#ffffff'],
+      colorEnd: ['#3a6fb0'],
+      fadeOpacity: [1, 0],
+      lifetime: [0.2, 0.5],
+      speed: [0.4, 0.9],
+      gravity: [0, -1, 0],
+      emitterShape: EmitterShape.SPHERE,
+      emitterRadius: [0.2, 0.6],
+      startPositionAsDirection: true,
+      blending: Blending.ADDITIVE,
+      intensity: 6,
+    },
+  },
+
+  /**
+   * ls-warcry-updraft — rising orange-red rage column on the Rally warcry.
+   * Hot palette (orange→deep red) deliberately distinct from the gold Ancestral
+   * aura so the player doesn't confuse the two. stretchBySpeed elongates motes
+   * into upward strands; additive for a glowing morale surge.
+   */
+  {
+    id: 'ls-warcry-updraft',
+    name: 'Tiếng Hét (Warcry Updraft)',
+    category: 'linh-son',
+    categoryLabel: 'Linh Sơn',
+    emoji: '⚔️',
+    description: 'Rising orange-red rage column on Rally warcry',
+    props: {
+      maxParticles: 500,
+      size: [0.08, 0.22],
+      colorStart: ['#ffb24d', '#ff7a33', '#ffd98a'],
+      colorEnd: ['#aa2200', '#330000'],
+      fadeSize: [1, 0.3],
+      fadeOpacity: [0.95, 0],
+      gravity: [0, 1.2, 0],
+      lifetime: [0.5, 1.2],
+      direction: [[-0.25, 0.25], [0.7, 1], [-0.25, 0.25]],
+      speed: [0.03, 0.09],
+      emitterShape: EmitterShape.DISK,
+      emitterRadius: [0, 0.5],
+      startPositionAsDirection: false,
+      turbulence: { intensity: 0.6, frequency: 1, speed: 0.4 },
+      stretchBySpeed: { factor: 5, maxStretch: 7 },
+      blending: Blending.ADDITIVE,
+      intensity: 8,
+    },
+  },
+
   // ─── Ancestral Blessings aura ────────────────────────────────────────
 
   /**

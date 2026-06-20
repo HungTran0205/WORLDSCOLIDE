@@ -3,7 +3,7 @@
  *
  * Covers the non-tick pieces of Phase 3 (the per-tick latch itself lives in
  * combat-simulator.test.ts → "LinhSon passive — Ancestral Blessings"):
- *  - combat-entity-factory: blessedReady POC gate (full bar AND archetype 'sword')
+ *  - combat-entity-factory: blessedReady gate (full bar AND civ 'LinhSon')
  *  - collectBlessedConsumed: which ally ids drain their bar post-combat
  *  - roster-slice consumeBlessed: drains blessedPct → 0 for fired members only
  */
@@ -31,9 +31,11 @@ const pos = { x: 0, y: 0, z: 0 };
 // ── blessedReady POC gate (combat-entity-factory) ────────────────────────────
 
 describe('memberToArenaEntity — blessedReady gate', () => {
-  it('arms blessedReady for a SWORD member with a full bar', () => {
-    const e = memberToArenaEntity(makeMember({ archetype: 'sword', blessedPct: 1 }), pos);
-    expect(e.blessedReady).toBe(true);
+  it('arms blessedReady for any LinhSon archetype with a full bar', () => {
+    for (const archetype of ['sword', 'scout', 'warrior'] as const) {
+      const e = memberToArenaEntity(makeMember({ archetype, blessedPct: 1 }), pos);
+      expect(e.blessedReady).toBe(true);
+    }
   });
 
   it('does NOT arm when the bar is not full', () => {
@@ -41,11 +43,9 @@ describe('memberToArenaEntity — blessedReady gate', () => {
     expect(e.blessedReady).toBe(false);
   });
 
-  it('does NOT arm a non-sword archetype (POC: SWORD only), even at a full bar', () => {
-    const scout = memberToArenaEntity(makeMember({ archetype: 'scout', blessedPct: 1 }), pos);
-    const warrior = memberToArenaEntity(makeMember({ archetype: 'warrior', blessedPct: 1 }), pos);
-    expect(scout.blessedReady).toBe(false);
-    expect(warrior.blessedReady).toBe(false);
+  it('does NOT arm a non-LinhSon member, even at a full bar', () => {
+    const e = memberToArenaEntity(makeMember({ civilization: 'DeQuoc', blessedPct: 1 }), pos);
+    expect(e.blessedReady).toBe(false);
   });
 
   it('treats a missing blessedPct as full (getBlessedPct default)', () => {

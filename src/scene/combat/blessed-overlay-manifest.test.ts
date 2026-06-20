@@ -18,21 +18,24 @@ import {
 } from '@/scene/sprites/combat-sprite-resolver';
 
 describe('blessed-overlay-manifest', () => {
-  it('LS-SWORD-M has an overlay descriptor', () => {
-    expect(hasBlessedOverlay('LS-SWORD-M')).toBe(true);
-    expect(getBlessedOverlayDescriptor('LS-SWORD-M')).toBeDefined();
+  it('wired chars have an overlay descriptor', () => {
+    for (const id of ['LS-SWORD-M', 'LS-SCOUT-F', 'LS-WARRIOR-M']) {
+      expect(hasBlessedOverlay(id)).toBe(true);
+      expect(getBlessedOverlayDescriptor(id)).toBeDefined();
+    }
   });
 
-  it('unknown char has no overlay', () => {
-    expect(hasBlessedOverlay('LS-WARRIOR-M')).toBe(false);
-    expect(getBlessedOverlayDescriptor('LS-WARRIOR-M')).toBeUndefined();
+  it('unwired char has no overlay', () => {
+    // SCOUT-M / WARRIOR-F have no authored overlay art yet.
+    expect(hasBlessedOverlay('LS-SCOUT-M')).toBe(false);
+    expect(getBlessedOverlayDescriptor('LS-WARRIOR-F')).toBeUndefined();
     expect(getBlessedOverlayDescriptor('')).toBeUndefined();
   });
 
   it('LS-SWORD-M segments match the 20-cell single-row layout', () => {
     const d = getBlessedOverlayDescriptor('LS-SWORD-M')!;
     expect(d.frameSize).toBe(128);
-    expect(d.path).toContain('Ancestral-lv1-overlay.png');
+    expect(d.path).toContain('ancestral-lv1-overlay.png');
     expect(d.segments.idle).toEqual({ offset: 0, count: 8 });
     expect(d.segments.attack).toEqual({ offset: 8, count: 8 });
     expect(d.segments.blocking).toEqual({ offset: 16, count: 4 });

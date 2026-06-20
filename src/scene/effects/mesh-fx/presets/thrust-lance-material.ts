@@ -49,10 +49,10 @@ async function getTslFactory() {
     const ax = centered.x.mul(ca).add(centered.y.mul(sa)); // along lance
     const ay = centered.y.mul(ca).sub(centered.x.mul(sa)); // across lance
 
-    // Leading tip shoots forward over first 70% of life, then holds.
-    const adv = smoothstep(float(0), float(0.7), uProgress);
+    // Leading tip shoots forward over first 45% of life, then holds.
+    const adv = smoothstep(float(0), float(0.45), uProgress);
     const tip  = float(-0.18).add(adv.mul(0.6));   // -0.18 → 0.42
-    const tail = tip.sub(0.5);                      // fixed lance length
+    const tail = tip.sub(0.65);                     // fixed lance length
 
     const nose      = smoothstep(tip, tip.sub(float(0.05)), ax);
     const trailMask = smoothstep(tail.sub(float(0.14)), tail, ax);
@@ -119,9 +119,9 @@ void main() {
   float ax = c.x * ca + c.y * sa;
   float ay = c.y * ca - c.x * sa;
 
-  float adv      = smoothstep(0.0, 0.7, uProgress);
+  float adv      = smoothstep(0.0, 0.45, uProgress);
   float tip      = -0.18 + adv * 0.6;
-  float tail     = tip - 0.5;
+  float tail     = tip - 0.65;
   float nose     = smoothstep(tip, tip - 0.05, ax);
   float trailMsk = smoothstep(tail - 0.14, tail, ax);
   float along    = nose * trailMsk;

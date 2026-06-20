@@ -54,9 +54,9 @@ export const COMBAT_SPRITE_MANIFEST = {
   charsWithBlockingEast: new Set<string>([
     'LS-SCOUT-F', 'LS-WARRIOR-M', 'LS-SWORD-M',
   ]),
-  /** Char IDs with an Ancestral Blessings casting sheet (8 frames, east). POC: SWORD only. */
+  /** Char IDs with an Ancestral Blessings casting sheet (8 frames, east). */
   charsWithCastingEast: new Set<string>([
-    'LS-SWORD-M',
+    'LS-SWORD-M', 'LS-SCOUT-F', 'LS-WARRIOR-M',
   ]),
   /** Char IDs with `animations/death/east/frame_0..7.png`. */
   charsWithDeathEast: new Set<string>([

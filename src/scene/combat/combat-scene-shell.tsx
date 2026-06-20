@@ -39,6 +39,9 @@ import { CombatCameraDebug } from './combat-camera-debug';
 import { CombatMaskDevTuner } from './combat-mask-dev-tuner';
 import { CombatAoeLayer } from './combat-aoe-layer';
 import { CombatImpactLayer } from './combat-impact-layer';
+import { MeshFxPoolRoot } from '@/scene/effects/mesh-fx';
+import { CombatSkillVfxLayer } from '@/scene/effects/skill-vfx/combat-skill-vfx-layer';
+import { CombatCameraShake } from './camera-impulse/combat-camera-shake';
 
 export interface CombatSceneShellProps {
   /** Far + mid background planes. Caller owns Suspense wrapping. */
@@ -77,9 +80,20 @@ export function CombatSceneShell({ bg, ground, foreground }: CombatSceneShellPro
           read on top of entities; additive WebGPU-TSL materials. No Suspense:
           materials build async internally (useState), no texture load. */}
       <CombatImpactLayer />
+      {/* Mesh-FX pool — N×kind slots mounted once; warm() builds handles on
+          first combat open. Per-cast drivers (MeshFxVfx) acquire/release slots
+          without mounting new geometry. */}
+      <MeshFxPoolRoot />
+      {/* Skill cue-sheet orchestrator — schedules mesh/trail/particles/shake/
+          hitstop/sound per registered skill. Suppresses default gen-hit path
+          for skills that own a full cue sheet. */}
+      <CombatSkillVfxLayer />
       {foreground}
       <CombatProjectionPublisher />
       <CombatFightController />
+      {/* Camera shake impulse applier — decaying oscillator offset on impact cues.
+          Recomputes base from constants every frame; never drifts vs force-reset. */}
+      <CombatCameraShake />
       {/* Post FX — must mount AFTER all visible scene content so the composer's
           render-loop replacement renders the full tree. The two paths are
           mutually exclusive by renderer type, so exactly one composer runs:

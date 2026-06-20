@@ -74,6 +74,16 @@ export interface HeatHazeUniforms {
   time: TslUniformHandle<number>;
 }
 
+/** Distortion ring node uniforms — radial screen-space UV warp for shockwave rings.
+ *  Each ring slot is a vec4 [centerU, centerV, radius01, strength]; strength = 0
+ *  collapses the slot to a no-op without chain rebuild (identity at zero). */
+export interface DistortionRingsUniforms {
+  /** 4 TSL vec4 uniform nodes; written each frame by sampleRings(). */
+  rings: any[];
+  /** Viewport aspect ratio uniform (width/height) — keeps rings circular. */
+  aspect: TslUniformHandle<number>;
+}
+
 /**
  * Holder mutated by the WebGPU pass's async `useMemo`. The host stores it in
  * a ref so per-frame and per-preset effects can read uniform handles without
@@ -89,4 +99,5 @@ export interface TslChainHolder {
   chromaticAberration?: ChromaticAberrationUniforms;
   tiltShift?: TiltShiftUniforms;
   heatHaze?: HeatHazeUniforms;
+  distortionRings?: DistortionRingsUniforms;
 }

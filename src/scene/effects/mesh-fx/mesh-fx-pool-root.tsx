@@ -20,10 +20,14 @@ import type { MeshFxKind } from './mesh-fx-types';
 
 /** World-space plane size [w, h] for each kind's pool slot. */
 const SLOT_SIZE: Record<MeshFxKind, [number, number]> = {
-  'thrust-lance':   [3.0, 1.5],
+  'thrust-lance':   [4.2, 2.1],
   'shockwave-ring': [2.5, 2.5],
   'slash-arc':      [2.0, 2.0],
   'impact-star':    [2.0, 2.0],
+  // Tall quad → the Cleave crescent's long axis spans world Z (the depth/lane
+  // axis, which projects to screen-vertical) so it sweeps across lanes as it
+  // flies toward the enemies.
+  'cleave-arc':     [7, 2.5],
 };
 
 export function MeshFxPoolRoot() {

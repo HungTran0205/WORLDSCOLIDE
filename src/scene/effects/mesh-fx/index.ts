@@ -44,4 +44,7 @@ export const MESH_FX_REGISTRY: Record<MeshFxKind, MeshFxRegistryEntry> = {
   'shockwave-ring': { build: createShockwaveRingMaterial,  defaultSize: [2.5, 2.5], defaultDuration: 0.70, poolSize: 4 },
   'slash-arc':      { build: createSlashArcMaterial,       defaultSize: [2.0, 2.0], defaultDuration: 0.45, poolSize: 4 },
   'impact-star':    { build: createImpactStarMaterial,     defaultSize: [2.0, 2.0], defaultDuration: 0.35, poolSize: 4 },
+  // Cleave slash (shares slash-arc material; pool applies axisAngle π/2 + steel
+  // color via PARAMS_BY_KIND). Long axis spans world Z; flies +X toward enemies.
+  'cleave-arc':     { build: createSlashArcMaterial,       defaultSize: [3.4, 4.4], defaultDuration: 0.30, poolSize: 4 },
 };

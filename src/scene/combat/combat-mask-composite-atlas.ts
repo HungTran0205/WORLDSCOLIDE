@@ -9,10 +9,10 @@
  * dispose on combat unmount via disposeCombatMaskCompositeAtlasCache() to avoid
  * accumulating CanvasTextures.
  *
- * Layers per frame, painted back-to-front: body slice → identity mask (per-frame
- * anchored, optional) → blessed overlay (full-frame gold outline + tattoo, optional).
- * A blessed-only ally (no identity mask) still composites; a mask-only ally is the
- * original behavior.
+ * Layers per frame, painted back-to-front: body slice → blessed overlay (full-frame
+ * gold outline + tattoo, optional) → identity mask (per-frame anchored, optional, on
+ * top so the face stays above the aura). A blessed-only ally (no identity mask) still
+ * composites; a mask-only ally is the original behavior.
  *
  * Coordinate convention: top-left, matches canvas 2D and combat-mask-anchors.ts.
  */
@@ -57,7 +57,7 @@ export interface BuildCombatMaskAtlasArgs {
   sheetSource: SheetCompositeSource;
   /** Identity mask texture; omit when maskId is null (no per-frame face mask). */
   maskTexture?: THREE.Texture;
-  /** Phase 5: gold-outline + tattoo overlay drawn full-frame after body(+mask). */
+  /** Gold-outline + tattoo overlay drawn full-frame over the body, beneath the mask. */
   blessedOverlay?: BlessedOverlaySource;
 }
 
@@ -148,19 +148,12 @@ export function buildCombatMaskCompositeAtlas(args: BuildCombatMaskAtlasArgs): S
     // Body: slice frame from the sheet
     ctx.drawImage(sheetImg, srcX, srcY, frameW, frameH, destX, destY, frameW, frameH);
 
-    // Identity mask: drawn over body at per-frame anchor position (optional)
-    if (maskImg) {
-      const anchor = resolveCombatMaskAnchor(charId, anim, i);
-      const drawX = destX + anchor.x - anchor.size / 2;
-      const drawY = destY + anchor.y - anchor.size / 2;
-      ctx.drawImage(maskImg, drawX, drawY, anchor.size, anchor.size);
-    }
-
-    // Blessed overlay: full-frame gold outline + tattoo, painted last so it sits
-    // on top of body (+ identity mask). Single-row sheet of square frames authored
-    // 1:1 with the body; the per-anim segment offset selects the matching cell.
-    // Frame size is derived from the overlay sheet itself (single-row → height), so
-    // it stays correct regardless of the body frame size.
+    // Blessed overlay: full-frame gold outline + tattoo, drawn BEFORE the identity
+    // mask so the mask (the character's face) stays on top of the gold aura rather
+    // than being covered by it. Single-row sheet of square frames authored 1:1 with
+    // the body; the per-anim segment offset selects the matching cell. Frame size is
+    // derived from the overlay sheet itself (single-row → height) so it stays correct
+    // regardless of the body frame size.
     if (overlayImg && blessedOverlay) {
       const ovFrameSize = (overlayImg as HTMLImageElement).height || frameH;
       // Clamp to this animation's own segment: if the body anim has more frames than
@@ -169,6 +162,16 @@ export function buildCombatMaskCompositeAtlas(args: BuildCombatMaskAtlasArgs): S
       const ovLocal = Math.min(i, blessedOverlay.frameCount - 1);
       const ovSrcX = (blessedOverlay.segmentOffset + ovLocal) * ovFrameSize;
       ctx.drawImage(overlayImg, ovSrcX, 0, ovFrameSize, ovFrameSize, destX, destY, frameW, frameH);
+    }
+
+    // Identity mask: painted last (topmost) over body + blessed overlay, at the
+    // per-frame anchor position (optional). Keeping the face above the gold aura
+    // preserves the character's identity while blessed.
+    if (maskImg) {
+      const anchor = resolveCombatMaskAnchor(charId, anim, i);
+      const drawX = destX + anchor.x - anchor.size / 2;
+      const drawY = destY + anchor.y - anchor.size / 2;
+      ctx.drawImage(maskImg, drawX, drawY, anchor.size, anchor.size);
     }
   }
 

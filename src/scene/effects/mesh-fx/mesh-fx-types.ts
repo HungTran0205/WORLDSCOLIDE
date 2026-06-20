@@ -6,8 +6,10 @@
 
 import type * as THREE from 'three';
 
-/** All primitive kinds the pool pre-warms. */
-export type MeshFxKind = 'thrust-lance' | 'shockwave-ring' | 'slash-arc' | 'impact-star';
+/** All primitive kinds the pool pre-warms.
+ *  `cleave-arc` is a wide vertical-sweep variant of `slash-arc` (larger quad +
+ *  axisAngle ≈ π/2) used by Cleave to read as a crescent across a cluster. */
+export type MeshFxKind = 'thrust-lance' | 'shockwave-ring' | 'slash-arc' | 'impact-star' | 'cleave-arc';
 
 /** Construction params shared by all preset factories. */
 export interface MeshFxParams {
@@ -50,6 +52,9 @@ export interface LeaseHandle {
   setColor: (hex: string) => void;
   /** Move the mesh slot in world space. */
   setPosition: (x: number, y: number, z: number) => void;
+  /** Uniform-scale the mesh slot (default 1). Used for layered FX (e.g. a wider
+   *  glow halo behind a core slash). Reset to 1 on acquire. */
+  setScale: (s: number) => void;
   /** Return the slot to the pool and hide its mesh. */
   release: () => void;
 }

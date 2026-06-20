@@ -14,9 +14,7 @@ const AT_CONNECT = 330; // matches COMBAT_IMPACT_DELAY_S * 1000
 
 export const CIV_PRESET_CUE_SHEETS: SkillCueSheet[] = [
   // ── Templar ──────────────────────────────────────────────────────────────
-  { skillId: 'cleave',  cues: [{ atMs: AT_CONNECT, type: 'particles', presetId: 'ls-earth-slam',    count: 20 }] },
-  { skillId: 'riposte', cues: [{ atMs: AT_CONNECT, type: 'particles', presetId: 'ls-fire',          count: 16 }] },
-  { skillId: 'rally',   cues: [{ atMs: AT_CONNECT, type: 'particles', presetId: 'ls-blessing-aura', count: 12 }] },
+  // Cleave, Riposte, Rally have full dedicated cue sheets (cleave/riposte/rally-cue-sheet.ts).
 
   // ── Forester ──────────────────────────────────────────────────────────────
   { skillId: 'sunder',  cues: [{ atMs: AT_CONNECT, type: 'particles', presetId: 'ls-earth-slam',    count: 22 }] },

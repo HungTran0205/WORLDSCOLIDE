@@ -16,7 +16,7 @@ export const PIERCE_CUE_SHEET: SkillCueSheet = {
     // Lance emerges at t=0 and advances forward over its 450ms lifetime.
     { atMs: 0,   type: 'mesh',      kind: 'thrust-lance',   durationMs: 450 },
     // Trail fires along the lance path for the same window (useFrame loop).
-    { atMs: 0,   type: 'trail',     durationMs: 450 },
+    //{ atMs: 0,   type: 'trail',     durationMs: 450 },
     // First shockwave ring expands at the pre-connect frame.
     { atMs: 280, type: 'mesh',      kind: 'shockwave-ring', durationMs: 300 },
     // Second ring + all impact feedback lands on the connect frame.

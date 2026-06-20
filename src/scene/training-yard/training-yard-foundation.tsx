@@ -11,7 +11,6 @@
  */
 
 import { useTexture } from '@react-three/drei';
-import * as THREE from 'three';
 import { assetUrl } from '@/lib/asset-url';
 
 const FOUND_TEX = '/training-yard/LinhSon/foundation.png';

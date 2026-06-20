@@ -13,6 +13,9 @@
 
 import type { SkillCueSheet } from './cue-sheet-types';
 import { PIERCE_CUE_SHEET } from './pierce-cue-sheet';
+import { CLEAVE_CUE_SHEET } from './cleave-cue-sheet';
+import { RIPOSTE_CUE_SHEET } from './riposte-cue-sheet';
+import { RALLY_CUE_SHEET } from './rally-cue-sheet';
 import { CIV_PRESET_CUE_SHEETS } from './civ-preset-cue-sheets';
 
 const _registry: Record<string, SkillCueSheet> = {};
@@ -21,8 +24,11 @@ function _register(sheet: SkillCueSheet): void {
   _registry[sheet.skillId] = sheet;
 }
 
-// Pierce first so it can't be overwritten by the civ-preset loop.
+// Full per-skill sheets first so they can't be overwritten by the civ-preset loop.
 _register(PIERCE_CUE_SHEET);
+_register(CLEAVE_CUE_SHEET);
+_register(RIPOSTE_CUE_SHEET);
+_register(RALLY_CUE_SHEET);
 for (const sheet of CIV_PRESET_CUE_SHEETS) _register(sheet);
 
 /** True when a cue sheet exists for the given skillId. */

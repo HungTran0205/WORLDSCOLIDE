@@ -18,6 +18,8 @@ import { useGameStore } from '@/game/state/store';
 import { pushDistortionRing, clear as clearDistortionRings } from '@/scene/combat/distortion/distortion-ring-store';
 import { hasCueSheet, getCueSheet } from './skill-cue-registry';
 import { dispatchImperativeCues } from './skill-cue-dispatcher';
+import { resolveSkillEvent } from './skill-event-resolver';
+import type { MeshAnchor } from './cue-sheet-types';
 import * as pool from '@/scene/effects/mesh-fx/mesh-fx-pool';
 import { emitTrailAlong } from '@/scene/effects/mesh-fx/trail-emit-helper';
 import type { LeaseHandle } from '@/scene/effects/mesh-fx/mesh-fx-types';
@@ -27,7 +29,12 @@ import type { CombatEvent } from '@/game/systems/combat-types';
 const MAX_CONCURRENT_SEQUENCES = 4;
 const IMPACT_Y = 1.2;
 
-interface MeshLease { lease: LeaseHandle; startMs: number; durationMs: number }
+interface MeshLease {
+  lease: LeaseHandle; startMs: number; durationMs: number;
+  /** When set, the mesh lerps from→to over its lifetime (traveling slash). */
+  from?: [number, number, number];
+  to?: [number, number, number];
+}
 interface TrailWindow {
   startMs: number; durationMs: number;
   from: readonly [number, number, number];
@@ -74,6 +81,8 @@ export function CombatSkillVfxLayer() {
   const lsHeal          = useVFXEmitter('ls-heal');
   const lsBlessingAura  = useVFXEmitter('ls-blessing-aura');
   const lsBlessingDust  = useVFXEmitter('ls-blessing-dust');
+  const lsParryGlint    = useVFXEmitter('ls-parry-glint');
+  const lsWarcryUpdraft = useVFXEmitter('ls-warcry-updraft');
 
   // Stable emitter map — updated each render so closures always call current emitter.
   const emittersRef = useRef<Record<string, (p: [number, number, number], n?: number) => void>>({});
@@ -89,6 +98,8 @@ export function CombatSkillVfxLayer() {
     'ls-heal':           (p, n) => lsHeal.emit(p, n ?? 16),
     'ls-blessing-aura':  (p, n) => lsBlessingAura.emit(p, n ?? 12),
     'ls-blessing-dust':  (p, n) => lsBlessingDust.emit(p, n ?? 24),
+    'ls-parry-glint':    (p, n) => lsParryGlint.emit(p, n ?? 12),
+    'ls-warcry-updraft': (p, n) => lsWarcryUpdraft.emit(p, n ?? 16),
   };
 
   const prevEventsRef = useRef<CombatEvent[] | null>(null);
@@ -105,66 +116,105 @@ export function CombatSkillVfxLayer() {
     }
     prevEventsRef.current = recentEvents;
 
+    // Cast-scoped dedup: casters whose cast-level cues already fired this batch.
+    // Local (not a ref) so it resets every event batch.
+    const seenCast = new Set<string>();
+
     for (const ev of recentEvents) {
-      if (ev.type !== 'skill-use') continue;
-      const attacker = arenaEntities.find((e) => e.id === ev.attackerId);
-      const skillId  = attacker?.skillId;
+      const resolved = resolveSkillEvent(ev);
+      if (!resolved) continue;
+      const { casterId, victimId, trigger } = resolved;
+
+      const caster  = arenaEntities.find((e) => e.id === casterId);
+      const skillId = caster?.skillId;
       if (!hasCueSheet(skillId)) continue;
       const sheet = getCueSheet(skillId)!;
+      // Only fire a sheet for the event type it declares (default 'skill-use').
+      if ((sheet.trigger ?? 'skill-use') !== trigger) continue;
+
+      // Cast-scoped skills (Cleave) emit one event per struck target: run the
+      // cast-level cues once per caster/batch; particles still emit per victim.
+      const firstForCaster = !seenCast.has(casterId);
+      if (sheet.castScoped) seenCast.add(casterId);
+      const runCastLevel = !sheet.castScoped || firstForCaster;
 
       // Trim oldest sequence on overflow.
       if (activeRef.current.length >= MAX_CONCURRENT_SEQUENCES) {
         _cleanup(activeRef.current.shift()!);
       }
 
-      const target = arenaEntities.find((e) => e.id === ev.targetId);
-      const tPos: [number, number, number] = target
-        ? [target.position.x, IMPACT_Y, target.position.z]
+      // victimId null (self/team buff with no target) → anchor on the caster.
+      const victim = victimId ? arenaEntities.find((e) => e.id === victimId) : null;
+      const anchorEntity = victim ?? caster;
+      const tPos: [number, number, number] = anchorEntity
+        ? [anchorEntity.position.x, IMPACT_Y, anchorEntity.position.z]
         : [0, IMPACT_Y, 0];
-      const aPos: [number, number, number] = attacker
-        ? [attacker.position.x + 0.5, IMPACT_Y, attacker.position.z]
+      const aPos: [number, number, number] = caster
+        ? [caster.position.x + 0.5, IMPACT_Y, caster.position.z]
         : [tPos[0] - 1.5, IMPACT_Y, tPos[2]];
+
+      const meshAnchorPos = (kind: MeshFxKind, anchor?: MeshAnchor): [number, number, number] => {
+        switch (anchor) {
+          case 'caster':       return [aPos[0], IMPACT_Y, aPos[2]];
+          case 'caster-front': return [aPos[0] + 0.7, IMPACT_Y, aPos[2]];
+          case 'cluster':      return [(aPos[0] + tPos[0]) * 0.5, IMPACT_Y, tPos[2]];
+          case 'target':       return tPos;
+          default:
+            // Legacy default: thrust-lance straddles the caster↔target midpoint.
+            return kind === 'thrust-lance' ? [(aPos[0] + tPos[0]) * 0.5, tPos[1], tPos[2]] : tPos;
+        }
+      };
 
       const seq: ActiveSequence = {
         cancelled: false, imperativeTimers: [], meshTimers: [], meshLeases: [], trailWindow: null,
       };
 
-      for (const cue of sheet.cues) {
-        if (cue.type === 'mesh') {
-          const { kind, atMs, durationMs } = cue;
-          const meshPos: [number, number, number] = (kind as MeshFxKind) === 'thrust-lance'
-            ? [(aPos[0] + tPos[0]) * 0.5, tPos[1], tPos[2]]
-            : tPos;
-          seq.meshTimers.push(setTimeout(() => {
-            if (seq.cancelled) return;
-            const lease = pool.acquire(kind);
-            if (!lease) return;
-            lease.setPosition(meshPos[0], meshPos[1], meshPos[2]);
-            seq.meshLeases.push({ lease, startMs: performance.now(), durationMs });
-            // Screen-space ripple on WebGPU (mesh ring carries the WebGL effect).
-            if ((kind as MeshFxKind) === 'shockwave-ring' && isWebGPU && quality !== 'low') {
-              pushDistortionRing({ worldPos: meshPos, durationMs, maxStrength: RING_DISTORTION_STRENGTH });
-            }
-          }, atMs));
-        } else if (cue.type === 'trail') {
-          // 'low' quality skips the weapon trail entirely (CPU particle cost).
-          if (quality === 'low') continue;
-          const { atMs, durationMs } = cue;
-          seq.meshTimers.push(setTimeout(() => {
-            if (seq.cancelled) return;
-            // Trail must share target's Z lane so it stays co-planar with the lance
-            // mesh (which is positioned at tPos.z). Using aPos.z causes visible
-            // misalignment when attacker and target are in different rows.
-            seq.trailWindow = {
-              startMs: performance.now(), durationMs,
-              from: [aPos[0], aPos[1], tPos[2]],
-              to: tPos,
-            };
-          }, atMs));
+      if (runCastLevel) {
+        for (const cue of sheet.cues) {
+          if (cue.type === 'mesh') {
+            const { kind, atMs, durationMs, anchor, fromAnchor, color, scale } = cue;
+            const meshPos = meshAnchorPos(kind, anchor);
+            // Traveling mesh (e.g. Cleave slash): start at fromAnchor, fly to anchor.
+            const fromPos = fromAnchor ? meshAnchorPos(kind, fromAnchor) : null;
+            seq.meshTimers.push(setTimeout(() => {
+              if (seq.cancelled) return;
+              const lease = pool.acquire(kind, color);
+              if (!lease) return;
+              if (scale != null) lease.setScale(scale);
+              const startPos = fromPos ?? meshPos;
+              lease.setPosition(startPos[0], startPos[1], startPos[2]);
+              seq.meshLeases.push({
+                lease, startMs: performance.now(), durationMs,
+                from: fromPos ?? undefined,
+                to: fromPos ? meshPos : undefined,
+              });
+              // Screen-space ripple on WebGPU (mesh ring carries the WebGL effect).
+              if (kind === 'shockwave-ring' && isWebGPU && quality !== 'low') {
+                pushDistortionRing({ worldPos: meshPos, durationMs, maxStrength: RING_DISTORTION_STRENGTH });
+              }
+            }, atMs));
+          } else if (cue.type === 'trail') {
+            // 'low' quality skips the weapon trail entirely (CPU particle cost).
+            if (quality === 'low') continue;
+            const { atMs, durationMs } = cue;
+            seq.meshTimers.push(setTimeout(() => {
+              if (seq.cancelled) return;
+              // Trail shares the target's Z lane so it stays co-planar with the lance
+              // mesh (positioned at tPos.z). Using aPos.z misaligns across rows.
+              seq.trailWindow = {
+                startMs: performance.now(), durationMs,
+                from: [aPos[0], aPos[1], tPos[2]],
+                to: tPos,
+              };
+            }, atMs));
+          }
         }
       }
 
-      seq.imperativeTimers = dispatchImperativeCues(sheet.cues, tPos, {
+      // Full cue set on the cast-level pass; particles-only on later same-cast
+      // events so scatter debris lands on each victim without re-firing mesh/shake.
+      const impCues = runCastLevel ? sheet.cues : sheet.cues.filter((c) => c.type === 'particles');
+      seq.imperativeTimers = dispatchImperativeCues(impCues, tPos, {
         emitParticles: (id, pos, count) => {
           // 'low' quality halves scatter-particle counts (sequence stays legible).
           const n = count != null && quality === 'low' ? Math.ceil(count * 0.5) : count;
@@ -198,6 +248,14 @@ export function CombatSkillVfxLayer() {
         const ml = seq.meshLeases[i];
         const t = Math.min((nowMs - ml.startMs) / ml.durationMs, 1);
         ml.lease.setProgress(t);
+        // Traveling slash: lerp position from→to across the lifetime.
+        if (ml.from && ml.to) {
+          ml.lease.setPosition(
+            ml.from[0] + (ml.to[0] - ml.from[0]) * t,
+            ml.from[1] + (ml.to[1] - ml.from[1]) * t,
+            ml.from[2] + (ml.to[2] - ml.from[2]) * t,
+          );
+        }
         if (t >= 1) { ml.lease.release(); seq.meshLeases.splice(i, 1); }
       }
       // Emit trail particles along the lance path while the window is active.

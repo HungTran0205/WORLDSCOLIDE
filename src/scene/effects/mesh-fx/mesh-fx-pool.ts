@@ -30,9 +30,23 @@ export const MESH_FX_KINDS: MeshFxKind[] = [
   'shockwave-ring',
   'slash-arc',
   'impact-star',
+  'cleave-arc',
 ];
 
 const DEFAULT_PARAMS: MeshFxParams = { color: '#a0d0ff', glowColor: '#ffffff', axisAngle: 0 };
+
+/** Per-kind construction params. Kinds absent here use DEFAULT_PARAMS.
+ *  cleave-arc: axisAngle π/2 → the crescent's long axis runs along world Z
+ *  (the lane/depth axis; appears vertical on the tilted combat camera) with its
+ *  belly bulging toward the enemy side (+X). It then FLIES +X toward the enemies
+ *  (see the cleave cue's fromAnchor travel). */
+const PARAMS_BY_KIND: Partial<Record<MeshFxKind, MeshFxParams>> = {
+  'cleave-arc': { color: '#d8e4f2', glowColor: '#ffffff', axisAngle: Math.PI / 4 },
+};
+
+function paramsFor(kind: MeshFxKind): MeshFxParams {
+  return PARAMS_BY_KIND[kind] ?? DEFAULT_PARAMS;
+}
 
 type Slot = {
   handle: MeshFxHandle | null;
@@ -46,6 +60,7 @@ const _slots: Record<MeshFxKind, Slot[]> = {
   'shockwave-ring': Array.from({ length: MESH_FX_POOL_SIZE }, () => ({ handle: null, mesh: null, busy: false })),
   'slash-arc':      Array.from({ length: MESH_FX_POOL_SIZE }, () => ({ handle: null, mesh: null, busy: false })),
   'impact-star':    Array.from({ length: MESH_FX_POOL_SIZE }, () => ({ handle: null, mesh: null, busy: false })),
+  'cleave-arc':     Array.from({ length: MESH_FX_POOL_SIZE }, () => ({ handle: null, mesh: null, busy: false })),
 };
 
 let _warmed = false;
@@ -66,11 +81,13 @@ export function registerMesh(kind: MeshFxKind, index: number, mesh: THREE.Mesh |
 // ─── Warm (called once per combat-open) ──────────────────────────────────────
 
 async function buildHandle(kind: MeshFxKind, renderer: unknown, lowQuality: boolean): Promise<MeshFxHandle> {
+  const params = paramsFor(kind);
   switch (kind) {
-    case 'thrust-lance':   return createThrustLanceMaterial(renderer, DEFAULT_PARAMS, lowQuality);
-    case 'shockwave-ring': return createShockwaveRingMaterial(renderer, DEFAULT_PARAMS);
-    case 'slash-arc':      return createSlashArcMaterial(renderer, DEFAULT_PARAMS);
-    case 'impact-star':    return createImpactStarMaterial(renderer, DEFAULT_PARAMS);
+    case 'thrust-lance':   return createThrustLanceMaterial(renderer, params, lowQuality);
+    case 'shockwave-ring': return createShockwaveRingMaterial(renderer, params);
+    case 'slash-arc':      return createSlashArcMaterial(renderer, params);
+    case 'cleave-arc':     return createSlashArcMaterial(renderer, params);
+    case 'impact-star':    return createImpactStarMaterial(renderer, params);
   }
 }
 
@@ -110,13 +127,19 @@ export function acquire(kind: MeshFxKind, color?: string): LeaseHandle | null {
 
   slot.busy = true;
   slot.handle!.setProgress(0);
-  if (color) slot.handle!.setColor?.(color);
+  // Reset scale so a prior lease's setScale can't carry over to this one.
+  slot.mesh!.scale.setScalar(1);
+  // Always re-apply a color so a prior lease's recolor can't bleed into this one
+  // (shockwave-ring is shared across Pierce/Riposte/Rally). Falls back to the
+  // kind's default when the caller passes none.
+  slot.handle!.setColor?.(color ?? paramsFor(kind).color);
   slot.mesh!.visible = true;
 
   return {
     setProgress: (t)       => { slot.handle!.setProgress(t); },
     setColor:    (hex)     => { slot.handle!.setColor?.(hex); },
     setPosition: (x, y, z) => { slot.mesh!.position.set(x, y, z); },
+    setScale:    (s)       => { slot.mesh!.scale.setScalar(s); },
     release:     ()        => { slot.busy = false; if (slot.mesh) slot.mesh.visible = false; },
   };
 }
