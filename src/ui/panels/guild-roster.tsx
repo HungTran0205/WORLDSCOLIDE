@@ -1,3 +1,11 @@
+/**
+ * Guild Roster panel — member grid, character detail, and equip mode views.
+ *
+ * Shell (chrome, header, close button, open/close animation, SFX) is owned by
+ * PanelFrame for the grid and detail views. EquipModePanel manages its own
+ * full-screen chrome.
+ */
+
 import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
@@ -5,6 +13,7 @@ import { MemberCard } from '@/ui/components/member-card';
 import { CharacterDetailPanel } from './character-detail-panel';
 import { EquipModePanel } from '@/ui/components/equip-mode-panel';
 import { ConfirmDialog } from '@/ui/components/confirm-dialog';
+import { PanelFrame } from '@/ui/components/panel-frame';
 import { CIVILIZATIONS, CIV_CONFIG } from '@/game/data/civilization-config';
 import { tContent } from '@/i18n/content-localization';
 import type { MemberStatus, StatKey, SyringeLoadout } from '@/game/state/game-state';
@@ -19,8 +28,6 @@ interface GuildRosterProps {
 type CivFilter = 'all' | string;
 type StatusFilter = 'all' | MemberStatus;
 
-// Status filter pills are keyed off the MemberStatus union value so labels stay
-// in sync with the data; localized via t('roster.status.<value>').
 const STATUS_FILTERS: MemberStatus[] = ['idle', 'on-mission', 'injured', 'training', 'assigned'];
 
 export function GuildRoster({ onClose }: GuildRosterProps) {
@@ -68,16 +75,20 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [view, onClose]);
-  const inviteCost = selected ? (({ F:1,E:2,D:3,C:4,B:5,A:6,S:7 } as Record<string,number>)[selected.grade] ?? 1) * 150 : 0;
+
+  const inviteCost = selected
+    ? (({ F:1,E:2,D:3,C:4,B:5,A:6,S:7 } as Record<string,number>)[selected.grade] ?? 1) * 150
+    : 0;
 
   function openDetail(id: string) {
     setSelectedId(id);
     setView('detail');
   }
 
+  // EquipModePanel manages its own chrome — keep as-is
   if (view === 'equip' && selected) {
     return (
-      <div className="guild-roster-overlay">
+      <div className="roster-positioner">
         <EquipModePanel memberId={selected.id} onClose={() => setView('detail')} />
       </div>
     );
@@ -85,8 +96,8 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
 
   if (view === 'detail' && selected) {
     return (
-      <div className="guild-roster-overlay">
-        <div className="ink-panel guild-roster ink-enter">
+      <div className="roster-positioner">
+        <PanelFrame title={t('facilityNames.roster')} onClose={() => setView('grid')} variant="panel" size="lg">
           <CharacterDetailPanel
             member={selected}
             onAllocateStat={(stat, amount) => allocateStat(selected.id, stat as StatKey, amount)}
@@ -105,7 +116,7 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
             onRename={name => renameMember(selected.id, name)}
           />
           {!selected.isFounder && (
-            <div style={{ padding: '8px 14px', borderTop: '1px solid var(--ink-gold-dim)', display: 'flex', justifyContent: 'flex-end' }}>
+            <div className="roster-release-row">
               <button
                 className="filter-pill"
                 style={{ color: 'var(--ink-status-bad)', borderColor: 'rgba(196,74,74,0.4)' }}
@@ -115,7 +126,7 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
               </button>
             </div>
           )}
-        </div>
+        </PanelFrame>
         {releaseTarget && (
           <ConfirmDialog
             message={t('roster.releaseConfirm', { name: allMembers.find(m => m.id === releaseTarget)?.name ?? t('roster.releaseConfirmFallback') })}
@@ -129,18 +140,10 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
     );
   }
 
+  // Grid view
   return (
-    <div className="guild-roster-overlay">
-      <div className="ink-panel guild-roster ink-enter">
-        {/* Header */}
-        <header className="roster-header">
-          <span>
-            <span className="roster-title">{t('roster.title')}</span>
-            <span className="roster-count">{allMembers.length}</span>
-          </span>
-          <button className="roster-close-btn" onClick={onClose} type="button">{t('roster.close')}</button>
-        </header>
-
+    <div className="roster-positioner">
+      <PanelFrame title={t('facilityNames.roster')} onClose={onClose} variant="panel" size="lg">
         {/* Controls */}
         <div className="roster-controls">
           <input
@@ -167,6 +170,11 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
           </div>
         </div>
 
+        {/* Member count badge */}
+        <div className="roster-count-row">
+          <span className="roster-count">{allMembers.length}</span>
+        </div>
+
         {/* Grid */}
         <div className="member-grid">
           {visible.length === 0
@@ -174,7 +182,7 @@ export function GuildRoster({ onClose }: GuildRosterProps) {
             : visible.map(m => <MemberCard key={m.id} member={m} onClick={() => openDetail(m.id)} />)
           }
         </div>
-      </div>
+      </PanelFrame>
     </div>
   );
 }

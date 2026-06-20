@@ -2,7 +2,7 @@
 
 **2000s A.C — After the Collapse** — An HD-2D auto-RPG idle guild builder set 2000 years after a civilizational collapse. Build your guild hall, recruit members from Vietnamese-inspired civilizations, dispatch quests, and watch your guild grow — even while you're away.
 
-**Last Updated**: 2026-05-23 (Deploy Pipeline + Sprite Sheets + Itch Asset Paths)
+**Last Updated**: 2026-06-17 (Templar Skill VFX: Cleave Multi-Target + Riposte/Rally Cast VFX + Buff Status Icons)
 
 ## Technology Stack
 
@@ -165,6 +165,12 @@
 - **DamageNumberPool** — 32 pooled floating damage numbers, imperative spawn via ref, float-up + fade-out (fixed 160×48 canvas)
 - **InstancedHpBars** — HP bars via InstancedMesh
 - **CombatVfxSpawner** — VFX layer for visual effects
+
+**Skill-VFX Quality Degradation** (`src/scene/effects/mesh-fx/`):
+- **getMeshFxQuality()** — Single source of truth for quality tier ('high' | 'low'), wrapping graphics-quality setting
+- **5 degradation consumers**: weapon trail, scatter particles (count halving), lance dissolve-noise shader, distortion pass, camera shake
+- **Legible floor**: lance mesh + shockwave rings + SFX always rendered (non-degradable)
+- **Tested**: skill-cue-dispatcher (3 tests) + hitstop-clock (6 tests) behavior verification
 
 **WebGPU Compatibility Fixes**:
 - CanvasTexture.flipY must be false (true breaks UV formula)

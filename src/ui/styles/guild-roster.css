@@ -1,50 +1,45 @@
-/* ─── Guild Roster Panel ──────────────────────────────────────────────────── */
-.guild-roster-overlay {
+/* ─── Guild Roster Panel — content styles only.
+   Panel chrome is owned by PanelFrame. ──────────────────────────────────── */
+
+/* Positioner: centered, no dark scrim. pointer-events: none so the 3D
+   scene stays interactive; children restore pointer-events. */
+.roster-positioner {
   position: fixed;
   inset: 0;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding-top: 40px;
-  z-index: 100;
-  background: rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  z-index: var(--bp-z-panel-elevated);
 }
-
-.guild-roster {
+.roster-positioner > * {
+  pointer-events: auto;
   width: min(920px, 95vw);
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-  transform: scale(var(--ui-scale));
-  transform-origin: top center;
-  overflow: hidden;
+  max-height: 88vh;
 }
 
-/* Header */
-.roster-header {
+/* Member count badge — shown below controls, above the grid */
+.roster-count-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--ink-gold-dim);
-  flex-shrink: 0;
-}
-
-.roster-title {
-  font-family: var(--ink-font-title);
-  font-size: 1rem;
-  color: var(--ink-gold);
-  letter-spacing: 0.1em;
+  padding: 4px 0 6px;
 }
 
 .roster-count {
   font-family: var(--ink-font-mono);
   font-size: 0.65rem;
-  color: var(--ink-text-muted);
-  border: 1px solid var(--ink-gold-dim);
+  color: var(--bp-text-ink-soft);
+  border: 1px solid var(--bp-parch-burn);
   padding: 1px 6px;
   border-radius: 2px;
-  margin-left: 8px;
+}
+
+/* Release row in detail view */
+.roster-release-row {
+  padding: 8px 0 0;
+  border-top: 1px solid var(--bp-parch-aged);
+  display: flex;
+  justify-content: flex-end;
 }
 
 /* Controls */
@@ -52,14 +47,14 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--ink-gold-dim);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--bp-parch-burn);
   flex-shrink: 0;
 }
 
 .roster-search {
-  background: var(--ink-bg-deep);
-  border: 1px solid var(--ink-gold-dim);
+  background: var(--bp-parch-aged);
+  border: 1px solid var(--bp-parch-burn);
   border-radius: var(--ink-radius-sm);
   color: var(--ink-text);
   font-family: var(--ink-font-mono);
@@ -69,8 +64,8 @@
   transition: border-color var(--ink-dur-tab);
   width: 100%;
 }
-.roster-search::placeholder { color: var(--ink-text-muted); }
-.roster-search:focus { border-color: var(--ink-gold); }
+.roster-search::placeholder { color: var(--bp-text-ink-soft); }
+.roster-search:focus { border-color: var(--bp-bronze-light); }
 
 .filter-group { display: flex; gap: 4px; flex-wrap: wrap; }
 
@@ -83,18 +78,18 @@
   font-size: var(--ink-fs-label);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--ink-text-muted);
+  color: var(--bp-text-ink-soft);
   background: none;
-  border: 1px solid var(--ink-gold-dim);
+  border: 1px solid var(--bp-parch-burn);
   border-radius: var(--ink-radius-sm);
   cursor: pointer;
   transition: color var(--ink-dur-fast), border-color var(--ink-dur-fast), background var(--ink-dur-fast);
 }
-.filter-pill:hover  { color: var(--ink-text-dim); border-color: var(--ink-amber); }
-.filter-pill.active { color: var(--ink-gold-bright); border-color: var(--ink-gold); background: var(--ink-bg-selected); }
+.filter-pill:hover  { color: var(--ink-text-dim); border-color: var(--bp-bronze-light); }
+.filter-pill.active { color: var(--bp-bronze-light); border-color: var(--bp-bronze-light); background: var(--bp-parch-aged); }
 
 .filter-pill__count {
-  color: var(--ink-text-muted);
+  color: var(--bp-text-ink-soft);
   font-size: 0.55rem;
   padding-left: 4px;
 }
@@ -104,7 +99,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--tier-color, var(--ink-gold-dim));
+  background: var(--tier-color, var(--bp-parch-burn));
   display: inline-block;
 }
 
@@ -113,7 +108,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: 10px;
-  padding: 12px 16px;
+  padding: 12px 0;
   overflow-y: auto;
   flex: 1;
 }
@@ -122,22 +117,10 @@
   grid-column: 1 / -1;
   text-align: center;
   padding: 40px;
-  color: var(--ink-text-muted);
+  color: var(--bp-text-ink-soft);
   font-family: var(--ink-font-mono);
   font-size: 0.8rem;
 }
 
 
-/* ─── Close Button ────────────────────────────────────────────────────────── */
-.roster-close-btn {
-  background: none;
-  border: 1px solid var(--ink-gold-dim);
-  color: var(--ink-text-muted);
-  font-family: var(--ink-font-mono);
-  font-size: 0.7rem;
-  padding: 3px 10px;
-  border-radius: var(--ink-radius-sm);
-  cursor: pointer;
-  transition: color var(--ink-dur-tab), border-color var(--ink-dur-tab);
-}
-.roster-close-btn:hover { color: var(--ink-gold); border-color: var(--ink-gold); }
+/* Close button removed — PanelFrame owns pf-close. */

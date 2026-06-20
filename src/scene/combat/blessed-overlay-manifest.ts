@@ -10,7 +10,8 @@
  * only. Death has no overlay (excluded by design); casting uses its own dedicated
  * clip, so only idle/attack/blocking are mapped here.
  *
- * POC scope: LS-SWORD-M only. Add entries as overlay art lands for other archetypes.
+ * Wired for LS-SWORD-M, LS-SCOUT-F, LS-WARRIOR-M (overlay art authored at the
+ * same 2560×128 / 20-cell layout). Add entries as art lands for other archetypes.
  */
 
 import { assetUrl } from '@/lib/asset-url';
@@ -37,20 +38,33 @@ export interface BlessedOverlayDescriptor {
 }
 
 /**
- * charId → overlay descriptor. POC: LS-SWORD-M only.
+ * charId → overlay descriptor.
  *
- * Ancestral-lv1-overlay.png = 2560×128 = 20 cols × 1 row (128px square frames):
+ * ancestral-lv1-overlay.png = 2560×128 = 20 cols × 1 row (128px square frames):
  *   idle = cells 0..7 · attack = cells 8..15 · blocking = cells 16..19.
+ * All wired chars share this identical layout.
  */
+const OVERLAY_SEGMENTS: Record<CombatMaskAnim, BlessedOverlaySegment> = {
+  idle: { offset: 0, count: 8 },
+  attack: { offset: 8, count: 8 },
+  blocking: { offset: 16, count: 4 },
+};
+
 const BLESSED_OVERLAY_MANIFEST: Record<string, BlessedOverlayDescriptor> = {
   'LS-SWORD-M': {
-    path: assetUrl('/sprites/characters/LS-SWORD-M/animations/Ancestral-lv1-overlay.png'),
+    path: assetUrl('/sprites/characters/LS-SWORD-M/animations/ancestral-lv1-overlay.png'),
     frameSize: 128,
-    segments: {
-      idle: { offset: 0, count: 8 },
-      attack: { offset: 8, count: 8 },
-      blocking: { offset: 16, count: 4 },
-    },
+    segments: OVERLAY_SEGMENTS,
+  },
+  'LS-SCOUT-F': {
+    path: assetUrl('/sprites/characters/LS-SCOUT-F/animations/ancestral-lv1-overlay.png'),
+    frameSize: 128,
+    segments: OVERLAY_SEGMENTS,
+  },
+  'LS-WARRIOR-M': {
+    path: assetUrl('/sprites/characters/LS-WARRIOR-M/animations/ancestral-lv1-overlay.png'),
+    frameSize: 128,
+    segments: OVERLAY_SEGMENTS,
   },
 };
 

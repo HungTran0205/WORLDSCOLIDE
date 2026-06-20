@@ -5,7 +5,7 @@ import { useUiStore } from '@/game/state/ui-store';
 import { GoldDisplay } from '@/ui/components/gold-display';
 import { ResourceBar } from '@/ui/components/resource-bar';
 import { SaveStatusBadge } from './save-status-badge';
-import { PanelToggle, type PanelId } from './panel-toggle';
+import { PanelToggle } from './panel-toggle';
 import { FacilityCompass } from './facility-compass';
 import { InventoryPanel } from '@/ui/panels/inventory-panel';
 import { formatGameTime } from '@/game/utils/format-game-time';
@@ -20,12 +20,7 @@ const selectDailyUpkeep = (s: { founder: import('@/game/state/game-state').Membe
   return calcTotalUpkeep(all);
 };
 
-interface HUDProps {
-  activePanel: PanelId;
-  setActivePanel: (id: PanelId) => void;
-}
-
-export function HUD({ activePanel, setActivePanel }: HUDProps) {
+export function HUD() {
   const { t } = useTranslation();
   const gold = useGameStore((s) => s.gold);
   const gameTime = useGameStore((s) => s.gameTime);
@@ -72,8 +67,6 @@ export function HUD({ activePanel, setActivePanel }: HUDProps) {
       )}
       <FacilityCompass />
       <PanelToggle
-        activePanel={activePanel}
-        setActivePanel={setActivePanel}
         highlightPanel={highlightPanel}
       />
       {inventoryOpen && <InventoryPanel onClose={() => { setInventoryOpen(false); closeEquipMode(); }} />}

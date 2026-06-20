@@ -2,6 +2,8 @@ import '@/i18n';
 import '@/ui/styles/game-ui-tokens.css';
 import '@/ui/styles/typography.css';
 import '@/ui/styles/parchment.css';
+import '@/ui/styles/ui-tokens-v2.css';
+import '@/ui/styles/bp-content-theme.css';
 import * as THREE from 'three';
 import { assetUrl } from '@/lib/asset-url';
 import { createRoot } from 'react-dom/client';

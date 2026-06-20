@@ -11,17 +11,18 @@
 .hud-top-bar {
   display: flex;
   gap: 16px;
-  padding: 8px 16px;
-  background: rgba(20, 20, 30, 0.8);
-  color: #ffd700;
-  font-size: 0.9rem;
+  padding: 6px 16px;
+  background: var(--bp-header-fill);
+  color: var(--bp-header-text);
+  font-size: 0.85rem;
   align-items: center;
   pointer-events: auto;
-  border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+  border-bottom: 2px solid var(--bp-bronze-base);
+  box-shadow: 0 2px 8px var(--bp-bronze-shadow);
 }
 
 .hud-top-bar span {
-  color: #ccc;
+  color: var(--bp-parch-aged);
 }
 
 .panel-toggle-bar {
@@ -30,38 +31,59 @@
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 8px;
+  gap: 6px;
   pointer-events: auto;
   z-index: 50;
+  background: var(--bp-header-fill);
+  border: 2px solid var(--bp-bronze-base);
+  border-radius: var(--bp-radius);
+  padding: 6px 8px;
+  box-shadow: 0 4px 12px var(--bp-bronze-shadow);
 }
 
-.panel-toggle-bar button {
-  background: rgba(20, 20, 30, 0.9);
-  color: #ccc;
-  border: 1px solid rgba(255, 215, 0, 0.3);
-  padding: 10px 20px;
-  border-radius: 8px;
+/* Individual icon toggle buttons */
+.panel-toggle-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 6px;
   cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--bp-dur-fast), border-color var(--bp-dur-fast);
+  color: var(--bp-parch-aged);
 }
 
-.panel-toggle-bar button:hover {
-  background: rgba(40, 40, 60, 0.9);
-  color: #ffd700;
+.panel-toggle-btn:hover {
+  background: rgba(212, 168, 67, 0.14);
+  border-color: var(--bp-bronze-light);
 }
 
-.panel-toggle-bar button.active {
-  background: rgba(255, 215, 0, 0.2);
-  color: #ffd700;
-  border-color: #ffd700;
+/* Active state: cyan accent per bible §3.4 */
+.panel-toggle-btn.active {
+  background: var(--bp-cyan-halo);
+  border-color: var(--bp-cyan-core);
+  box-shadow: 0 0 8px var(--bp-cyan-halo);
 }
 
-/* Tutorial guidance highlight — pulses gold to draw player attention */
-.panel-toggle-bar button.tutorial-highlight,
-button.tutorial-highlight {
-  border-color: #ffd700 !important;
-  color: #ffd700 !important;
+.panel-toggle-icon {
+  display: block;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  opacity: 0.75;
+  transition: opacity var(--bp-dur-fast);
+}
+
+.panel-toggle-btn:hover .panel-toggle-icon,
+.panel-toggle-btn.active .panel-toggle-icon {
+  opacity: 1;
+}
+
+/* Tutorial guidance highlight — pulses to draw player attention */
+.panel-toggle-btn.tutorial-highlight {
+  border-color: var(--bp-bronze-glint) !important;
   animation: tutorialPulse 1.2s ease-in-out infinite;
 }
 
@@ -107,18 +129,18 @@ button.tutorial-highlight {
 }
 
 .hud-clock {
-  color: #ddd;
+  color: var(--bp-parch-light);
   font-size: 0.85rem;
   font-weight: 500;
 }
 
 .hud-upkeep {
-  color: #e74c3c;
+  color: var(--bp-status-bad);
   font-size: 0.85rem;
 }
 
 .gold-display {
-  color: #ffd700;
+  color: var(--bp-bronze-glint);
   font-weight: bold;
 }
 

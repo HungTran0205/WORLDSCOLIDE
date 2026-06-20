@@ -286,6 +286,36 @@ Combat rendering overhauled from per-entity React components to 1-draw-call GPU 
 **CombatVfxSpawner** (`combat-vfx-spawner.tsx`)
 - VFX layer for combat effects (particle emitters, visual polish)
 
+**Skill-VFX Orchestrator** (`src/scene/effects/skill-vfx/`)
+
+Generalized event-driven system routing skill events to cue-sheet VFX. Replaces Pierce-specific hard-wiring to handle self-cast events (buff application, stance entry).
+
+| Component | Role |
+|-----------|------|
+| `skill-event-resolver.ts` | Pure router: parses `CombatEvent`, matches against cue-sheet `trigger`, partitions events by `castScoped` flag |
+| `cue-sheet-types.ts` | Extended schema: `anchor` ('target'/'caster'/'caster-front'/'cluster'), `color`, sheet-level `trigger`, `castScoped` |
+| `skill-cue-dispatcher.ts` | Scheduler: enqueues cue timeline, dispatches at exact tick via `delayedDispatch()` |
+
+**Event routing:**
+- `trigger: 'skill-use'` → damage skills (Pierce, Cleave) → impact VFX + hitstop + camera shake
+- `trigger: 'skill-buff-applied'` → self-buffs (Rally) + team-buffs (Aegis, Mark) → aura/warcry VFX, no hitstop
+- `trigger: 'effect-applied:riposte'` → riposte stance entry → parry-glint mesh + aura
+
+**Pool color management:** `meshFx-pool-root.tsx` now re-applies kind-default color on `acquire()` to prevent cross-cast color bleed (e.g., recolored shockwave-ring from one skill staining the next).
+
+**Skill-VFX Quality Degradation Tier** (`src/scene/effects/mesh-fx/mesh-fx-quality.ts`)
+
+On 'low' graphics quality, skill-VFX sequences degrade gracefully while remaining legible:
+- `getMeshFxQuality()` / `isLowMeshFxQuality()` — single source of truth wrapping the existing binary graphics-quality setting (no granular VFX slider)
+- **Degradation consumers** (all optional guards):
+  - Weapon trail skipped in `combat-skill-vfx-layer.tsx`
+  - Scatter-particle counts halved (explicit-count cues only)
+  - Mesh dissolve-noise dropped (compile-time shader variant, e.g., `thrust-lance-material.ts`)
+  - WebGPU screen-space distortion pass skipped (pre-existing guard)
+  - Camera shake skipped (pre-existing guard in `combat-camera-shake.tsx`)
+- **Legible floor**: Impact meshes + rings + SFX always remain (non-negotiable clarity)
+- **Headless compatibility**: Auto-resolve applies buffs with no VFX (POC phase)
+
 ---
 
 ## Asset Path Resolution (Subpath Deployment Support)
@@ -1789,6 +1819,33 @@ interface InventoryState {
 - `.ink-bar-hp`, `.ink-bar-exp` — Status bar styling with custom fill animations
 - `.ink-pixelated` — Pixel-perfect font rendering (image-rendering: pixelated)
 - `.ink-enter` — Entry animation (fade + slide from top)
+
+### Panel Management System (v1.27 — Unified PanelFrame + Central State)
+
+**PanelFrame Architecture** (`src/ui/components/panel-frame.tsx`):
+- Reusable chrome component rendering header (with title, close button), parchment content field, and motion-driven exit animation
+- One per panel; encapsulates header/close styles, fade-in (250ms) and fade-out (150ms) animations, optional hideClose variant (quest board only)
+- Receives `onClose` callback + `children` (content); internally owns animation timing via `use-delayed-unmount.ts`
+- SFX hooks allow panels to play open/close sounds via howler (PANEL_OPEN / PANEL_CLOSE keys, consumed by panels)
+
+**Central Panel State** (`src/game/state/panel-slice.ts`, Zustand slice):
+- Two independent axes: `mainPanel` (quests | roster | facilities | combat | settings) and `facilityPanel` (workshop | alchemy | tavern | training-yard)
+- Mutex per axis: only one panel open per axis at a time; opening a panel on an axis closes its predecessor
+- Combat panel **exception**: uses `useCombatPanelStore` (separate store) to stay open during combat; allows both mainPanel + combatPanel simultaneously
+- Actions: `openMainPanel(name)`, `openFacilityPanel(name)`, `closeMainPanel()`, `closeFacilityPanel()`, `closeAllPanels()`
+- Keyboard handler (Esc) calls `closeAllPanels()` (closes mainPanel + facilityPanel; combat panel remains separate)
+- 21 unit tests verify state mutations, mutual exclusion, Esc behavior, error cases
+
+**HUD Integration**:
+- HUD persists across all panels and room transitions (not torn down per panel)
+- `src/ui/hud/hud.tsx` mounts `PanelLayer` reading `mainPanel` + `facilityPanel` from store
+- Panel toggle bar (11 bronze-styled pixel icons) dispatches `openMainPanel(name)` on click
+- Keyboard map routes {Q, R, F, C, S} → {quests, roster, facilities, combat, settings}
+
+**Quest Board Diegetic Exception**:
+- Quest board is the only panel with `hideClose: true` — renders wax-seal parchment skin with no X button
+- Accepts click-outside close (within PanelFrame), unroll animation, PAPER_UNROLL / SEAL_BREAK SFX
+- Inherits PanelFrame motion language (250ms open, 150ms close)
 
 ### Guild Roster Redesign (v1.26)
 

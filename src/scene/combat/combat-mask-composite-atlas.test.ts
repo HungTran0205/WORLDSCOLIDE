@@ -164,12 +164,12 @@ describe('buildCombatMaskCompositeAtlas', () => {
 });
 
 describe('buildCombatMaskCompositeAtlas — blessed overlay', () => {
-  it('draws body + mask + overlay for each frame (3 drawImage calls per frame)', () => {
+  it('draws body + overlay + mask for each frame (3 drawImage calls per frame)', () => {
     buildCombatMaskCompositeAtlas(makeArgs({
       sheetSource: makeSheetSource({ frameCount: 4 }),
       blessedOverlay: { sheetTexture: makeOverlayTexture(), segmentOffset: 0, frameCount: 4 },
     }));
-    // 4 frames × 3 draws (body + mask + overlay) = 12
+    // 4 frames × 3 draws (body + overlay + mask) = 12
     expect(mockCtx.drawImage).toHaveBeenCalledTimes(12);
   });
 

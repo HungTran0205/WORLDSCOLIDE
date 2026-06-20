@@ -35,6 +35,7 @@ import {
   type ImpactKind,
 } from '@/scene/effects/combat-impact';
 import { COMBAT_IMPACT_COLORS, COMBAT_IMPACT_DELAY_S } from './combat-vfx-bridge';
+import { hasCueSheet } from '@/scene/effects/skill-vfx/skill-cue-registry';
 import type { CombatEvent } from '@/game/systems/combat-types';
 
 /** World-space height (y) at which target impacts render — torso level. */
@@ -95,6 +96,10 @@ export function CombatImpactLayer() {
       if (ev.type !== 'auto-attack' && ev.type !== 'skill-use') continue;
 
       const attacker = arenaEntities.find((e) => e.id === ev.attackerId);
+
+      // Skill-use events with a cue sheet are fully owned by CombatSkillVfxLayer —
+      // suppress the default archetype mesh so it doesn't stack with the cue's mesh cues.
+      if (ev.type === 'skill-use' && hasCueSheet(attacker?.skillId)) continue;
       const target = arenaEntities.find((e) => e.id === ev.targetId);
       if (!target) continue;
 

@@ -33,6 +33,7 @@ import { applyMissionResultSideEffects } from '@/game/systems/arena-result-handl
 import { memberFromMercContract } from '@/game/systems/combat-entity-factory';
 import { simulateCombatFromSnapshot, cloneCombatEntity } from '@/game/systems/combat-simulator';
 import { resolveCombatMapId, getStageSpec } from './maps/combat-map-registry';
+import { tickAccum, isHitstopActive, resetHitstop } from './hitstop/hitstop-clock';
 import { useCombatProjectionStore } from './combat-projection-store';
 import { tContent } from '@/i18n/content-localization';
 import { resolveEnemyCombatSheet } from '@/scene/sprites/combat-sprite-resolver';
@@ -41,6 +42,7 @@ import {
   COMBAT_CRIT_DOM_EVENT, COMBAT_SKIP_DOM_EVENT,
   COMBAT_IMPACT_DELAY_S, COMBAT_HIT_SPARK_SIZE, COMBAT_HIT_SPARK_COLOR,
 } from './combat-vfx-bridge';
+import { hasCueSheet } from '@/scene/effects/skill-vfx/skill-cue-registry';
 import type { CombatEvent, CombatResult } from '@/game/systems/combat-types';
 import type { CombatEngine as CombatEngineType } from '@/game/systems/combat-engine';
 import type { ArenaEntitySnapshot } from '@/game/state/combat-arena-slice';
@@ -161,6 +163,7 @@ export function CombatFightController() {
       lastAuraEmitRef.current = 0;
       lastDustEmitRef.current = 0;
       engineBoundMissionIdRef.current = null;
+      resetHitstop();
       return;
     }
 
@@ -273,6 +276,11 @@ export function CombatFightController() {
       lastSyncRef.current = engine.time;
       return;
     }
+
+    // Presentation-layer hitstop: accumulate frozen time for mesh-FX clock,
+    // then skip engine.tick for the freeze window (~80–150ms wall-clock).
+    tickAccum(delta, now);
+    if (isHitstopActive(now)) return;
 
     const dtMs = Math.min(delta * 1000, MAX_FRAME_DT_MS) * speedMultiplier;
     const events = engine.tick(dtMs);
@@ -410,6 +418,8 @@ function buildSnapshots(engine: CombatEngineType): ArenaEntitySnapshot[] {
     attackIntervalMs: e.attackIntervalMs,
     isBoss: e.isBoss,
     blessed: e.blessed,
+    // Derived here so the HUD can show the Riposte icon without an engine clock.
+    riposteActive: (e.riposteUntil ?? 0) > engine.time,
     attackMoveState: e.attackMoveState,
     // Cosmetic slide hint — carried once (on the wave-spawn sync); subsequent
     // syncs overwrite with the same undefined (entity is already on-screen).
@@ -431,17 +441,29 @@ function emitVfxFromEvents(
   if (!vfx) return;
   for (const event of events) {
     if (event.type === 'auto-attack' || event.type === 'skill-use') {
-      const target = engine.entities.find((e) => e.id === event.targetId);
+      const attacker = engine.entities.find((e) => e.id === event.attackerId);
+      const target   = engine.entities.find((e) => e.id === event.targetId);
       if (!target) continue;
       const pos: [number, number, number] = [target.position.x, 1.2, target.position.z];
+
+      // Skill-use events with a cue sheet delegate ALL feedback to CombatSkillVfxLayer.
+      // Skip the default gen-hit spark so the cue sheet's particle cues don't stack.
+      if (event.type === 'skill-use' && hasCueSheet(attacker?.skill?.id)) continue;
+
       // Uniform warm-orange hit debris for every attack. Single gen-hit emit owns
       // the spark — CombatImpactLayer renders only the slash/beam mesh.
       const isCrit = event.isCrit;
+      // Riposte counter hits read as a blue-white parry flash, distinct from the
+      // warm-orange of a normal swing.
+      const isRiposte = event.type === 'auto-attack' && event.isRiposte === true;
       // Delay hit feedback to the animation's connect/release frame so the spark,
       // crit burst, screen-shake, and the slash/beam mesh all land together on the
       // visual hit rather than during the swing/draw windup.
       setTimeout(() => {
-        vfx.hit(pos, undefined, { colorStart: COMBAT_HIT_SPARK_COLOR, size: COMBAT_HIT_SPARK_SIZE });
+        vfx.hit(pos, undefined, {
+          colorStart: isRiposte ? ['#7ab8ff', '#eaf4ff', '#ffffff'] : COMBAT_HIT_SPARK_COLOR,
+          size: COMBAT_HIT_SPARK_SIZE,
+        });
         if (isCrit) {
           vfx.crit(pos);
           window.dispatchEvent(new CustomEvent(COMBAT_CRIT_DOM_EVENT));
@@ -517,14 +539,16 @@ function emitDamagePopups(events: CombatEvent[], engine: CombatEngineType): void
 
     // Skill cast → floating skill-name banner on the caster (localized), shown
     // alongside the damage numbers so the player can read what was triggered.
-    if (event.type === 'skill-use' || event.type === 'skill-buff-applied' || event.type === 'skill-debuff-applied') {
-      const casterId = event.type === 'skill-use' ? event.attackerId : event.casterId;
-      if (!bannerShown.has(casterId)) {
-        const caster = engine.entities.find((e) => e.id === casterId);
-        if (caster?.skill) {
-          bannerShown.add(casterId);
-          spawn(casterId, tContent('skills', caster.skill.id, 'name', caster.skill.name), 'skill');
-        }
+    let castCasterId: string | null = null;
+    if (event.type === 'skill-use') castCasterId = event.attackerId;
+    else if (event.type === 'skill-buff-applied' || event.type === 'skill-debuff-applied') castCasterId = event.casterId;
+    // Riposte casts emit effect-applied (self) — casterId set by the engine.
+    else if (event.type === 'effect-applied' && event.effect === 'riposte') castCasterId = event.casterId ?? event.targetId;
+    if (castCasterId && !bannerShown.has(castCasterId)) {
+      const caster = engine.entities.find((e) => e.id === castCasterId);
+      if (caster?.skill) {
+        bannerShown.add(castCasterId);
+        spawn(castCasterId, tContent('skills', caster.skill.id, 'name', caster.skill.name), 'skill');
       }
     }
   }

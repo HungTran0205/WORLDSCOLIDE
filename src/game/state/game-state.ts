@@ -71,7 +71,8 @@ export type SkillType =
   | 'armor-pierce'  // Sunder: chance to ignore defense
   | 'buff'          // Rally/Aegis/Mark: no damage, apply buff
   | 'debuff'        // Pin: apply status to target
-  | 'riposte';      // Riposte: enter counter-stance
+  | 'riposte'       // Riposte: enter counter-stance
+  | 'cleave';       // Cleave: frontal arc — primary + nearby enemies, splash falloff
 
 export type BuffEffect =
   | 'damage-up'       // Rally +20% damage
@@ -117,6 +118,13 @@ export interface Skill {
   armorPierceChance?: number;
   /** Pierce: hits both front-row and back-row enemy in the same lane (up to 2 targets). */
   laneHit?: boolean;
+  // ── Cleave (frontal arc) ──
+  /** Cleave: world-radius around the primary target within which extra enemies are struck. */
+  cleaveRadius?: number;
+  /** Cleave: max additional enemies hit beyond the primary target. */
+  cleaveMaxExtra?: number;
+  /** Cleave: damage multiplier applied to secondary (splash) targets, relative to the primary hit. */
+  splashDamageMultiplier?: number;
   // ── Skill Rank milestone fields (set by applySkillRankMilestones) ──
   /** Pierce R3: hits up to 3 lane slots instead of 2. */
   laneHitDepth?: number;

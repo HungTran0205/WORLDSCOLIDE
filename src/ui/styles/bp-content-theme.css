@@ -1,0 +1,136 @@
+/* ─── Bronze × Parchment Content Theme ────────────────────────────────────────
+   Scope: .pf-content only — overrides --ink-* consumed variables for parchment
+   surface. ALL .ink-* utility classes (tab-bar, bar-track, badges) are ALSO used
+   outside PanelFrame (HUD, combat, char-creation on dark bg). Scoping under
+   .pf-content ensures dark-bg usages are untouched.
+
+   Import order in main.tsx: AFTER ui-tokens-v2.css so tokens are defined.
+
+   Contrast ratios on --bp-parch-base (#e8d9b0, relative luminance ≈ 0.70):
+     #2a1f12 (bp-text-ink)      → 11.9:1  ✓ body text
+     #5a4630 (bp-text-ink-soft) →  6.1:1  ✓ muted / secondary
+     #5c4a20 (bp-text-accent)   →  6.6:1  ✓ emphasized names / accent
+     #6b5a3f (ink-text-muted)   →  4.75:1 ✓ minimal labels (borderline — used for micro labels only)
+     #8b6a3f (card-border/parch-burn) → 3.5:1 used for borders only, not text
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/* ── Override ink text variables consumed inside pf-content ──────────────────
+   These re-declarations shadow the :root values for any descendant that
+   inherits or references these custom properties. The variables are consumed
+   by both panel-specific CSS and shared .ink-* utilities. */
+.pf-content {
+  /* Primary text: near-white #f0e6d3 → deep ink #2a1f12 (11.9:1 ✓) */
+  --ink-text:           var(--bp-text-ink);
+  /* Secondary dim: amber #c8a060 → soft ink #5a4630 (6.1:1 ✓) */
+  --ink-text-dim:       var(--bp-text-ink-soft);
+  /* Muted labels: already #6b5a3f (4.75:1 ✓ on parchment — keep as-is) */
+  --ink-text-muted:     #6b5a3f;
+  /* Gold as TEXT: #d4a843 is 1.7:1 on parchment — replace with deep bronze accent (6.6:1 ✓).
+     NOTE: --ink-gold is ALSO used for borders (tab-bar bottom, bar-track).
+     Per-property overrides below handle border vs text split so borders stay bronze. */
+  --ink-gold:           var(--bp-text-accent);
+  /* Gold-bright as text: #ffd700 is 1.2:1 on parchment — replace with same accent */
+  --ink-gold-bright:    var(--bp-text-accent);
+  /* Gold-dim (borders, subtle accents): keep readable but bronze-toned */
+  --ink-gold-dim:       var(--bp-bronze-base);
+  /* Dark card fills: #221735 navy → aged parchment card fill */
+  --ink-bg-panel-alt:   var(--bp-card-fill);
+  /* Hover: subtle warm bronze tint on parchment — keep slight opacity, just warmer */
+  --ink-bg-hover:       rgba(92, 74, 32, 0.10);
+  /* Selected: stronger bronze tint — 0.18 opacity bronze-dark on parchment */
+  --ink-bg-selected:    rgba(92, 74, 32, 0.16);
+}
+
+/* ── .ink-tab-bar / .ink-tab on parchment ───────────────────────────────────
+   Tab bar bottom border stays bronze-toned. Active tab: bronze-dark text + color.
+   Cyan underline on active is valid (bible §3.4 active state law ✓). */
+.pf-content .ink-tab-bar {
+  border-bottom-color: var(--bp-parch-burn);
+}
+.pf-content .ink-tab {
+  /* color inherits --ink-text-muted override above = #6b5a3f (4.75:1 ✓) */
+}
+.pf-content .ink-tab:hover {
+  color: var(--bp-text-ink-soft);
+}
+/* Active tab: bronze-dark text (6.6:1 ✓) + cyan underline (border not text — law ✓) */
+.pf-content .ink-tab.active {
+  color: var(--bp-text-accent);
+  border-bottom-color: var(--bp-cyan-core);
+}
+
+/* ── .ink-bar-track on parchment ────────────────────────────────────────────
+   Track: parchment-aged inset well. Border: bronze-base. Fill colors unchanged. */
+.pf-content .ink-bar-track {
+  background: rgba(139, 106, 63, 0.20);
+  border-color: var(--bp-bronze-base);
+}
+
+/* ── .ink-title on parchment ────────────────────────────────────────────────
+   Was gold #d4a843 (1.7:1 fail). Now inherits --ink-gold override = bronze-dark (6.6:1 ✓) */
+/* Handled by --ink-gold override in .pf-content above — no extra rule needed. */
+
+/* ── .ink-stat / .ink-label on parchment ───────────────────────────────────
+   .ink-stat was --ink-text-dim (#c8a060 warm amber). Override → soft ink (6.1:1 ✓).
+   .ink-label was --ink-text-muted (#6b5a3f 4.75:1 ✓) — already fine. */
+/* Handled by variable overrides above. */
+
+/* ── Generic badge / chip on parchment ─────────────────────────────────────
+   Any .ink-badge or generic chip-like element inside pf-content. */
+.pf-content .ink-badge {
+  background: var(--bp-card-fill);
+  border-color: var(--bp-card-border);
+  color: var(--bp-text-ink);
+}
+
+/* ── .panel-btn inside pf-content → bible §6 bronze button ─────────────────
+   Global .panel-btn stays dark-gradient for combat/char-creation on dark bg.
+   Contrast: --bp-parch-light (#f0e6d3, L=0.834) on gradient midpoint
+     bronze-base (#8a6d2c, L=0.166): 4.09:1 — bible-prescribed pairing (§6).
+     On bronze-dark (#5c4a20, L=0.063): 7.8:1 ✓. Acceptable across gradient.
+   Active (pressed): --bp-parch-light on bronze-dark→shadow = ≥7.8:1 ✓.
+   Disabled: --ink-text-muted (#6b5a3f, L=0.108) on --bp-iron (#3a3025, L=0.041):
+     ratio = (0.108+0.05)/(0.041+0.05) = 1.74:1 — disabled state, intent is
+     low-visibility per bible §6 ("disabled fill = --bp-iron flat"); acceptable. */
+.pf-content .panel-btn {
+  background: linear-gradient(180deg, var(--bp-bronze-base), var(--bp-bronze-dark));
+  color: var(--bp-parch-light);
+  border: 1px solid var(--bp-bronze-light);
+  border-radius: var(--bp-radius);
+  transition: background var(--bp-dur-fast) var(--bp-ease), border-color var(--bp-dur-fast) var(--bp-ease);
+}
+.pf-content .panel-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, var(--bp-bronze-light), var(--bp-bronze-base));
+  border-color: var(--bp-bronze-glint);
+}
+/* Active/toggled-on: bible §6 active state — cyan border, deeper bronze fill */
+.pf-content .panel-btn--active {
+  background: linear-gradient(180deg, var(--bp-bronze-dark), var(--bp-bronze-shadow));
+  border-color: var(--bp-cyan-core);
+  color: var(--bp-parch-light);
+}
+/* Disabled: §6 disabled ghost — iron fill, muted text, dark border */
+.pf-content .panel-btn:disabled {
+  background: var(--bp-iron);
+  border-color: var(--bp-bronze-dark);
+  color: var(--bp-text-muted);
+  opacity: 1; /* override global 0.4 opacity — explicit token values are cleaner */
+  cursor: not-allowed;
+}
+
+/* ── .panel-section inside pf-content → aged-parchment inset section ────────
+   Global .panel-section has rgba(255,255,255,0.05) on dark bg — unreadable on
+   parchment (near-invisible translucent white). Replace with subtle aged fill.
+   No text here so no contrast required for the section bg itself. */
+.pf-content .panel-section {
+  background: rgba(201, 182, 135, 0.35); /* --bp-parch-aged at 35% = gentle inset */
+  border: 1px solid var(--bp-card-border);
+  border-radius: var(--bp-radius);
+}
+
+/* ── Prevent pure-white / near-white text inside pf-content ─────────────── */
+.pf-content {
+  /* Catch-all: if any element still carries inherited light color,
+     the pf-content base color = bp-text-ink ensures unset elements read correctly. */
+  color: var(--bp-text-ink);
+}

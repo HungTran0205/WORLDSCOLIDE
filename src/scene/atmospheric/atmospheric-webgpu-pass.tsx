@@ -19,6 +19,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import type { AtmospherePreset } from './atmosphere-types';
 import type { TslChainHolder } from './tsl/types';
+import { sampleRings } from '@/scene/combat/distortion/distortion-ring-store';
+import { distortionRingNode } from './tsl/distortion-ring-node';
 
 export interface AtmosphericWebGPUPassProps {
   preset: AtmospherePreset;
@@ -127,7 +129,7 @@ export function AtmosphericWebGPUPass({
       const { tiltShiftNode } = await import('./tsl/tilt-shift-node');
       const { heatHazeNode } = await import('./tsl/heat-haze-node');
       const { pixelationNode } = await import('./tsl/pixelation-node');
-      const { Vector2 } = await import('three');
+      const { Vector2, Vector4 } = await import('three');
       if (cancelled) return;
 
       const post = new (PostProcessing as any)(gl);
@@ -181,6 +183,17 @@ export function AtmosphericWebGPUPass({
       // so the value reflects the prop even if it changed during the import
       // window.
       const pixelGranularityU = (uniform as any)(pixelGranularityRef.current);
+      // Distortion ring uniforms — 4 vec4 slots [centerU, centerV, radius01, strength].
+      // All seeded to zero (identity / no-op) until shockwave rings push real values.
+      const ring0U = (uniform as any)(new Vector4(0, 0, 0, 0));
+      const ring1U = (uniform as any)(new Vector4(0, 0, 0, 0));
+      const ring2U = (uniform as any)(new Vector4(0, 0, 0, 0));
+      const ring3U = (uniform as any)(new Vector4(0, 0, 0, 0));
+      // Aspect ratio for circular ring geometry. Computed once at chain-build
+      // time; combat rarely resizes mid-session.
+      const rendererSz = new Vector2();
+      (gl as any).getSize(rendererSz);
+      const distortionAspectU = (uniform as any)(rendererSz.x / Math.max(1, rendererSz.y));
 
       // Build chain via single mutable local. Each phase reassigns once.
       // WebGL stack order: DOF → TiltShift → Bloom → grade → Vignette → ChromAb → tonemap.
@@ -194,6 +207,10 @@ export function AtmosphericWebGPUPass({
       // image), before color-grade (heat distorts geometry, then the warm
       // tint settles on top). Zero-intensity = no-op uv.
       chain = heatHazeNode(chain, heatHazeIntensityU, heatHazeTimeU);
+      // Distortion rings: after heat-haze, before color-grade (same ordering
+      // rationale — geometry distorts, then grade/vignette settle on top).
+      // Zero-strength rings are an identity no-op; node stays in chain always.
+      chain = distortionRingNode(chain, [ring0U, ring1U, ring2U, ring3U], distortionAspectU);
       chain = colorGradeNode(chain, hueU, satU, brightU, contU);
       chain = vignetteNode(chain, vignetteOffsetU, vignetteDarknessU);
       chain = chromaticAberrationNode(chain, chromAbOffsetU);
@@ -219,6 +236,10 @@ export function AtmosphericWebGPUPass({
         chromaticAberration: { offset: chromAbOffsetU },
         tiltShift: { strength: tiltShiftStrengthU },
         heatHaze: { intensity: heatHazeIntensityU, time: heatHazeTimeU },
+        distortionRings: {
+          rings: [ring0U, ring1U, ring2U, ring3U],
+          aspect: distortionAspectU,
+        },
       };
       // Seed uniforms with the LATEST preset (refs always point at current
       // prop values, even if React rendered new ones during the async window).
@@ -261,6 +282,11 @@ export function AtmosphericWebGPUPass({
       // monotonically — `sin` handles overflow gracefully, so no need to
       // wrap the value.
       current.heatHaze.time.value = state.clock.elapsedTime;
+    }
+    if (current.distortionRings) {
+      // Project active ring world positions → screen UV, decay strength.
+      // No-op when all ring slots are inactive (zero-strength = identity node).
+      sampleRings(state.camera, performance.now(), current.distortionRings.rings);
     }
     current.post.render();
   }, 1);

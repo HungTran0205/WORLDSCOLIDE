@@ -636,6 +636,7 @@ export class CombatEngine {
           targetId: entity.id,
           damage: counterDmg,
           isCrit: false,
+          isRiposte: true,
         });
         if (!target.riposteCountersThisTick) target.riposteCountersThisTick = new Set();
         target.riposteCountersThisTick.add(entity.id);
@@ -671,6 +672,7 @@ export class CombatEngine {
 
     switch (type) {
       case 'damage':      this.executeSkillDamage(entity, target, skill); break;
+      case 'cleave':      this.executeSkillCleave(entity, target, skill); break;
       case 'lane-hit':    this.executeSkillLaneHit(entity, target, skill); break;
       case 'multi-hit':   this.executeSkillMultiHit(entity, target, skill); break;
       case 'aoe-ground':  this.executeSkillAoeGround(entity, skill); break;
@@ -724,6 +726,34 @@ export class CombatEngine {
       const mult = isLast && (skill.laneHitLastBonus ?? 0) > 0
         ? skill.damageMultiplier * (1 + skill.laneHitLastBonus!)
         : skill.damageMultiplier;
+      let dmg = calcSkillDamage(baseDmg, mult, entity.stats.DEX);
+      if (isCrit) dmg = Math.floor(dmg * entity.critDmg);
+      this.applySkillHit(entity, t, dmg, isCrit, skill.name);
+    }
+  }
+
+  private executeSkillCleave(entity: ArenaEntity, target: ArenaEntity, skill: import('@/game/state/game-state').Skill): void {
+    const radius     = skill.cleaveRadius ?? 1.8;
+    const maxExtra   = skill.cleaveMaxExtra ?? 2;
+    const splashMult = skill.splashDamageMultiplier ?? 0.6;
+
+    // Frontal arc: extra enemies are those alive within `radius` of the struck
+    // primary's position (a cleave splashing around the point of impact).
+    const tx = target.position?.x ?? 0;
+    const tz = target.position?.z ?? 0;
+    const extras = this.entities.filter(e =>
+      !e.isAlly && e.currentHp > 0 && e.id !== target.id && e.position &&
+      Math.hypot(e.position.x - tx, e.position.z - tz) <= radius,
+    ).slice(0, maxExtra);
+
+    const allTargets = [target, ...extras];
+    for (let i = 0; i < allTargets.length; i++) {
+      const t = allTargets[i];
+      const effectiveDef = Math.floor((t.stats.END + (t.gearFlatDefense ?? 0)) * (1 + (t._linhSonDefBuff ?? 0)));
+      const baseDmg = calcAutoAttackDamage(entity.stats.STR, effectiveDef, 1.0, entity.gearFlatDamage ?? 0);
+      const isCrit = rollCrit(entity.stats.LCK + (skill.critRateBonus ?? 0) * 100);
+      // Primary takes full multiplier; splash targets take the reduced share.
+      const mult = i === 0 ? skill.damageMultiplier : skill.damageMultiplier * splashMult;
       let dmg = calcSkillDamage(baseDmg, mult, entity.stats.DEX);
       if (isCrit) dmg = Math.floor(dmg * entity.critDmg);
       this.applySkillHit(entity, t, dmg, isCrit, skill.name);
@@ -859,7 +889,9 @@ export class CombatEngine {
 
   private executeSkillRiposte(entity: ArenaEntity, skill: import('@/game/state/game-state').Skill): void {
     entity.riposteUntil = this.time + (skill.statusDurationMs ?? 3000);
-    this.eventQueue.push({ type: 'effect-applied', targetId: entity.id, effect: 'riposte' });
+    // casterId == targetId (self-cast) — lets the VFX layer + skill-name banner
+    // treat this like other skill casts.
+    this.eventQueue.push({ type: 'effect-applied', targetId: entity.id, effect: 'riposte', casterId: entity.id });
   }
 
   private applySkillHit(entity: ArenaEntity, target: ArenaEntity, damage: number, isCrit: boolean, skillName: string): void {

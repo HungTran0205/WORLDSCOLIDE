@@ -7,12 +7,15 @@
  *     from the in-canvas `<CombatProjectionPublisher />`).
  *   - `combat-projection-store.damages`    for active popup queue.
  *
- * Coordinates are viewport-space CSS pixels; the HUD sits inside a fixed
- * full-bleed `<div>` so we can position children directly without subtracting
- * the panel offset.
+ * Coordinates are viewport-space CSS pixels. The overlay is portaled to
+ * document.body so its `position: fixed` resolves against the viewport, NOT
+ * against the combat panel — any transform on a panel ancestor (open/close
+ * animation, hit-shake) would otherwise turn the panel into the containing
+ * block and shift every HP bar by the panel's offset.
  */
 
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useGameStore } from '@/game/state/store';
 import { useCombatProjectionStore } from '@/scene/combat/combat-projection-store';
 
@@ -33,7 +36,7 @@ export function CombatPanelHud() {
     return () => clearInterval(id);
   }, [pruneDamages]);
 
-  return (
+  return createPortal(
     <div className="combat-panel-hud" aria-hidden="true">
       {/* HP bars */}
       {entities.map((e) => {
@@ -41,6 +44,10 @@ export function CombatPanelHud() {
         if (!pos || !pos.visible) return null;
         const pct = Math.max(0, Math.min(1, e.currentHp / Math.max(1, e.maxHp)));
         const isDead = e.currentHp <= 0;
+        // Overhead buff/stance icons — Riposte stance (🛡️) + damage-up buffs (⚔️, Rally).
+        const buffIcons: string[] = [];
+        if (e.riposteActive) buffIcons.push('🛡️');
+        if (e.statusEffects?.some((s) => s.type === 'boosted')) buffIcons.push('⚔️');
         return (
           <div
             key={e.id}
@@ -63,6 +70,13 @@ export function CombatPanelHud() {
                 style={{ width: `${pct * 100}%` }}
               />
             </div>
+            {buffIcons.length > 0 && (
+              <div className="combat-hud__buff-row">
+                {buffIcons.map((icon, i) => (
+                  <span key={i} className="combat-hud__buff-icon">{icon}</span>
+                ))}
+              </div>
+            )}
           </div>
         );
       })}
@@ -81,6 +95,7 @@ export function CombatPanelHud() {
           </div>
         );
       })}
-    </div>
+    </div>,
+    document.body,
   );
 }

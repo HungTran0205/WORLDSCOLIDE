@@ -9,11 +9,17 @@ export const SKILL_PIERCE: Skill = {
   laneHit: true,
 };
 
+// Frontal arc: strikes the primary target + up to 2 enemies within 1.8u of it,
+// secondaries at 60% damage. Multiplier lowered from the old single-target 1.50
+// to balance the added multi-target reach. Provisional — tune via playtest.
 export const SKILL_CLEAVE: Skill = {
   id: 'cleave', name: 'Cleave',
-  damageMultiplier: 1.50, cooldownMs: 12000, autoEnabled: true,
-  skillType: 'damage',
+  damageMultiplier: 1.20, cooldownMs: 12000, autoEnabled: true,
+  skillType: 'cleave',
   critRateBonus: 0.10,
+  cleaveRadius: 1.8,
+  cleaveMaxExtra: 2,
+  splashDamageMultiplier: 0.6,
 };
 
 export const SKILL_RIPOSTE: Skill = {

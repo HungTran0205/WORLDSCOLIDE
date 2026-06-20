@@ -108,9 +108,9 @@ export interface CombatTick {
 export type AoeShape = 'circle' | 'cone' | 'rect';
 
 export type CombatEvent =
-  | { type: 'auto-attack'; attackerId: string; targetId: string; damage: number; isCrit?: boolean }
+  | { type: 'auto-attack'; attackerId: string; targetId: string; damage: number; isCrit?: boolean; isRiposte?: boolean }
   | { type: 'skill-use'; attackerId: string; targetId: string; damage: number; skillName: string; isCrit?: boolean }
-  | { type: 'effect-applied'; targetId: string; effect: string }
+  | { type: 'effect-applied'; targetId: string; effect: string; casterId?: string }
   | { type: 'effect-tick'; targetId: string; effect: string; damage: number }
   | { type: 'death'; entityId: string }
   | { type: 'dodge'; attackerId: string; targetId: string }

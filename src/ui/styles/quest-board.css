@@ -3,7 +3,9 @@
    Applies parchment skin (tokens from parchment.css) to a single surface
    containing list + detail. No stacked modal flow. */
 
-/* ─── Overlay backdrop ──────────────────────────────────────────────────────*/
+/* ─── Overlay backdrop — click-outside close surface ───────────────────────
+   The backdrop handles click-outside-close (onClick bubbles up to QuestBoard's
+   onClose via the overlay div). The inner stage stops propagation. */
 .quest-board-overlay {
   position: fixed;
   inset: 0;
@@ -15,7 +17,7 @@
   backdrop-filter: blur(0px);
   -webkit-backdrop-filter: blur(0px);
   padding: 24px;
-  /* Phase 3 diegetic transition: fade dim + blur in over 300ms so the camera
+  /* Diegetic transition: fade dim + blur in over 300ms so the camera
      tween (driven from the store) reads as a single cinematic beat. */
   animation: quest-overlay-fade-in 300ms ease-out forwards;
 }
@@ -35,6 +37,20 @@
   }
 }
 
+/* ─── PanelFrame wrapper override ───────────────────────────────────────────
+   quest-board-frame lets PanelFrame own the chrome (title band, border, SFX,
+   open/close animation) while the parchment surface stays as the content area.
+   We override max-width so the board keeps its wide diegetic dimensions. */
+.quest-board-frame {
+  max-width: min(1140px, 98vw) !important;
+}
+/* pf-content inside quest-board: reset PanelFrame's default padding/overflow so
+   the parchment surface can control its own geometry */
+.quest-board-frame .pf-content {
+  padding: 0;
+  overflow: visible;
+}
+
 /* ─── The parchment surface itself ──────────────────────────────────────────*/
 .quest-board {
   width: min(1100px, 96vw);
@@ -47,22 +63,15 @@
   color: var(--ink-dark);
 }
 
-/* ─── Header ────────────────────────────────────────────────────────────────*/
+/* ─── Header — tabs + tier filter (title now lives in PanelFrame header band) */
 .quest-board__header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--parchment-aged);
-}
-
-.quest-board__title {
-  margin: 0;
-  font-size: 1.6rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  flex-wrap: wrap;
 }
 
 .quest-board__filter {

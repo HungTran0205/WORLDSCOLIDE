@@ -1,8 +1,11 @@
 /**
- * Training Yard function panel — opened by clicking the training dummy in-room.
+ * Training Yard panel — opened by clicking the training dummy in-room.
  * Shows active training slots (progress + cancel) and the two-step assign flow
  * (pick member → pick a class skill to rank up). This is the sole assign path;
  * the facilities-grid tray only shows read-only status.
+ *
+ * Shell (chrome, header, close button, open/close animation, SFX) is owned by
+ * PanelFrame. This file contains only content-specific JSX.
  */
 
 import { useEffect, useState } from 'react';
@@ -17,6 +20,7 @@ import { FacilityMemberAvatar } from '@/ui/components/facility-member-avatar';
 import { InkConfirmDialog } from '@/ui/components/ink-confirm-dialog';
 import { MemberPicker, SkillPicker } from '@/ui/components/training-yard-pickers';
 import { SkillIcon } from '@/ui/components/skill-icon';
+import { PanelFrame } from '@/ui/components/panel-frame';
 import '@/ui/styles/training-yard-panel.css';
 
 function formatRemaining(ms: number): string {
@@ -57,7 +61,8 @@ export function TrainingYardPanel({ facility, onClose }: TrainingYardPanelProps)
 
   const sameType    = facilities.filter(f => f.type === 'training-yard' && f.level > 0);
   const instanceNum = sameType.length > 1 ? sameType.findIndex(f => f.id === live.id) + 1 : null;
-  const title       = instanceNum ? `${def.name} #${instanceNum}` : def.name;
+  const baseName    = t('facilityNames.trainingYard');
+  const title       = instanceNum ? `${baseName} #${instanceNum}` : baseName;
 
   useEffect(() => {
     if (rows.length === 0) return;
@@ -66,22 +71,18 @@ export function TrainingYardPanel({ facility, onClose }: TrainingYardPanelProps)
   }, [rows.length]);
 
   return (
-    <div className="ty-overlay" onClick={onClose}>
-      <div className="ty-panel" onClick={e => e.stopPropagation()}>
-        {/* ── Header ── */}
-        <header className="ty-header">
-          <div className="ty-header-info">
-            <span className="ty-title">{title}</span>
-            <span className="ty-badge">{t('facilityTray.level', { level: live.level })}</span>
-            <span className="ty-badge">{t('trainingYardCard.header', { occupied: rows.length, max: maxSlots, cap })}</span>
-            {canUpgrade && (
-              <button className="ty-upgrade" onClick={() => upgradeFacility(live.id)}>
-                {t('facilityTray.upgradeBtn', { cost: upgradeCost })}
-              </button>
-            )}
-          </div>
-          <button className="ty-close" onClick={onClose}>✕</button>
-        </header>
+    <div className="ty-positioner">
+      <PanelFrame title={title} onClose={onClose} variant="panel">
+        {/* ── Header meta: level badge, slots/cap, upgrade ── */}
+        <div className="ty-meta">
+          <span className="ty-badge">{t('facilityTray.level', { level: live.level })}</span>
+          <span className="ty-badge">{t('trainingYardCard.header', { occupied: rows.length, max: maxSlots, cap })}</span>
+          {canUpgrade && (
+            <button className="ty-upgrade" onClick={() => upgradeFacility(live.id)}>
+              {t('facilityTray.upgradeBtn', { cost: upgradeCost })}
+            </button>
+          )}
+        </div>
 
         {/* ── Active training slots ── */}
         <section className="ty-body">
@@ -130,7 +131,7 @@ export function TrainingYardPanel({ facility, onClose }: TrainingYardPanelProps)
             <div className="fp-inf-empty">{t('trainingYardCard.slotsFull')}</div>
           )}
         </section>
-      </div>
+      </PanelFrame>
 
       {cancelTarget && (
         <InkConfirmDialog

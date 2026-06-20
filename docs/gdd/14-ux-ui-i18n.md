@@ -11,7 +11,12 @@
 
 UI must support the Pixel-integrated Miniature Storybook Dark Fantasy tone without stealing attention from the scene.
 
-**UI style:** dark wood, dark stone, brass trim, restrained ornamentation, fantasy typography framing.
+**Authoritative spec:** [GDD 12a — UI Design Language](./12a-ui-design-language.md)
+defines all UI chrome — palette tokens, motifs, panel anatomy, button states,
+typography roles, iconography, motion, and z-index tiers. This section states intent
+only; when they disagree, 12a wins.
+
+**UI style:** patinated Đông Sơn bronze chrome framing warm parchment content fields, with Linh Sơn cyan as the sole active/selected/magic accent (the "brass trim" below, matured — see 12a §1). Restrained ornamentation, pixel typography framing.
 **Priority rule:** the gameplay scene is the main stage; UI is the frame, not the main event.
 
 **Accent use (gold/brass):**
@@ -20,6 +25,21 @@ UI must support the Pixel-integrated Miniature Storybook Dark Fantasy tone witho
 
 ### Panel System
 
+All panels render through a unified **PanelFrame** system (`src/ui/components/panel-frame.tsx`) — one standard chrome per panel (header band, close button, parchment content field, SFX hooks, open/close animation). Panel state is managed centrally via `panel-slice.ts` (Zustand), with two independent axes: `mainPanel` (quest-board, roster, facilities, combat, settings) and `facilityPanel` (workshop, alchemy, tavern, training-yard). Panels on each axis are mutually exclusive; Esc closes all. **Exception:** combat panel uses its own `useCombatPanelStore` for independent lifecycle during combat sessions (documented in `combat-panel.tsx`).
+
+### Combat HUD Status Icons
+
+During active combat, entity status indicators render above each character head in the arena (driven by `combat-panel-hud.tsx` projection store):
+
+| Icon | Trigger | Status | Meaning |
+|------|---------|--------|---------|
+| 🛡️ | `riposteActive: true` | Riposte stance active (3–4s) | Character can parry and counter next hit |
+| ⚔️ | `statusEffects` contains `'boosted'` | Damage buff active (from Rally) | Character deals +20% damage until buff expires |
+
+These are pure DOM indicators (no mesh layer), positioned via the existing projection-store anchor system (head bone + screen offset). They refresh once per combat tick and fade when status expires.
+
+Quest board keeps its diegetic identity as the sole **hideClose** variant — it renders the parchment-and-wax-seal diegetic skin, with unroll animation and PAPER_UNROLL/SEAL_BREAK SFX, and accepts click-outside close (matching the panel-frame motion language). HUD restyled to bronze token ramp with pixel icon toggle bar (11 icons, tooltips preserved via aria-labels).
+
 Panels are full-screen or side-pane overlays managed as React components. The HUD persists across room transitions. Key panel files (spot-read, not exhaustive):
 
 - **HUD layer:** `src/ui/hud/hud.tsx`, `src/ui/hud/room-nav-bar.tsx`, `src/ui/hud/facility-compass.tsx`, `src/ui/hud/panel-toggle.tsx`, `src/ui/hud/save-status-badge.tsx`
@@ -27,6 +47,7 @@ Panels are full-screen or side-pane overlays managed as React components. The HU
 - **Combat panels:** `src/ui/panels/combat-panel.tsx`, `src/ui/panels/combat-panel-hud.tsx`, `src/ui/panels/combat-prep-panel.tsx`
 - **Workshop sub-tabs:** `src/ui/panels/workshop-panel.tsx`
 - **Tavern modals:** `src/ui/panels/tavern-negotiate-modal.tsx`, `src/ui/panels/tavern-hire-merc-modal.tsx`
+- **Panel infrastructure:** `src/ui/components/panel-frame.tsx` (chrome + animations), `src/game/state/panel-slice.ts` (state management), `src/ui/hooks/use-delayed-unmount.ts` (exit animation timing)
 
 ### Interaction Patterns
 

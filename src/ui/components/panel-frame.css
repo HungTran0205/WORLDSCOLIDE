@@ -1,0 +1,194 @@
+/* ─── PanelFrame Component Styles ─────────────────────────────────────────────
+   Consumes --bp-* tokens from ui-tokens-v2.css.
+   PNG upgrade path: change --bp-frame-bg / --bp-frame-border token values only;
+   no edits to this file are needed when the 9-slice assets land.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/* Root wrapper — owns z-index tier and scale composition.
+   .ink-panel already applies transform: scale(--ui-scale); PanelFrame must NOT
+   re-apply scale — composing via transform-origin: top left on .pf-root only. */
+.pf-root {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--bp-radius);
+  box-shadow: var(--ink-shadow-panel);
+  overflow: hidden;
+  /* z-index set inline via variant (panel/modal/side) — see tsx */
+}
+
+/* Frame chrome — consumes --bp-frame-bg for the edge band and --bp-frame-border
+   for the outline. Both tokens are defined in ui-tokens-v2.css with CSS-gradient
+   fallback values; swap the token values to border-image when PNG slices land —
+   component code here stays unchanged (that is the point of the token indirection).
+   image-rendering: pixelated is pre-wired so PNG border-image won't blur on
+   HiDPI when the real slices land (precedent: game-ui-tokens.css:206-210). */
+.pf-frame {
+  position: absolute;
+  inset: 0;
+  border: var(--bp-frame-border);
+  border-radius: var(--bp-radius);
+  pointer-events: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  /* Edge-band fill from token — gradient now, border-image when PNGs ship. */
+  background:
+    radial-gradient(circle at var(--bp-rivet) var(--bp-rivet),
+      var(--bp-iron) 0 calc(var(--bp-rivet) / 2), transparent calc(var(--bp-rivet) / 2 + 1px)),
+    radial-gradient(circle at calc(100% - var(--bp-rivet)) var(--bp-rivet),
+      var(--bp-iron) 0 calc(var(--bp-rivet) / 2), transparent calc(var(--bp-rivet) / 2 + 1px)),
+    radial-gradient(circle at var(--bp-rivet) calc(100% - var(--bp-rivet)),
+      var(--bp-iron) 0 calc(var(--bp-rivet) / 2), transparent calc(var(--bp-rivet) / 2 + 1px)),
+    radial-gradient(circle at calc(100% - var(--bp-rivet)) calc(100% - var(--bp-rivet)),
+      var(--bp-iron) 0 calc(var(--bp-rivet) / 2), transparent calc(var(--bp-rivet) / 2 + 1px)),
+    var(--bp-frame-bg);
+  z-index: 2;
+}
+
+/* Header — SOLID flat bronze band per bible §5 hard rule.
+   FLAT fill only: title text must never sit on textured/embossed bronze. */
+.pf-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: var(--bp-header-h);
+  background: var(--bp-header-fill);
+  border-bottom: 2px solid var(--bp-bronze-light);
+  padding: 0 var(--ink-space-4);
+  gap: var(--ink-space-2);
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+/* Title text — §7 typography role: panel title = --ink-fs-h1, uppercase */
+.pf-title {
+  flex: 1;
+  font-family: var(--ink-font-title);
+  font-size: var(--ink-fs-h1);
+  color: var(--bp-header-text);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+/* Close button — ONE standard style (resolves 3 current variants).
+   32px desktop hit target per §6. keyboard-focusable, aria-label required. */
+.pf-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  background: linear-gradient(180deg, var(--bp-bronze-base), var(--bp-bronze-dark));
+  border: 2px solid var(--bp-bronze-light);
+  border-radius: var(--bp-radius);
+  color: var(--bp-parch-light);
+  font-family: var(--ink-font-mono);
+  font-size: var(--ink-fs-body);
+  cursor: pointer;
+  transition:
+    background var(--bp-dur-fast) var(--bp-ease),
+    border-color var(--bp-dur-fast) var(--bp-ease);
+  flex-shrink: 0;
+}
+
+.pf-close:hover {
+  background: linear-gradient(180deg, var(--bp-bronze-light), var(--bp-bronze-base));
+  border-color: var(--bp-bronze-glint);
+}
+
+.pf-close:active {
+  background: linear-gradient(180deg, var(--bp-bronze-dark), var(--bp-bronze-shadow));
+  border-color: var(--bp-cyan-core);
+  transform: translateY(1px);
+}
+
+/* Focus-visible — cyan outline per §6 (keyboard active state, cyan law permits) */
+.pf-close:focus-visible {
+  outline: 2px solid var(--bp-cyan-core);
+  outline-offset: 2px;
+}
+
+/* Content area — parchment surface, padding from existing spacing scale */
+.pf-content {
+  flex: 1;
+  background-color: var(--bp-parch-base);
+  background-image:
+    radial-gradient(ellipse at 20% 15%, rgba(201, 182, 135, 0.45), transparent 55%),
+    radial-gradient(ellipse at 80% 85%, rgba(139, 106, 63, 0.30), transparent 60%),
+    linear-gradient(135deg, rgba(232, 217, 176, 0.95), rgba(201, 182, 135, 0.85));
+  color: var(--bp-text-ink);
+  font-family: var(--ink-font-body);
+  font-size: var(--ink-fs-body);
+  line-height: 1.55;
+  padding: var(--ink-space-4);
+  overflow-y: auto;
+  position: relative;
+  z-index: 0;
+}
+
+/* Form controls do NOT inherit fonts per the UA stylesheet — without this,
+   every button/input/select inside a panel falls back to the system font
+   instead of the pixel font set on .pf-content. */
+.pf-content button,
+.pf-content input,
+.pf-content select,
+.pf-content textarea {
+  font-family: inherit;
+}
+
+/* Scrollbar styling using bp tokens */
+.pf-content::-webkit-scrollbar        { width: var(--bp-scrollbar-w); }
+.pf-content::-webkit-scrollbar-track  { background: var(--bp-parch-aged); }
+.pf-content::-webkit-scrollbar-thumb  { background: var(--bp-bronze-base); border-radius: 2px; }
+
+/* ─── Open / Close keyframes (bible §9) ─────────────────────────────────────
+   Open: fade + scale 250ms --bp-ease
+   Close: reverse fade + slight down 150ms --bp-ease
+   Reduced-motion guard below overrides both. */
+/* The `to` frame deliberately omits `transform`: with fill-mode both, a
+   retained transform (even identity scale(1)) makes .pf-root a containing
+   block for position:fixed descendants — combat's window-anchored HP/damage
+   HUD and inline fixed overlays would silently shift by the panel's offset.
+   Omitting it animates toward the base value (none) and retains nothing. */
+@keyframes pf-open {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pf-close {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+  }
+}
+
+.pf-root[data-state="open"] {
+  animation: pf-open var(--bp-dur-panel-open) var(--bp-ease) both;
+}
+
+.pf-root[data-state="closing"] {
+  animation: pf-close var(--bp-dur-panel-close) var(--bp-ease) both;
+}
+
+/* ─── Reduced-motion guard ───────────────────────────────────────────────────
+   Matches precedents: parchment.css:132-138, game-ui-tokens.css:237-239 */
+@media (prefers-reduced-motion: reduce) {
+  .pf-root[data-state="open"],
+  .pf-root[data-state="closing"] {
+    animation: none !important;
+  }
+}
