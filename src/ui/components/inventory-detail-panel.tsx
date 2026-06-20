@@ -15,8 +15,15 @@ interface InventoryDetailPanelProps {
   onDrop?: (amount: number) => void;
 }
 
+// Rarity colors used as inline style on chip borders inside pf-content (parchment bg).
+// These are border colors only — text is forced to --bp-text-ink via .inv-detail-rarity CSS.
+// COMMON uses bp-text-muted (#5a4630) since it has no distinct hue tier.
 const RARITY_COLOR: Record<string, string> = {
-  COMMON: '#a09080', UNCOMMON: '#2ecc71', RARE: '#3498db', EPIC: '#9b59b6', LEGENDARY: '#f39c12',
+  COMMON:    '#5a4630', // = --bp-text-muted; neutral ink border (6.1:1 on parchment ✓)
+  UNCOMMON:  '#2ecc71', // green — border only, not text
+  RARE:      '#3498db', // blue  — border only, not text
+  EPIC:      '#9b59b6', // purple — border only, not text
+  LEGENDARY: '#f39c12', // amber — border only, not text
 };
 
 export function InventoryDetailPanel({ entry, equippedByName, onEquip, onUse, onDrop }: InventoryDetailPanelProps) {
@@ -39,7 +46,7 @@ export function InventoryDetailPanel({ entry, equippedByName, onEquip, onUse, on
         </div>
         <h3 className="inv-detail-name">{displayName}</h3>
         <div className="inv-detail-type">{tpl.type}</div>
-        <span className="inv-detail-rarity" style={{ color: rarityColor }}>{tpl.rarity}</span>
+        <span className="inv-detail-rarity" style={{ borderColor: rarityColor }}>{tpl.rarity}</span>
         <p className="inv-detail-desc">{displayDesc}</p>
         <div className="inv-detail-stats">
           <div className="inv-detail-stat-row">
@@ -76,7 +83,7 @@ export function InventoryDetailPanel({ entry, equippedByName, onEquip, onUse, on
       </div>
       <h3 className="inv-detail-name">{displayName}</h3>
       <div className="inv-detail-type">{slotLabel}</div>
-      <span className="inv-detail-rarity" style={{ color: rarityColor }}>{tpl.rarity}</span>
+      <span className="inv-detail-rarity" style={{ borderColor: rarityColor }}>{tpl.rarity}</span>
       {equippedByName && (
         <div className="inv-detail-equipped-by">{t('inventoryDetail.equippedBy', { name: equippedByName })}</div>
       )}

@@ -1,4 +1,7 @@
 import { create } from 'zustand';
+import { createPanelSlice, type PanelSlice } from './panel-slice';
+
+export type { PanelId, FacilityFunctionType } from './panel-slice';
 
 const TUTORIAL_SEEN_KEY = 'questBoardTutorialSeen';
 const FACILITY_HINT_SEEN_KEY = 'facilityHintSeen';
@@ -68,7 +71,7 @@ const clearFacilityHintSeen = (): void => {
 };
 
 /** UI-only navigation state — not persisted to save */
-interface UiStore {
+interface UiStore extends PanelSlice {
   inventoryMode: 'default' | 'equip';
   equipModeMemberId: string | null;
   /** True once the first-visit drum hint has been dismissed. Persisted to localStorage. */
@@ -88,7 +91,8 @@ interface UiStore {
   resetTutorials: () => void;
 }
 
-export const useUiStore = create<UiStore>()((set, get) => ({
+export const useUiStore = create<UiStore>()((set, get, api) => ({
+  ...createPanelSlice(set, get, api),
   inventoryMode: 'default',
   equipModeMemberId: null,
   questBoardTutorialSeen: readTutorialSeen(),

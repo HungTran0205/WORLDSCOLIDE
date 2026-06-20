@@ -1,3 +1,14 @@
+/**
+ * Character detail panel — content only.
+ * Shell (chrome, header, close button, open/close animation, SFX) is owned by
+ * PanelFrame. This file contains only content-specific JSX.
+ *
+ * Positioning note: this panel is rendered inside guild-roster's .ink-panel
+ * wrapper (guild-roster.tsx), which provides the outer chrome during the
+ * guild-roster's own migration. PanelFrame here takes ownership of the
+ * inner title/close; the outer .ink-panel is guild-roster's concern.
+ */
+
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Member, SyringeLoadout } from '@/game/state/game-state';
@@ -22,6 +33,7 @@ import { SkillDetail } from '@/ui/components/skill-detail';
 import { SkillIcon } from '@/ui/components/skill-icon';
 import { getArchetypeSkillPool } from '@/game/data/skills';
 import { applySkillRankMilestones } from '@/game/systems/skill-training-system';
+import { PanelFrame } from '@/ui/components/panel-frame';
 import '@/ui/styles/character-detail.css';
 
 type TabKey = 'stats' | 'equipment' | 'skills' | 'bio';
@@ -44,7 +56,7 @@ export interface CharacterDetailPanelProps {
   equipmentInventory?: EquipmentItem[];
   onEquipGear?: (id: string) => void;
   onUnequipGear?: (slot: EquipmentSlot) => void;
-  onOpenEquipMode?: () => void; // wired in phase 04
+  onOpenEquipMode?: () => void;
   /** Rename this member. Omit to disable renaming (e.g. founder / mercenaries). */
   onRename?: (name: string) => void;
 }
@@ -87,9 +99,16 @@ export function CharacterDetailPanel({
     { key: 'bio',       label: t('characterDetail.tab.bio') },
   ];
 
+  /* Title: member name is displayed directly — it is a proper noun chosen by
+     the player and requires no i18n translation. Falls back to unknownName key
+     only if the name string is somehow empty. */
+  const panelTitle = member.name || t('characterDetail.unknownName');
+
   return (
-    <div className="char-detail">
-      {/* ── Header ── */}
+    <PanelFrame title={panelTitle} onClose={onClose} variant="panel">
+      {/* Flex column wrapper — lets char-tabs-body grow and scroll inside pf-content */}
+      <div className="char-detail">
+      {/* ── Portrait + identity row ── */}
       <div className="char-detail-header">
         <div className="char-portrait-frame ink-pixelated">
           {!imgFailed && avatarUrl
@@ -146,19 +165,18 @@ export function CharacterDetailPanel({
             )}
           </div>
         </div>
-        <button className="char-btn" onClick={onClose} type="button">{t('characterDetail.back')}</button>
       </div>
 
       {/* ── Tab Bar ── */}
       <div className="ink-tab-bar" style={{ padding: '0 16px' }}>
-        {TABS.map(t => (
+        {TABS.map(tabItem => (
           <button
-            key={t.key}
-            className={`ink-tab${tab === t.key ? ' active' : ''}`}
-            onClick={() => t.key === 'equipment' && onOpenEquipMode ? onOpenEquipMode() : setTab(t.key)}
+            key={tabItem.key}
+            className={`ink-tab${tab === tabItem.key ? ' active' : ''}`}
+            onClick={() => tabItem.key === 'equipment' && onOpenEquipMode ? onOpenEquipMode() : setTab(tabItem.key)}
             type="button"
           >
-            {t.label}
+            {tabItem.label}
           </button>
         ))}
       </div>
@@ -315,6 +333,7 @@ export function CharacterDetailPanel({
           </button>
         </div>
       )}
-    </div>
+      </div>
+    </PanelFrame>
   );
 }

@@ -1,0 +1,106 @@
+/* ─── UI Tokens v2 — Bronze × Parchment Design Language ──────────────────────
+   Token namespace: --bp-* (bronze-parchment)
+   All values transcribed verbatim from docs/gdd/12a-ui-design-language.md.
+   Coexists with --ink-* / --parchment-* during migration.
+   DO NOT add values not in the bible.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ── §3.1 Bronze patina ramp (chrome) ──────────────────────────────────── */
+  --bp-bronze-glint:   #ffe87c;   /* specular glint pixels, rivet catch-light, hover border */
+  --bp-bronze-light:   #d4a843;   /* lit bevel face, motif line-work, default button border */
+  --bp-bronze-base:    #8a6d2c;   /* main bronze body — edge bands, button fill top */
+  --bp-bronze-dark:    #5c4a20;   /* shadow bevel face, motif recess lines, button fill bottom */
+  --bp-bronze-patina:  #527a66;   /* verdigris in crevices, aged frame edges, weathering accents */
+  --bp-bronze-shadow:  #2a1f12;   /* deepest recess, frame contact shadow, icon outlines */
+
+  /* ── §3.2 Parchment ramp (content surfaces) ────────────────────────────── */
+  --bp-parch-light:    #f0e6d3;   /* lit paper edge, header-bar text, text on dark bronze */
+  --bp-parch-base:     #e8d9b0;   /* content field fill — the default page */
+  --bp-parch-aged:     #c9b687;   /* inset wells, scrollbar track, alternating list rows */
+  --bp-parch-burn:     #8b6a3f;   /* torn/burnt paper edges, parchment-side borders */
+  --bp-parch-shadow:   rgba(40, 20, 5, 0.6);  /* drop shadow under parchment sheets */
+
+  /* ── §3.3 Ink text on parchment ────────────────────────────────────────── */
+  --bp-text-ink:       #2a1f12;   /* primary body text on parchment (11.4:1 on #e8d9b0) */
+  --bp-text-ink-soft:  #5a4630;   /* secondary/descriptive text on parchment (6.1:1) */
+  --bp-text-ink-red:   #8b2c1c;   /* diegetic stamps, urgent marks on parchment */
+
+  /* ── Content-role tokens (consumed by bp-content-theme.css inside .pf-content) ── */
+  /* All values derived from bible §3 ramps — no new hues invented.                  */
+  /* --bp-text-muted: readable muted label on parchment — §3.3 soft stop, 6.1:1 ✓  */
+  --bp-text-muted:     #5a4630;   /* = --bp-text-ink-soft; labels, captions on parchment */
+  /* --bp-text-accent: deep accent for item names / emphasized text on parchment.    */
+  /* Uses §3.1 bronze-dark (#5c4a20) — 6.6:1 on #e8d9b0 ✓. Gold (#d4a843) is 1.7:1 FAIL. */
+  --bp-text-accent:    #5c4a20;   /* = --bp-bronze-dark; emphasized names, accent text */
+  /* --bp-card-fill: inset card/tile fill — aged parchment per §3.2 inset wells     */
+  --bp-card-fill:      #c9b687;   /* = --bp-parch-aged; card/tile backgrounds */
+  /* --bp-card-border: card border — parchment-burn per §3.2 border role            */
+  --bp-card-border:    #8b6a3f;   /* = --bp-parch-burn; card/tile borders */
+  /* --bp-input-bg: search/input field background — slightly darker than parch-base */
+  --bp-input-bg:       #ddd0a0;   /* derived: parch-base darkened ~8% for input inset */
+  /* --bp-input-border: input field border — parch-burn                             */
+  --bp-input-border:   #8b6a3f;   /* = --bp-parch-burn; input borders */
+
+  /* ── §3.4 Cyan crystal accent — 3 stops ────────────────────────────────── */
+  /* LAW: cyan ONLY on active / selected / magic states. Never decorative. */
+  --bp-cyan-glow:  #9ff2e6;                    /* outer glow halo, glint sparkle pixels */
+  --bp-cyan-core:  #46d8d0;                    /* THE accent: active tab, selected border, magic stats */
+  --bp-cyan-deep:  #1d7a80;                    /* pressed-state shade, glow falloff, deep crystal facet */
+  --bp-cyan-halo:  rgba(70, 216, 208, 0.35);   /* box-shadow glow for selected/active elements */
+
+  /* ── §3.5 Semantic status colors ───────────────────────────────────────── */
+  --bp-status-ok:    #6dbf6d;   /* success, healthy, complete */
+  --bp-status-warn:  #d4a843;   /* caution, upkeep due, low resource */
+  --bp-status-bad:   #c44a4a;   /* danger, failure, debt */
+  --bp-status-info:  #4a90d9;   /* neutral information, hints */
+
+  /* ── §3.6 Supporting tokens ─────────────────────────────────────────────── */
+  --bp-iron:         #3a3025;                  /* rivet/stud body, hinge hardware, disabled fill */
+  --bp-header-fill:  #3a2c14;                  /* header/footer bar solid fill — FLAT no texture */
+  --bp-header-text:  #f0e6d3;                  /* title text on header bar (10.9:1 contrast) */
+  --bp-scrim:        rgba(7, 5, 13, 0.65);     /* modal backdrop scrim */
+
+  /* ── §5 Panel geometry tokens ───────────────────────────────────────────── */
+  --bp-frame-w:      6px;    /* edge band thickness (9-slice edges) */
+  --bp-corner:       24px;   /* 9-slice corner region (fixed, never scaled) */
+  --bp-header-h:     40px;   /* header bar height */
+  --bp-footer-h:     36px;   /* footer bar height (when present) */
+  --bp-divider-w:    2px;    /* content divider thickness */
+  --bp-scrollbar-w:  10px;   /* scrollbar width */
+  --bp-rivet:        8px;    /* rivet diameter */
+  --bp-radius:       4px;    /* outer corner radius */
+
+  /* ── §9 Motion language — ONE easing, fixed duration set ───────────────── */
+  --bp-ease:             cubic-bezier(0.16, 1, 0.3, 1);  /* = --ink-ease-out */
+  --bp-dur-panel-open:   250ms;   /* panel/modal enter */
+  --bp-dur-panel-close:  150ms;   /* panel/modal exit — faster than entry */
+  --bp-dur-tab:          150ms;   /* tab switch, toggle, hover states */
+  --bp-dur-bar:          300ms;   /* HP/EXP/progress bar width changes */
+  --bp-dur-fast:         120ms;   /* button hover/press micro-feedback */
+
+  /* ── §10 Z-index named tiers ────────────────────────────────────────────── */
+  --bp-z-scene:           0;      /* 3D canvas, world rendering */
+  --bp-z-hud:            50;      /* HUD: top bar, room nav, compass, combat timeline */
+  --bp-z-panel:         100;      /* standard panels: quest board, roster, inventory */
+  --bp-z-panel-elevated: 200;     /* panels over panels, side-sheets, story dialog */
+  --bp-z-modal:         300;      /* confirmations, blocking dialogs, tutorial overlays */
+  --bp-z-toast:        9999;      /* toasts, coachmarks, game-over — always topmost */
+
+  /* ── Frame chrome: CSS-gradient fallback (no PNG yet) ──────────────────────
+     .pf-frame is a full-size overlay painted ABOVE the header and content
+     layers, so the center of this fill MUST stay transparent — any paint
+     there covers the whole panel. Four edge bands only (same contract as the
+     future 9-slice PNG, whose center is transparent). When the PNG kit is
+     approved, replace these bands with the border-image slices. */
+  --bp-frame-bg:
+    linear-gradient(to bottom, var(--bp-bronze-light), var(--bp-bronze-base))
+      top / 100% var(--bp-frame-w) no-repeat,
+    linear-gradient(to top, var(--bp-bronze-light), var(--bp-bronze-dark))
+      bottom / 100% var(--bp-frame-w) no-repeat,
+    linear-gradient(to right, var(--bp-bronze-base), var(--bp-bronze-dark))
+      left / var(--bp-frame-w) 100% no-repeat,
+    linear-gradient(to left, var(--bp-bronze-base), var(--bp-bronze-dark))
+      right / var(--bp-frame-w) 100% no-repeat;
+  --bp-frame-border: 2px solid var(--bp-bronze-light);
+}

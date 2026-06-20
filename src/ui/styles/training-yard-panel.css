@@ -1,94 +1,152 @@
-/* Training Yard Panel — HD-2D Ink UI (mirrors workshop-panel tokens) */
+/* Training Yard Panel — content styles only.
+   Panel chrome (border, header, close button, open/close animation) is owned
+   by PanelFrame. Only content-layout and shared utility classes live here. */
 
-.ty-overlay {
+/* ── Positioner: centers PanelFrame on screen without a dark scrim.
+   Facility panels do not use a backdrop — proximity auto-close and the ✕
+   button are the only close paths (click-outside not expected here). ── */
+.ty-positioner {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 220;
+  pointer-events: none;
+  z-index: var(--bp-z-panel-elevated);
+}
+.ty-positioner > * {
+  pointer-events: auto;
+  width: min(860px, 90vw);
+  max-height: min(85vh, 680px);
 }
 
-.ty-panel {
-  /* Scaled up 30%; caps divided by zoom so the rendered panel fits the viewport
-     (incl. mobile landscape, where height is the tight axis). */
-  zoom: 1.3;
-  width: min(560px, 72vw);
-  max-height: calc(88vh / 1.3);
-  display: flex;
-  flex-direction: column;
-  background: var(--ink-bg-panel);
-  border: var(--ink-border-w) solid var(--ink-gold-dim);
-  border-radius: var(--ink-radius-md);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), var(--ink-glow-gold);
-  overflow: hidden;
-  font-family: var(--ink-font-body);
-  color: var(--ink-text);
-}
-
-/* ── Header ── */
-.ty-header {
+/* ── Header meta row (level badge, slots/cap, upgrade button) ── */
+.ty-meta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--ink-gold-dim);
-  background: var(--ink-bg-deep);
-  flex-shrink: 0;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--bp-parch-aged);
+  margin-bottom: 8px;
 }
-.ty-header-info { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.ty-title {
-  font-family: var(--ink-font-title);
-  font-size: 0.9rem;
-  letter-spacing: 0.08em;
-  color: var(--ink-gold);
-}
+
+/* ── Badges ── */
 .ty-badge {
   font-family: var(--ink-font-mono);
   font-size: 0.55rem;
-  color: var(--ink-text-dim);
-  border: 1px solid var(--ink-gold-dim);
-  border-radius: var(--ink-radius-sm);
+  color: var(--bp-text-ink-soft);
+  border: 1px solid var(--bp-parch-burn);
+  border-radius: var(--bp-radius);
   padding: 1px 5px;
 }
+
+/* ── Upgrade button ── */
 .ty-upgrade {
   font-family: var(--ink-font-mono);
   font-size: 0.55rem;
-  color: var(--ink-amber);
+  color: var(--bp-bronze-light);
   background: rgba(212, 168, 67, 0.08);
-  border: 1px solid var(--ink-gold-dim);
-  border-radius: var(--ink-radius-sm);
+  border: 1px solid var(--bp-bronze-base);
+  border-radius: var(--bp-radius);
   padding: 2px 7px;
   cursor: pointer;
 }
-.ty-close {
-  background: none;
-  border: 1px solid var(--ink-gold-dim);
-  color: var(--ink-text-muted);
-  font-size: 0.7rem;
-  padding: 2px 8px;
-  border-radius: var(--ink-radius-sm);
-  cursor: pointer;
+.ty-upgrade:hover {
+  background: rgba(212, 168, 67, 0.16);
+  border-color: var(--bp-bronze-light);
 }
 
-/* ── Body ── */
+/* ── Body section ── */
 .ty-body {
-  padding: 10px 12px 14px;
+  padding: 0;
   overflow-y: auto;
 }
+
+/* ── Override shared fp-inf-row to parchment theme (dark navy → aged parchment).
+   The base class is in facilities-panel.css; we scope the overrides under .ty-body
+   so they only affect training yard rows, not other facilities. ── */
+.ty-body .fp-inf-row {
+  background: var(--bp-parch-base);
+  border: 1px solid var(--bp-parch-burn);
+  border-radius: var(--bp-radius);
+}
+
+/* Member name: ink on parchment (11.4:1 on #e8d9b0) */
+.ty-body .fp-inf-row-name {
+  color: var(--bp-text-ink);
+  font-family: var(--ink-font-mono);
+  font-size: 0.65rem;
+}
+
+/* Skill/grade/speed badges: bronze-bordered chip with ink text */
+.ty-body .fp-inf-row-badge {
+  font-family: var(--ink-font-mono);
+  font-size: 0.5rem;
+  color: var(--bp-text-ink-soft);
+  background: rgba(138, 109, 44, 0.10);
+  border: 1px solid var(--bp-bronze-base);
+  border-radius: var(--bp-radius);
+  padding: 1px 5px;
+}
+
+/* Progress bar track on parchment */
+.ty-body .fp-inf-progress {
+  height: 5px;
+  background: var(--bp-parch-aged);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+/* Remaining time: muted ink */
+.ty-body .fp-inf-row-remaining {
+  color: var(--bp-text-ink-soft);
+}
+
+/* Cancel button: bronze per bible §6 */
+.ty-body .fp-inf-skip-btn {
+  font-family: var(--ink-font-mono);
+  font-size: 0.52rem;
+  color: var(--bp-parch-light);
+  background: linear-gradient(180deg, var(--bp-bronze-base), var(--bp-bronze-dark));
+  border: 1px solid var(--bp-bronze-light);
+  border-radius: var(--bp-radius);
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: background var(--bp-dur-fast) var(--bp-ease), border-color var(--bp-dur-fast) var(--bp-ease);
+}
+.ty-body .fp-inf-skip-btn:hover {
+  background: linear-gradient(180deg, var(--bp-bronze-light), var(--bp-bronze-base));
+  border-color: var(--bp-bronze-glint);
+}
+
+/* Empty/section label: ink-soft, no pale orange */
+.ty-body .fp-inf-empty {
+  color: var(--bp-text-ink-soft);
+  font-family: var(--ink-font-mono);
+  font-size: 0.6rem;
+  font-style: italic;
+}
+
+/* ── Assign flow section ── */
 .ty-assign {
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px dashed var(--ink-gold-dim);
+  border-top: 1px dashed var(--bp-parch-burn);
 }
 .ty-assign-head {
   display: flex;
   justify-content: flex-start;
   padding: 0 4px 4px;
 }
+/* Free-slot label: muted ink, no pale orange */
+.ty-assign-head .fp-tray-bonus--inactive {
+  color: var(--bp-text-ink-soft);
+  font-family: var(--ink-font-mono);
+  font-size: 0.6rem;
+}
 
-/* ── Skill detail chips ── */
+/* ── Skill detail chips — shared by training-yard-pickers.tsx and skill-detail.tsx ── */
 .skill-detail-tags {
   display: flex;
   flex-wrap: wrap;
@@ -98,18 +156,18 @@
 .skill-detail-tag {
   font-family: var(--ink-font-mono);
   font-size: 0.5rem;
-  color: var(--ink-text-dim);
+  color: var(--bp-text-ink-soft);
   background: rgba(212, 168, 67, 0.06);
-  border: 1px solid var(--ink-gold-dim);
-  border-radius: var(--ink-radius-sm);
+  border: 1px solid var(--bp-parch-burn);
+  border-radius: var(--bp-radius);
   padding: 1px 5px;
   white-space: nowrap;
 }
 
-/* ── Skill icon ── */
+/* ── Skill icon — shared by skill-icon.tsx ── */
 .ty-skill-icon {
   flex-shrink: 0;
-  border-radius: var(--ink-radius-sm);
+  border-radius: var(--bp-radius);
   object-fit: contain;
   image-rendering: pixelated;
 }
@@ -117,14 +175,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--ink-gold);
-  background: var(--ink-bg-deep);
-  border: 1px solid var(--ink-gold-dim);
+  color: var(--bp-bronze-light);
+  background: var(--bp-parch-aged);
+  border: 1px solid var(--bp-parch-burn);
 }
 
+/* ── Skill description text — shared by training-yard-pickers.tsx ── */
 .skill-desc {
   font-size: 0.68rem;
-  color: var(--ink-text-dim);
+  color: var(--bp-text-ink-soft);
   line-height: 1.45;
   margin: 2px 0 3px;
 }

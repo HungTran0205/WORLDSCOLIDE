@@ -1,4 +1,6 @@
-/** FacilitiesPanel — Bát Quái 5×5 cross grid with slide-up detail tray (HD-2D Ink UI). */
+/** FacilitiesPanel — Bát Quái 5×5 cross grid with slide-up detail tray.
+ *  Shell (chrome, header, close button, animation, SFX) is owned by PanelFrame.
+ *  This file contains only content-specific JSX. */
 
 import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +14,7 @@ import { getUpgradeCost } from '@/game/systems/guild-upgrade-system';
 import { FacilityDetailTray, getInstanceNumber } from '@/ui/components/facility-detail-tray';
 import { FacilityBuildPicker } from '@/ui/components/facility-build-picker';
 import { InkConfirmDialog } from '@/ui/components/ink-confirm-dialog';
+import { PanelFrame } from '@/ui/components/panel-frame';
 import '@/ui/styles/game-ui-tokens.css';
 import '@/ui/styles/facilities-panel.css';
 
@@ -130,7 +133,6 @@ export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
   const clearFocusFacility  = useGameStore(s => s.clearFocusFacilityType);
   const setCameraTarget     = useGameStore(s => s.setCameraTarget);
 
-  // Map slot index → built facility
   const slotMap = useMemo(() => {
     const map = new Map<number, GuildFacility>();
     facilities
@@ -139,7 +141,6 @@ export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
     return map;
   }, [facilities]);
 
-  // Auto-select slot when panel opened via tutorial focus
   useEffect(() => {
     if (focusFacilityType) {
       const f = facilities.find(fac => fac.type === focusFacilityType && fac.level > 0 && fac.placedSlot !== null);
@@ -151,7 +152,6 @@ export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
 
   function handleSlotClick(slotIdx: number) {
     if (selectedSlot === slotIdx) {
-      // Second click on same slot → fly camera to room
       const [sx, sy, sz] = FACILITY_SLOTS[slotIdx];
       const off = getSlotCameraOffset(slotIdx);
       setCameraTarget([sx + off[0], sy + off[1], sz + off[2]]);
@@ -161,14 +161,8 @@ export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
   }
 
   const slotsUsed = slotMap.size;
-
-  // Tutorial in-panel guidance: pulse the slot the player should click next.
-  // Build beats → pulse empty slots until one is picked (then the tray takes over).
-  // assign-kael → pulse the built Logging Site slot until it's selected.
   const isBuildStep = tutorialStep === 'build-logging-site' || tutorialStep === 'build-tavern';
   const highlightEmptySlots = isBuildStep && selectedSlot === null;
-
-  // Empty slot selected → show the left-docked build picker (built slots use the bottom tray).
   const buildSlot = selectedSlot !== null && !slotMap.has(selectedSlot) ? selectedSlot : null;
 
   return (
@@ -180,30 +174,28 @@ export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
           onClose={() => setSelectedSlot(null)}
         />
       )}
-      <div className="ink-panel fp-panel ink-enter">
 
-        {/* Header */}
-        <div className="fp-header">
-          <span className="fp-title">{t('facilitiesPanel.title')}</span>
+      <PanelFrame title={t('facilityNames.facilities')} onClose={onClose} variant="panel">
+        {/* ── Header meta: guild level, gold, slots used ── */}
+        <div className="fp-meta">
           <span className="fp-badge">{t('facilitiesPanel.guildLevel', { level: guildLevel })}</span>
           <span className="fp-header-gold">⬡ {gold.toLocaleString()}g</span>
           <span className="fp-badge">{t('facilitiesPanel.slotsUsed', { used: slotsUsed })}</span>
-          <button className="fp-close" onClick={onClose}>{t('facilitiesPanel.close')}</button>
         </div>
 
-        {/* Tutorial hints — inline guidance for the facilities build/assign beats */}
+        {/* Tutorial hints */}
         {tutorialStep === 'build-logging-site' && (
-          <div style={{ padding: '6px 14px 0', fontSize: '0.7rem', color: 'var(--ink-gold)', fontFamily: 'var(--ink-font-mono)' }}>
+          <div className="fp-tutorial-hint">
             {tContent('tutorial', 'build-logging-site', 'hint', '▶ Select an empty slot to build a Logging Site.')}
           </div>
         )}
         {tutorialStep === 'assign-kael' && (
-          <div style={{ padding: '6px 14px 0', fontSize: '0.7rem', color: 'var(--ink-gold)', fontFamily: 'var(--ink-font-mono)' }}>
+          <div className="fp-tutorial-hint">
             {tContent('tutorial', 'assign-kael', 'hint', '▶ Select the Logging Site and assign Kael.')}
           </div>
         )}
         {tutorialStep === 'build-tavern' && (
-          <div style={{ padding: '6px 14px 0', fontSize: '0.7rem', color: 'var(--ink-gold)', fontFamily: 'var(--ink-font-mono)' }}>
+          <div className="fp-tutorial-hint">
             {tContent('tutorial', 'build-tavern', 'hint', '▶ Select an empty slot and build the Tavern (200 Wood).')}
           </div>
         )}
@@ -252,8 +244,7 @@ export function FacilitiesPanel({ onClose }: FacilitiesPanelProps) {
           slotMap={slotMap}
           onClose={() => setSelectedSlot(null)}
         />
-
-      </div>
+      </PanelFrame>
     </div>
   );
 }

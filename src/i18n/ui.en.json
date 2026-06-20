@@ -425,6 +425,7 @@
   },
   "combatPanel": {
     "fallbackName": "Combat",
+    "titleWithZone": "{{name}} — {{zone}}",
     "header": {
       "closeAria": "Close combat panel"
     },
@@ -1028,6 +1029,16 @@
     "upkeepNormal": ", normal upkeep",
     "next": "Next: {{rank}} — Lv.{{level}}+ | {{missions}}+ missions | {{gold}}g",
     "promote": "Promote to {{rank}} ({{gold}}g)"
+  },
+  "facilityNames": {
+    "trainingYard": "Training Yard",
+    "facilities": "Facilities",
+    "roster": "Guild Roster",
+    "settings": "Settings",
+    "tavern": "Tavern"
+  },
+  "panelFrame": {
+    "closePanel": "Close panel"
   },
   "notification": {
     "arrivalBody": "📍 Party arrived! Choose combat mode.",

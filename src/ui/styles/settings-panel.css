@@ -1,0 +1,19 @@
+/* Settings Panel — content styles only.
+   Panel chrome (border, header, close button, animation) is owned by PanelFrame.
+   panel-btn / panel-section utilities remain in panels.css (shared with combat-view). */
+
+/* Positioner: centered modal, no backdrop (PanelFrame modal variant handles z-index). */
+.settings-positioner {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: var(--bp-z-modal);
+}
+.settings-positioner > * {
+  pointer-events: auto;
+  width: min(400px, 92vw);
+  max-height: 88vh;
+}

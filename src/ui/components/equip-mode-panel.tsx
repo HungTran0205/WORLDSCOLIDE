@@ -10,6 +10,7 @@ import type { ItemID } from '@/game/data/items';
 import type { MedicineCondition } from '@/game/state/game-state';
 import { itemName, equipmentName } from '@/i18n/content-wrappers';
 import { GameIcon } from './game-icon';
+import { PanelFrame } from './panel-frame';
 import '@/ui/styles/equip-mode.css';
 
 // Condition keys mapped to i18n keys — values resolved at render time via t()
@@ -79,27 +80,27 @@ export function EquipModePanel({ memberId, onClose }: EquipModePanelProps) {
   }
 
   return (
-    <div className="ink-panel equip-panel ink-enter">
-      {/* ── Header ── */}
-      <div className="equip-header">
-        <div className="equip-header-avatar ink-pixelated">
-          {!avatarFailed && avatarUrl
-            ? <img src={avatarUrl} alt={member.name} onError={() => setAvatarFailed(true)} />
-            : <span style={{ fontFamily: 'var(--ink-font-title)', color: 'var(--ink-gold-dim)' }}>{member.name.slice(0, 2)}</span>
-          }
+    <div className="em-positioner">
+      <PanelFrame title={member.name} onClose={onClose} variant="side" size="lg">
+        {/* ── Meta row: avatar + grade badge + Done button ── */}
+        <div className="em-meta">
+          <div className="em-meta-avatar ink-pixelated">
+            {!avatarFailed && avatarUrl
+              ? <img src={avatarUrl} alt={member.name} onError={() => setAvatarFailed(true)} />
+              : <span className="em-meta-avatar-fallback">{member.name.slice(0, 2)}</span>
+            }
+          </div>
+          <div className="em-meta-info">
+            <div className="em-meta-grade">Grade {member.grade}{member.isMercenary ? ' · MERC' : ''}</div>
+          </div>
+          <button className="em-done-btn" onClick={onClose} type="button">{t('equipMode.done')}</button>
         </div>
-        <div>
-          <div className="equip-header-name">{member.name}</div>
-          <div className="equip-header-sub">Grade {member.grade}{member.isMercenary ? ' · MERC' : ''}</div>
-        </div>
-        <button className="char-btn" onClick={onClose} type="button" style={{ marginLeft: 'auto' }}>{t('equipMode.done')}</button>
-      </div>
 
-      {/* ── Body: split ── */}
-      <div className="equip-split">
-        {/* Left — slots */}
-        <div className="equip-left">
-          <div className="equip-section-title">{t('equipMode.equipment')}</div>
+        {/* ── Body: split ── */}
+        <div className="equip-split">
+          {/* Left — slots */}
+          <div className="equip-left">
+            <div className="equip-section-title">{t('equipMode.equipment')}</div>
           <div className="equip-gear-grid">
             {GEAR_SLOTS.map(slot => {
               const equipped = member.equipment?.[slot] ?? null;
@@ -225,6 +226,7 @@ export function EquipModePanel({ memberId, onClose }: EquipModePanelProps) {
           )}
         </div>
       </div>
+      </PanelFrame>
     </div>
   );
 }

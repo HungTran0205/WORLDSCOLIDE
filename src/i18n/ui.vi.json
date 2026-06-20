@@ -425,6 +425,7 @@
   },
   "combatPanel": {
     "fallbackName": "Chiến Đấu",
+    "titleWithZone": "{{name}} — {{zone}}",
     "header": {
       "closeAria": "Đóng bảng chiến đấu"
     },
@@ -1028,6 +1029,16 @@
     "upkeepNormal": ", chi phí bình thường",
     "next": "Tiếp Theo: {{rank}} — Lv.{{level}}+ | {{missions}}+ nhiệm vụ | {{gold}}v",
     "promote": "Thăng Chức lên {{rank}} ({{gold}}v)"
+  },
+  "facilityNames": {
+    "trainingYard": "Sân Luyện Tập",
+    "facilities": "Cơ Sở Vật Chất",
+    "roster": "Danh Sách Thành Viên",
+    "settings": "Cài Đặt",
+    "tavern": "Quán Rượu"
+  },
+  "panelFrame": {
+    "closePanel": "Đóng bảng"
   },
   "notification": {
     "arrivalBody": "📍 Đội đã đến nơi! Chọn chế độ chiến đấu.",
