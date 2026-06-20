@@ -36,6 +36,7 @@ import {
   CanvasTexture,
   type Texture,
 } from 'three';
+import { assetUrl } from '@/lib/asset-url';
 
 /** Weighted variant spec: a dominant main tile with sparse accent variants. */
 export interface TileTextureWeighted {
@@ -123,7 +124,7 @@ export function TiledFloor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [specKey],
   );
-  const loaded = useLoader(TextureLoader, spec.paths) as Texture[];
+  const loaded = useLoader(TextureLoader, spec.paths.map(assetUrl)) as Texture[];
   // useLoader returns T when input is string, T[] when input is string[]; we
   // always pass array form, so loaded is Texture[]. Normalize defensively.
   const textures = useMemo<Texture[]>(

@@ -1,6 +1,8 @@
-# Worlds Collide — RPG Idle Guild Builder
+# 2000s A.C — After the Collapse — RPG Idle Guild Builder
 
-An HD-2D auto-RPG idle guild builder where civilizations collide. Build your guild hall, recruit members from different civilizations, dispatch quests, and watch your guild grow — even while you're away.
+An HD-2D auto-RPG idle guild builder set 2000 years after a civilizational collapse. Build your guild hall, recruit members from Vietnamese-inspired civilizations, dispatch quests, and watch your guild grow — even while you're away.
+
+> 📖 **Documentation:** see [`docs/README.md`](docs/README.md) for the full docs map (GDD, lore, reference). Technical design lives in [`docs/system-architecture.md`](docs/system-architecture.md).
 
 ## Tech Stack
 
@@ -60,7 +62,7 @@ src/
 - **Missions** — 7-tier quest system (F→S) with party dispatch, real-time timers, reward distribution
 - **Economy** — Gold currency, level-scaled upkeep, debt penalties, recruitment costs
 - **Guild Hall** — Room placement (tavern, training room, infirmary), room effect bonuses
-- **Progression** — EXP curve with 1.35x scaling, stat allocation, 3 civilizations
+- **Progression** — EXP curve with 1.35x scaling, stat allocation, multi-civilization roster (Linh Sơn playable now)
 - **Save System** — Auto-save every 60s, localStorage + IndexedDB fallback, JSON export/import
 - **Offline** — Web Worker tick loop, offline catch-up with upkeep charging + mission completion
 
@@ -70,7 +72,7 @@ src/
 2. **Guild Setup** — Build rooms in your guild hall
 3. **Quest Dispatch** — Select members, send them on tier-appropriate missions
 4. **Combat Resolution** — Auto-combat simulates party vs enemies
-5. **Recruit & Grow** — Recruit from 3 civilizations, level up, unlock higher tiers
+5. **Recruit & Grow** — Recruit from Vietnamese-inspired civilizations (Linh Sơn playable now; Đế Quốc & Thiên Lữ planned), level up, unlock higher tiers
 
 ## License
 

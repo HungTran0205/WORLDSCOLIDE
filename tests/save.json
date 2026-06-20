@@ -1,0 +1,889 @@
+{
+  "version": 36,
+  "savedAt": 1781099409381,
+  "metadata": {
+    "slotId": 1,
+    "guildName": "Unnamed Guild",
+    "guildLevel": 3,
+    "playTimeMs": 367542687,
+    "founderName": "Hung",
+    "createdAt": 1780731866694,
+    "updatedAt": 1781099409381
+  },
+  "gameState": {
+    "gameTime": 17644013520,
+    "realTimeLastTick": 1781099408606,
+    "guildName": "",
+    "guildLevel": 3,
+    "gold": 3189,
+    "guildHall": {
+      "level": 1,
+      "floorTiles": [
+        {
+          "x": 0,
+          "z": 0,
+          "color": "#DAA520"
+        },
+        {
+          "x": 0,
+          "z": 1,
+          "color": "#DAA520"
+        },
+        {
+          "x": 0,
+          "z": 2,
+          "color": "#DAA520"
+        },
+        {
+          "x": 0,
+          "z": 3,
+          "color": "#DAA520"
+        },
+        {
+          "x": 0,
+          "z": 4,
+          "color": "#DAA520"
+        },
+        {
+          "x": 0,
+          "z": 5,
+          "color": "#DAA520"
+        },
+        {
+          "x": 0,
+          "z": 6,
+          "color": "#DAA520"
+        },
+        {
+          "x": 1,
+          "z": 0,
+          "color": "#DAA520"
+        },
+        {
+          "x": 1,
+          "z": 1,
+          "color": "#DAA520"
+        },
+        {
+          "x": 1,
+          "z": 2,
+          "color": "#DAA520"
+        },
+        {
+          "x": 1,
+          "z": 3,
+          "color": "#DAA520"
+        },
+        {
+          "x": 1,
+          "z": 4,
+          "color": "#DAA520"
+        },
+        {
+          "x": 1,
+          "z": 5,
+          "color": "#DAA520"
+        },
+        {
+          "x": 1,
+          "z": 6,
+          "color": "#DAA520"
+        },
+        {
+          "x": 2,
+          "z": 0,
+          "color": "#DAA520"
+        },
+        {
+          "x": 2,
+          "z": 1,
+          "color": "#DAA520"
+        },
+        {
+          "x": 2,
+          "z": 2,
+          "color": "#DAA520"
+        },
+        {
+          "x": 2,
+          "z": 3,
+          "color": "#DAA520"
+        },
+        {
+          "x": 2,
+          "z": 4,
+          "color": "#DAA520"
+        },
+        {
+          "x": 2,
+          "z": 5,
+          "color": "#DAA520"
+        },
+        {
+          "x": 2,
+          "z": 6,
+          "color": "#DAA520"
+        },
+        {
+          "x": 3,
+          "z": 0,
+          "color": "#DAA520"
+        },
+        {
+          "x": 3,
+          "z": 1,
+          "color": "#DAA520"
+        },
+        {
+          "x": 3,
+          "z": 2,
+          "color": "#DAA520"
+        },
+        {
+          "x": 3,
+          "z": 3,
+          "color": "#DAA520"
+        },
+        {
+          "x": 3,
+          "z": 4,
+          "color": "#DAA520"
+        },
+        {
+          "x": 3,
+          "z": 5,
+          "color": "#DAA520"
+        },
+        {
+          "x": 3,
+          "z": 6,
+          "color": "#DAA520"
+        },
+        {
+          "x": 4,
+          "z": 0,
+          "color": "#DAA520"
+        },
+        {
+          "x": 4,
+          "z": 1,
+          "color": "#DAA520"
+        },
+        {
+          "x": 4,
+          "z": 2,
+          "color": "#DAA520"
+        },
+        {
+          "x": 4,
+          "z": 3,
+          "color": "#DAA520"
+        },
+        {
+          "x": 4,
+          "z": 4,
+          "color": "#DAA520"
+        },
+        {
+          "x": 4,
+          "z": 5,
+          "color": "#DAA520"
+        },
+        {
+          "x": 4,
+          "z": 6,
+          "color": "#DAA520"
+        },
+        {
+          "x": 5,
+          "z": 0,
+          "color": "#DAA520"
+        },
+        {
+          "x": 5,
+          "z": 1,
+          "color": "#DAA520"
+        },
+        {
+          "x": 5,
+          "z": 2,
+          "color": "#DAA520"
+        },
+        {
+          "x": 5,
+          "z": 3,
+          "color": "#DAA520"
+        },
+        {
+          "x": 5,
+          "z": 4,
+          "color": "#DAA520"
+        },
+        {
+          "x": 5,
+          "z": 5,
+          "color": "#DAA520"
+        },
+        {
+          "x": 5,
+          "z": 6,
+          "color": "#DAA520"
+        },
+        {
+          "x": 6,
+          "z": 0,
+          "color": "#DAA520"
+        },
+        {
+          "x": 6,
+          "z": 1,
+          "color": "#DAA520"
+        },
+        {
+          "x": 6,
+          "z": 2,
+          "color": "#DAA520"
+        },
+        {
+          "x": 6,
+          "z": 3,
+          "color": "#DAA520"
+        },
+        {
+          "x": 6,
+          "z": 4,
+          "color": "#DAA520"
+        },
+        {
+          "x": 6,
+          "z": 5,
+          "color": "#DAA520"
+        },
+        {
+          "x": 6,
+          "z": 6,
+          "color": "#DAA520"
+        },
+        {
+          "x": 7,
+          "z": 0,
+          "color": "#DAA520"
+        },
+        {
+          "x": 7,
+          "z": 1,
+          "color": "#DAA520"
+        },
+        {
+          "x": 7,
+          "z": 2,
+          "color": "#DAA520"
+        },
+        {
+          "x": 7,
+          "z": 3,
+          "color": "#DAA520"
+        },
+        {
+          "x": 7,
+          "z": 4,
+          "color": "#DAA520"
+        },
+        {
+          "x": 7,
+          "z": 5,
+          "color": "#DAA520"
+        },
+        {
+          "x": 7,
+          "z": 6,
+          "color": "#DAA520"
+        },
+        {
+          "x": 8,
+          "z": 0,
+          "color": "#DAA520"
+        },
+        {
+          "x": 8,
+          "z": 1,
+          "color": "#DAA520"
+        },
+        {
+          "x": 8,
+          "z": 2,
+          "color": "#DAA520"
+        },
+        {
+          "x": 8,
+          "z": 3,
+          "color": "#DAA520"
+        },
+        {
+          "x": 8,
+          "z": 4,
+          "color": "#DAA520"
+        },
+        {
+          "x": 8,
+          "z": 5,
+          "color": "#DAA520"
+        },
+        {
+          "x": 8,
+          "z": 6,
+          "color": "#DAA520"
+        },
+        {
+          "x": 9,
+          "z": 0,
+          "color": "#DAA520"
+        },
+        {
+          "x": 9,
+          "z": 1,
+          "color": "#DAA520"
+        },
+        {
+          "x": 9,
+          "z": 2,
+          "color": "#DAA520"
+        },
+        {
+          "x": 9,
+          "z": 3,
+          "color": "#DAA520"
+        },
+        {
+          "x": 9,
+          "z": 4,
+          "color": "#DAA520"
+        },
+        {
+          "x": 9,
+          "z": 5,
+          "color": "#DAA520"
+        },
+        {
+          "x": 9,
+          "z": 6,
+          "color": "#DAA520"
+        }
+      ],
+      "furniture": []
+    },
+    "settings": {
+      "musicVolume": 0.5,
+      "sfxVolume": 0.7,
+      "autoSkillDefault": true,
+      "graphicsQuality": "high",
+      "shadowsEnabled": false,
+      "bloomEnabled": true,
+      "bloomThreshold": 0.85,
+      "atmosphericEnabled": true
+    },
+    "founder": {
+      "id": "cef2246c-7a1d-45a4-99f3-dc1226fd7692",
+      "name": "Hung",
+      "stats": {
+        "STR": 15,
+        "END": 17,
+        "INT": 0,
+        "DEX": 0,
+        "CHA": 9,
+        "LCK": 0,
+        "AGI": 9
+      },
+      "unallocatedPoints": 0,
+      "skill": {
+        "id": "pierce",
+        "name": "Pierce",
+        "damageMultiplier": 1.3,
+        "cooldownMs": 9000,
+        "autoEnabled": true,
+        "skillType": "lane-hit",
+        "laneHit": true
+      },
+      "status": "idle",
+      "injuredUntil": null,
+      "civilization": "LinhSon",
+      "archetype": "sword",
+      "gender": "M",
+      "isFounder": true,
+      "missionsCompleted": 18,
+      "traits": [],
+      "equipment": {
+        "weapon": {
+          "id": "2819d642-ca5b-4911-a244-01340e32ec3d",
+          "templateId": "STONE_SWORD",
+          "durability": 80,
+          "slots": [],
+          "maxSlots": 4
+        },
+        "armor": {
+          "id": "c73e547b-5b82-4bb2-b4e5-83dc19ec5c43",
+          "templateId": "BOAR_FUR_COAT",
+          "durability": 40,
+          "slots": [
+            {
+              "category": "GENERIC",
+              "statKey": "HP",
+              "value": 56
+            }
+          ],
+          "maxSlots": 4
+        }
+      },
+      "maskSpriteId": "mask-03",
+      "medicineSlots": [
+        {
+          "itemId": null,
+          "condition": "30"
+        },
+        {
+          "itemId": null,
+          "condition": "start"
+        }
+      ],
+      "grade": "F",
+      "isMercenary": false,
+      "skillRanks": {
+        "pierce": {
+          "rank": 1,
+          "progress": 0
+        }
+      },
+      "blessedPct": 1,
+      "injuredAt": null,
+      "baseRecoveryMs": null,
+      "recoveryProgress": 0
+    },
+    "roster": [
+      {
+        "name": "Kael",
+        "civilization": "LinhSon",
+        "archetype": "warrior",
+        "gender": "M",
+        "stats": {
+          "STR": 8,
+          "END": 15,
+          "INT": 3,
+          "DEX": 5,
+          "CHA": 4,
+          "LCK": 10,
+          "AGI": 5
+        },
+        "unallocatedPoints": 0,
+        "skill": {
+          "id": "sunder",
+          "name": "Sunder",
+          "damageMultiplier": 1.4,
+          "cooldownMs": 10000,
+          "autoEnabled": true,
+          "skillType": "armor-pierce",
+          "armorPierceChance": 0.5
+        },
+        "status": "idle",
+        "injuredUntil": null,
+        "isFounder": false,
+        "missionsCompleted": 3,
+        "traits": [],
+        "id": "5f99f297-39ff-4ecc-a4ff-785310f2e770",
+        "craftSkills": {
+          "woodcutting": {
+            "level": 4,
+            "xpAccumulated": 999.9999999998681
+          },
+          "mining": {
+            "level": 0,
+            "xpAccumulated": 0
+          },
+          "alchemy": {
+            "level": 0,
+            "xpAccumulated": 0
+          }
+        },
+        "grade": "F",
+        "isMercenary": false,
+        "skillRanks": {
+          "sunder": {
+            "rank": 1,
+            "progress": 0
+          }
+        },
+        "blessedPct": 1,
+        "injuredAt": null,
+        "baseRecoveryMs": null,
+        "recoveryProgress": 0
+      },
+      {
+        "id": "mem-1780732024709-nger",
+        "name": "Mai",
+        "stats": {
+          "STR": 5,
+          "END": 4,
+          "INT": 1,
+          "DEX": 26,
+          "CHA": 0,
+          "LCK": 7,
+          "AGI": 7
+        },
+        "unallocatedPoints": 0,
+        "skill": {
+          "id": "snipe",
+          "name": "Snipe",
+          "damageMultiplier": 1.5,
+          "cooldownMs": 9000,
+          "autoEnabled": true,
+          "skillType": "damage",
+          "accuracyBonus": 0.5
+        },
+        "status": "idle",
+        "injuredUntil": null,
+        "civilization": "LinhSon",
+        "archetype": "scout",
+        "gender": "F",
+        "isFounder": false,
+        "missionsCompleted": 9,
+        "traits": [],
+        "grade": "F",
+        "isMercenary": false,
+        "skillRanks": {
+          "snipe": {
+            "rank": 1,
+            "progress": 0
+          }
+        },
+        "blessedPct": 1,
+        "injuredAt": null,
+        "baseRecoveryMs": null,
+        "recoveryProgress": 0,
+        "medicineSlots": [
+          {
+            "itemId": "HEALING_SYRINGE",
+            "condition": "80"
+          },
+          {
+            "itemId": null,
+            "condition": "start"
+          }
+        ]
+      },
+      {
+        "id": "mem-1780737971960-35-1",
+        "name": "Tâm",
+        "grade": "F",
+        "isMercenary": false,
+        "stats": {
+          "STR": 19,
+          "END": 10,
+          "INT": 2,
+          "DEX": 8,
+          "CHA": 2,
+          "LCK": 4,
+          "AGI": 7
+        },
+        "unallocatedPoints": 0,
+        "skill": null,
+        "status": "assigned",
+        "injuredUntil": null,
+        "civilization": "LinhSon",
+        "archetype": "warrior",
+        "gender": "M",
+        "isFounder": false,
+        "missionsCompleted": 0,
+        "traits": [
+          "cautious"
+        ],
+        "injuredAt": null,
+        "baseRecoveryMs": null,
+        "recoveryProgress": 0,
+        "craftSkills": {
+          "woodcutting": {
+            "level": 0,
+            "xpAccumulated": 0
+          },
+          "mining": {
+            "level": 5,
+            "xpAccumulated": 2276.3844711900765
+          },
+          "alchemy": {
+            "level": 0,
+            "xpAccumulated": 0
+          }
+        }
+      },
+      {
+        "id": "mem-1780757431051-71-0",
+        "name": "Nghĩa",
+        "grade": "F",
+        "isMercenary": false,
+        "stats": {
+          "STR": 18,
+          "END": 14,
+          "INT": 0,
+          "DEX": 6,
+          "CHA": 3,
+          "LCK": 2,
+          "AGI": 10
+        },
+        "unallocatedPoints": 0,
+        "skill": null,
+        "status": "idle",
+        "injuredUntil": null,
+        "civilization": "LinhSon",
+        "archetype": "sword",
+        "gender": "M",
+        "isFounder": false,
+        "missionsCompleted": 2,
+        "traits": [
+          "cautious"
+        ],
+        "injuredAt": null,
+        "baseRecoveryMs": null,
+        "recoveryProgress": 0,
+        "blessedPct": 1,
+        "skillRanks": {
+          "riposte": {
+            "rank": 1,
+            "progress": 0
+          }
+        }
+      },
+      {
+        "id": "mem-1780757436477-71-2",
+        "name": "Chi",
+        "grade": "F",
+        "isMercenary": false,
+        "stats": {
+          "STR": 8,
+          "END": 4,
+          "INT": 1,
+          "DEX": 19,
+          "CHA": 2,
+          "LCK": 4,
+          "AGI": 13
+        },
+        "unallocatedPoints": 0,
+        "skill": null,
+        "status": "idle",
+        "injuredUntil": null,
+        "civilization": "LinhSon",
+        "archetype": "scout",
+        "gender": "F",
+        "isFounder": false,
+        "missionsCompleted": 2,
+        "traits": [
+          "hot-headed",
+          "loyal"
+        ],
+        "skillRanks": {
+          "barrage": {
+            "rank": 1,
+            "progress": 0
+          }
+        }
+      }
+    ],
+    "activeMissions": [],
+    "completedMissions": [
+      "tutorial-bear-the-bear",
+      "ft-strange-exodus",
+      "ft-path-to-depths",
+      "ft-ancient-threshold",
+      "ft-ruins-forgotten-age",
+      "ft-slime-sovereign",
+      "spider-nest",
+      "slime-extermination",
+      "slime-extermination",
+      "slime-extermination",
+      "spider-nest",
+      "slime-extermination",
+      "broken-cliff-skirmish",
+      "chain-rumor",
+      "spider-nest",
+      "slime-extermination",
+      "exp-ancient-core",
+      "spider-nest",
+      "exp-ancient-core"
+    ],
+    "tutorialStep": "complete",
+    "tavern": {
+      "level": 1,
+      "keeperId": null,
+      "reputation": 5,
+      "currentRoster": [
+        {
+          "id": "tav-372933132-0",
+          "name": "An",
+          "archetype": "scout",
+          "civilization": "LinhSon",
+          "gender": "F",
+          "grade": "F",
+          "stats": {
+            "STR": 7,
+            "END": 7,
+            "INT": 2,
+            "DEX": 17,
+            "CHA": 3,
+            "LCK": 4,
+            "AGI": 12
+          },
+          "derivedDemand": 9,
+          "dailyMoodBias": -4,
+          "traits": [
+            "loyal",
+            "hot-headed"
+          ],
+          "preferredGiftCategory": "material",
+          "attemptHistory": [],
+          "veteranTag": false,
+          "spawnedDay": 204
+        },
+        {
+          "id": "tav-372933132-1",
+          "name": "Kiên",
+          "archetype": "warrior",
+          "civilization": "LinhSon",
+          "gender": "M",
+          "grade": "E",
+          "stats": {
+            "STR": 24,
+            "END": 15,
+            "INT": 1,
+            "DEX": 3,
+            "CHA": 4,
+            "LCK": 3,
+            "AGI": 12
+          },
+          "derivedDemand": 25,
+          "dailyMoodBias": -1,
+          "traits": [
+            "cautious"
+          ],
+          "preferredGiftCategory": "consumable",
+          "attemptHistory": [],
+          "veteranTag": false,
+          "spawnedDay": 204
+        },
+        {
+          "id": "tav-372933132-2",
+          "name": "Nghĩa",
+          "archetype": "scout",
+          "civilization": "LinhSon",
+          "gender": "F",
+          "grade": "F",
+          "stats": {
+            "STR": 6,
+            "END": 8,
+            "INT": 1,
+            "DEX": 16,
+            "CHA": 4,
+            "LCK": 7,
+            "AGI": 10
+          },
+          "derivedDemand": 9,
+          "dailyMoodBias": -4,
+          "traits": [
+            "hot-headed"
+          ],
+          "preferredGiftCategory": "consumable",
+          "attemptHistory": [],
+          "veteranTag": false,
+          "spawnedDay": 204
+        }
+      ],
+      "rerolledToday": false,
+      "factionBias": null,
+      "rumor": null,
+      "mercContracts": [],
+      "pendingPrompts": [],
+      "lastDayProcessed": 204,
+      "reputationLastTickWeek": 203,
+      "globalNegotiationDebuffUntilDay": 4,
+      "veteranPool": []
+    },
+    "inventory": {
+      "items": {
+        "WOOD": 814,
+        "SLIME_GEL": 21,
+        "STONE": 2168,
+        "SPIDER_LEGS": 3,
+        "GOBLIN_EAR": 1,
+        "HEALING_SYRINGE": 1
+      },
+      "equipmentInventory": [
+        {
+          "id": "c8070750-0976-44c6-9519-c1ec4a4e11b7",
+          "templateId": "WOODEN_SWORD",
+          "durability": 50,
+          "slots": [],
+          "maxSlots": 4
+        }
+      ]
+    },
+    "facilities": [
+      {
+        "id": "tavern",
+        "type": "tavern",
+        "level": 1,
+        "assignedMemberIds": [],
+        "placedSlot": 1,
+        "woodReserve": null
+      },
+      {
+        "id": "training-yard",
+        "type": "training-yard",
+        "level": 1,
+        "assignedMemberIds": [],
+        "placedSlot": 11,
+        "woodReserve": null,
+        "trainingQueue": []
+      },
+      {
+        "id": "infirmary",
+        "type": "infirmary",
+        "level": 1,
+        "assignedMemberIds": [],
+        "placedSlot": 9,
+        "woodReserve": null
+      },
+      {
+        "id": "workshop",
+        "type": "workshop",
+        "level": 1,
+        "assignedMemberIds": [],
+        "placedSlot": 0,
+        "woodReserve": null,
+        "workshopQueue": []
+      },
+      {
+        "id": "logging-site",
+        "type": "logging-site",
+        "level": 1,
+        "assignedMemberIds": [],
+        "placedSlot": 3,
+        "woodReserve": 0
+      },
+      {
+        "id": "stone-quarry",
+        "type": "stone-quarry",
+        "level": 1,
+        "assignedMemberIds": [
+          "mem-1780737971960-35-1"
+        ],
+        "placedSlot": 2,
+        "woodReserve": null
+      },
+      {
+        "id": "alchemy-lab",
+        "type": "alchemy-lab",
+        "level": 1,
+        "assignedMemberIds": [],
+        "placedSlot": 5,
+        "woodReserve": null,
+        "craftQueue": []
+      }
+    ]
+  }
+}

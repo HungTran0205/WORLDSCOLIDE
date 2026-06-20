@@ -16,6 +16,9 @@ export function applyEffectTick(entity: CombatEntity): { damage: number; skipTur
     if (effect.type === 'shocked') {
       skipTurn = true;
     }
+    // slowed: attack speed halved — applied at entity-action level in combat-engine
+    // taunted: no tick damage; consumed by AI targeting logic
+    // teamDefUp / teamCritUp: magnitude buff — handled by flag recompute in processEntityStatus
     effect.ticksRemaining--;
   }
 

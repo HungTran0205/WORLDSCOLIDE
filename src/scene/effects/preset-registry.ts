@@ -9,14 +9,12 @@ import { linhSonPresets } from './presets/linh-son-presets';
 import { deQuocPresets } from './presets/de-quoc-presets';
 import { thienLuPresets } from './presets/thien-lu-presets';
 import { genericPresets } from './presets/generic-presets';
-import { meshlinePresets } from './presets/meshline-presets';
 
 export const allPresets: VfxPreset[] = [
   ...linhSonPresets,
   ...deQuocPresets,
   ...thienLuPresets,
   ...genericPresets,
-  ...meshlinePresets,
 ];
 
 export const presetById: Record<string, VfxPreset> = Object.fromEntries(

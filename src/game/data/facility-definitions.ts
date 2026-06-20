@@ -43,11 +43,11 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
   'training-yard': {
     type: 'training-yard',
     name: 'Training Yard',
-    description: 'Members gain passive EXP daily. DEX + AGI increase gain rate.',
+    description: 'Trains a member to raise the rank of their carried combat skill. A trainee is benched from missions while training. Higher yard level = higher rank ceiling + faster training.',
     buildCost: 250,
     upgradeCosts: [300, 500],
     maxSlots: [2, 3, 4],
-    primaryStats: 'DEX + AGI',
+    primaryStats: '—',
     zonePosition: [2, 0, 2.5],
     tileFootprint: [3, 3],
     requiredGuildLevel: 3,
@@ -55,11 +55,12 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
   infirmary: {
     type: 'infirmary',
     name: 'Infirmary',
-    description: 'Speeds up injury recovery. END + INT improve treatment quality.',
-    buildCost: 300,
+    description: 'Heals injured members on recovery beds. Higher levels add beds and heal faster. Recovery speed is independent of member stats.',
+    buildCost: 500,
+    buildMaterialCost: { STONE: 50, WOOD: 50 },
     upgradeCosts: [350, 600],
-    maxSlots: [1, 2, 3],
-    primaryStats: 'END + INT',
+    maxSlots: [1, 2, 3], // recovery beds, not worker slots
+    primaryStats: '—', // no member works here; recovery speed depends on infirmary level only
     zonePosition: [2, 0, 5],
     tileFootprint: [3, 3],
     requiredGuildLevel: 3,
@@ -67,7 +68,7 @@ export const FACILITY_DEFINITIONS: Record<FacilityType, FacilityDef> = {
   workshop: {
     type: 'workshop',
     name: 'Workshop',
-    description: 'Produces materials daily. STR increases speed, DEX increases quality.',
+    description: 'Crafts equipment from materials. STR increases speed, DEX increases quality.',
     buildCost: 250,
     buildMaterialCost: { WOOD: 50 },
     upgradeCosts: [400, 700],

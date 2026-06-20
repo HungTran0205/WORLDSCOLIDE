@@ -1,10 +1,18 @@
 /**
  * Sprite path resolution — maps (civilization, archetype, gender) to sprite folder paths.
  * Sprite folders use civ prefixes that differ from CIV_CONFIG.shortName.
+ *
+ * Phase 3 adds sheet-path helpers (getSheetPath) that return a single PNG path
+ * for a pre-packed sprite sheet. Animators call getSheetPath + getSheetEntry for
+ * geometry, then use buildAtlasFromSheet instead of loading N per-frame images.
+ *
+ * Per-frame path builders (getWalkingFramePath etc.) are KEPT for now — remove
+ * only after confirming zero refs repo-wide (post Phase 2 frame pruning).
  */
 
 import type { Civilization } from '@/game/data/civilization-config';
 import { assetUrl } from '@/lib/asset-url';
+import { getSheetEntry } from './sprite-sheet-manifest';
 
 export type SpriteDirection = 'north' | 'south' | 'east' | 'west';
 
@@ -23,6 +31,18 @@ export function getSpritePath(civilization: string, archetype: string, gender: '
   const prefix = CIV_SPRITE_PREFIX[civilization as Civilization] ?? 'LS';
   const arch = archetype.toUpperCase();
   return assetUrl(`/sprites/characters/${prefix}-${arch}-${gender}`);
+}
+
+/**
+ * Build path to a character's static portrait avatar — a single-frame image that
+ * the packer leaves un-bundled (single-image sets are not packed into sheets, so
+ * this file survives frame pruning). Used by UI <img> portraits (tavern cards,
+ * facility member avatar). Every character ships an avatar/frame_000.png, so this
+ * never 404s — unlike the old battle-idle-frame-0 portraits, which were missing
+ * for `south` and for characters without a battle-idle animation.
+ */
+export function getAvatarPath(basePath: string): string {
+  return `${basePath}/animations/avatar/frame_000.png`;
 }
 
 /** Build path to a specific walking animation frame */
@@ -98,7 +118,36 @@ export function getDirectionFromMovement(dx: number, dz: number): SpriteDirectio
   return screenDown > 0 ? 'south' : 'north';
 }
 
-/** Idle frame for guild hall members — south frame_000 from their own folder. */
+/**
+ * Return the full public URL for a pre-packed sprite sheet PNG.
+ * entityKey: e.g. 'characters/LS-SWORD-M'  anim: e.g. 'walking-8-frames'
+ * Returns undefined if the manifest has no entry for that key/anim combo.
+ */
+export function getSheetPath(entityKey: string, anim: string): string | undefined {
+  const entry = getSheetEntry(entityKey, anim);
+  if (!entry) return undefined;
+  return assetUrl(entry.path);
+}
+
+/**
+ * Derive the entity key (e.g. 'characters/LS-SWORD-M') from a basePath produced
+ * by getSpritePath (e.g. 'http://…/sprites/characters/LS-SWORD-M').
+ * Used by animators to look up manifest entries from the basePath they already have.
+ */
+export function getEntityKeyFromBasePath(basePath: string): string {
+  // basePath after assetUrl may be './sprites/characters/LS-SWORD-M' or an absolute URL.
+  // We only care about the 'characters/<ID>' suffix.
+  const match = basePath.match(/sprites\/(characters\/[^/]+)/);
+  return match?.[1] ?? '';
+}
+
+/**
+ * Idle frame path for guild hall members.
+ * Phase 3 note: guild-hall-sprite-animator.tsx now drives idle from the walk
+ * sheet (south row, frame 0 via getAtlasFrameUv) instead of loading a separate
+ * image — keeping this fn for backward compat with the existing test only.
+ * Returns the per-frame path so the test assertion is stable.
+ */
 export function getGuildHallIdleFramePath(basePath: string): string {
   return getWalkingFramePath(basePath, 'south', 0);
 }

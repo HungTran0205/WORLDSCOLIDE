@@ -2,7 +2,7 @@
 
 ## Application Overview
 
-**Worlds Collide** is a client-side idle RPG built with React + TypeScript, using Zustand for state management and IndexedDB for persistence. The architecture supports offline play through Web Workers and provides a complete save/load system with multi-slot support.
+**2000s A.C — After the Collapse** is a client-side idle RPG built with React + TypeScript, using Zustand for state management and IndexedDB for persistence. The architecture supports offline play through Web Workers and provides a complete save/load system with multi-slot support.
 
 ## Architecture Diagram
 
@@ -113,7 +113,7 @@ For detailed implementation, see:
 
 ## Combat Stage Specification (v1.28+ — Platformer Layout Foundation)
 
-**Status**: Phases 01–06 complete (phases 07+ deferred). Full authoring guide: [`combat-stage-spec.md`](./combat-stage-spec.md).
+**Status**: Phases 01–06 complete (phases 07+ deferred). Full authoring guide: [`gdd/06-combat.md`](./gdd/06-combat.md).
 
 Typed DSL decouples stage design from hardcoded global positions. Stages own platform geometry, spawn anchors, decals, and background references. Supports multi-tier side-scroller layouts with optional Y-axis spatial elevation.
 
@@ -223,8 +223,16 @@ Combat rendering overhauled from per-entity React components to 1-draw-call GPU 
 
 ### Core Modules (src/scene/combat/)
 
+**Sprite-Sheet Loading** (`sprite-atlas.ts`, `sprite-sheet-manifest.ts`)
+- Animation frames pre-packed: `scripts/pack-sprite-sheets.py` consolidates per-frame PNGs into sheet PNGs (one sheet per entity+animation, geometry auto-generated into manifest)
+- Runtime: `buildAtlasFromSheet()` loads ONE sheet PNG and extracts UV coords per direction+frame via manifest geometry (cols, rows, dirRows[], frameCounts)
+- Direction row resolved via `dirRows.indexOf(dir)` (no hardcoded maps); per-instance UV offset independent across different character sprites (shared three.js Texture, cloned per AnimationState)
+- All world-layer animators (guild-hall-sprite-animator, working-animator, woodcutting-animator) load sheets via manifest
+- Combat animators also use sheets; combat-mask-composite-atlas slices body frames from the sheet to composite masks at runtime
+
 **MegaAtlasBuilder** (`mega-atlas-builder.ts`)
-- Loads ALL sprite frames (walk, attack, death) for all character templates + all enemy waves
+- ⚠️ **Legacy path (combat-only)**: Still pre-builds single mega-atlas for combat with ALL enemy spriteIds from ALL mission waves
+- Loads sheet PNGs (not individual frames) for each enemy template + all allies
 - Packs into shared CanvasTexture atlas (8 cols × N rows, max 4096×4096)
 - Single atlas per sprite-size group (e.g. 128×128, 256×256)
 - Critical: `flipY = false` (WebGPU UV convention; `flipY = true` breaks formula)
@@ -277,6 +285,54 @@ Combat rendering overhauled from per-entity React components to 1-draw-call GPU 
 
 **CombatVfxSpawner** (`combat-vfx-spawner.tsx`)
 - VFX layer for combat effects (particle emitters, visual polish)
+
+**Skill-VFX Orchestrator** (`src/scene/effects/skill-vfx/`)
+
+Generalized event-driven system routing skill events to cue-sheet VFX. Replaces Pierce-specific hard-wiring to handle self-cast events (buff application, stance entry).
+
+| Component | Role |
+|-----------|------|
+| `skill-event-resolver.ts` | Pure router: parses `CombatEvent`, matches against cue-sheet `trigger`, partitions events by `castScoped` flag |
+| `cue-sheet-types.ts` | Extended schema: `anchor` ('target'/'caster'/'caster-front'/'cluster'), `color`, sheet-level `trigger`, `castScoped` |
+| `skill-cue-dispatcher.ts` | Scheduler: enqueues cue timeline, dispatches at exact tick via `delayedDispatch()` |
+
+**Event routing:**
+- `trigger: 'skill-use'` → damage skills (Pierce, Cleave) → impact VFX + hitstop + camera shake
+- `trigger: 'skill-buff-applied'` → self-buffs (Rally) + team-buffs (Aegis, Mark) → aura/warcry VFX, no hitstop
+- `trigger: 'effect-applied:riposte'` → riposte stance entry → parry-glint mesh + aura
+
+**Pool color management:** `meshFx-pool-root.tsx` now re-applies kind-default color on `acquire()` to prevent cross-cast color bleed (e.g., recolored shockwave-ring from one skill staining the next).
+
+**Skill-VFX Quality Degradation Tier** (`src/scene/effects/mesh-fx/mesh-fx-quality.ts`)
+
+On 'low' graphics quality, skill-VFX sequences degrade gracefully while remaining legible:
+- `getMeshFxQuality()` / `isLowMeshFxQuality()` — single source of truth wrapping the existing binary graphics-quality setting (no granular VFX slider)
+- **Degradation consumers** (all optional guards):
+  - Weapon trail skipped in `combat-skill-vfx-layer.tsx`
+  - Scatter-particle counts halved (explicit-count cues only)
+  - Mesh dissolve-noise dropped (compile-time shader variant, e.g., `thrust-lance-material.ts`)
+  - WebGPU screen-space distortion pass skipped (pre-existing guard)
+  - Camera shake skipped (pre-existing guard in `combat-camera-shake.tsx`)
+- **Legible floor**: Impact meshes + rings + SFX always remain (non-negotiable clarity)
+- **Headless compatibility**: Auto-resolve applies buffs with no VFX (POC phase)
+
+---
+
+## Asset Path Resolution (Subpath Deployment Support)
+
+**Critical for itch.io subpath deploys**: All public-asset loaders (GLB models, textures, audio, sprites) MUST wrap paths via `assetUrl()` utility.
+
+| Path Type | Example | Wrapped | Issue | Solution |
+|-----------|---------|---------|-------|----------|
+| Root-absolute (`/models/...`) | `/models/tavern.glb` | `assetUrl('/models/tavern.glb')` | 403 on itch subpath (served from `hungtran0205/2000sac`, not domain root) | Always use `assetUrl()` |
+| Relative | `sprites/avatar.png` | (OK as-is) | Works with current vite asset resolve | OK |
+| Imported modules | `import deco from '@/assets/deco.png'` | (OK as-is) | Vite handles at build time | OK |
+
+**Implementation**: `assetUrl(path)` in `src/lib/asset-url.ts` prepends base path from `import.meta.env.BASE_URL` (set by vite to deployment root).
+
+**Coverage**: ~60 call sites across 29 files (drei useGLTF, useTexture, GLTFLoader, TextureLoader, AudioListener, preload for title flags, tavern decorations, all VFX/wall/floor textures). Note: `THREE.DefaultLoadingManager.setURLModifier` in `main.tsx` does NOT reliably intercept drei useGLTF hooks — per-site wrapping is the reliable fix.
+
+---
 
 ### Combat Lifecycle (Phase 3+ Redesign)
 
@@ -1763,6 +1819,33 @@ interface InventoryState {
 - `.ink-bar-hp`, `.ink-bar-exp` — Status bar styling with custom fill animations
 - `.ink-pixelated` — Pixel-perfect font rendering (image-rendering: pixelated)
 - `.ink-enter` — Entry animation (fade + slide from top)
+
+### Panel Management System (v1.27 — Unified PanelFrame + Central State)
+
+**PanelFrame Architecture** (`src/ui/components/panel-frame.tsx`):
+- Reusable chrome component rendering header (with title, close button), parchment content field, and motion-driven exit animation
+- One per panel; encapsulates header/close styles, fade-in (250ms) and fade-out (150ms) animations, optional hideClose variant (quest board only)
+- Receives `onClose` callback + `children` (content); internally owns animation timing via `use-delayed-unmount.ts`
+- SFX hooks allow panels to play open/close sounds via howler (PANEL_OPEN / PANEL_CLOSE keys, consumed by panels)
+
+**Central Panel State** (`src/game/state/panel-slice.ts`, Zustand slice):
+- Two independent axes: `mainPanel` (quests | roster | facilities | combat | settings) and `facilityPanel` (workshop | alchemy | tavern | training-yard)
+- Mutex per axis: only one panel open per axis at a time; opening a panel on an axis closes its predecessor
+- Combat panel **exception**: uses `useCombatPanelStore` (separate store) to stay open during combat; allows both mainPanel + combatPanel simultaneously
+- Actions: `openMainPanel(name)`, `openFacilityPanel(name)`, `closeMainPanel()`, `closeFacilityPanel()`, `closeAllPanels()`
+- Keyboard handler (Esc) calls `closeAllPanels()` (closes mainPanel + facilityPanel; combat panel remains separate)
+- 21 unit tests verify state mutations, mutual exclusion, Esc behavior, error cases
+
+**HUD Integration**:
+- HUD persists across all panels and room transitions (not torn down per panel)
+- `src/ui/hud/hud.tsx` mounts `PanelLayer` reading `mainPanel` + `facilityPanel` from store
+- Panel toggle bar (11 bronze-styled pixel icons) dispatches `openMainPanel(name)` on click
+- Keyboard map routes {Q, R, F, C, S} → {quests, roster, facilities, combat, settings}
+
+**Quest Board Diegetic Exception**:
+- Quest board is the only panel with `hideClose: true` — renders wax-seal parchment skin with no X button
+- Accepts click-outside close (within PanelFrame), unroll animation, PAPER_UNROLL / SEAL_BREAK SFX
+- Inherits PanelFrame motion language (250ms open, 150ms close)
 
 ### Guild Roster Redesign (v1.26)
 

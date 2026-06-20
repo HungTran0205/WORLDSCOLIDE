@@ -82,7 +82,7 @@ function findEquipmentInState(state: StoreState, instanceId: string): EquipmentI
   const allMembers: Member[] = state.founder ? [state.founder, ...state.roster] : state.roster;
   for (const m of allMembers) {
     if (!m.equipment) continue;
-    for (const slot of ['weapon', 'armor', 'headgear'] as const) {
+    for (const slot of ['weapon', 'armor'] as const) {
       const cur = m.equipment[slot];
       if (cur && cur.id === instanceId) return cur;
     }
@@ -103,6 +103,11 @@ function validateTaskStart(
       const tpl = getEquipmentTemplate(task.payload.templateId);
       const need: Partial<Record<ItemID, number>> = {};
       if (tpl.craftMaterial && tpl.craftCost) need[tpl.craftMaterial] = tpl.craftCost;
+      if (tpl.extraMaterials) {
+        for (const [id, qty] of Object.entries(tpl.extraMaterials) as [ItemID, number][]) {
+          need[id] = (need[id] ?? 0) + qty;
+        }
+      }
       if (task.payload.monsterMaterial) {
         need[task.payload.monsterMaterial] = (need[task.payload.monsterMaterial] ?? 0) + 1;
       }
@@ -443,7 +448,7 @@ export function createWorkshopActions(set: Setter): WorkshopActions {
           if (!m.equipment || acc.equipmentReplacements.size === 0) return m;
           let changed = false;
           const newEq: MemberEquipment = { ...m.equipment };
-          for (const slot of ['weapon', 'armor', 'headgear'] as const) {
+          for (const slot of ['weapon', 'armor'] as const) {
             const cur = newEq[slot];
             if (cur) {
               const repl = acc.equipmentReplacements.get(cur.id);

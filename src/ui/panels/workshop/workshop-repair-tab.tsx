@@ -27,7 +27,7 @@ export function WorkshopRepairTab({ facility }: Props) {
     for (const e of equipmentInventory) all.push({ eq: e, ownerName: null });
     for (const m of allMembers) {
       if (!m.equipment) continue;
-      for (const slot of ['weapon', 'armor', 'headgear'] as const) {
+      for (const slot of ['weapon', 'armor'] as const) {
         const cur = m.equipment[slot];
         if (cur) all.push({ eq: cur, ownerName: m.name });
       }

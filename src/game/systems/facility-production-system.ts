@@ -11,6 +11,7 @@ import type { ItemID } from '@/game/data/items';
 import { FACILITY_DEFINITIONS, LOGGING_SITE_CONFIG, STONE_QUARRY_CONFIG } from '@/game/data/facility-definitions';
 import { calcDerivedGuildStats } from './derived-guild-stats';
 import { calcMcLevel, type MiningXpGain } from './stone-quarry-production-system';
+import { gradeIndex } from '@/game/data/grades';
 
 // Real ticks per game-day. Online produces 1 cycle per real-second, and 1 game-day = 30 real minutes,
 // so 1800 real ticks elapse per game-day. Offline catch-up must use the same scale to stay
@@ -116,8 +117,6 @@ export function processLoggingSiteTick(
 export interface FacilityProductionResult {
   facilityType: string;
   facilityName: string;
-  /** EXP gains keyed by memberId — Training Yard */
-  expGains: Record<string, number>;
   /** Item gains — Logging Site (WOOD), Stone Quarry (STONE) */
   itemGains: Partial<Record<ItemID, number>>;
   /** Whether infirmary recovery multiplier was applied */
@@ -130,21 +129,13 @@ export interface FacilityProductionResult {
   mcXpGains?: MiningXpGain[];
 }
 
-// --- Training Yard ---
-
-function calcTrainingYardExpPerDay(member: Member, level: number): number {
-  const base = [12, 22, 40][level - 1];
-  const { trainingEff } = calcDerivedGuildStats(member.stats, member.level);
-  return Math.floor(base * (1 + trainingEff));
-}
-
 // --- Infirmary ---
 
 /** Recovery time multiplier — lower is faster. Applied by injury-recovery logic. */
 export function calcInfirmaryRecoveryMult(assignedMembers: Member[], level: number): number {
   if (assignedMembers.length === 0) return 1.0;
   const avgRecovery =
-    assignedMembers.reduce((s, m) => s + calcDerivedGuildStats(m.stats, m.level).recovery, 0) /
+    assignedMembers.reduce((s, m) => s + calcDerivedGuildStats(m.stats, gradeIndex(m.grade)).recovery, 0) /
     assignedMembers.length;
   const base = [0.75, 0.55, 0.40][level - 1];
   return Math.max(0.2, base * avgRecovery);
@@ -179,17 +170,13 @@ export function processFacilityProduction(
     const result: FacilityProductionResult = {
       facilityType: facility.type,
       facilityName: def.name,
-      expGains: {},
       itemGains: {},
       recoveryApplied: false,
     };
 
     switch (facility.type) {
       case 'training-yard':
-        for (const member of assignedMembers) {
-          const expPerDay = calcTrainingYardExpPerDay(member, facility.level);
-          result.expGains[member.id] = expPerDay * gameDays;
-        }
+        // Skill-rank training handled by guild-slice tick via processSkillTraining().
         break;
 
       case 'infirmary':

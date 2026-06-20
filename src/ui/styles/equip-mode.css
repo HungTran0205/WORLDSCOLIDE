@@ -1,39 +1,93 @@
-/* ─── Equip Mode Panel ────────────────────────────────────────────────────── */
-.equip-panel {
-  display: flex;
-  flex-direction: column;
-  width: min(860px, 95vw);
-  max-height: 85vh;
-  transform: scale(var(--ui-scale));
-  transform-origin: top center;
-  overflow: hidden;
-}
+/* ─── Equip Mode Panel — bronze × parchment content styles ─────────────────
+   Shell chrome (border, header, close, open/close animation) is owned by
+   PanelFrame. Only content-layout classes live here.
+   Tokens: --bp-* from ui-tokens-v2.css, --ink-* spacing/font scale.
+   ──────────────────────────────────────────────────────────────────────────── */
 
-.equip-header {
+/* Positioner — centers PanelFrame on screen at elevated z.
+   pointer-events: none lets the 3D scene stay interactive;
+   pointer-events: auto on children restores clicks inside the panel. */
+.em-positioner {
+  position: fixed;
+  inset: 0;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--ink-gold-dim);
+  justify-content: center;
+  pointer-events: none;
+  z-index: var(--bp-z-panel-elevated);
+}
+.em-positioner > * {
+  pointer-events: auto;
+  width: min(860px, 95vw);
+  max-height: 88vh;
+}
+
+/* ── Meta row: avatar + grade badge + Done button ─────────────────────────── */
+.em-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--bp-card-border);
   flex-shrink: 0;
 }
-.equip-header-avatar {
+.em-meta-avatar {
   width: 40px;
   height: 40px;
-  border: 1px solid var(--ink-gold-dim);
-  border-radius: var(--ink-radius-sm);
-  background: var(--ink-bg-deep);
+  border: 1px solid var(--bp-card-border);
+  border-radius: var(--bp-radius);
+  background: var(--bp-parch-aged);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   flex-shrink: 0;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
-.equip-header-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.equip-header-name { flex: 1; font-family: var(--ink-font-title); font-size: 0.95rem; color: var(--ink-gold); }
-.equip-header-sub  { font-family: var(--ink-font-mono); font-size: 0.65rem; color: var(--ink-text-muted); }
+.em-meta-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.em-meta-avatar-fallback {
+  font-family: var(--ink-font-title);
+  font-size: 0.9rem;
+  color: var(--bp-text-accent);
+}
+.em-meta-grade {
+  flex: 1;
+  font-family: var(--ink-font-mono);
+  font-size: var(--ink-fs-small);
+  color: var(--bp-text-muted);
+}
 
-/* Split layout */
+/* Done button — bronze body per bible §6 */
+.em-done-btn {
+  padding: 0 14px;
+  height: 32px;
+  background: linear-gradient(180deg, var(--bp-bronze-base), var(--bp-bronze-dark));
+  border: 2px solid var(--bp-bronze-light);
+  border-radius: var(--bp-radius);
+  color: var(--bp-parch-light);
+  font-family: var(--ink-font-mono);
+  font-size: var(--ink-fs-small);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background var(--bp-dur-fast) var(--bp-ease),
+    border-color var(--bp-dur-fast) var(--bp-ease);
+}
+.em-done-btn:hover {
+  background: linear-gradient(180deg, var(--bp-bronze-light), var(--bp-bronze-base));
+  border-color: var(--bp-bronze-glint);
+}
+.em-done-btn:active {
+  background: linear-gradient(180deg, var(--bp-bronze-dark), var(--bp-bronze-shadow));
+  border-color: var(--bp-cyan-core);
+  transform: translateY(1px);
+}
+
+/* ── Split layout ─────────────────────────────────────────────────────────── */
 .equip-split {
   display: flex;
   flex: 1;
@@ -45,19 +99,21 @@
 .equip-left {
   width: 280px;
   flex-shrink: 0;
-  border-right: 1px solid var(--ink-gold-dim);
-  padding: 12px;
+  border-right: 1px solid var(--bp-card-border);
+  padding: 0 12px 12px 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
   overflow-y: auto;
 }
+
+/* Section headers — small-caps muted label per bible §7 micro-label role */
 .equip-section-title {
   font-family: var(--ink-font-mono);
-  font-size: 0.62rem;
+  font-size: var(--ink-fs-label);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--ink-text-muted);
+  color: var(--bp-text-muted);
   margin-bottom: 4px;
 }
 
@@ -67,101 +123,158 @@
   grid-template-columns: 1fr 1fr;
   gap: 6px;
 }
+
+/* Gear slot card — aged parchment with burn border; filled = solid border */
 .equip-slot-box {
   padding: 8px;
-  background: var(--ink-bg-deep);
-  border: 2px dashed var(--ink-gold-dim);
-  border-radius: var(--ink-radius-sm);
+  background: var(--bp-card-fill);
+  border: 2px dashed var(--bp-card-border);
+  border-radius: var(--bp-radius);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
   min-height: 72px;
   cursor: pointer;
-  transition: border-color var(--ink-dur-tab), background var(--ink-dur-tab);
+  transition:
+    border-color var(--bp-dur-tab) var(--bp-ease),
+    background var(--bp-dur-tab) var(--bp-ease);
 }
-.equip-slot-box.filled         { border-style: solid; border-color: var(--ink-amber); }
-.equip-slot-box.drop-target    { border-color: var(--ink-gold); background: var(--ink-bg-selected); }
-.equip-slot-box.headgear-full  { grid-column: 1 / -1; max-width: calc(50% - 3px); margin: 0 auto; }
+/* Filled = item equipped → solid cyan edge (selected state per bible §3.4 law) */
+.equip-slot-box.filled      { border-style: solid; border-color: var(--bp-cyan-core); }
+/* Drop target = active receive state → cyan edge + light glow */
+.equip-slot-box.drop-target {
+  border-color: var(--bp-cyan-core);
+  box-shadow: 0 0 6px var(--bp-cyan-halo);
+}
+
 .equip-slot-label {
   font-family: var(--ink-font-mono);
-  font-size: 0.58rem;
+  font-size: var(--ink-fs-label);
   text-transform: uppercase;
-  color: var(--ink-text-muted);
+  color: var(--bp-text-muted);
 }
-.equip-slot-item-name { font-size: 0.72rem; color: var(--ink-text); text-align: center; line-height: 1.3; }
-.equip-slot-stat      { font-family: var(--ink-font-mono); font-size: 0.6rem; color: var(--ink-text-muted); }
-.equip-slot-empty     { font-size: 0.68rem; color: var(--ink-text-muted); font-style: italic; }
+.equip-slot-item-name {
+  font-size: var(--ink-fs-small);
+  color: var(--bp-text-accent);
+  text-align: center;
+  line-height: 1.3;
+}
+.equip-slot-stat {
+  font-family: var(--ink-font-mono);
+  font-size: var(--ink-fs-label);
+  color: var(--bp-text-muted);
+}
+.equip-slot-empty {
+  font-size: var(--ink-fs-small);
+  color: var(--bp-text-muted);
+  font-style: italic;
+}
 
-/* Medicine slots */
+/* ── Medicine slots ────────────────────────────────────────────────────────── */
 .med-slot-box {
   padding: 8px;
-  background: var(--ink-bg-deep);
-  border: 1px dashed var(--ink-gold-dim);
-  border-radius: var(--ink-radius-sm);
+  background: var(--bp-card-fill);
+  border: 1px dashed var(--bp-card-border);
+  border-radius: var(--bp-radius);
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: border-color var(--ink-dur-tab), background var(--ink-dur-tab);
+  transition:
+    border-color var(--bp-dur-tab) var(--bp-ease),
+    background var(--bp-dur-tab) var(--bp-ease);
 }
-.med-slot-box.filled      { border-style: solid; border-color: var(--ink-amber); }
-.med-slot-box.drop-target { border-color: var(--ink-gold); background: var(--ink-bg-selected); }
-.med-slot-num    { font-family: var(--ink-font-mono); font-size: 0.62rem; color: var(--ink-text-muted); width: 14px; flex-shrink: 0; }
-.med-slot-name   { flex: 1; font-size: 0.72rem; color: var(--ink-text-dim); }
-.med-slot-empty  { flex: 1; font-size: 0.68rem; color: var(--ink-text-muted); font-style: italic; }
-.med-slot-clear  { background: none; border: none; color: var(--ink-text-muted); cursor: pointer; font-size: 0.75rem; padding: 0 4px; }
-.med-slot-clear:hover { color: var(--ink-status-bad); }
+/* Filled = item set → solid cyan edge (selected state) */
+.med-slot-box.filled      { border-style: solid; border-color: var(--bp-cyan-core); }
+/* Drop target = active receive */
+.med-slot-box.drop-target {
+  border-color: var(--bp-cyan-core);
+  box-shadow: 0 0 6px var(--bp-cyan-halo);
+}
 
+.med-slot-num   { font-family: var(--ink-font-mono); font-size: var(--ink-fs-label); color: var(--bp-text-muted); width: 14px; flex-shrink: 0; }
+.med-slot-name  { flex: 1; font-size: var(--ink-fs-small); color: var(--bp-text-accent); }
+.med-slot-empty { flex: 1; font-size: var(--ink-fs-small); color: var(--bp-text-muted); font-style: italic; }
+.med-slot-clear {
+  background: none;
+  border: none;
+  color: var(--bp-text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0 4px;
+}
+.med-slot-clear:hover { color: var(--bp-status-bad); }
+
+/* Condition dropdown — parchment input per tokens §3.6 */
 .med-condition-select {
-  background: var(--ink-bg-panel-alt);
-  border: 1px solid var(--ink-gold-dim);
-  color: var(--ink-text-dim);
+  background: var(--bp-input-bg);
+  border: 1px solid var(--bp-input-border);
+  color: var(--bp-text-ink);
   font-family: var(--ink-font-mono);
-  font-size: 0.6rem;
-  border-radius: var(--ink-radius-sm);
+  font-size: var(--ink-fs-label);
+  border-radius: var(--bp-radius);
   padding: 2px 4px;
   cursor: pointer;
 }
+.med-condition-select:focus {
+  outline: 2px solid var(--bp-cyan-core);
+  outline-offset: 1px;
+}
 
-/* Right — inventory */
+/* ── Right — inventory ─────────────────────────────────────────────────────── */
 .equip-right {
   flex: 1;
-  padding: 12px;
+  padding: 0 0 12px 12px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
+
 .equip-inv-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
   gap: 6px;
 }
+
+/* Item card — aged parchment fill, burn border, ink text */
 .equip-inv-item {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
   padding: 6px 4px;
-  background: var(--ink-bg-panel-alt);
-  border: 1px solid var(--ink-gold-dim);
-  border-radius: var(--ink-radius-sm);
+  background: var(--bp-card-fill);
+  border: 1px solid var(--bp-card-border);
+  border-radius: var(--bp-radius);
   cursor: grab;
   font-family: var(--ink-font-mono);
-  font-size: 0.6rem;
-  color: var(--ink-text-muted);
+  font-size: var(--ink-fs-label);
+  color: var(--bp-text-muted);
   text-align: center;
   line-height: 1.2;
-  transition: border-color var(--ink-dur-tab), background var(--ink-dur-tab);
+  transition:
+    border-color var(--bp-dur-tab) var(--bp-ease),
+    background var(--bp-dur-tab) var(--bp-ease);
 }
-.equip-inv-item:hover            { border-color: var(--ink-amber); }
+.equip-inv-item:hover            { border-color: var(--bp-bronze-light); }
 .equip-inv-item.dragging         { opacity: 0.4; }
-.equip-inv-item.selected         { border-color: var(--ink-gold); background: var(--ink-bg-selected); }
-.equip-inv-item-name             { color: var(--ink-text-dim); font-size: 0.65rem; }
+/* Selected = cyan edge + halo (selected state per bible §3.4 law) */
+.equip-inv-item.selected {
+  border-color: var(--bp-cyan-core);
+  box-shadow: 0 0 6px var(--bp-cyan-halo);
+}
+
+.equip-inv-item-name {
+  color: var(--bp-text-accent);
+  font-size: var(--ink-fs-label);
+}
+
+/* Empty stash hint */
 .equip-empty-hint {
-  color: var(--ink-text-muted);
+  color: var(--bp-text-muted);
   font-family: var(--ink-font-mono);
-  font-size: 0.75rem;
+  font-size: var(--ink-fs-body);
   text-align: center;
   padding: 20px 0;
 }

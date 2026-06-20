@@ -1,154 +1,43 @@
-/* ── Inventory overlay ── */
-.inventory-overlay {
+/* Inventory Panel — content styles only.
+   Panel chrome (border, header, close button, open/close animation) is owned
+   by PanelFrame. Only content-layout and grid classes live here. */
+
+/* ── Positioner: centers PanelFrame on screen without a dark scrim.
+   Used for both the normal inventory view and the equip-mode early-return. ── */
+.inv-positioner {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 150;
-  pointer-events: auto;
-  animation: invOverlayFadeIn 0.2s ease;
-}
-
-@keyframes invOverlayFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-/* ── Chest-themed panel ── */
-.inventory-panel {
-  /* Wood-grain base: layered repeating gradients simulate planks + grain */
-  background:
-    repeating-linear-gradient(
-      92deg,
-      transparent,
-      rgba(139, 90, 43, 0.04) 2px,
-      transparent 4px
-    ),
-    repeating-linear-gradient(
-      178deg,
-      transparent,
-      rgba(80, 50, 20, 0.06) 3px,
-      transparent 6px
-    ),
-    linear-gradient(180deg, rgba(45, 30, 16, 0.98) 0%, rgba(28, 18, 8, 0.99) 100%);
-  border: 3px solid #8B4513;
-  border-top-color: #9e5a28;
-  border-bottom-color: #6b3410;
-  border-radius: 12px;
-  padding: 24px 22px 24px;
-  min-width: 380px;
-  max-width: 440px;
-  max-height: 80vh;
-  overflow-y: auto;
-  position: relative;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 215, 0, 0.1),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
-    inset 2px 0 8px rgba(0, 0, 0, 0.2),
-    inset -2px 0 8px rgba(0, 0, 0, 0.2),
-    0 4px 12px rgba(0, 0, 0, 0.5),
-    0 12px 40px rgba(0, 0, 0, 0.55);
-  animation: invPanelSlideIn 0.25s ease;
-}
-
-@keyframes invPanelSlideIn {
-  from { opacity: 0; transform: scale(0.96) translateY(8px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-/* Gold corner studs — all four corners.
-   Each pseudo-element stretches the full panel height as a narrow column,
-   painting two stud circles (top + bottom) via positioned radial-gradients. */
-.inventory-panel::before,
-.inventory-panel::after {
-  content: '';
-  position: absolute;
-  width: 14px;
-  top: 5px;
-  bottom: 5px;
-  background:
-    radial-gradient(circle at center 7px,
-      #ffe87c 0%, #ffd700 3px, #b8860b 5px, #8B6914 6px, transparent 7px),
-    radial-gradient(circle at center calc(100% - 7px),
-      #ffe87c 0%, #ffd700 3px, #b8860b 5px, #8B6914 6px, transparent 7px);
-  background-repeat: no-repeat;
-  filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.25));
-  z-index: 2;
   pointer-events: none;
+  z-index: var(--bp-z-panel);
 }
-.inventory-panel::before { left: 5px; }
-.inventory-panel::after  { right: 5px; }
-
-/* Horizontal metal band across the top (like a chest latch stripe) */
-.inventory-panel__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(139, 69, 19, 0.5);
-  background: linear-gradient(
-    180deg,
-    rgba(255, 215, 0, 0.04) 0%,
-    transparent 100%
-  );
-  margin: -4px -2px 6px;
-  padding: 0 2px 8px;
-}
-
-.inventory-panel__title {
-  color: #ffd700;
-  font-size: 1.15rem;
-  font-weight: bold;
-  margin: 0;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-  letter-spacing: 0.02em;
-}
-
-/* Close button — riveted metal feel */
-.inventory-panel__close {
-  background: linear-gradient(180deg, rgba(80, 55, 30, 0.6), rgba(50, 30, 15, 0.6));
-  border: 1px solid rgba(139, 69, 19, 0.6);
-  color: #c8b08a;
-  cursor: pointer;
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-.inventory-panel__close:hover {
-  background: linear-gradient(180deg, rgba(100, 70, 35, 0.7), rgba(70, 40, 20, 0.7));
-  color: #ffd700;
-  border-color: rgba(255, 215, 0, 0.4);
-}
-.inventory-panel__close:focus-visible {
-  outline: 2px solid #ffd700;
-  outline-offset: 2px;
+.inv-positioner > * {
+  pointer-events: auto;
+  width: min(900px, 95vw);
+  max-height: 88vh;
 }
 
 /* ── Capacity indicator ── */
 .inventory-capacity {
-  color: #a89880;
+  color: var(--bp-text-muted, #5a4630);
   font-size: 0.8rem;
   margin-bottom: 12px;
 }
 .inventory-capacity__bar {
   height: 6px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(139, 69, 19, 0.35);
+  background: rgba(139, 106, 63, 0.20);
+  border: 1px solid var(--bp-bronze-base, #8a6d2c);
   border-radius: 3px;
   margin-top: 5px;
   overflow: hidden;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 .inventory-capacity__fill {
   height: 100%;
-  background: linear-gradient(90deg, #b8860b, #daa520, #ffd700);
+  background: linear-gradient(90deg, var(--bp-bronze-dark, #5c4a20), var(--bp-bronze-base, #8a6d2c), var(--bp-bronze-light, #d4a843));
   border-radius: 2px;
   transition: width 0.4s ease;
-  box-shadow: 0 0 4px rgba(255, 215, 0, 0.2);
 }
 
 /* ── Grid ── */
@@ -184,24 +73,21 @@
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-/* Occupied slot — raised plank feel */
+/* Occupied slot — parchment card on parchment surface */
 .inventory-slot--occupied {
-  border: 1px solid rgba(255, 215, 0, 0.25);
-  background:
-    linear-gradient(180deg, rgba(60, 42, 22, 0.5) 0%, rgba(35, 24, 12, 0.5) 100%);
+  border: 1px solid var(--bp-card-border, #8b6a3f);
+  background: var(--bp-card-fill, #c9b687);
   cursor: pointer;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 1px 2px rgba(0, 0, 0, 0.2);
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 1px 2px rgba(40, 20, 5, 0.15);
 }
 .inventory-slot--occupied:hover {
-  border-color: rgba(255, 215, 0, 0.55);
+  border-color: var(--bp-bronze-light, #d4a843);
   box-shadow:
-    0 0 8px rgba(255, 215, 0, 0.15),
-    0 0 2px rgba(255, 215, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  background:
-    linear-gradient(180deg, rgba(70, 50, 28, 0.6) 0%, rgba(45, 30, 16, 0.6) 100%);
+    0 0 6px rgba(138, 109, 44, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  background: var(--bp-parch-aged, #c9b687);
   transform: translateY(-1px);
 }
 .inventory-slot--occupied:active {
@@ -209,20 +95,20 @@
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 .inventory-slot--occupied:focus-visible {
-  outline: 2px solid #ffd700;
+  outline: 2px solid var(--bp-cyan-core, #46d8d0);
   outline-offset: 1px;
 }
 
-/* Selected slot — prominent gold ring */
+/* Selected slot — cyan edge per bible §3.4 selected state law */
 .inventory-slot--selected {
-  border-color: #ffd700 !important;
+  border-color: var(--bp-cyan-core, #46d8d0) !important;
   box-shadow:
-    0 0 10px rgba(255, 215, 0, 0.3),
-    0 0 3px rgba(255, 215, 0, 0.15),
-    inset 0 0 6px rgba(255, 215, 0, 0.06);
+    0 0 8px var(--bp-cyan-halo, rgba(70, 216, 208, 0.35)),
+    0 0 2px var(--bp-cyan-core, #46d8d0),
+    inset 0 0 4px rgba(70, 216, 208, 0.08);
 }
 
-/* Quantity badge — pill with dark backing */
+/* Quantity badge — pill on card tile; dark ink on parch-aged bg (11.9:1 ✓) */
 .inventory-slot__qty {
   position: absolute;
   bottom: 2px;
@@ -230,12 +116,11 @@
   font-family: var(--ink-font-mono);
   font-size: var(--ink-fs-tiny);
   font-weight: bold;
-  color: var(--ink-gold-bright);
-  background: rgba(0, 0, 0, 0.7);
+  color: var(--bp-text-ink, #2a1f12);
+  background: rgba(201, 182, 135, 0.85);
   padding: 0 4px;
   border-radius: 3px;
   line-height: 1.4;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
   pointer-events: none;
 }
 
@@ -435,33 +320,54 @@
   }
 }
 
-/* ── Wide panel layout ── */
-.inventory-panel--wide { max-width: 900px; min-width: 700px; display: flex; gap: 0; padding: 0; overflow: hidden; }
-.inv-main-col { flex: 1; padding: 20px 16px; overflow-y: auto; }
-.inv-detail-col { width: 280px; border-left: 1px solid rgba(139,69,19,0.4); padding: 16px; background: rgba(0,0,0,0.15); overflow-y: auto; }
+/* ── Wide panel layout — two-column flex row inside pf-content ── */
+.inv-main-col { flex: 1; padding: 4px 0; overflow-y: auto; }
+/* Detail column: slightly aged parch inset, burn border */
+.inv-detail-col { width: 280px; border-left: 1px solid var(--bp-parch-burn, #8b6a3f); padding: 16px; background: rgba(139,106,63,0.08); overflow-y: auto; }
+
+/* Make pf-content a flex row when it hosts the wide inventory layout */
+.pf-content:has(.inv-main-col) { display: flex; gap: 0; padding: 12px; overflow: hidden; }
 
 /* ── Tabs ── */
-.inv-tabs { display: flex; gap: 2px; margin-bottom: 10px; border-bottom: 1px solid rgba(255,215,0,0.15); }
-.inv-tab { background: none; border: none; border-bottom: 2px solid transparent; color: var(--ink-gold-dim, #8a7040); font-family: var(--ink-font-ui); font-size: var(--ink-fs-label); padding: 6px 12px; cursor: pointer; transition: color var(--ink-dur-fast), border-color var(--ink-dur-fast); }
-.inv-tab:hover { color: var(--ink-gold); }
-.inv-tab--active { color: var(--ink-gold-bright); border-bottom-color: var(--ink-gold-bright); }
-.inv-tab__count { font-size: 0.6rem; background: rgba(255,215,0,0.15); border-radius: 8px; padding: 0 5px; margin-left: 4px; }
+/* On parchment: muted ink tabs, bronze-dark active, cyan underline (active law ✓) */
+.inv-tabs { display: flex; gap: 2px; margin-bottom: 10px; border-bottom: 1px solid var(--bp-parch-burn, #8b6a3f); }
+.inv-tab { background: none; border: none; border-bottom: 2px solid transparent; color: var(--bp-text-muted, #5a4630); font-family: var(--ink-font-ui); font-size: var(--ink-fs-label); padding: 6px 12px; cursor: pointer; transition: color var(--ink-dur-fast), border-color var(--ink-dur-fast); }
+.inv-tab:hover { color: var(--bp-text-accent, #5c4a20); }
+/* Active: bronze-dark text (6.6:1 ✓) + cyan underline (selected state law ✓) */
+.inv-tab--active { color: var(--bp-text-accent, #5c4a20); border-bottom-color: var(--bp-cyan-core, #46d8d0); }
+/* Count badge: parch-aged fill, ink text (11.9:1 ✓) */
+.inv-tab__count { font-size: 0.6rem; background: var(--bp-parch-aged, #c9b687); color: var(--bp-text-ink, #2a1f12); border-radius: 8px; padding: 0 5px; margin-left: 4px; }
 
 /* ── Search + Sort row ── */
+/* Input bg: --bp-input-bg (#ddd0a0) — darker than parch-base, ink text (9.1:1 ✓).
+   Placeholder: --bp-text-muted (#5a4630) 6.1:1 on #ddd0a0 ✓ */
 .inv-controls { display: flex; gap: 8px; margin-bottom: 8px; }
-.inv-search { flex: 1; background: rgba(0,0,0,0.3); border: 1px solid rgba(139,69,19,0.5); border-radius: 6px; color: #e0d0c0; font-size: var(--ink-fs-small); padding: 5px 10px 5px 28px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a08040' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 8px center; }
-.inv-search::placeholder { color: rgba(160,128,80,0.5); }
-.inv-sort { background: rgba(0,0,0,0.3); border: 1px solid rgba(139,69,19,0.5); border-radius: 6px; color: #e0d0c0; font-size: var(--ink-fs-small); padding: 5px 8px; cursor: pointer; }
+.inv-search { flex: 1; background: var(--bp-input-bg, #ddd0a0); border: 1px solid var(--bp-input-border, #8b6a3f); border-radius: 6px; color: var(--bp-text-ink, #2a1f12); font-size: var(--ink-fs-small); padding: 5px 10px 5px 28px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235a4630' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 8px center; }
+.inv-search::placeholder { color: var(--bp-text-muted, #5a4630); opacity: 0.65; }
+.inv-search:focus { outline: 2px solid var(--bp-cyan-core, #46d8d0); outline-offset: 1px; border-color: var(--bp-bronze-light); }
+.inv-sort { background: var(--bp-input-bg, #ddd0a0); border: 1px solid var(--bp-input-border, #8b6a3f); border-radius: 6px; color: var(--bp-text-ink, #2a1f12); font-size: var(--ink-fs-small); padding: 5px 8px; cursor: pointer; }
 
 /* ── Rarity filter pills ── */
+/* Rest: card-fill bg + card-border + muted ink text (6.1:1 ✓ on #c9b687).
+   Active-all: bronze fill + ink text (11.9:1 ✓).
+   Rarity active: tier hue border + parch-aged bg + ink text.
+   Rarity text colors on parch-aged (#c9b687, L≈0.553):
+     #2ecc71 uncommon: L≈0.477 → ratio 1.10:1 FAIL as text — use ink text + colored border only.
+     #3498db rare:     L≈0.181 → 2.9:1 FAIL on parch-aged — use ink text + colored border only.
+     #9b59b6 epic:     L≈0.095 → 4.4:1 borderline — use ink text + colored border only.
+     #f39c12 legendary:L≈0.398 → 1.3:1 FAIL — use ink text + colored border only.
+   Decision: all active rarity pills show ink text (#2a1f12) on parch-aged bg,
+   with the tier hue ONLY as the border color. Readable and on-brand. */
 .inv-rarity-filters { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
-.inv-rarity-pill { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; color: #a09080; font-size: 0.62rem; letter-spacing: 0.08em; padding: 2px 10px; cursor: pointer; transition: all var(--ink-dur-fast); text-transform: uppercase; }
-.inv-rarity-pill:hover { border-color: rgba(255,215,0,0.4); color: var(--ink-gold); }
-.inv-rarity-pill--active { background: rgba(255,215,0,0.12); border-color: var(--ink-gold-bright); color: var(--ink-gold-bright); }
-.inv-rarity-pill--uncommon.inv-rarity-pill--active { border-color: #2ecc71; color: #2ecc71; background: rgba(46,204,113,0.1); }
-.inv-rarity-pill--rare.inv-rarity-pill--active     { border-color: #3498db; color: #3498db; background: rgba(52,152,219,0.1); }
-.inv-rarity-pill--epic.inv-rarity-pill--active     { border-color: #9b59b6; color: #9b59b6; background: rgba(155,89,182,0.1); }
-.inv-rarity-pill--legendary.inv-rarity-pill--active { border-color: #f39c12; color: #f39c12; background: rgba(243,156,18,0.1); }
+.inv-rarity-pill { background: var(--bp-card-fill, #c9b687); border: 1px solid var(--bp-card-border, #8b6a3f); border-radius: 12px; color: var(--bp-text-muted, #5a4630); font-size: 0.62rem; letter-spacing: 0.08em; padding: 2px 10px; cursor: pointer; transition: all var(--ink-dur-fast); text-transform: uppercase; }
+.inv-rarity-pill:hover { border-color: var(--bp-bronze-light, #d4a843); color: var(--bp-text-accent, #5c4a20); }
+/* Active-all: bronze solid fill, ink text (11.9:1 ✓) */
+.inv-rarity-pill--active { background: var(--bp-bronze-base, #8a6d2c); border-color: var(--bp-bronze-light, #d4a843); color: var(--bp-parch-light, #f0e6d3); }
+/* Rarity active: parch-aged bg + tier border + ink text (11.9:1 on #c9b687 ✓) */
+.inv-rarity-pill--uncommon.inv-rarity-pill--active { border-color: #2ecc71; color: var(--bp-text-ink, #2a1f12); background: var(--bp-card-fill, #c9b687); }
+.inv-rarity-pill--rare.inv-rarity-pill--active     { border-color: #3498db; color: var(--bp-text-ink, #2a1f12); background: var(--bp-card-fill, #c9b687); }
+.inv-rarity-pill--epic.inv-rarity-pill--active     { border-color: #9b59b6; color: var(--bp-text-ink, #2a1f12); background: var(--bp-card-fill, #c9b687); }
+.inv-rarity-pill--legendary.inv-rarity-pill--active { border-color: #f39c12; color: var(--bp-text-ink, #2a1f12); background: var(--bp-card-fill, #c9b687); }
 
 /* ── 8-col grid ── */
 .inventory-grid--8col { grid-template-columns: repeat(8, 52px); }
@@ -471,34 +377,60 @@
 .inventory-slot__equipped { position: absolute; top: 2px; left: 2px; background: rgba(52,152,219,0.85); color: #fff; font-size: 0.55rem; font-weight: bold; padding: 0 3px; border-radius: 2px; line-height: 1.6; pointer-events: none; }
 
 /* ── Detail panel ── */
-.inv-detail-empty { display: flex; align-items: center; justify-content: center; height: 100%; color: rgba(160,128,80,0.4); font-size: var(--ink-fs-small); text-align: center; }
-.inv-detail-icon-frame { width: 64px; height: 64px; border: 2px solid rgba(255,215,0,0.3); border-radius: 8px; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
-.inv-detail-name { color: var(--ink-gold-bright); font-size: var(--ink-fs-body); font-weight: bold; margin: 0 0 4px; }
-.inv-detail-type { color: rgba(160,128,80,0.7); font-size: var(--ink-fs-tiny); text-transform: uppercase; letter-spacing: 0.08em; }
-.inv-detail-rarity { display: inline-block; font-size: 0.62rem; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; padding: 1px 8px; border-radius: 3px; border: 1px solid currentColor; margin: 6px 0 8px; background: rgba(255,255,255,0.04); }
-.inv-detail-desc { color: #b5a898; font-size: var(--ink-fs-small); font-style: italic; line-height: 1.45; margin: 0 0 10px; padding-top: 8px; border-top: 1px solid rgba(139,69,19,0.3); }
-.inv-detail-stats { border-top: 1px solid rgba(139,69,19,0.3); padding-top: 8px; margin-bottom: 10px; }
-.inv-detail-stat-row { display: flex; justify-content: space-between; font-size: var(--ink-fs-small); color: #ddd; padding: 2px 0; }
-.inv-detail-stat-label { color: #8a7e6e; }
-.inv-detail-equipped-by { font-size: 0.62rem; color: #3498db; background: rgba(52,152,219,0.1); border: 1px solid rgba(52,152,219,0.3); border-radius: 4px; padding: 2px 8px; margin-bottom: 8px; display: inline-block; }
+/* Empty state: muted ink (6.1:1 ✓) */
+.inv-detail-empty { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--bp-text-muted, #5a4630); font-size: var(--ink-fs-small); text-align: center; }
+/* Icon frame: card-fill bg + card-border (border only, no text) */
+.inv-detail-icon-frame { width: 64px; height: 64px; border: 2px solid var(--bp-card-border, #8b6a3f); border-radius: 8px; background: var(--bp-card-fill, #c9b687); display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+/* Item name: accent text (6.6:1 ✓) replaces gold-bright (1.2:1 fail) */
+.inv-detail-name { color: var(--bp-text-accent, #5c4a20); font-size: var(--ink-fs-body); font-weight: bold; margin: 0 0 4px; }
+/* Type label: muted (6.1:1 ✓) */
+.inv-detail-type { color: var(--bp-text-muted, #5a4630); font-size: var(--ink-fs-tiny); text-transform: uppercase; letter-spacing: 0.08em; }
+/* Rarity chip: ink text on parch-aged fill + colored border (tier hue border = decoration, not text) */
+.inv-detail-rarity { display: inline-block; font-size: 0.62rem; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; padding: 1px 8px; border-radius: 3px; border: 1px solid var(--bp-card-border, #8b6a3f); margin: 6px 0 8px; background: var(--bp-card-fill, #c9b687); color: var(--bp-text-ink, #2a1f12); }
+/* Description: soft ink (6.1:1 ✓) */
+.inv-detail-desc { color: var(--bp-text-ink-soft, #5a4630); font-size: var(--ink-fs-small); font-style: italic; line-height: 1.45; margin: 0 0 10px; padding-top: 8px; border-top: 1px solid var(--bp-parch-burn, #8b6a3f); }
+.inv-detail-stats { border-top: 1px solid var(--bp-parch-burn, #8b6a3f); padding-top: 8px; margin-bottom: 10px; }
+/* Stat values: primary ink (11.9:1 ✓); labels: muted (6.1:1 ✓) */
+.inv-detail-stat-row { display: flex; justify-content: space-between; font-size: var(--ink-fs-small); color: var(--bp-text-ink, #2a1f12); padding: 2px 0; }
+.inv-detail-stat-label { color: var(--bp-text-muted, #5a4630); }
+/* Equipped-by badge: info-status border, ink text on parch-aged (11.9:1 ✓) */
+.inv-detail-equipped-by { font-size: 0.62rem; color: var(--bp-text-ink, #2a1f12); background: var(--bp-card-fill, #c9b687); border: 1px solid var(--bp-status-info, #4a90d9); border-radius: 4px; padding: 2px 8px; margin-bottom: 8px; display: inline-block; }
 .inv-detail-actions { display: flex; flex-direction: column; gap: 6px; }
 .inv-detail-btn { padding: 7px 12px; border-radius: 6px; font-size: var(--ink-fs-small); cursor: pointer; transition: all var(--ink-dur-fast); border: 1px solid; }
-.inv-detail-btn--equip { background: rgba(255,215,0,0.1); border-color: rgba(255,215,0,0.4); color: var(--ink-gold-bright); }
-.inv-detail-btn--equip:hover { background: rgba(255,215,0,0.2); }
-.inv-detail-btn--use { background: rgba(46,204,113,0.1); border-color: rgba(46,204,113,0.4); color: #2ecc71; }
-.inv-detail-btn--use:hover { background: rgba(46,204,113,0.2); }
-.inv-detail-btn--drop { background: rgba(200,60,60,0.1); border-color: rgba(200,60,60,0.4); color: #f87171; }
-.inv-detail-btn--drop:hover { background: rgba(200,60,60,0.2); }
+/* Equip: bronze btn per bible §6 default state (parch-light text on bronze-base bg ✓) */
+.inv-detail-btn--equip { background: linear-gradient(180deg, var(--bp-bronze-base), var(--bp-bronze-dark)); border-color: var(--bp-bronze-light); color: var(--bp-parch-light, #f0e6d3); }
+.inv-detail-btn--equip:hover { background: linear-gradient(180deg, var(--bp-bronze-light), var(--bp-bronze-base)); border-color: var(--bp-bronze-glint); }
+/* Use/drop: keep semantic status hue borders on bronze-like bg, parch-light text */
+.inv-detail-btn--use { background: rgba(46,204,113,0.15); border-color: rgba(46,204,113,0.6); color: var(--bp-text-ink, #2a1f12); }
+.inv-detail-btn--use:hover { background: rgba(46,204,113,0.25); }
+.inv-detail-btn--drop { background: rgba(196,74,74,0.10); border-color: rgba(196,74,74,0.5); color: var(--bp-text-ink, #2a1f12); }
+.inv-detail-btn--drop:hover { background: rgba(196,74,74,0.20); }
 
 /* ── Footer ── */
-.inv-footer { border-top: 1px solid rgba(139,69,19,0.3); padding-top: 8px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; }
-.inv-footer-hints { color: rgba(160,128,80,0.5); font-size: 0.6rem; letter-spacing: 0.05em; }
-.inv-footer-slots { color: rgba(160,128,80,0.7); font-size: var(--ink-fs-tiny); }
+/* Hints and slot count: muted ink (6.1:1 ✓ on parch-base) */
+.inv-footer { border-top: 1px solid var(--bp-parch-burn, #8b6a3f); padding-top: 8px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; }
+.inv-footer-hints { color: var(--bp-text-muted, #5a4630); font-size: 0.6rem; letter-spacing: 0.05em; }
+.inv-footer-slots { color: var(--bp-text-muted, #5a4630); font-size: var(--ink-fs-tiny); }
 
 /* ── Slot expansion ── */
-.inv-expand-btn { display: flex; align-items: center; gap: 6px; background: rgba(139,69,19,0.2); border: 1px solid rgba(139,69,19,0.5); border-radius: 6px; color: #c8a060; font-size: var(--ink-fs-small); padding: 4px 10px; cursor: pointer; transition: all var(--ink-dur-fast); }
-.inv-expand-btn:hover:not(:disabled) { background: rgba(139,69,19,0.35); border-color: rgba(255,215,0,0.4); color: var(--ink-gold); }
-.inv-expand-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.inv-expand-cost { font-size: 0.6rem; color: rgba(160,128,80,0.7); }
-.inv-expand-cost--unaffordable { color: var(--ink-status-bad, #e74c3c); }
-.inv-expand-maxed { font-size: var(--ink-fs-tiny); color: rgba(160,128,80,0.4); font-style: italic; }
+/* Button: bronze gradient per bible §6 default state */
+.inv-expand-btn { display: flex; align-items: center; gap: 6px; background: linear-gradient(180deg, var(--bp-bronze-base, #8a6d2c), var(--bp-bronze-dark, #5c4a20)); border: 1px solid var(--bp-bronze-light, #d4a843); border-radius: 6px; color: var(--bp-parch-light, #f0e6d3); font-size: var(--ink-fs-small); padding: 4px 10px; cursor: pointer; transition: all var(--ink-dur-fast); }
+.inv-expand-btn:hover:not(:disabled) { background: linear-gradient(180deg, var(--bp-bronze-light, #d4a843), var(--bp-bronze-base, #8a6d2c)); border-color: var(--bp-bronze-glint, #ffe87c); }
+.inv-expand-btn:disabled { background: var(--bp-iron, #3a3025); border-color: var(--bp-bronze-dark, #5c4a20); color: var(--bp-text-muted, #5a4630); cursor: not-allowed; }
+.inv-expand-cost { font-size: 0.6rem; color: var(--bp-parch-aged, #c9b687); }
+.inv-expand-cost--unaffordable { color: var(--bp-status-bad, #c44a4a); }
+.inv-expand-maxed { font-size: var(--ink-fs-tiny); color: var(--bp-text-muted, #5a4630); font-style: italic; }
+
+/* ── Affix chips (equipment slot bonuses) ── */
+/* Card-fill bg + card-border + accent text (6.6:1 ✓ on #c9b687) */
+.inv-detail-affix-chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.inv-detail-affix-chip {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid var(--bp-card-border, #8b6a3f);
+  border-radius: 8px;
+  color: var(--bp-text-accent, #5c4a20);
+  background: var(--bp-card-fill, #c9b687);
+  font-size: 0.5rem;
+  font-family: var(--ink-font-mono, monospace);
+}

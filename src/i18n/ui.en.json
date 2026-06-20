@@ -39,7 +39,10 @@
       "rangeDetail": "{{statKey}} +{{min}} to +{{max}} ({{category}})",
       "confirmTitle": "Confirm Reroll",
       "confirmLabel": "Reroll",
-      "confirmBody": "Reroll {{statKey}} {{current}} → range {{min}}-{{max}}? New value can be lower than current."
+      "confirmBody": "Reroll {{statKey}} {{current}} → range {{min}}-{{max}}? New value can be lower than current.",
+      "clickToPick": "Click to pick equipment ↓",
+      "selectBelow": "Select from list ↓",
+      "noSlots": "No enhancement slots"
     },
     "repair": {
       "damagedTitle": "Damaged Equipment",
@@ -422,6 +425,7 @@
   },
   "combatPanel": {
     "fallbackName": "Combat",
+    "titleWithZone": "{{name}} — {{zone}}",
     "header": {
       "closeAria": "Close combat panel"
     },
@@ -509,7 +513,6 @@
     "slot": {
       "weapon": "Weapon",
       "armor": "Armor",
-      "headgear": "Headgear",
       "empty": "—"
     },
     "medSlot": "Med {{index}}",
@@ -526,7 +529,13 @@
     "unequip": "Unequip",
     "skillMeta": "{{mult}}× damage · {{cooldown}}s cooldown",
     "autoCast": "Auto Cast",
-    "skillLocked": "Skill unlocks at Lv.5",
+    "skillLocked": "No skill equipped — train one at the Training Yard.",
+    "skillPoolHint": "Class skills — learn them at the Training Yard, then equip one to carry into combat.",
+    "skillCarried": "Carried",
+    "skillEquip": "Equip",
+    "skillEquipLocked": "Can't swap while training",
+    "skillLevel": "Level {{level}}",
+    "skillNeedLearn": "Learn at Training Yard",
     "biography": "Biography",
     "biographyEmpty": "This warrior's tale is yet unwritten.",
     "inviteToGuild": "Invite to Guild ({{cost}}g)"
@@ -700,7 +709,40 @@
     "workshop": "Click the anvil to craft",
     "alchemyLab": "Click the reactor to brew",
     "tavern": "Click the counter to recruit",
+    "trainingYard": "Click the dummy to train skills",
     "drum": "Beat the drum to view quests"
+  },
+  "skillDetail": {
+    "type": {
+      "lane-hit": "Lane hit",
+      "damage": "Attack",
+      "riposte": "Counter",
+      "buff": "Buff",
+      "armor-pierce": "Armor pierce",
+      "aoe-ground": "Area",
+      "multi-hit": "Multi-hit",
+      "debuff": "Debuff"
+    },
+    "dmg": "{{mult}}× DMG",
+    "hits": "{{n}} hits",
+    "lane": "Front + back",
+    "aoe": "Area of effect",
+    "acc": "+{{pct}}% accuracy",
+    "crit": "+{{pct}}% crit",
+    "armor": "{{pct}}% armor pierce",
+    "status": {
+      "slowed": "Slow {{sec}}s",
+      "taunted": "Taunt {{sec}}s"
+    },
+    "scope": { "self": "Self", "team": "Team" },
+    "buffEffect": {
+      "damage-up": "damage up",
+      "defense-up": "defense up",
+      "crit-up": "crit up",
+      "attack-speed-up": "attack speed up"
+    },
+    "buff": "{{scope}} {{effect}} {{sec}}s",
+    "cd": "{{sec}}s CD"
   },
   "inventory": {
     "title": "Guild Inventory",
@@ -739,7 +781,8 @@
     "damage": "Damage",
     "defense": "Defense",
     "hp": "HP",
-    "durability": "Durability"
+    "durability": "Durability",
+    "affixes": "Affixes"
   },
   "inventoryExpansion": {
     "expandSlots": "+{{count}} slots",
@@ -777,7 +820,50 @@
     "unlocksAt": "Lv.{{level}}",
     "removeHint": "{{name}} — click to remove",
     "dropHint": "Drag ingredient here",
-    "lockedHint": "Unlocks at Alchemy Lv.{{level}}"
+    "lockedHint": "Unlocks at Alchemy Lv.{{level}}",
+    "levelTooLow": "Requires Alchemy Lv.{{level}} — upgrade the lab or level up an alchemist"
+  },
+  "infirmaryCard": {
+    "header": "Beds: {{occupied}}/{{max}} · Queue: {{queue}} waiting",
+    "bedsLabel": "Beds",
+    "bedsEmpty": "All beds empty — no injured.",
+    "queueLabel": "Queue",
+    "waitingForBed": "waiting for bed",
+    "skipBtn": "Skip 5m",
+    "speedBadge": "×{{factor}}",
+    "recoveryHint": "Beds heal faster · skip once per game-day"
+  },
+  "trainingYardCard": {
+    "header": "Slots: {{occupied}}/{{max}} · Max Level: {{cap}}",
+    "slotsEmpty": "No members training.",
+    "assignBtn": "Assign trainee",
+    "freeSlots": "+{{count}} free slot(s)",
+    "rankProgress": "Lv {{cur}}→{{target}}",
+    "speedBadge": "×{{factor}}",
+    "cancelBtn": "Cancel",
+    "cancelConfirmTitle": "Cancel Training?",
+    "cancelConfirmBody": "50% gold refunded. All training progress will be lost.",
+    "cancelConfirm": "Yes, cancel",
+    "pickerTitle": "Select Trainee",
+    "pickerEmpty": "No idle members available.",
+    "assignHint": "Enter the room and click the training dummy to assign a trainee.",
+    "pickMember": "Choose a member to train",
+    "pickSkill": "Choose a skill for {{name}}",
+    "pickSkillBtn": "Choose skill",
+    "back": "← Back",
+    "rankLabel": "Lv {{rank}}",
+    "levelShort": "Lv {{rank}}",
+    "carried": "Carried",
+    "unlearned": "Not learned",
+    "gradeBadge": "Grade {{grade}}",
+    "trainBtn": "Train",
+    "learnBtn": "Learn",
+    "costLabel": "{{gold}}g",
+    "costMaterial": "{{gold}}g + {{qty}}× {{item}}",
+    "capTooLow": "Yard level too low",
+    "maxed": "Max rank reached",
+    "slotsFull": "Slots full",
+    "cantAfford": "Can't afford"
   },
   "facilitiesPanel": {
     "title": "FACILITIES",
@@ -926,6 +1012,12 @@
     "offline": "Offline {{hours}} hours",
     "memberExp": "• Member +{{exp}} EXP",
     "itemGain": "• +{{qty}} {{item}}",
+    "workshop": "Workshop",
+    "alchemy": "Alchemy Lab",
+    "training": "Training Yard",
+    "infirmary": "Infirmary",
+    "skillGain": "• {{member}} — {{skill}} reached Lv{{level}}",
+    "recovered": "• {{member}} recovered",
     "collect": "Collect"
   },
   "rankPromotion": {
@@ -937,6 +1029,16 @@
     "upkeepNormal": ", normal upkeep",
     "next": "Next: {{rank}} — Lv.{{level}}+ | {{missions}}+ missions | {{gold}}g",
     "promote": "Promote to {{rank}} ({{gold}}g)"
+  },
+  "facilityNames": {
+    "trainingYard": "Training Yard",
+    "facilities": "Facilities",
+    "roster": "Guild Roster",
+    "settings": "Settings",
+    "tavern": "Tavern"
+  },
+  "panelFrame": {
+    "closePanel": "Close panel"
   },
   "notification": {
     "arrivalBody": "📍 Party arrived! Choose combat mode.",

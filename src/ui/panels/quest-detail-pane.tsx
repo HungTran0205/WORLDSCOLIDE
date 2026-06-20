@@ -4,7 +4,6 @@
  * Empty state when no quest is selected.
  */
 
-import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Member, Mission } from '@/game/state/game-state';
 import { ENEMIES } from '@/game/data/enemies';
@@ -15,7 +14,6 @@ import { QuestPartySlots } from './quest-party-slots';
 interface QuestDetailPaneProps {
   mission: Mission | null;
   availableMembers: Member[];
-  gold: number;
   /** Party selection (owned by QuestBoard so the roster picker can sit beside the board). */
   selectedMemberIds: string[];
   /** Toggle a member in/out of the party (also drives the slot × remove). */
@@ -42,7 +40,6 @@ function getEnemyPreview(enemyIds: string[]) {
 export function QuestDetailPane({
   mission,
   availableMembers,
-  gold,
   selectedMemberIds,
   onToggleMember,
   onOpenPicker,
@@ -52,16 +49,6 @@ export function QuestDetailPane({
 }: QuestDetailPaneProps) {
   const { t } = useTranslation();
 
-  // Mercenary fee preview
-  const mercFee = useMemo(() => {
-    if (!mission) return 0;
-    const hasMerc = availableMembers
-      .filter((m) => selectedMemberIds.includes(m.id))
-      .some((m) => m.rank === 'MERCENARY');
-    return hasMerc ? Math.floor(mission.goldRewardMin * 0.5) : 0;
-  }, [mission, availableMembers, selectedMemberIds]);
-
-  const canAffordFee = gold >= mercFee;
   const canDispatch = !!mission && selectedMemberIds.length >= mission.requiredMembers;
 
   if (!mission) {
@@ -114,9 +101,8 @@ export function QuestDetailPane({
 
       <section className="quest-detail-pane__rewards">
         <div><span className="quest-detail-pane__reward-label">{t('questBoard.detail.rewardGold')}</span> <span className="quest-detail-pane__reward-value quest-detail-pane__reward-value--gold">{mission.goldRewardMin}–{mission.goldRewardMax}</span></div>
-        <div><span className="quest-detail-pane__reward-label">{t('questBoard.detail.rewardExp')}</span> <span className="quest-detail-pane__reward-value quest-detail-pane__reward-value--exp">{mission.expReward}</span></div>
         <div><span className="quest-detail-pane__reward-label">{t('questBoard.detail.rewardDuration')}</span> <span className="quest-detail-pane__reward-value">{t('questBoard.detail.durationValue', { mins: durationMin })}</span></div>
-        <div><span className="quest-detail-pane__reward-label">{t('questBoard.detail.rewardRequired')}</span> <span className="quest-detail-pane__reward-value">{t('questBoard.detail.requiredValue', { members: mission.requiredMembers, level: mission.requiredLevel })}</span></div>
+        <div><span className="quest-detail-pane__reward-label">{t('questBoard.detail.rewardRequired')}</span> <span className="quest-detail-pane__reward-value">{t('questBoard.detail.partyCount', { selected: 0, required: mission.requiredMembers })}</span></div>
       </section>
 
       <section className="quest-detail-pane__section">
@@ -130,13 +116,6 @@ export function QuestDetailPane({
           onRemove={onToggleMember}
           onOpenPicker={onOpenPicker}
         />
-        {mercFee > 0 && (
-          <div className={`quest-detail-pane__merc-fee${canAffordFee ? '' : ' quest-detail-pane__merc-fee--insufficient'}`}>
-            {canAffordFee
-              ? t('questBoard.detail.mercFee', { fee: mercFee })
-              : t('questBoard.detail.mercFeeInsufficient', { fee: mercFee })}
-          </div>
-        )}
       </section>
 
       <div className="quest-detail-pane__actions">
@@ -150,7 +129,7 @@ export function QuestDetailPane({
         <button
           type="button"
           className="parchment-btn parchment-btn--primary dispatch-button"
-          disabled={!canDispatch || (mercFee > 0 && !canAffordFee)}
+          disabled={!canDispatch}
           onClick={onDispatch}
         >
           <span className="dispatch-button__seal" aria-hidden="true" />

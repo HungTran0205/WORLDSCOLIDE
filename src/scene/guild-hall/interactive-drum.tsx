@@ -15,6 +15,7 @@ import { applyLitMaterial } from './apply-lit-material';
 import { DrumFireVfx } from '../vfx/drum-fire-vfx';
 import { DrumSparkleHint } from './drum-sparkle-hint';
 import { useRegisterObstacle } from './use-register-obstacle';
+import { assetUrl } from '@/lib/asset-url';
 
 const DRUM_GLB = '/GuildHall/LinhSon/optimized/p_cooperdrumfireholder.glb';
 const DRUM_HEIGHT = 1.0;
@@ -35,7 +36,7 @@ function useScaledDrum(scene: THREE.Group) {
 }
 
 export function InteractiveDrum() {
-  const { scene } = useGLTF(DRUM_GLB);
+  const { scene } = useGLTF(assetUrl(DRUM_GLB));
   const model = useScaledDrum(scene);
   const requestQuestPanel = useGameStore((s) => s.requestQuestPanel);
   const tutorialSeen = useUiStore((s) => s.questBoardTutorialSeen);

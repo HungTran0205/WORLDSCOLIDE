@@ -21,6 +21,7 @@ import {
   COMBAT_CAM_ZOOM,
 } from './combat/combat-camera-config';
 import { getStoredGraphicsQuality } from '@/game/state/guild-slice';
+import { computeBaseZoom, DESKTOP_ZOOM } from './responsive-zoom';
 import { useGameStore } from '@/game/state/store';
 import { useUiStore } from '@/game/state/ui-store';
 import { useCombatPanelStore } from '@/game/state/combat-panel-store';
@@ -230,6 +231,13 @@ function WorldSceneContent({ onAssetsReady }: { onAssetsReady: () => void }) {
 export function World({ isActive = true }: WorldProps) {
   // Read once at mount — dpr can't change on a live Canvas, so quality change = reload pattern.
   const quality = getStoredGraphicsQuality();
+  // Initial ortho zoom — responsive on mobile so the hall fits in frame. Desktop
+  // keeps DESKTOP_ZOOM. Sets the first-paint value; CameraController re-applies
+  // on resize/orientation change via useThree().size.
+  const initialZoom =
+    typeof window !== 'undefined'
+      ? computeBaseZoom({ width: window.innerWidth, height: window.innerHeight })
+      : DESKTOP_ZOOM;
   // Tracks whether initial WebGPU init + asset loading has completed.
   // Stays true after first load — assets are cached so no loading on scene switch.
   const [assetsReady, setAssetsReady] = useState(false);
@@ -253,7 +261,7 @@ export function World({ isActive = true }: WorldProps) {
         frameloop={isActive ? 'always' : 'demand'}
         orthographic
         shadows={{ type: THREE.PCFShadowMap, enabled: true }}
-        camera={{ zoom: 190, position: [13, 5.5, 12], near: 0.1, far: 1000 }}
+        camera={{ zoom: initialZoom, position: [13, 5.5, 12], near: 0.1, far: 1000 }}
         dpr={quality === 'low' ? [0.75, 1] : [1, 1.5]}
         gl={createWebGPURenderer}
         style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}

@@ -6,7 +6,7 @@
 import type { Stats } from '@/game/state/game-state';
 
 export interface DerivedGuildStats {
-  /** CHA×2 + INT×1 + level×0.5 — recruit quality, quest tier unlock */
+  /** CHA×2 + INT×1 + gradeIdx×1 — recruit quality, quest tier unlock */
   influence: number;
   /** END×3 + STR×1 — mission duration capacity, work hours */
   stamina: number;
@@ -30,13 +30,13 @@ export interface DerivedGuildStats {
 
 /**
  * Compute all guild derived stats for a member.
- * @param stats  Member's base talent stats
- * @param level  Member level (affects influence)
+ * @param stats     Member's base talent stats
+ * @param gradeIdx  Grade index 0–6 (gradeIndex(member.grade)) — affects influence
  */
-export function calcDerivedGuildStats(stats: Stats, level: number): DerivedGuildStats {
+export function calcDerivedGuildStats(stats: Stats, gradeIdx: number): DerivedGuildStats {
   const { STR, END, INT, DEX, CHA, LCK, AGI } = stats;
   return {
-    influence: Math.floor(CHA * 2 + INT * 1 + level * 0.5),
+    influence: Math.floor(CHA * 2 + INT * 1 + gradeIdx * 1),
     stamina: Math.floor(END * 3 + STR * 1),
     craftSkill: Math.floor(DEX * 2 + INT * 1),
     trainingEff: (DEX + AGI) * 0.002,

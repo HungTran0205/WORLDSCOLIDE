@@ -10,11 +10,11 @@ import type { Member, Stats } from './game-state';
 
 const zeroStats = (): Stats => ({ STR: 5, END: 5, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 });
 
-function makeMember(id: string, name: string, rank: Member['rank'] = 'MEMBER'): Member {
+function makeMember(id: string, name: string, isMercenary = false): Member {
   return {
-    id, name, level: 1, exp: 0, stats: zeroStats(), unallocatedPoints: 0,
+    id, name, grade: 'F', isMercenary, stats: zeroStats(), unallocatedPoints: 0,
     skill: null, status: 'idle', injuredUntil: null, civilization: 'LinhSon',
-    isFounder: false, rank, missionsCompleted: 0, rarity: 1,
+    isFounder: false, missionsCompleted: 0,
   };
 }
 
@@ -54,7 +54,7 @@ describe('renameMember', () => {
   });
 
   it('is a no-op for mercenaries', () => {
-    const store = makeStore([makeMember('merc1', 'Hired Blade', 'MERCENARY')]);
+    const store = makeStore([makeMember('merc1', 'Hired Blade', true)]);
     store.get().renameMember('merc1', 'New Name');
     expect(store.get().roster.find((m) => m.id === 'merc1')?.name).toBe('Hired Blade');
   });

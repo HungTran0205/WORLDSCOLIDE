@@ -1,9 +1,9 @@
 /**
  * Looped sprite animator for stationary task animations (e.g. `working/`,
- * `blacksmith/`). 8 frames, 8 FPS, east-facing only.
- *
- * Fallback: if texture load fails (e.g. archetype lacks this animation
- * folder), parent Suspense renders nothing.
+ * `blacksmith/`). Phase 3: loads ONE pre-packed sheet PNG via TextureLoader
+ * (single URL), wraps it with buildAtlasFromSheet. Geometry comes from
+ * SPRITE_SHEET_MANIFEST. Falls back to a hardcoded 8×1 guess when no manifest
+ * entry exists (sheet must still be on disk).
  *
  * NOTE (2026-05-09): texture.offset/repeat UV pattern has known multi-instance
  * issue under WebGPU (only 1 sprite animates per pipeline cache batch). Guild
@@ -14,11 +14,13 @@
 
 import { useRef, useMemo, useEffect } from 'react';
 import { useLoader, useFrame } from '@react-three/fiber';
-import { TextureLoader, NearestFilter, SRGBColorSpace } from 'three';
+import { TextureLoader } from 'three';
 import type { MeshStandardMaterial } from 'three';
-import { buildAtlasFromTextures, setAtlasFrame } from './sprite-atlas';
+import { buildAtlasFromSheet, setAtlasFrame } from './sprite-atlas';
+import { getSheetEntry } from './sprite-sheet-manifest';
+import { getEntityKeyFromBasePath } from './sprite-path-resolver';
+import { assetUrl } from '@/lib/asset-url';
 
-const FRAME_COUNT = 8;
 const ANIMATION_FPS = 8;
 
 interface WorkingAnimatorProps {
@@ -48,28 +50,31 @@ export function WorkingAnimator({
   const onFrameRef = useRef(onFrame);
   useEffect(() => { onFrameRef.current = onFrame; }, [onFrame]);
 
-  const paths = useMemo(() => (
-    Array.from({ length: FRAME_COUNT }, (_, i) => {
-      const padded = String(i).padStart(3, '0');
-      return `${basePath}/animations/${animationName}/frame_${padded}.png`;
-    })
-  ), [basePath, animationName]);
-
-  const textures = useLoader(TextureLoader, paths);
-
-  const atlas = useMemo(() => {
-    for (const t of textures) {
-      t.magFilter = NearestFilter;
-      t.minFilter = NearestFilter;
-      t.colorSpace = SRGBColorSpace;
+  // Resolve sheet geometry from manifest
+  const { sheetPath, cols, rows, frameCount } = useMemo(() => {
+    const entityKey = getEntityKeyFromBasePath(basePath);
+    const entry = getSheetEntry(entityKey, animationName);
+    if (!entry) {
+      console.warn(`WorkingAnimator: no manifest entry for ${entityKey}/${animationName}`);
+      return { sheetPath: assetUrl(`${basePath}/animations/${animationName}.png`), cols: 8, rows: 1, frameCount: 8 };
     }
-    return buildAtlasFromTextures(textures, FRAME_COUNT);
-  }, [textures]);
+    // Single-row sheets (working/blacksmith are always flat, one direction)
+    const fc = entry.frameCounts[entry.dirRows[0]] ?? entry.cols;
+    return { sheetPath: assetUrl(entry.path), cols: entry.cols, rows: entry.rows, frameCount: fc };
+  }, [basePath, animationName]);
+
+  // Single texture load — one PNG, not N frames
+  const sheetTexture = useLoader(TextureLoader, sheetPath);
+
+  const atlas = useMemo(
+    () => buildAtlasFromSheet(sheetTexture, cols, rows, frameCount),
+    [sheetTexture, cols, rows, frameCount],
+  );
 
   useFrame((state) => {
     if (!materialRef.current) return;
-    const t = state.clock.elapsedTime % (FRAME_COUNT / ANIMATION_FPS);
-    const newIdx = Math.floor(t * ANIMATION_FPS) % FRAME_COUNT;
+    const t = state.clock.elapsedTime % (frameCount / ANIMATION_FPS);
+    const newIdx = Math.floor(t * ANIMATION_FPS) % frameCount;
     if (prevFrameRef.current !== newIdx) {
       onFrameRef.current?.(newIdx);
       prevFrameRef.current = newIdx;

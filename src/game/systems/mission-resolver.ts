@@ -32,7 +32,7 @@ export function resolveMissionWithResult(
 
   if (combatResult.outcome !== 'full-wipe') {
     goldEarned = randomInt(mission.goldRewardMin, mission.goldRewardMax);
-    expPerMember = Math.max(1, Math.floor(mission.expReward / members.length));
+    expPerMember = 0; // EXP system removed; field kept for MissionResult shape compatibility
     const avgLck = members.reduce((s, m) => s + m.stats.LCK, 0) / members.length;
     goldEarned = Math.floor(goldEarned * (1 + avgLck * 0.01));
 
@@ -79,7 +79,7 @@ export function resolveMission(mission: Mission, members: Member[], hpFloor = fa
 
   if (combatResult.outcome !== 'full-wipe') {
     goldEarned = randomInt(mission.goldRewardMin, mission.goldRewardMax);
-    expPerMember = Math.max(1, Math.floor(mission.expReward / members.length));
+    expPerMember = 0; // EXP system removed; field kept for MissionResult shape compatibility
 
     // LCK bonus on gold
     const avgLck = members.reduce((s, m) => s + m.stats.LCK, 0) / members.length;

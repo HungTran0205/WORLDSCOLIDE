@@ -33,6 +33,7 @@ import {
   SRGBColorSpace,
   type Texture,
 } from 'three';
+import { assetUrl } from '@/lib/asset-url';
 
 export interface PlatformSideWallProps {
   /** World position of wall center (XYZ). */
@@ -57,7 +58,7 @@ export function PlatformSideWall({
   lighting = 'lit',
   emissiveIntensity = 0.7,
 }: PlatformSideWallProps) {
-  const baseTex = useLoader(TextureLoader, tile) as Texture;
+  const baseTex = useLoader(TextureLoader, assetUrl(tile)) as Texture;
   const [width, height] = size;
 
   const configuredTex = useMemo<Texture>(() => {

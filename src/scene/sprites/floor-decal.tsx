@@ -29,6 +29,7 @@ import {
   type MeshBasicMaterial,
 } from 'three';
 import type { MutableRefObject } from 'react';
+import { assetUrl } from '@/lib/asset-url';
 
 export interface FloorDecalProps {
   /** World position of decal center (XZ ground plane). */
@@ -62,7 +63,7 @@ export function FloorDecal({
   renderOrder,
   materialRef,
 }: FloorDecalProps) {
-  const baseTex = useLoader(TextureLoader, texture) as Texture;
+  const baseTex = useLoader(TextureLoader, assetUrl(texture)) as Texture;
 
   // Clone to avoid trampling shared loader-cache texture; configure once.
   const configuredTex = useMemo<Texture>(() => {

@@ -52,8 +52,7 @@ export function QuestCard({ mission, selected, onClick, onHover }: QuestCardProp
       <div className="quest-card__meta">
         <span>⏱ {t('questBoard.card.duration', { mins: durationMin })}</span>
         <span>💰 {t('questBoard.card.gold', { min: mission.goldRewardMin, max: mission.goldRewardMax })}</span>
-        <span>✦ {t('questBoard.card.exp', { exp: mission.expReward })}</span>
-        <span>👥 {t('questBoard.card.party', { members: mission.requiredMembers, level: mission.requiredLevel })}</span>
+        <span>👥 {t('questBoard.card.party', { members: mission.requiredMembers })}</span>
       </div>
       <DropPreview enemyIds={mission.enemyIds} />
     </button>

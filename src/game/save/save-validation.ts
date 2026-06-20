@@ -6,6 +6,7 @@
 import type { SaveEnvelope, GameSaveData, SaveSlotMetadata } from './save-types';
 import type { Stats, Member, GuildHall, PlacedFurniture } from '@/game/state/game-state';
 import { migrateSave } from './save-migrations';
+import { GRADE_ORDER } from '@/game/data/grades';
 
 const TUTORIAL_STEPS = [
   'char-creation', 'arrival-alarm', 'open-quest-board', 'accept-bear-quest',
@@ -16,8 +17,6 @@ const TUTORIAL_STEPS = [
 
 const STAT_KEYS: (keyof Stats)[] = ['STR', 'END', 'INT', 'DEX', 'CHA', 'LCK', 'AGI'];
 
-const VALID_RANKS = ['RECRUIT', 'MEMBER', 'VETERAN', 'OFFICER', 'COMMANDER', 'MERCENARY'];
-
 const VALID_ROTATIONS = [0, 90, 180, 270];
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -26,7 +25,8 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 
 function isValidStats(v: unknown): v is Stats {
   if (!isRecord(v)) return false;
-  return STAT_KEYS.every((k) => typeof v[k] === 'number');
+  // RT-Med: guard NaN — typeof NaN === 'number' passes without isFinite check
+  return STAT_KEYS.every((k) => typeof v[k] === 'number' && Number.isFinite(v[k] as number));
 }
 
 function isValidMember(v: unknown): v is Member {
@@ -34,15 +34,14 @@ function isValidMember(v: unknown): v is Member {
   return (
     typeof v.id === 'string' &&
     typeof v.name === 'string' &&
-    typeof v.level === 'number' &&
-    typeof v.exp === 'number' &&
+    typeof v.grade === 'string' &&
+    GRADE_ORDER.includes(v.grade as import('@/game/data/grades').Grade) &&
+    typeof v.isMercenary === 'boolean' &&
     isValidStats(v.stats) &&
     typeof v.unallocatedPoints === 'number' &&
     typeof v.civilization === 'string' &&
     typeof v.isFounder === 'boolean' &&
     typeof v.status === 'string' &&
-    typeof v.rank === 'string' &&
-    VALID_RANKS.includes(v.rank as string) &&
     typeof v.missionsCompleted === 'number' &&
     (v.missionsCompleted as number) >= 0 &&
     Number.isFinite(v.missionsCompleted as number)
@@ -136,10 +135,10 @@ export function validateSemantics(data: GameSaveData): string[] {
   if (data.gold < 0) errors.push('gold must be >= 0');
   if (data.roster.length > 200) errors.push('roster too large');
   for (const m of data.roster) {
-    if (m.level < 1) errors.push(`member "${m.name}" level must be >= 1`);
+    if (!GRADE_ORDER.includes(m.grade)) errors.push(`member "${m.name}" has invalid grade: ${m.grade}`);
   }
-  if (data.founder && data.founder.level < 1) {
-    errors.push('founder level must be >= 1');
+  if (data.founder && !GRADE_ORDER.includes(data.founder.grade)) {
+    errors.push(`founder has invalid grade: ${data.founder.grade}`);
   }
   if (!TUTORIAL_STEPS.includes(data.tutorialStep as typeof TUTORIAL_STEPS[number])) {
     errors.push(`invalid tutorialStep: ${data.tutorialStep}`);

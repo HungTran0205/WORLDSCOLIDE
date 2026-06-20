@@ -1,11 +1,20 @@
-/** Max HP from END + level */
-export function calcMaxHp(end: number, level: number): number {
-  return Math.floor(50 + end * 5 + level * 10);
+/** Max HP from END + flatHpBonus (grade-derived for members, template.level*10 for enemies) */
+export function calcMaxHp(end: number, flatHpBonus: number): number {
+  return Math.floor(60 + end * 5 + flatHpBonus);
 }
 
-/** Attack interval from AGI + weapon base speed (Option 2). Floor at 300ms. */
-export function calcAttackInterval(agi: number, weaponBaseSpeedMs: number = 1800): number {
-  const interval = weaponBaseSpeedMs / (1 + agi / 100);
+/**
+ * Attack interval from AGI + weapon base speed + optional gear speed multiplier.
+ * attackSpeedMult: additive fraction from ATTACK_SPEED affixes (0.10 = 10% faster).
+ * Floor at 300ms. Base cap from AGI unchanged; gear adds on top.
+ */
+export function calcAttackInterval(
+  agi: number,
+  weaponBaseSpeedMs: number = 1800,
+  attackSpeedMult: number = 0,
+): number {
+  const agiReduced = weaponBaseSpeedMs / (1 + agi / 100);
+  const interval = agiReduced / (1 + attackSpeedMult);
   return Math.max(300, Math.floor(interval));
 }
 
@@ -21,8 +30,9 @@ export function calcAutoAttackDamage(
   targetEnd: number,
   weaponMult: number = 1.0,
   flatBonus: number = 0,
+  armorPierced = false,
 ): number {
-  const defRatio = Math.min(0.75, targetEnd / (targetEnd + 100));
+  const defRatio = armorPierced ? 0 : Math.min(0.75, targetEnd / (targetEnd + 100));
   const raw = (str * weaponMult + flatBonus) * (1 - defRatio) * BASE_DAMAGE_MULTIPLIER;
   return Math.max(1, Math.floor(raw));
 }
@@ -54,3 +64,9 @@ export function calcSkillDmgBonus(dex: number): number {
 }
 
 export const CRIT_MULTIPLIER = 1.5;
+
+/**
+ * Fraction of post-block damage that passes through a shield charge.
+ * A shielded hit deals damage × (1 - SHIELD_DAMAGE_REDUCTION) = 20% of incoming.
+ */
+export const SHIELD_DAMAGE_REDUCTION = 0.80;

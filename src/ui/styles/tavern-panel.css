@@ -13,86 +13,80 @@
   --tv-veil:            rgba(7, 5, 13, 0.55);
 }
 
-/* ── Overlay + shell ─────────────────────────────────────────── */
-.tv-overlay {
-  position: fixed; inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 220;
+/* Tavern Panel — content styles only.
+   Panel chrome (border, header, close button, animation) is owned by PanelFrame. */
+
+/* ── Positioner: centered, no dark scrim.
+   pointer-events: none so the 3D scene stays interactive. ── */
+.tv-positioner {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: var(--bp-z-panel-elevated);
 }
-.tv-panel {
-  width: min(840px, 94vw);
-  max-height: 90vh;
-  display: flex; flex-direction: column;
-  background: var(--ink-bg-panel);
-  border: var(--ink-border-w) solid var(--ink-gold-dim);
-  border-radius: var(--ink-radius-md);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), var(--ink-glow-gold);
-  overflow: hidden;
-  font-family: var(--ink-font-body);
-  color: var(--ink-text);
+.tv-positioner > * {
+  pointer-events: auto;
+  width: min(840px, 92vw);
+  max-height: 88vh;
 }
 
-/* ── Header ───────────────────────────────────────────────────── */
-.tv-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--ink-gold-dim);
-  background: var(--ink-bg-deep);
-  flex-shrink: 0;
+/* ── Header meta row (level badge, visitor count) ── */
+.tv-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--bp-parch-aged);
+  margin-bottom: 4px;
 }
-.tv-header-info { display: flex; align-items: center; gap: 10px; }
-.tv-title {
-  font-family: var(--ink-font-title); font-size: 0.9rem;
-  letter-spacing: 0.08em; color: var(--ink-gold);
-}
+
 .tv-badge {
   font-family: var(--ink-font-mono); font-size: 0.55rem;
-  color: var(--ink-text-dim);
-  border: 1px solid var(--ink-gold-dim); border-radius: var(--ink-radius-sm);
+  color: var(--bp-text-ink-soft);
+  border: 1px solid var(--bp-parch-burn); border-radius: var(--ink-radius-sm);
   padding: 1px 5px;
 }
 .tv-visitors-badge {
   font-family: var(--ink-font-mono); font-size: 0.6rem;
-  color: var(--ink-amber);
+  color: var(--bp-bronze-light);
   background: rgba(212, 168, 67, 0.08);
-  border: 1px solid var(--ink-gold-dim); border-radius: var(--ink-radius-sm);
+  border: 1px solid var(--bp-parch-burn); border-radius: var(--ink-radius-sm);
   padding: 2px 7px;
 }
 .tv-visitors-badge.is-full { color: var(--ink-status-ok); border-color: var(--ink-status-ok); }
-.tv-close {
-  background: none; border: 1px solid var(--ink-gold-dim);
-  color: var(--ink-text-muted); font-size: 0.7rem;
-  padding: 2px 8px; border-radius: var(--ink-radius-sm); cursor: pointer;
-}
-.tv-close:hover { color: var(--ink-gold); border-color: var(--ink-gold); }
 
-/* ── Keeper row ───────────────────────────────────────────────── */
+/* ── Keeper row (parchment band) ──────────────────────────────── */
 .tv-keeper-row {
   display: flex; align-items: center; gap: 10px;
   padding: 8px 14px;
-  background: linear-gradient(180deg, var(--ink-bg-panel) 0%, var(--ink-bg-deep) 100%);
-  border-bottom: 1px solid var(--ink-gold-dim);
+  /* Aged-parchment band with bronze bottom border (replaces dark navy) */
+  background: var(--bp-parch-aged);
+  border-bottom: 2px solid var(--bp-bronze-base);
 }
-.tv-keeper-row.is-empty { box-shadow: inset 0 0 0 1px var(--ink-gold); }
+.tv-keeper-row.is-empty { box-shadow: inset 0 0 0 1px var(--bp-parch-burn); }
 .tv-keeper-avatar {
   width: 56px; height: 56px;
-  border: 1px dashed var(--ink-gold-dim); border-radius: var(--ink-radius-sm);
+  border: 1px dashed var(--bp-parch-burn); border-radius: var(--ink-radius-sm);
   display: flex; align-items: center; justify-content: center;
-  background: rgba(0,0,0,0.25); cursor: pointer; color: var(--ink-text-muted);
+  /* parchment background for empty avatar slot */
+  background: var(--bp-parch-base); cursor: pointer; color: var(--bp-text-ink-soft);
   font-size: 1.6rem; image-rendering: pixelated;
   flex-shrink: 0; overflow: hidden;
 }
-.tv-keeper-avatar.is-set { border-style: solid; border-color: var(--ink-gold-dim); }
+.tv-keeper-avatar.is-set { border-style: solid; border-color: var(--bp-parch-burn); }
 .tv-keeper-avatar img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
 .tv-keeper-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.tv-keeper-name { font-family: var(--ink-font-body); font-size: 0.85rem; color: var(--ink-text); }
+/* Keeper name: ink text on parchment (11.4:1 on --bp-parch-aged) */
+.tv-keeper-name { font-family: var(--ink-font-body); font-size: 0.85rem; color: var(--bp-text-ink); }
 .tv-keeper-stats {
   display: flex; gap: 6px; flex-wrap: wrap;
-  font-family: var(--ink-font-mono); font-size: 0.6rem; color: var(--ink-text-dim);
+  font-family: var(--ink-font-mono); font-size: 0.6rem; color: var(--bp-text-ink-soft);
 }
 .tv-stat-chip {
-  border: 1px solid var(--ink-gold-dim); border-radius: var(--ink-radius-sm);
+  border: 1px solid var(--bp-parch-burn); border-radius: var(--ink-radius-sm);
   padding: 1px 5px;
 }
 .tv-keeper-dropdown {
@@ -100,7 +94,8 @@
 }
 .tv-keeper-dropdown-list {
   position: absolute; right: 0; top: 100%; margin-top: 4px;
-  background: var(--ink-bg-panel); border: 1px solid var(--ink-gold-dim);
+  /* Parchment dropdown list */
+  background: var(--bp-parch-base); border: 1px solid var(--bp-parch-burn);
   border-radius: var(--ink-radius-sm); padding: 4px; min-width: 180px;
   max-height: 240px; overflow-y: auto;
   box-shadow: var(--ink-shadow-deep);
@@ -109,12 +104,12 @@
 .tv-keeper-option {
   display: flex; gap: 6px; padding: 4px 6px;
   border-radius: var(--ink-radius-sm); cursor: pointer;
-  font-size: 0.7rem; color: var(--ink-text);
+  font-size: 0.7rem; color: var(--bp-text-ink);
   align-items: center; justify-content: space-between;
 }
-.tv-keeper-option:hover { background: var(--ink-bg-hover); color: var(--ink-gold); }
+.tv-keeper-option:hover { background: var(--bp-parch-aged); color: var(--bp-text-ink); }
 .tv-keeper-option.is-empty {
-  color: var(--ink-text-muted); font-style: italic;
+  color: var(--bp-text-ink-soft); font-style: italic;
 }
 
 /* ── Rumor banner ─────────────────────────────────────────────── */
@@ -123,8 +118,8 @@
   padding: 6px 14px;
   background: linear-gradient(90deg, var(--tv-hearth-amber), transparent);
   border-left: 3px solid var(--tv-lantern-warm);
-  border-bottom: 1px solid var(--ink-gold-dim);
-  font-style: italic; font-size: 0.75rem; color: var(--ink-text-dim);
+  border-bottom: 1px solid var(--bp-parch-burn);
+  font-style: italic; font-size: 0.75rem; color: var(--bp-text-ink-soft);
 }
 .tv-rumor-icon {
   display: inline-block; width: 14px; height: 14px;
@@ -139,28 +134,44 @@
 .tv-status-bar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 6px 14px;
-  background: var(--ink-bg-deep);
-  border-bottom: 1px solid var(--ink-gold-dim);
+  background: var(--bp-parch-aged);
+  border-bottom: 1px solid var(--bp-parch-burn);
 }
-.tv-rep-indicator { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; color: var(--ink-text-dim); }
+.tv-rep-indicator { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; color: var(--bp-text-ink-soft); }
 .tv-rep-tankards { display: inline-flex; gap: 2px; font-family: var(--ink-font-mono); }
 .tv-rep-hint { font-style: italic; }
-.tv-rep-hint.is-positive { color: var(--tv-rep-positive); }
-.tv-rep-hint.is-negative { color: var(--tv-rep-negative); }
+/* Status-ok (#6dbf6d) is ~1.4:1 on parchment — use darkened value for ≥4.5:1 readability.
+   #2e7b2e is ~5.8:1 on --bp-parch-base (#e8d9b0). */
+.tv-rep-hint.is-positive { color: #2e7b2e; }
+/* Status-bad (#c44a4a) is ~4.9:1 on --bp-parch-base — acceptable. */
+.tv-rep-hint.is-negative { color: var(--bp-status-bad); }
 .tv-rep-tankard { color: var(--ink-text-muted); }
 .tv-rep-tankard.is-filled { color: var(--tv-lantern-warm); }
+/* Reroll button: bronze per §6 */
 .tv-reroll-btn {
-  background: rgba(212, 168, 67, 0.05);
-  border: 1px solid var(--ink-gold-dim);
-  color: var(--ink-amber);
+  background: linear-gradient(180deg, var(--bp-bronze-base), var(--bp-bronze-dark));
+  border: 1px solid var(--bp-bronze-light);
+  color: var(--bp-parch-light);
   padding: 4px 10px; border-radius: var(--ink-radius-sm);
   font-family: var(--ink-font-mono); font-size: 0.62rem;
-  cursor: pointer; transition: border-color 120ms, color 120ms;
+  cursor: pointer;
+  transition: background var(--bp-dur-fast) var(--bp-ease), border-color var(--bp-dur-fast) var(--bp-ease);
 }
-.tv-reroll-btn:hover:not(:disabled) { color: var(--ink-gold); border-color: var(--ink-gold); }
-.tv-reroll-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.tv-reroll-cost.is-affordable { color: var(--ink-status-ok); }
-.tv-reroll-cost.is-broke { color: var(--ink-status-bad); }
+.tv-reroll-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, var(--bp-bronze-light), var(--bp-bronze-base));
+  border-color: var(--bp-bronze-glint);
+}
+/* --bp-parch-aged (#c9b687) on --bp-iron (#3a3025) ≈ 5.7:1 — meets ≥4.5:1. */
+.tv-reroll-btn:disabled {
+  background: var(--bp-iron);
+  border-color: var(--bp-bronze-dark);
+  color: var(--bp-parch-aged);
+  cursor: not-allowed;
+}
+/* Affordable green: #2e7b2e ≈ 5.8:1 on --bp-parch-aged (#c9b687). */
+.tv-reroll-cost.is-affordable { color: #2e7b2e; }
+/* --bp-status-bad (#c44a4a) ≈ 4.9:1 on --bp-parch-aged — passes. */
+.tv-reroll-cost.is-broke { color: var(--bp-status-bad); }
 
 /* ── Visitor grid ─────────────────────────────────────────────── */
 .tv-grid {
@@ -178,90 +189,121 @@
   font-style: italic; text-align: center;
 }
 
-/* ── Visitor card ─────────────────────────────────────────────── */
+/* ── Visitor card (parchment) ─────────────────────────────────── */
 .tv-visitor-card {
   width: 100%; min-height: 280px;
   display: flex; flex-direction: column; gap: 6px;
   padding: 10px;
-  background: linear-gradient(180deg, var(--ink-bg-panel-alt), var(--ink-bg-panel));
-  border: 1px solid var(--ink-gold-dim);
+  /* Aged-parchment fill with bronze border (replaces dark navy gradient) */
+  background: var(--bp-parch-base);
+  border: 1px solid var(--bp-parch-burn);
   border-radius: var(--ink-radius-md);
   position: relative;
   transition: border-color 120ms, transform 120ms, box-shadow 120ms;
   animation: tv-card-enter 250ms var(--ink-ease-out) both;
 }
 .tv-visitor-card:hover {
-  border-color: var(--ink-gold);
-  box-shadow: var(--ink-glow-gold);
+  border-color: var(--bp-bronze-light);
+  box-shadow: 0 0 8px rgba(212, 168, 67, 0.25);
 }
 .tv-visitor-card.is-used { opacity: 0.55; }
 .tv-veteran-badge {
   position: absolute; top: -4px; right: -4px;
   width: 22px; height: 22px;
-  background: var(--tv-tankard-bronze);
-  color: var(--ink-text); font-family: var(--ink-font-title);
+  background: var(--bp-bronze-base);
+  color: var(--bp-parch-light); font-family: var(--ink-font-title);
   display: flex; align-items: center; justify-content: center;
   border-radius: 50%; font-size: 0.65rem;
   transform: rotate(-8deg);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
-  border: 1px solid var(--ink-gold-dim);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  border: 1px solid var(--bp-bronze-light);
 }
 .tv-card-portrait {
   width: 80px; height: 80px; margin: 0 auto;
-  background: var(--ink-bg-deep);
-  border: 1px solid var(--ink-gold-dim);
+  background: var(--bp-parch-aged);
+  border: 1px solid var(--bp-parch-burn);
   border-radius: var(--ink-radius-sm);
   overflow: hidden; image-rendering: pixelated;
   display: flex; align-items: center; justify-content: center;
 }
 .tv-card-portrait img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+/* Merc name: ink text on parchment — NOT gold-on-dark (11.4:1 on #e8d9b0) */
 .tv-card-name {
   text-align: center;
-  font-family: var(--ink-font-title); font-size: 0.8rem; color: var(--ink-gold);
+  font-family: var(--ink-font-title); font-size: 0.8rem; color: var(--bp-text-ink);
 }
 .tv-card-meta {
   display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;
-  font-family: var(--ink-font-mono); font-size: 0.55rem; color: var(--ink-text-dim);
+  font-family: var(--ink-font-mono); font-size: 0.55rem; color: var(--bp-text-ink-soft);
 }
-.tv-card-rarity { color: var(--ink-amber); letter-spacing: 0.1em; }
+/* Grade/civ label: muted ink on parchment */
+.tv-card-rarity { color: var(--bp-text-ink-soft); letter-spacing: 0.1em; }
 .tv-stat-row {
   display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
-  font-family: var(--ink-font-mono); font-size: 0.55rem; color: var(--ink-text-dim);
+  font-family: var(--ink-font-mono); font-size: 0.55rem; color: var(--bp-text-ink-soft);
   font-variant-numeric: tabular-nums;
 }
+/* Locked stat row: parchment-aged background (replaces --tv-veil dark overlay) */
 .tv-stat-row.is-locked {
-  background: var(--tv-veil); color: var(--ink-text-muted); padding: 3px 5px;
+  background: var(--bp-parch-aged); color: var(--bp-text-ink-soft); padding: 3px 5px;
   border-radius: var(--ink-radius-sm); letter-spacing: 0.15em; cursor: help;
 }
+/* Trait chips: bronze-bordered with muted ink text */
 .tv-trait-chip {
   display: inline-block; padding: 1px 5px;
-  border: 1px solid var(--ink-gold-dim); border-radius: 8px;
-  color: var(--ink-amber); font-family: var(--ink-font-mono); font-size: 0.55rem;
+  border: 1px solid var(--bp-bronze-base); border-radius: 8px;
+  color: var(--bp-text-ink-soft); font-family: var(--ink-font-mono); font-size: 0.55rem;
 }
-.tv-mood-line { text-align: center; font-style: italic; font-size: 0.6rem; color: var(--ink-text-muted); }
+.tv-mood-line { text-align: center; font-style: italic; font-size: 0.6rem; color: var(--bp-text-ink-soft); }
+/* Demand line: muted ink (replaces bronze-light) */
 .tv-demand-line {
   text-align: center;
-  font-family: var(--ink-font-mono); font-size: 0.65rem; color: var(--ink-amber);
+  font-family: var(--ink-font-mono); font-size: 0.65rem; color: var(--bp-text-ink-soft);
   font-variant-numeric: tabular-nums;
 }
 .tv-card-actions {
   margin-top: auto; display: flex; flex-direction: column; gap: 4px;
 }
+/* Bronze button per bible §6 — primary actions on parchment content field */
 .tv-btn {
   padding: 5px 10px;
-  background: rgba(212, 168, 67, 0.05);
-  border: 1px solid var(--ink-gold-dim);
-  color: var(--ink-text-dim);
+  background: linear-gradient(180deg, var(--bp-bronze-base), var(--bp-bronze-dark));
+  border: 1px solid var(--bp-bronze-light);
+  color: var(--bp-parch-light);
   font-family: var(--ink-font-mono); font-size: 0.6rem; letter-spacing: 0.06em;
   border-radius: var(--ink-radius-sm); cursor: pointer;
-  transition: background 120ms, color 120ms, border-color 120ms;
+  transition: background var(--bp-dur-fast) var(--bp-ease), border-color var(--bp-dur-fast) var(--bp-ease);
   text-align: center;
 }
-.tv-btn:hover:not(:disabled) { background: var(--ink-bg-hover); color: var(--ink-gold); border-color: var(--ink-gold); }
-.tv-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.tv-btn.is-primary { color: var(--ink-gold); border-color: var(--ink-gold); }
-.tv-btn.is-ghost { background: transparent; }
-.tv-btn.is-danger { color: var(--ink-status-bad); border-color: var(--ink-status-bad); }
+.tv-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, var(--bp-bronze-light), var(--bp-bronze-base));
+  border-color: var(--bp-bronze-glint);
+}
+.tv-btn:active:not(:disabled) {
+  background: linear-gradient(180deg, var(--bp-bronze-dark), var(--bp-bronze-shadow));
+  border-color: var(--bp-cyan-core);
+  transform: translateY(1px);
+}
+/* Disabled: iron fill, visible but clearly inactive.
+   --bp-parch-aged (#c9b687) on --bp-iron (#3a3025) ≈ 5.7:1 — meets ≥4.5:1. */
+.tv-btn:disabled {
+  background: var(--bp-iron);
+  border-color: var(--bp-bronze-dark);
+  color: var(--bp-parch-aged);
+  cursor: not-allowed;
+}
+.tv-btn.is-primary { /* Negotiate — same bronze, visually prominent */ }
+.tv-btn.is-ghost {
+  background: transparent;
+  border-color: var(--bp-parch-burn);
+  color: var(--bp-text-ink-soft);
+}
+.tv-btn.is-ghost:hover:not(:disabled) {
+  background: var(--bp-parch-aged);
+  border-color: var(--bp-bronze-light);
+  color: var(--bp-text-ink);
+}
+.tv-btn.is-danger { color: var(--bp-status-bad); border-color: var(--bp-status-bad); }
 .tv-btn.is-small { padding: 3px 8px; font-size: 0.55rem; }
 
 /* ── Negotiate modal (parchment) ──────────────────────────────── */
@@ -396,8 +438,8 @@
   border-top: 2px solid; border-bottom: 2px solid;
 }
 .tv-outcome-banner.kind-success      { background: linear-gradient(90deg, transparent, rgba(109,191,109,0.25), transparent); color: var(--ink-status-ok); border-color: var(--ink-status-ok); }
-.tv-outcome-banner.kind-counter      { background: linear-gradient(90deg, transparent, rgba(212,168,67,0.25), transparent); color: var(--ink-amber); border-color: var(--ink-amber); }
-.tv-outcome-banner.kind-soft-refuse  { background: linear-gradient(90deg, transparent, rgba(125,138,155,0.18), transparent); color: var(--ink-text-dim); border-color: var(--ink-text-muted); }
+.tv-outcome-banner.kind-counter      { background: linear-gradient(90deg, transparent, rgba(212,168,67,0.25), transparent); color: var(--bp-bronze-light); border-color: var(--bp-bronze-light); }
+.tv-outcome-banner.kind-soft-refuse  { background: linear-gradient(90deg, transparent, rgba(125,138,155,0.18), transparent); color: var(--bp-text-ink-soft); border-color: var(--ink-text-muted); }
 .tv-outcome-banner.kind-hard-refuse  { background: linear-gradient(90deg, transparent, rgba(80,90,100,0.20), transparent); color: var(--ink-text-muted); border-color: var(--ink-text-muted); }
 .tv-outcome-banner.kind-insult       { background: linear-gradient(90deg, transparent, rgba(196,74,74,0.30), transparent); color: var(--ink-status-bad); border-color: var(--ink-status-bad); }
 
@@ -447,12 +489,12 @@
   .tv-rumor-icon { animation: none !important; }
 }
 
-/* ── Focus rings (keyboard a11y) ──────────────────────────────── */
+/* ── Focus rings (keyboard a11y) — cyan per §6 ────────────────── */
 .tv-btn:focus-visible,
 .tv-close:focus-visible,
 .tv-reroll-btn:focus-visible,
 .tv-keeper-avatar:focus-visible,
 .tv-gift-cell:focus-visible,
 .tv-mod-row.is-interactive:focus-visible {
-  outline: 2px solid var(--ink-gold-bright); outline-offset: 2px;
+  outline: 2px solid var(--bp-cyan-core); outline-offset: 2px;
 }

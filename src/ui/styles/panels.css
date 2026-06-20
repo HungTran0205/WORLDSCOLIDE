@@ -9,7 +9,7 @@
   padding: 16px;
   overflow-y: auto;
   z-index: 100;
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--ink-font-ui);
   border-left: 2px solid rgba(255, 215, 0, 0.3);
 }
 
@@ -82,7 +82,7 @@
   align-items: center;
   justify-content: flex-start;
   z-index: 200;
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--ink-font-ui);
   padding: 24px 16px 32px;
   overflow-y: auto;
 }
@@ -135,29 +135,33 @@ input[type="range"] {
 }
 
 /* Confirm dialog modal */
+/* Confirmation modal — bronze plaque treatment, matches .fp-dialog so both
+   confirm dialogs read as one system. Explicit fonts: this dialog can render
+   outside .pf-content, where nothing else supplies the pixel font. */
 .confirm-dialog-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--bp-scrim);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 300;
+  z-index: var(--bp-z-modal);
 }
 
 .confirm-dialog {
-  background: rgba(20, 20, 30, 0.98);
-  border: 2px solid rgba(255, 215, 0, 0.4);
-  border-radius: 12px;
-  padding: 24px;
+  background: var(--bp-header-fill);
+  border: 2px solid var(--bp-bronze-light);
+  border-radius: var(--ink-radius-md);
+  padding: 20px 22px;
   max-width: 380px;
   text-align: center;
+  font-family: var(--ink-font-body);
 }
 
 .confirm-dialog__message {
-  color: #e0e0e0;
+  color: var(--bp-parch-light);
   margin-bottom: 20px;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   line-height: 1.5;
 }
 
@@ -167,9 +171,18 @@ input[type="range"] {
   justify-content: center;
 }
 
+.confirm-dialog__actions .panel-btn {
+  font-family: inherit;
+  background: linear-gradient(180deg, var(--bp-bronze-base), var(--bp-bronze-dark));
+  border: 1px solid var(--bp-bronze-light);
+  color: var(--bp-parch-light);
+  width: auto;
+  margin-top: 0;
+}
+
 .confirm-dialog__btn--danger {
-  border-color: rgba(231, 76, 60, 0.6) !important;
-  color: #e74c3c !important;
+  border-color: var(--bp-status-bad) !important;
+  color: #ffd9d4 !important;
 }
 
 /* Mission progress bar */

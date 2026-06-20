@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { migrateSave } from './save-migrations';
 import { VALID_SAVE_ENVELOPE } from './test-fixtures';
 import { SAVE_VERSION } from './save-types';
-import { CIV_CONFIG } from '@/game/data/civilization-config';
 
 /** Build a minimal v7 save envelope for migration testing */
 function makeV7Envelope(overrides: Record<string, unknown> = {}) {
@@ -34,7 +33,9 @@ describe('migrateSave', () => {
   it('passes through current-version saves unchanged', () => {
     const result = migrateSave(VALID_SAVE_ENVELOPE);
     expect(result.version).toBe(SAVE_VERSION);
-    expect(result.gameState.founder?.rank).toBe('COMMANDER');
+    // Grade model: founder has grade + isMercenary, no rank/level fields
+    expect(result.gameState.founder?.grade).toBeDefined();
+    expect(result.gameState.founder?.isMercenary).toBe(false);
     expect(result.gameState.founder?.missionsCompleted).toBe(0);
   });
 
@@ -43,27 +44,38 @@ describe('migrateSave', () => {
     expect(result.version).toBe(SAVE_VERSION);
   });
 
-  it('migrates v7 → v8: founder gets COMMANDER rank', () => {
+  // v7→v8 set rank; v31→v32 then strips rank/level/rarity and adds grade/isMercenary.
+  // Tests verify the final v32 shape — the intermediate rank values are internal migration detail.
+  it('migrates v7 → v8+v32: founder becomes non-mercenary with valid grade', () => {
     const result = migrateSave(makeV7Envelope() as any);
-    expect((result.gameState as any).founder.rank).toBe('COMMANDER');
+    const founder = (result.gameState as any).founder;
+    expect(founder.grade).toBeDefined();
+    expect(['F','E','D','C','B','A','S']).toContain(founder.grade);
+    expect(founder.isMercenary).toBe(false);
+    expect(founder.rank).toBeUndefined();
   });
 
-  it('migrates v7 → v8: low-level member becomes RECRUIT', () => {
+  it('migrates v7 → v8+v32: low-level non-founder member has valid grade', () => {
     const result = migrateSave(makeV7Envelope() as any);
     const newbie = (result.gameState as any).roster.find((m: any) => m.id === 'r1');
-    expect(newbie.rank).toBe('RECRUIT');
+    expect(newbie.grade).toBeDefined();
+    expect(newbie.isMercenary).toBe(false);
+    expect(newbie.rank).toBeUndefined();
   });
 
-  it('migrates v7 → v8: high-level member becomes VETERAN', () => {
+  it('migrates v7 → v8+v32: high-level non-founder member has valid grade', () => {
     const result = migrateSave(makeV7Envelope() as any);
     const vet = (result.gameState as any).roster.find((m: any) => m.id === 'r2');
-    expect(vet.rank).toBe('VETERAN');
+    expect(vet.grade).toBeDefined();
+    expect(vet.isMercenary).toBe(false);
+    expect(vet.rank).toBeUndefined();
   });
 
-  it('migrates v7 → v8: mercenary stays MERCENARY', () => {
+  it('migrates v7 → v8+v32: MERCENARY rank maps to isMercenary=true', () => {
     const result = migrateSave(makeV7Envelope() as any);
     const merc = (result.gameState as any).roster.find((m: any) => m.id === 'r3');
-    expect(merc.rank).toBe('MERCENARY');
+    expect(merc.isMercenary).toBe(true);
+    expect(merc.rank).toBeUndefined();
   });
 
   it('migrates v7 → v8: seeds missionsCompleted = level * 2', () => {
@@ -107,13 +119,16 @@ describe('migrateSave', () => {
     expect(tavern.globalNegotiationDebuffUntilDay).toBeNull();
   });
 
-  it('migrates v23→v24: legacy members get rarity=1 and traits=[]', () => {
+  // v23→v24 seeded rarity=1; v31→v32 then strips rarity and adds grade/isMercenary.
+  it('migrates v23→v24+v32: legacy members get traits=[] and grade (rarity stripped by v32)', () => {
     const result = migrateSave(makeV7Envelope() as any);
     const founder = (result.gameState as any).founder;
-    expect(founder.rarity).toBe(1);
+    expect(founder.rarity).toBeUndefined();
+    expect(founder.grade).toBeDefined();
     expect(founder.traits).toEqual([]);
     const newbie = (result.gameState as any).roster.find((m: any) => m.id === 'r1');
-    expect(newbie.rarity).toBe(1);
+    expect(newbie.rarity).toBeUndefined();
+    expect(newbie.grade).toBeDefined();
     expect(newbie.traits).toEqual([]);
   });
 
@@ -246,7 +261,7 @@ describe('migrateSave', () => {
           unallocatedPoints: 0, skill: null, status: 'idle', injuredUntil: null,
           civilization: 'LinhSon', isFounder: true, rank: 'COMMANDER', missionsCompleted: 0,
           craftSkills: { woodcutting: { level: 0, xpAccumulated: 0 }, mining: { level: 0, xpAccumulated: 0 }, alchemy: { level: 0, xpAccumulated: 0 } },
-          equipment: { weapon: { id: 'eq-equipped', templateId: 'WOODEN_AXE', durability: 50 }, armor: null, headgear: null },
+          equipment: { weapon: { id: 'eq-equipped', templateId: 'WOODEN_AXE', durability: 50 }, armor: null },
           medicineSlots: [{ itemId: null, condition: 'start' }, { itemId: null, condition: 'start' }],
         },
         roster: [],
@@ -369,20 +384,16 @@ describe('migrateSave', () => {
     ...extra,
   });
 
-  it('migrates tavern visitors: backfills currentRoster gender from archetype + VN name from pool', () => {
+  // v27→v28 backfilled gender/name on currentRoster visitors; v31→v32 then clears
+  // currentRoster entirely (respawns next day-tick). Verify the full chain completes.
+  it('migrates tavern visitors: currentRoster cleared by v32 (respawns on next day-tick)', () => {
     const env = makeV26TavernEnvelope(baseTavern({
       currentRoster: [staleVisitor('tav-1-0', 'scout'), staleVisitor('tav-1-1', 'warrior')],
     }));
     const result = migrateSave(env as any);
     expect(result.version).toBe(SAVE_VERSION);
-    const roster = (result.gameState as any).tavern.currentRoster;
-    const pool = new Set(CIV_CONFIG.LinhSon.namePool);
-    expect(roster[0].gender).toBe('F'); // scout → Ranger
-    expect(roster[1].gender).toBe('M'); // warrior → Forester
-    for (const v of roster) {
-      expect(typeof v.name).toBe('string');
-      expect(pool.has(v.name)).toBe(true);
-    }
+    // v32 clears currentRoster — visitors respawn on next day-tick
+    expect((result.gameState as any).tavern.currentRoster).toEqual([]);
   });
 
   it('migrates tavern visitors: backfills visitorSnapshot in mercContracts / pendingPrompts / veteranPool', () => {
@@ -398,11 +409,18 @@ describe('migrateSave', () => {
     expect(tavern.veteranPool[0].visitorSnapshot.gender).toBe('F');
   });
 
+  // v27→v28 name backfill is deterministic; v31→v32 clears currentRoster so we test
+  // determinism via veteranPool snapshots (which survive through v32).
   it('migrates tavern visitors: name backfill is deterministic across runs (hash by id)', () => {
-    const make = () => makeV26TavernEnvelope(baseTavern({ currentRoster: [staleVisitor('tav-X-0', 'scout')] }));
+    const make = () => makeV26TavernEnvelope(baseTavern({
+      veteranPool: [{ contractId: 'c-x', visitorSnapshot: staleVisitor('tav-X-0', 'scout'), relationshipPoints: 5, addedDay: 0 }],
+    }));
     const a = migrateSave(make() as any);
     const b = migrateSave(make() as any);
-    expect((a.gameState as any).tavern.currentRoster[0].name).toBe((b.gameState as any).tavern.currentRoster[0].name);
+    const nameA = (a.gameState as any).tavern.veteranPool[0].visitorSnapshot.name;
+    const nameB = (b.gameState as any).tavern.veteranPool[0].visitorSnapshot.name;
+    expect(typeof nameA).toBe('string');
+    expect(nameA).toBe(nameB);
   });
 
   it('migrates v26→v27: backfills distinct instanceId on same-template parties', () => {
@@ -434,6 +452,153 @@ describe('migrateSave', () => {
     expect(typeof ams[0].instanceId).toBe('string');
     expect(ams[0].instanceId).not.toBe('');
     expect(ams[0].instanceId).not.toBe(ams[1].instanceId);
+  });
+
+  // v29→v30: infirmary bed/queue recovery model. Converts in-flight injured members from
+  // the old deadline-driven model to the progress-driven one and seeds lastSkipDay on the
+  // infirmary facility.
+  it('migrates v29→v30: injured members get baseRecoveryMs/injuredAt/recoveryProgress + cleared injuredUntil', () => {
+    const futureUntil = Date.now() + 120_000;
+    const envelope = {
+      version: 29,
+      savedAt: Date.now(),
+      metadata: { slotId: 1, guildName: 'Test', guildLevel: 1, playTimeMs: 0, founderName: 'F', createdAt: 0, updatedAt: 0 },
+      gameState: {
+        gameTime: 0, realTimeLastTick: 0, guildName: 'Test', guildLevel: 1, gold: 100,
+        guildHall: { level: 1, floorTiles: [{ x: 0, z: 0, color: '#DAA520' }], furniture: [] },
+        settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high', shadowsEnabled: false, bloomEnabled: false, bloomThreshold: 0.85, atmosphericEnabled: true },
+        founder: null,
+        roster: [
+          { id: 'hurt', name: 'Hurt', level: 5, exp: 0, stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 }, unallocatedPoints: 0, skill: null, status: 'injured', injuredUntil: futureUntil, civilization: 'LinhSon', isFounder: false, rank: 'MEMBER', missionsCompleted: 0, rarity: 1, traits: [] },
+          { id: 'ok',   name: 'Ok',   level: 5, exp: 0, stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 }, unallocatedPoints: 0, skill: null, status: 'idle',     injuredUntil: null,        civilization: 'LinhSon', isFounder: false, rank: 'MEMBER', missionsCompleted: 0, rarity: 1, traits: [] },
+        ],
+        completedMissions: [], tutorialStep: 'complete',
+        tavern: { level: 1, keeperId: null, reputation: 0, currentRoster: [], rerolledToday: false, factionBias: null, rumor: null, mercContracts: [], pendingPrompts: [], lastDayProcessed: 0, reputationLastTickWeek: 0, globalNegotiationDebuffUntilDay: null, veteranPool: [] },
+        inventory: { items: {} },
+        facilities: [
+          { id: 'infirmary', type: 'infirmary', level: 2, assignedMemberIds: [], placedSlot: 0 },
+        ],
+        activeMissions: [],
+      },
+    };
+    const result = migrateSave(envelope as any);
+    expect(result.version).toBe(SAVE_VERSION);
+
+    const roster = (result.gameState as any).roster;
+    const hurt = roster.find((m: any) => m.id === 'hurt');
+    expect(hurt.injuredUntil).toBeNull();
+    expect(typeof hurt.injuredAt).toBe('number');
+    expect(typeof hurt.baseRecoveryMs).toBe('number');
+    expect(hurt.baseRecoveryMs).toBeGreaterThanOrEqual(30_000); // floor enforced
+    expect(hurt.recoveryProgress).toBe(0);
+
+    // Healthy members are untouched.
+    const ok = roster.find((m: any) => m.id === 'ok');
+    expect(ok.status).toBe('idle');
+    expect(ok.injuredAt).toBeUndefined();
+    expect(ok.baseRecoveryMs).toBeUndefined();
+
+    // Infirmary gains lastSkipDay (null = never used).
+    const infirmary = (result.gameState as any).facilities.find((f: any) => f.id === 'infirmary');
+    expect(infirmary.lastSkipDay).toBeNull();
+  });
+
+  it('migrates v29→v30: stale injuredUntil floors baseRecoveryMs at 30s (not a negative value)', () => {
+    const envelope = {
+      version: 29,
+      savedAt: Date.now(),
+      metadata: { slotId: 1, guildName: 'Test', guildLevel: 1, playTimeMs: 0, founderName: 'F', createdAt: 0, updatedAt: 0 },
+      gameState: {
+        gameTime: 0, realTimeLastTick: 0, guildName: 'Test', guildLevel: 1, gold: 100,
+        guildHall: { level: 1, floorTiles: [{ x: 0, z: 0, color: '#DAA520' }], furniture: [] },
+        settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high', shadowsEnabled: false, bloomEnabled: false, bloomThreshold: 0.85, atmosphericEnabled: true },
+        founder: { id: 'f1', name: 'F', level: 5, exp: 0, stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 }, unallocatedPoints: 0, skill: null, status: 'injured', injuredUntil: 0 /* in the past */, civilization: 'LinhSon', isFounder: true, rank: 'COMMANDER', missionsCompleted: 0, rarity: 1, traits: [] },
+        roster: [], completedMissions: [], tutorialStep: 'complete',
+        tavern: { level: 1, keeperId: null, reputation: 0, currentRoster: [], rerolledToday: false, factionBias: null, rumor: null, mercContracts: [], pendingPrompts: [], lastDayProcessed: 0, reputationLastTickWeek: 0, globalNegotiationDebuffUntilDay: null, veteranPool: [] },
+        inventory: { items: {} },
+        facilities: [{ id: 'infirmary', type: 'infirmary', level: 0, assignedMemberIds: [], placedSlot: null }],
+        activeMissions: [],
+      },
+    };
+    const result = migrateSave(envelope as any);
+    const founder = (result.gameState as any).founder;
+    expect(founder.baseRecoveryMs).toBe(30_000);
+    expect(founder.injuredUntil).toBeNull();
+  });
+
+  // v35→v36: Blessed resource bar — every member gets blessedPct = 1 by default
+  it('migrates v35→v36: adds blessedPct=1 to founder when absent', () => {
+    const v35Envelope = {
+      version: 35,
+      savedAt: Date.now(),
+      metadata: { slotId: 1, guildName: 'Test', guildLevel: 1, playTimeMs: 0, founderName: 'F', createdAt: 0, updatedAt: 0 },
+      gameState: {
+        gameTime: 0, realTimeLastTick: 0, guildName: 'Test', guildLevel: 1, gold: 100,
+        guildHall: { level: 1, floorTiles: [{ x: 0, z: 0, color: '#DAA520' }], furniture: [] },
+        settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high', shadowsEnabled: false, bloomEnabled: false, bloomThreshold: 0.85, atmosphericEnabled: true },
+        founder: { id: 'f1', name: 'Founder', grade: 'F', isMercenary: false, stats: { STR: 10, END: 10, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 }, unallocatedPoints: 0, skill: null, status: 'idle', injuredUntil: null, civilization: 'LinhSon', isFounder: true, missionsCompleted: 0 },
+        roster: [], completedMissions: [], tutorialStep: 'complete',
+        tavern: { level: 1, keeperId: null, reputation: 0, currentRoster: [], rerolledToday: false, factionBias: null, rumor: null, mercContracts: [], pendingPrompts: [], lastDayProcessed: 0, reputationLastTickWeek: 0, globalNegotiationDebuffUntilDay: null, veteranPool: [] },
+        inventory: { items: {} }, facilities: [],
+        activeMissions: [],
+      },
+    };
+    const result = migrateSave(v35Envelope as any);
+    expect(result.version).toBe(SAVE_VERSION);
+    expect((result.gameState as any).founder.blessedPct).toBe(1);
+  });
+
+  it('migrates v35→v36: adds blessedPct=1 to all roster members when absent', () => {
+    const v35Envelope = {
+      version: 35,
+      savedAt: Date.now(),
+      metadata: { slotId: 1, guildName: 'Test', guildLevel: 1, playTimeMs: 0, founderName: 'F', createdAt: 0, updatedAt: 0 },
+      gameState: {
+        gameTime: 0, realTimeLastTick: 0, guildName: 'Test', guildLevel: 1, gold: 100,
+        guildHall: { level: 1, floorTiles: [{ x: 0, z: 0, color: '#DAA520' }], furniture: [] },
+        settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high', shadowsEnabled: false, bloomEnabled: false, bloomThreshold: 0.85, atmosphericEnabled: true },
+        founder: null,
+        roster: [
+          { id: 'r1', name: 'Member1', grade: 'F', isMercenary: false, stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 }, unallocatedPoints: 0, skill: null, status: 'idle', injuredUntil: null, civilization: 'LinhSon', isFounder: false, missionsCompleted: 0 },
+          { id: 'r2', name: 'Member2', grade: 'E', isMercenary: false, stats: { STR: 8, END: 8, INT: 8, DEX: 8, CHA: 8, LCK: 8, AGI: 8 }, unallocatedPoints: 0, skill: null, status: 'idle', injuredUntil: null, civilization: 'DeQuoc', isFounder: false, missionsCompleted: 0 },
+        ],
+        completedMissions: [], tutorialStep: 'complete',
+        tavern: { level: 1, keeperId: null, reputation: 0, currentRoster: [], rerolledToday: false, factionBias: null, rumor: null, mercContracts: [], pendingPrompts: [], lastDayProcessed: 0, reputationLastTickWeek: 0, globalNegotiationDebuffUntilDay: null, veteranPool: [] },
+        inventory: { items: {} }, facilities: [],
+        activeMissions: [],
+      },
+    };
+    const result = migrateSave(v35Envelope as any);
+    expect(result.version).toBe(SAVE_VERSION);
+    const roster = (result.gameState as any).roster;
+    expect(roster).toHaveLength(2);
+    expect(roster[0].blessedPct).toBe(1);
+    expect(roster[1].blessedPct).toBe(1);
+  });
+
+  it('migrates v35→v36: is idempotent — preserves existing blessedPct value', () => {
+    const v35Envelope = {
+      version: 35,
+      savedAt: Date.now(),
+      metadata: { slotId: 1, guildName: 'Test', guildLevel: 1, playTimeMs: 0, founderName: 'F', createdAt: 0, updatedAt: 0 },
+      gameState: {
+        gameTime: 0, realTimeLastTick: 0, guildName: 'Test', guildLevel: 1, gold: 100,
+        guildHall: { level: 1, floorTiles: [{ x: 0, z: 0, color: '#DAA520' }], furniture: [] },
+        settings: { musicVolume: 0.5, sfxVolume: 0.7, autoSkillDefault: true, graphicsQuality: 'high', shadowsEnabled: false, bloomEnabled: false, bloomThreshold: 0.85, atmosphericEnabled: true },
+        founder: { id: 'f1', name: 'Founder', grade: 'F', isMercenary: false, stats: { STR: 10, END: 10, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 }, unallocatedPoints: 0, skill: null, status: 'idle', injuredUntil: null, civilization: 'LinhSon', isFounder: true, missionsCompleted: 0, blessedPct: 0.5 },
+        roster: [
+          { id: 'r1', name: 'Member1', grade: 'F', isMercenary: false, stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 }, unallocatedPoints: 0, skill: null, status: 'idle', injuredUntil: null, civilization: 'LinhSon', isFounder: false, missionsCompleted: 0, blessedPct: 0.75 },
+        ],
+        completedMissions: [], tutorialStep: 'complete',
+        tavern: { level: 1, keeperId: null, reputation: 0, currentRoster: [], rerolledToday: false, factionBias: null, rumor: null, mercContracts: [], pendingPrompts: [], lastDayProcessed: 0, reputationLastTickWeek: 0, globalNegotiationDebuffUntilDay: null, veteranPool: [] },
+        inventory: { items: {} }, facilities: [],
+        activeMissions: [],
+      },
+    };
+    const result = migrateSave(v35Envelope as any);
+    expect(result.version).toBe(SAVE_VERSION);
+    expect((result.gameState as any).founder.blessedPct).toBe(0.5); // unchanged
+    expect((result.gameState as any).roster[0].blessedPct).toBe(0.75); // unchanged
   });
 
   it('throws for version higher than SAVE_VERSION', () => {

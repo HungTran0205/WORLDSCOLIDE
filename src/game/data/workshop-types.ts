@@ -16,8 +16,8 @@ export type StatCategory =
   | 'SHIELD'
   | 'GENERIC';
 
-/** Stat keys that can roll on equipment slots (MVP: HP only). */
-export type SlotStatKey = 'HP';
+/** Stat keys that can roll on equipment slots. */
+export type SlotStatKey = 'HP' | 'DODGE' | 'BLOCK' | 'ATTACK_SPEED' | 'ACCURACY' | 'SHIELD';
 
 /** Single rolled affix slot on an EquipmentItem instance. */
 export interface EquipmentSlotData {

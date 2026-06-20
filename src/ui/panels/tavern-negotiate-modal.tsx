@@ -27,6 +27,7 @@ import {
 } from '@/game/systems/tavern-negotiation';
 import { attemptSeed, hashSeed } from '@/game/systems/seeded-rng';
 import { TavernInventoryGiftPicker } from './tavern-inventory-gift-picker';
+import { GradeBadge } from '@/ui/components/grade-badge';
 
 interface NegotiateModalProps {
   visitor: TavernVisitor;
@@ -97,6 +98,11 @@ export function TavernNegotiateModal({ visitor, keeper, visibilityScore, onClose
       },
     }));
 
+    // Consume gift from inventory — gift is given to the visitor on each roll attempt.
+    if (gift) {
+      useGameStore.getState().removeItem(gift.itemId, 1);
+    }
+
     setTimeout(() => {
       onOutcome(result, visitor);
       setRolling(false);
@@ -130,7 +136,10 @@ export function TavernNegotiateModal({ visitor, keeper, visibilityScore, onClose
             <div>
               <div className="parchment-text" style={{ marginBottom: 6 }}>
                 <strong>{visitor.name}</strong>
-                <div>{visitor.civilization} · Lv{visitor.level} · {'★'.repeat(visitor.rarity)}</div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <GradeBadge grade={visitor.grade} size="sm" />
+                  <span>· {visitor.civilization}</span>
+                </div>
                 {visibilityScore >= 22 && visitor.traits.length > 0 && (
                   <div style={{ marginTop: 4 }}>
                     {visitor.traits.map((tr) => (

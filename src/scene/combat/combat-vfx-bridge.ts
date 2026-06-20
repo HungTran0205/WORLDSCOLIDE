@@ -20,11 +20,45 @@ export const COMBAT_VFX_PRESETS: Record<CombatVfxEvent, string> = {
 
 /** Per-event emit count (most presets emit 1 unit but bursts read better with more). */
 export const COMBAT_VFX_COUNTS: Record<CombatVfxEvent, number> = {
-  hit: 8,
+  hit: 20,
   crit: 24,
   heal: 16,
   death: 20,
 };
+
+/**
+ * Windup delay (seconds) before hit VFX (spark + slash/beam mesh) appear, so they
+ * land on the attack animation's connect/release frame (~frame 4 of the 8-frame,
+ * 12fps attack → 4/12 ≈ 0.33s) instead of during the swing/draw. Shared by the
+ * controller's spark emit and CombatImpactLayer's mesh delay so they stay synced.
+ */
+export const COMBAT_IMPACT_DELAY_S = 0.33;
+
+/**
+ * Per-particle size [min, max] override for the hit spark. The gen-hit preset
+ * defaults to tiny debris (0.05–0.15); this enlarges it so the spark reads
+ * clearly against large enemy sprites without re-baking the preset geometry.
+ */
+export const COMBAT_HIT_SPARK_SIZE: [number, number] = [0.05, 0.2];
+
+/**
+ * Hit-spark debris color (colorStart pool). Warm orange — applied to BOTH ally
+ * and enemy attacks, overriding the gen-hit preset's red/yellow start so every
+ * auto-attack spark reads orange. The preset's colorEnd (also orange) is kept.
+ */
+export const COMBAT_HIT_SPARK_COLOR: string[] = ['#c5253a', '#fd6a26'];
+
+/**
+ * Shared impact palette for the combat attack VFX — the slash/beam meshes
+ * (CombatImpactLayer). LinhSon default: warm amber ink + cyan glow. Future civs
+ * branch this per attacker.
+ */
+export const COMBAT_IMPACT_COLORS = {
+  /** Melee slash ink/edge color (amber). */
+  ink: '#ffcc44',
+  /** Additive glow-core for the slash/beam mesh (cyan). */
+  glow: '#44aaff',
+} as const;
 
 /** Wall-clock window event name fired on every crit so the DOM panel can shake. */
 export const COMBAT_CRIT_DOM_EVENT = 'combat-vfx-crit';

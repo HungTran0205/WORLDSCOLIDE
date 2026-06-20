@@ -32,6 +32,13 @@ export interface ArenaEntitySnapshot {
   spriteId?: string;
   /** Flying enemy — sprite renders elevated above ground */
   flying?: boolean;
+  /** Ancestral Blessings buff active — drives the persistent blessed VFX overlay/aura.
+   *  (animState above is typed `string`, so it already carries 'casting'.) */
+  blessed?: boolean;
+  /** Riposte counter-stance active — drives the overhead buff status icon.
+   *  (statusEffects carries 'boosted' for Rally; riposte uses riposteUntil, hence
+   *  a derived flag so the HUD needs no engine clock.) */
+  riposteActive?: boolean;
   /** ATB timeline fields */
   nextAttackAt: number;
   attackIntervalMs: number;

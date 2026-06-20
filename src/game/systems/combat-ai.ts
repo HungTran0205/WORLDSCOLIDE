@@ -28,6 +28,14 @@ export function findTarget(
     return pickBalanceTarget(entity, allEntities);
   }
 
+  // Pseudo-taunt: if any ally has 'taunted' active, enemies must target them
+  if (!entity.isAlly) {
+    const tauntedAlly = allEntities.find(e =>
+      e.isAlly && e.currentHp > 0 && e.statusEffects.some(s => s.type === 'taunted'),
+    );
+    if (tauntedAlly) return tauntedAlly;
+  }
+
   const enemies = allEntities.filter(e => e.currentHp > 0 && e.isAlly !== entity.isAlly);
   if (enemies.length === 0) return null;
 

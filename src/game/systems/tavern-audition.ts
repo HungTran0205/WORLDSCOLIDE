@@ -23,6 +23,8 @@ import type {
   Member,
   TavernPendingPrompt,
 } from '@/game/state/game-state';
+import { gradeOf } from '@/game/data/grades';
+import { getDefaultSkill } from '@/game/data/skills';
 import { REINVITE_BONUS } from './tavern-negotiation';
 
 /** Minimum RP required on a contract for the re-invite prompt to fire. Spec §8. */
@@ -93,30 +95,30 @@ export function makeReinvitePrompt(
 }
 
 /**
- * Convert a merc contract into a permanent guild Member (rank='MEMBER').
- * ALL visitorSnapshot fields propagate (stats, civ, archetype, traits,
- * rarity, level) so the promoted member is indistinguishable from a
- * tavern-recruited visitor of the same provenance.
+ * Convert a merc contract into a permanent guild Member.
+ * ALL visitorSnapshot fields propagate (stats, civ, archetype, traits, grade)
+ * so the promoted member is indistinguishable from a tavern-recruited visitor
+ * of the same provenance. gradeOf handles frozen snapshots that may lack grade.
  */
 export function promoteMercToMember(contract: MercContract, now: number = Date.now()): Member {
   const v = contract.visitorSnapshot;
+  const startSkill = getDefaultSkill(v.archetype); // carry the class default skill (learned Lv1)
   return {
     id: `mem-${now}-${contract.id.slice(-6)}`,
     name: v.name,
-    level: v.level,
-    exp: 0,
+    grade: gradeOf(v),
+    isMercenary: false,
     stats: { ...v.stats },
     unallocatedPoints: 0,
-    skill: null,
+    skill: startSkill,
+    skillRanks: { [startSkill.id]: { rank: 1, progress: 0 } },
     status: 'idle',
     injuredUntil: null,
     civilization: v.civilization,
     archetype: v.archetype,
     gender: v.gender,
     isFounder: false,
-    rank: 'MEMBER',
     missionsCompleted: 0,
-    rarity: v.rarity,
     traits: [...v.traits],
     equipment: null,
     syringeLoadout: null,

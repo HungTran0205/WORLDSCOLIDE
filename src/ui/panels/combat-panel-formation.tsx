@@ -13,6 +13,7 @@ import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { MISSIONS } from '@/game/data/missions';
 import { ENEMIES } from '@/game/data/enemies';
 import { isRangedArchetype, DEFAULT_TARGET_PRIORITY } from '@/game/systems/combat-arena-types';
+import { memberFromMercContract } from '@/game/systems/combat-entity-factory';
 import { tContent } from '@/i18n/content-localization';
 import type { Member } from '@/game/state/game-state';
 import type { Formation, TargetPriority } from '@/game/systems/combat-arena-types';
@@ -55,8 +56,10 @@ export function CombatPanelFormation() {
 
   const formation = useGameStore((s) => s.formation);
   const setFormationSlot = useGameStore((s) => s.setFormationSlot);
+  const startBattle = useGameStore((s) => s.startBattle);
   const founder = useGameStore((s) => s.founder);
   const roster = useGameStore((s) => s.roster);
+  const mercContracts = useGameStore((s) => s.tavern.mercContracts);
   const activeMissions = useGameStore((s) => s.activeMissions);
   const setTargetPriority = useGameStore((s) => s.setTargetPriority);
   const updateMissionPhase = useGameStore((s) => s.updateMissionPhase);
@@ -64,10 +67,15 @@ export function CombatPanelFormation() {
   const mission = activeMissions.find((m) => m.instanceId === instanceId);
   const missionData = MISSIONS.find((m) => m.id === missionId);
   const allMembers = useMemo(() => (founder ? [founder, ...roster] : roster), [founder, roster]);
-  const partyMembers = useMemo(
-    () => allMembers.filter((m) => mission?.memberIds.includes(m.id)),
-    [allMembers, mission],
-  );
+  // Party = guild members + this mission's hired mercs (id === contract.id) so the
+  // player can place mercs in formation; the fight controller resolves them the same way.
+  const partyMembers = useMemo(() => {
+    const members = allMembers.filter((m) => mission?.memberIds.includes(m.id));
+    const mercs = mercContracts
+      .filter((c) => mission?.mercContractIds.includes(c.id))
+      .map(memberFromMercContract);
+    return [...members, ...mercs];
+  }, [allMembers, mission, mercContracts]);
 
   const enemies = useMemo(
     () => missionData?.enemyIds.map((id) => ENEMIES[id]).filter(Boolean) ?? [],
@@ -88,8 +96,12 @@ export function CombatPanelFormation() {
     // Flip mission.phase to 'in-combat' here (not on Enter-Battle click) so a
     // mid-formation close leaves the mission resumable instead of auto-resolving.
     if (instanceId) updateMissionPhase(instanceId, 'in-combat');
+    // Drive arenaPhase → 'fighting' so the R3F combat layers gated on it
+    // (impact VFX, AOE telegraphs) activate. endCombat/exitArena reset it on
+    // finish/close. Panel sub-phase is tracked separately by the panel store.
+    startBattle();
     setPhase('battle');
-  }, [instanceId, updateMissionPhase, setPhase]);
+  }, [instanceId, updateMissionPhase, startBattle, setPhase]);
 
   const handlePriority = useCallback((priority: TargetPriority) => {
     if (instanceId) setTargetPriority(instanceId, priority);
@@ -124,7 +136,7 @@ export function CombatPanelFormation() {
               >
                 <div className="combat-panel-formation__member-name">{m.name}</div>
                 <div className="combat-panel-formation__member-meta">
-                  {t('combatPanel.formation.memberMeta', { level: m.level, archetype: t(`archetype.${m.archetype ?? 'warrior'}`) })}
+                  {t('combatPanel.formation.memberMeta', { level: m.grade, archetype: t(`archetype.${m.archetype ?? 'warrior'}`) })}
                 </div>
               </div>
             ))}
@@ -161,7 +173,7 @@ export function CombatPanelFormation() {
                   {member ? (
                     <>
                       <div className="combat-panel-formation__member-name">{member.name}</div>
-                      <div className="combat-panel-formation__member-meta">{t('combatPanel.formation.slotMeta', { level: member.level })}</div>
+                      <div className="combat-panel-formation__member-meta">{`Grade ${member.grade}`}</div>
                     </>
                   ) : (
                     <div className="combat-panel-formation__slot--placeholder">

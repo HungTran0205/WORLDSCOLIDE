@@ -1,16 +1,15 @@
 import { useTranslation } from 'react-i18next';
 import type { Member, StatKey } from '@/game/state/game-state';
 import { STAT_KEYS } from '@/game/systems/stat-allocation';
-import { RankPromotionSection } from '@/ui/components/rank-promotion-section';
-import { calcMaxHp, calcAttackInterval, calcCritRate, calcDefenseRating } from '@/game/systems/combat-formulas';
+import { calcAttackInterval, calcCritRate, calcDefenseRating } from '@/game/systems/combat-formulas';
 import { calcDerivedGuildStats } from '@/game/systems/derived-guild-stats';
+import { calcMemberDerivedStats } from '@/game/systems/member-derived-stats';
+import { gradeIndex } from '@/game/data/grades';
 
 interface StatsTabProps {
   member: Member;
   isMerc: boolean;
   onAllocateStat: (stat: StatKey, amount?: number) => void;
-  onPromote?: () => void;
-  canAffordPromote?: boolean;
 }
 
 function DerivedRow({ label, value }: { label: string; value: string | number }) {
@@ -22,14 +21,15 @@ function DerivedRow({ label, value }: { label: string; value: string | number })
   );
 }
 
-export function StatsTab({ member, isMerc, onAllocateStat, onPromote, canAffordPromote }: StatsTabProps) {
+export function StatsTab({ member, isMerc, onAllocateStat }: StatsTabProps) {
   const { t } = useTranslation();
   const { STR, END, DEX, LCK, AGI } = member.stats;
-  const maxHp       = calcMaxHp(END, member.level);
+  const { combat } = calcMemberDerivedStats(member);
+  const maxHp       = combat.maxHp;
   const atkIntervalMs = calcAttackInterval(AGI);
   const critPct     = Math.round(calcCritRate(LCK) * 100);
   const defPct      = Math.round(calcDefenseRating(END) * 100);
-  const guild       = calcDerivedGuildStats(member.stats, member.level);
+  const guild       = calcDerivedGuildStats(member.stats, gradeIndex(member.grade));
 
   return (
     <div className="stats-tab-layout">
@@ -56,11 +56,7 @@ export function StatsTab({ member, isMerc, onAllocateStat, onPromote, canAffordP
             )}
           </div>
         ))}
-        {!isMerc && (
-          <div style={{ marginTop: 8 }}>
-            <RankPromotionSection member={member} onPromote={onPromote} canAffordPromote={canAffordPromote} />
-          </div>
-        )}
+        {/* Grade promotion section deferred to follow-up plan */}
       </div>
 
       {/* ── Right: Derived stats ── */}
@@ -68,7 +64,7 @@ export function StatsTab({ member, isMerc, onAllocateStat, onPromote, canAffordP
 
         <p className="char-section-title">{t('statsTab.combat')}</p>
         <DerivedRow label={t('statsTab.maxHp')}    value={maxHp} />
-        <DerivedRow label={t('statsTab.atkDmg')}   value={STR} />
+        <DerivedRow label={t('statsTab.atkDmg')}   value={STR + combat.bonusDamage} />
         <DerivedRow label={t('statsTab.atkSpeed')} value={t('statsTab.atkSpeedValue', { value: (1000 / atkIntervalMs).toFixed(2) })} />
         <DerivedRow label={t('statsTab.skillDmg')} value={t('statsTab.skillDmgValue', { value: Math.round(DEX * 0.5) })} />
         <DerivedRow label={t('statsTab.critRate')} value={t('statsTab.critRateValue', { value: critPct })} />

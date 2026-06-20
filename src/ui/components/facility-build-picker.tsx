@@ -1,5 +1,8 @@
 /** Build picker — icon-card grid docked to the left of the facilities panel.
- *  Replaces the old text-list EmptySlotTray. Built-room flow stays in the tray. */
+ *  Replaces the old text-list EmptySlotTray. Built-room flow stays in the tray.
+ *
+ *  Shell (chrome, header, close button, animation) is owned by PanelFrame.
+ *  This file contains only content-specific JSX. */
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +13,8 @@ import { ITEM_DATABASE } from '@/game/data/items';
 import { FACILITY_DEFINITIONS } from '@/game/data/facility-definitions';
 import { getIconPath } from '@/ui/utils/icon-paths';
 import { InkConfirmDialog } from './ink-confirm-dialog';
+import { PanelFrame } from './panel-frame';
+import '@/ui/styles/facility-build-picker.css';
 
 type FacilityDefVal = (typeof FACILITY_DEFINITIONS)[FacilityType];
 
@@ -34,25 +39,31 @@ function FacilityIconCard({ def, activeCount, locked, lockLabel, affordable, sel
 }) {
   const { t } = useTranslation();
   const selectable = affordable && !locked;
-  const cls = `fp-bp-card${selected ? ' selected' : ''}${!selectable ? ' unaffordable' : ''}`
-    + `${locked ? ' locked' : ''}${highlight ? ' tutorial-highlight' : ''}`;
+  const cls = [
+    'fbp-card',
+    selected        ? 'is-selected'    : '',
+    !selectable     ? 'is-unaffordable' : '',
+    locked          ? 'is-locked'       : '',
+    highlight       ? 'tutorial-highlight' : '',
+  ].filter(Boolean).join(' ');
+
   return (
     <div className={cls} onClick={() => selectable && onSelect()}>
-      {activeCount > 0 && <span className="fp-bp-card-count">{activeCount}/3</span>}
-      <img className="fp-bp-card-icon" src={getIconPath('room', def.type)} alt={def.name} draggable={false} />
-      <span className="fp-bp-card-name">{def.name}</span>
-      <span className="fp-bp-card-stat">{def.primaryStats}</span>
-      <span className={`fp-bp-card-cost${!affordable && !locked ? ' fp-bp-card-cost--short' : ''}`}>{costText}</span>
+      {activeCount > 0 && <span className="fbp-card-count">{activeCount}/3</span>}
+      <img className="fbp-card-icon" src={getIconPath('room', def.type)} alt={def.name} draggable={false} />
+      <span className="fbp-card-name">{def.name}</span>
+      <span className="fbp-card-stat">{def.primaryStats}</span>
+      <span className={`fbp-card-cost${!affordable && !locked ? ' is-short' : ''}`}>{costText}</span>
       {/* Guild-level requirement — shown whenever there's a real gate (>1), red when unmet. */}
       {requiredLevel > 1 && (
-        <span className={`fp-bp-card-req${!levelMet ? ' fp-bp-card-req--unmet' : ''}`}>
+        <span className={`fbp-card-req${!levelMet ? ' is-unmet' : ''}`}>
           {t('facilityTray.reqGuildLevel', { level: requiredLevel })}
         </span>
       )}
       {locked && (
-        <div className="fp-bp-lock">
-          <span className="fp-bp-lock-icon">🔒</span>
-          <span className="fp-bp-lock-label">{lockLabel}</span>
+        <div className="fbp-lock">
+          <span className="fbp-lock-icon">🔒</span>
+          <span className="fbp-lock-label">{lockLabel}</span>
         </div>
       )}
     </div>
@@ -83,14 +94,12 @@ export function FacilityBuildPicker({ slotIdx, onBuildComplete, onClose }: Facil
   const isQuestLocked = (def: FacilityDefVal) =>
     !!(def.unlockQuestId && !completedMissions.includes(def.unlockQuestId));
 
-  // Guild-level gate the build needs to satisfy. Mirrors guild-slice.ts buildFacility:
-  // the explicit per-facility requiredGuildLevel PLUS the implicit rule that any
-  // gold-costing facility needs Guild Lv.2. Keep both in sync.
+  // Guild-level gate. Mirrors guild-slice.ts buildFacility:
+  // explicit per-facility requiredGuildLevel PLUS implicit rule that any
+  // gold-costing facility needs Guild Lv.2.
   const requiredGuildLevelFor = (def: FacilityDefVal): number =>
     Math.max(def.requiredGuildLevel ?? 1, def.buildCost > 0 ? 2 : 1);
 
-  // Reason a facility can't be built right now (null = buildable). Quest gate wins,
-  // then guild-level gate; affordability is surfaced separately via canAfford styling.
   const lockLabelFor = (def: FacilityDefVal): string | null => {
     if (isQuestLocked(def)) return t('facilityTray.lockedByQuest');
     if (guildLevel < requiredGuildLevelFor(def)) {
@@ -99,7 +108,6 @@ export function FacilityBuildPicker({ slotIdx, onBuildComplete, onClose }: Facil
     return null;
   };
 
-  // Tutorial in-panel guidance: which facility the player should pick on this build beat.
   const tutorialTarget: FacilityType | null =
     tutorialStep === 'build-logging-site' ? 'logging-site'
     : tutorialStep === 'build-tavern' ? 'tavern'
@@ -108,7 +116,6 @@ export function FacilityBuildPicker({ slotIdx, onBuildComplete, onClose }: Facil
   const getActiveCount = (type: FacilityType) =>
     facilities.filter(fac => fac.type === type && fac.level > 0).length;
 
-  // Hide facilities gated behind a higher guild level until the guild reaches it.
   const buildable = Object.values(FACILITY_DEFINITIONS).filter(def =>
     getActiveCount(def.type) < 3 &&
     (!def.requiredGuildLevel || guildLevel >= def.requiredGuildLevel),
@@ -120,8 +127,6 @@ export function FacilityBuildPicker({ slotIdx, onBuildComplete, onClose }: Facil
     return def.buildCost === 0 || gold >= def.buildCost;
   }
 
-  // Show EVERY resource cost — a facility may charge both materials AND gold (e.g.
-  // Stone Quarry = 20 Wood + 500g), so list them together rather than hiding one.
   function costLabel(def: FacilityDefVal): string {
     if (def.type === 'logging-site') return t('facilityTray.costPermit');
     const parts: string[] = [];
@@ -144,50 +149,59 @@ export function FacilityBuildPicker({ slotIdx, onBuildComplete, onClose }: Facil
   const selDef = selectedBp ? FACILITY_DEFINITIONS[selectedBp] : null;
 
   return (
-    <div className="fp-bp-column">
-      <div className="ink-panel fp-build-picker ink-enter">
-        <div className="fp-bp-header">
-          <span className="fp-bp-title">{t('facilityTray.buildBtn')}</span>
-          <span className="fp-bp-slot">{t('facilityTray.slotLabel', { number: slotIdx + 1 })}</span>
-          <button className="fp-close" onClick={onClose}>✕</button>
-        </div>
-
-        <div className="fp-bp-grid">
-          {buildable.length === 0 && <div className="fp-blueprint-empty">{t('facilityTray.allBuilt')}</div>}
-          {buildable.map(def => {
-            const lockLabel = lockLabelFor(def);
-            const reqLevel = requiredGuildLevelFor(def);
-            return (
-              <FacilityIconCard
-                key={def.type}
-                def={def}
-                activeCount={getActiveCount(def.type)}
-                locked={lockLabel !== null}
-                lockLabel={lockLabel ?? ''}
-                affordable={canAfford(def)}
-                selected={selectedBp === def.type}
-                highlight={tutorialTarget === def.type && selectedBp !== def.type}
-                costText={costLabel(def)}
-                requiredLevel={reqLevel}
-                levelMet={guildLevel >= reqLevel}
-                onSelect={() => setSelectedBp(def.type)}
-              />
-            );
-          })}
-        </div>
-
-        <button
-          className={`fp-bp-build-btn${tutorialTarget && selectedBp === tutorialTarget ? ' tutorial-highlight' : ''}`}
-          disabled={!selectedBp}
-          onClick={() => setBuildConfirm(true)}
+    <>
+      {/* Side-sheet variant so it renders above the facilities panel (--bp-z-panel-elevated) */}
+      <div className="fbp-root">
+        <PanelFrame
+          title={t('facilityTray.buildBtn')}
+          onClose={onClose}
+          variant="side"
         >
-          {selDef ? t('facilityTray.buildBtnWithName', { name: selDef.name, cost: costLabel(selDef) }) : t('facilityTray.buildBtn')}
-        </button>
+          {/* Slot sub-label — was in old header, now top of pf-content */}
+          <div className="fbp-slot-label">
+            {t('facilityTray.slotLabel', { number: slotIdx + 1 })}
+          </div>
+
+          <div className="fbp-grid">
+            {buildable.length === 0 && (
+              <div className="fbp-empty">{t('facilityTray.allBuilt')}</div>
+            )}
+            {buildable.map(def => {
+              const lockLabel = lockLabelFor(def);
+              const reqLevel = requiredGuildLevelFor(def);
+              return (
+                <FacilityIconCard
+                  key={def.type}
+                  def={def}
+                  activeCount={getActiveCount(def.type)}
+                  locked={lockLabel !== null}
+                  lockLabel={lockLabel ?? ''}
+                  affordable={canAfford(def)}
+                  selected={selectedBp === def.type}
+                  highlight={tutorialTarget === def.type && selectedBp !== def.type}
+                  costText={costLabel(def)}
+                  requiredLevel={reqLevel}
+                  levelMet={guildLevel >= reqLevel}
+                  onSelect={() => setSelectedBp(def.type)}
+                />
+              );
+            })}
+          </div>
+
+          <button
+            className={`fbp-build-btn${tutorialTarget && selectedBp === tutorialTarget ? ' tutorial-highlight' : ''}`}
+            disabled={!selectedBp}
+            onClick={() => setBuildConfirm(true)}
+          >
+            {selDef
+              ? t('facilityTray.buildBtnWithName', { name: selDef.name, cost: costLabel(selDef) })
+              : t('facilityTray.buildBtn')}
+          </button>
+        </PanelFrame>
       </div>
 
       {buildConfirm && selDef && (
         <InkConfirmDialog
-          inline
           title={t('facilityTray.buildConfirmTitle', { name: selDef.name })}
           body={t('facilityTray.buildConfirmBody', { number: slotIdx + 1, cost: costLabel(selDef) })}
           confirmLabel={t('facilityTray.buildConfirmBtn')}
@@ -195,6 +209,6 @@ export function FacilityBuildPicker({ slotIdx, onBuildComplete, onClose }: Facil
           onCancel={() => setBuildConfirm(false)}
         />
       )}
-    </div>
+    </>
   );
 }

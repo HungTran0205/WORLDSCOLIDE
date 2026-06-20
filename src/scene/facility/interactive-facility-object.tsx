@@ -16,6 +16,7 @@ import * as THREE from 'three';
 import { useGameStore } from '@/game/state/store';
 import { useUiStore, type FacilityHintType } from '@/game/state/ui-store';
 import { applyLitMaterial } from '../guild-hall/apply-lit-material';
+import { assetUrl } from '@/lib/asset-url';
 
 interface InteractiveFacilityObjectProps {
   glbPath: string;
@@ -54,7 +55,7 @@ export function InteractiveFacilityObject({
   hitboxSize = [2, 2.4, 2],
   facilityType,
 }: InteractiveFacilityObjectProps) {
-  const { scene } = useGLTF(glbPath);
+  const { scene } = useGLTF(assetUrl(glbPath));
   const model = useScaledGlb(scene, targetHeight, castShadow);
   const requestFacilityPanel = useGameStore((s) => s.requestFacilityPanel);
   const markFacilityHintSeen = useUiStore((s) => s.markFacilityHintSeen);

@@ -17,6 +17,7 @@ import {
   DoubleSide,
   type Texture,
 } from 'three';
+import { assetUrl } from '@/lib/asset-url';
 
 const ROOM_SIZE = 7;
 const WALL_HEIGHT = 3;
@@ -55,7 +56,7 @@ function makeBeamGeometry(): PlaneGeometry {
 }
 
 function useStoneTexture(): Texture {
-  const base = useLoader(TextureLoader, STONE_TEX);
+  const base = useLoader(TextureLoader, assetUrl(STONE_TEX));
   return useMemo(() => {
     const t = base.clone();
     t.needsUpdate = true;
@@ -69,7 +70,7 @@ function useStoneTexture(): Texture {
 }
 
 function useWindowTexture(): Texture {
-  const base = useLoader(TextureLoader, WINDOW_TEX);
+  const base = useLoader(TextureLoader, assetUrl(WINDOW_TEX));
   return useMemo(() => {
     const t = base.clone();
     t.needsUpdate = true;

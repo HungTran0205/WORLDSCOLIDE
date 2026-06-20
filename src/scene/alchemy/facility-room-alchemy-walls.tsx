@@ -11,17 +11,18 @@
 import { useMemo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
+import { assetUrl } from '@/lib/asset-url';
 
 const BACK_WALL_GLB = '/GuildHall/LinhSon/alchemy/wall2.glb';
 const LEFT_WALL_GLB = '/GuildHall/LinhSon/alchemy/wall1.glb';
-useGLTF.preload(BACK_WALL_GLB);
-useGLTF.preload(LEFT_WALL_GLB);
+useGLTF.preload(assetUrl(BACK_WALL_GLB));
+useGLTF.preload(assetUrl(LEFT_WALL_GLB));
 
 const ROOM_SIZE = 7;
 const WALL_HEIGHT = 3;
 
 function AlchemyBackWall({ cx, cz }: { cx: number; cz: number }) {
-  const { scene } = useGLTF(BACK_WALL_GLB);
+  const { scene } = useGLTF(assetUrl(BACK_WALL_GLB));
   const oz = cz - ROOM_SIZE / 2;
 
   const model = useMemo(() => {
@@ -44,7 +45,7 @@ function AlchemyBackWall({ cx, cz }: { cx: number; cz: number }) {
 }
 
 function AlchemyLeftWall({ cx, cz }: { cx: number; cz: number }) {
-  const { scene } = useGLTF(LEFT_WALL_GLB);
+  const { scene } = useGLTF(assetUrl(LEFT_WALL_GLB));
   const ox = cx - ROOM_SIZE / 2;
 
   const model = useMemo(() => {

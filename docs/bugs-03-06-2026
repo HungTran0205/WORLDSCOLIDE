@@ -1,0 +1,13 @@
+Bug in alchemy
+Go to alchemy 
+Do not assign any member
+put slime gel in the alchemy and click on the "make potion" button
+expect : not allow to click craft to make healing srynge
+actual : still allow to click craft and make healing srynge without assigning any member
+
+
+bug when equiping healing srynge
+choose below 30% hp and equip healing srynge
+go to combat and wait until your hp is below 30%
+expect : healing srynge will be equiped and heal you
+actual : No sign of healing srynge being equiped and heal you

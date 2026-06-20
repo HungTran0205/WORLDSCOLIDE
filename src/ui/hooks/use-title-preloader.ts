@@ -30,16 +30,16 @@ const ASSETS_PNG = [
   '/sprites/mask/gasf-mask30.png',
   '/sprites/mask/half-mask15.png',
 
-  // 5 character portraits — Linh Son only (ritualistic scene = LS guild hall).
-  // Only 4 unique LS chars exist (SCOUT-F/M, WARRIOR-F/M); 5th slot reuses
-  // SCOUT-M at a different rotation — different mask makes it read as new figure.
-  // WARRIOR-F/M lack rotations/ folder, so walk south frame_000 is used instead.
-  '/sprites/characters/LS-SCOUT-M/rotations/south.png',
-  '/sprites/characters/LS-SCOUT-F/rotations/south.png',
+  // Character sprites used by MaskedFiguresCircle. Most figures use the static
+  // avatar/frame_000.png (single-image set, not packed, survives frame pruning);
+  // two figures crop the walking sheet's south-row frame 0 (bottom-anchored
+  // standing pose) so they sit at the right height on the billboard plane.
+  '/sprites/characters/LS-SWORD-M/animations/avatar/frame_000.png',
+  '/sprites/characters/LS-SCOUT-M/animations/avatar/frame_000.png',
   '/sprites/characters/LS-WARRIOR-M/animations/avatar/frame_000.png',
-  '/sprites/characters/LS-WARRIOR-M/animations/walking-8-frames/south/frame_000.png',
-  '/sprites/characters/LS-WARRIOR-F/animations/walking-8-frames/south/frame_000.png',
-  '/sprites/characters/LS-SCOUT-M/rotations/south-east.png',
+  '/sprites/characters/LS-WARRIOR-F/animations/avatar/frame_000.png',
+  '/sprites/characters/LS-SCOUT-F/animations/walking-8-frames.png',
+  '/sprites/characters/LS-WARRIOR-M/animations/walking-8-frames.png',
 ] as const;
 
 /** GLB assets — warmed via fetch (drei caches on later useGLTF) */

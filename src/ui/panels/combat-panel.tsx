@@ -3,8 +3,14 @@
  * sub-phases. Mounts when combatPanelStore.isOpen, dims the guild scene, and
  * routes between sub-panels based on combatPanelStore.phase.
  *
- * Phase 4 will fill the battle sub-phase with a real mini-canvas; Phase 3
- * stubs it to verify the formation → battle → result transition flow.
+ * Shell chrome (header, border, close button, open animation) is owned by
+ * PanelFrame. This file contains only the phase-routing logic and the body.
+ *
+ * Note: combat is mounted outside the mainPanel/facilityPanel
+ * PanelClosingContext.Provider axes in game-screen, so PanelClosingContext
+ * stays false here → no exit animation (instant unmount). Deferred: wire a
+ * dedicated delayed-unmount for the combat store once full exit-anim polish
+ * is scheduled.
  */
 
 import { useCallback } from 'react';
@@ -13,7 +19,7 @@ import { useCombatPanelStore } from '@/game/state/combat-panel-store';
 import { useGameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
 import { tContent } from '@/i18n/content-localization';
-import { CombatPanelHeader } from '@/ui/panels/combat-panel-header';
+import { PanelFrame } from '@/ui/components/panel-frame';
 import { CombatPanelFormation } from '@/ui/panels/combat-panel-formation';
 import { CombatPanelBattle } from '@/ui/panels/combat-panel-battle';
 import { CombatPanelResult } from '@/ui/panels/combat-panel-result';
@@ -48,18 +54,34 @@ export function CombatPanel() {
   if (!isOpen) return null;
 
   const isBattlePhase = phase === 'battle';
-  const overlayClass = 'combat-panel-overlay' + (isBattlePhase ? ' combat-panel-overlay--battle' : '');
-  const panelClass = 'combat-panel' + (isBattlePhase ? ' combat-panel--phase-battle' : '');
+  const missionName = missionData
+    ? tContent('missions', missionData.id, 'name', missionData.name)
+    : t('combatPanel.fallbackName');
+  const title = missionData?.zone
+    ? t('combatPanel.titleWithZone', { name: missionName, zone: missionData.zone })
+    : missionName;
+
+  // combat-panel--phase-battle must stay on the body element so combat-scissor.tsx
+  // can query it via document.querySelector to compute the scissor rect.
+  const bodyClass = 'combat-panel-body' + (isBattlePhase ? ' combat-panel--phase-battle' : '');
+  // combat-pf--battle suppresses pf-content's parchment background so the
+  // world canvas shows through during the battle sub-phase.
+  const pfClass = isBattlePhase ? 'combat-pf combat-pf--battle' : 'combat-pf';
+  // Battle phase hardens the positioner scrim to near-opaque: the battle
+  // scene's full-frustum background planes extend past the panel rect and
+  // bleed through a light scrim.
+  const positionerClass =
+    'combat-pf-positioner' + (isBattlePhase ? ' combat-pf-positioner--battle' : '');
 
   return (
-    <div className={overlayClass} role="dialog" aria-modal="true">
-      <div className={panelClass}>
-        <CombatPanelHeader
-          missionName={missionData ? tContent('missions', missionData.id, 'name', missionData.name) : t('combatPanel.fallbackName')}
-          zone={missionData ? tContent('missions', missionData.id, 'zone', missionData.zone ?? '') : undefined}
-          onClose={handleClose}
-        />
-        <div className="combat-panel-body">
+    <div className={positionerClass}>
+      <PanelFrame
+        title={title}
+        onClose={handleClose}
+        variant="panel"
+        className={pfClass}
+      >
+        <div className={bodyClass}>
           {phase === 'formation' && <CombatPanelFormation />}
           {phase === 'battle' && <CombatPanelBattle />}
           {phase === 'story-dialog' && dialogLines && (
@@ -67,7 +89,7 @@ export function CombatPanel() {
           )}
           {phase === 'result' && <CombatPanelResult onClose={handleClose} />}
         </div>
-      </div>
+      </PanelFrame>
     </div>
   );
 }

@@ -1,10 +1,13 @@
 import { create } from 'zustand';
+import { createPanelSlice, type PanelSlice } from './panel-slice';
+
+export type { PanelId, FacilityFunctionType } from './panel-slice';
 
 const TUTORIAL_SEEN_KEY = 'questBoardTutorialSeen';
 const FACILITY_HINT_SEEN_KEY = 'facilityHintSeen';
 
 /** Facility types that surface a function panel via their iconic 3D object. */
-export type FacilityHintType = 'workshop' | 'alchemy-lab' | 'tavern';
+export type FacilityHintType = 'workshop' | 'alchemy-lab' | 'tavern' | 'training-yard';
 
 type FacilityHintSeen = Record<FacilityHintType, boolean>;
 
@@ -12,6 +15,7 @@ const FACILITY_HINT_DEFAULT: FacilityHintSeen = {
   workshop: false,
   'alchemy-lab': false,
   tavern: false,
+  'training-yard': false,
 };
 
 // Read once at module load. window guard keeps SSR / test env safe.
@@ -67,7 +71,7 @@ const clearFacilityHintSeen = (): void => {
 };
 
 /** UI-only navigation state — not persisted to save */
-interface UiStore {
+interface UiStore extends PanelSlice {
   inventoryMode: 'default' | 'equip';
   equipModeMemberId: string | null;
   /** True once the first-visit drum hint has been dismissed. Persisted to localStorage. */
@@ -87,7 +91,8 @@ interface UiStore {
   resetTutorials: () => void;
 }
 
-export const useUiStore = create<UiStore>()((set, get) => ({
+export const useUiStore = create<UiStore>()((set, get, api) => ({
+  ...createPanelSlice(set, get, api),
   inventoryMode: 'default',
   equipModeMemberId: null,
   questBoardTutorialSeen: readTutorialSeen(),
@@ -112,3 +117,8 @@ export const useUiStore = create<UiStore>()((set, get) => ({
     set({ questBoardTutorialSeen: false, facilityHintSeen: { ...FACILITY_HINT_DEFAULT } });
   },
 }));
+
+// Dev-only: expose uiStore for E2E test scripts to poll worldReady / other UI state.
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  (window as unknown as { useUiStore: typeof useUiStore }).useUiStore = useUiStore;
+}

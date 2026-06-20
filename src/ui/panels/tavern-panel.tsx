@@ -1,13 +1,12 @@
 /**
- * Tavern panel — main shell with auto-open + visitor grid + modals.
+ * Tavern panel — keeper row, rumor banner, reputation indicator, re-roll,
+ * visitor grid, and negotiation modal routing.
  *
- * Mirrors workshop-panel pattern: camera-detected auto-open via parent
- * (game-screen.tsx) with userClosedRef tracking. Embeds keeper row, rumor
- * banner, reputation indicator, re-roll, visitor grid, and routes negotiation
- * outcomes to downstream modals (counter / refuse toast / insult).
+ * Shell (chrome, header, close button, open/close animation, SFX) is owned by
+ * PanelFrame. This file contains only content-specific JSX.
  */
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/game/state/store';
 import type { GuildFacility, TavernVisitor, Member } from '@/game/state/game-state';
@@ -22,6 +21,7 @@ import { TavernCounterOfferModal } from './tavern-counter-offer-modal';
 import { TavernHireMercModal } from './tavern-hire-merc-modal';
 import { TavernReinviteModal } from './tavern-reinvite-modal';
 import { TavernInsultEventModal } from './tavern-insult-event-modal';
+import { PanelFrame } from '@/ui/components/panel-frame';
 import '@/ui/styles/tavern-panel.css';
 import '@/ui/styles/parchment.css';
 
@@ -69,12 +69,19 @@ export function TavernPanel({ facility, onClose }: TavernPanelProps) {
   const visibilityScore = (keeperStats?.INT ?? 0) + live.level * 2;
   const keeperInt = keeperStats?.INT ?? 0;
 
-  // Auto-open re-invite modal when a queued prompt exists and panel opens
+  // Auto-open re-invite modal when queued prompts exist and no modal is open.
+  // Deferred via setTimeout to avoid setState-during-render lint violation while
+  // preserving the original single-fire-on-mount intent.
+  const reinviteOpenedRef = useRef(false);
   useEffect(() => {
+    if (reinviteOpenedRef.current) return;
     if (tavern.pendingPrompts.length > 0 && modal.kind === 'none') {
-      setModal({ kind: 'reinvite', promptIdx: 0 });
+      reinviteOpenedRef.current = true;
+      const id = setTimeout(() => setModal({ kind: 'reinvite', promptIdx: 0 }), 0);
+      return () => clearTimeout(id);
     }
-  }, [tavern.pendingPrompts.length, modal.kind]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tavern.pendingPrompts.length]);
 
   const visitorCount = tavern.currentRoster.length;
   const visitorCap = live.level === 1 ? 3 : live.level === 2 ? 3 : 4;
@@ -93,15 +100,13 @@ export function TavernPanel({ facility, onClose }: TavernPanelProps) {
 
     switch (result.outcome.kind) {
       case 'success': {
-        // Promote visitor to MEMBER directly. Mirror tavern-merc-lifecycle's promoteMercToMember
-        // by constructing a Member from the visitor stats and pushing into roster.
         useGameStore.setState((s) => {
           const baseRoster = s.roster ?? [];
           const newMember: Member = {
             id: `mem-${Date.now()}-${visitor.id.slice(-4)}`,
             name: visitor.name,
-            level: visitor.level,
-            exp: 0,
+            grade: visitor.grade,
+            isMercenary: false,
             stats: visitor.stats,
             unallocatedPoints: 0,
             skill: null,
@@ -111,13 +116,10 @@ export function TavernPanel({ facility, onClose }: TavernPanelProps) {
             archetype: visitor.archetype,
             gender: visitor.gender,
             isFounder: false,
-            rank: 'MEMBER',
             missionsCompleted: 0,
-            rarity: visitor.rarity,
             traits: visitor.traits,
           };
-          // +1 Tavern Rep when rarity ≥ 3
-          const repBonus = visitor.rarity >= 3 ? 1 : 0;
+          const repBonus = ['C','B','A','S'].includes(visitor.grade) ? 1 : 0;
           return {
             roster: [...baseRoster, newMember],
             tavern: {
@@ -142,7 +144,6 @@ export function TavernPanel({ facility, onClose }: TavernPanelProps) {
         break;
       case 'insult': {
         const goneForever = rollInsultGoneForever(hashSeed(visitor.id, 'gone-forever', tavern.lastDayProcessed));
-        // Apply consequences: Tavern Rep -1 + 24h global debuff window.
         useGameStore.setState((s) => ({
           tavern: {
             ...s.tavern,
@@ -163,21 +164,18 @@ export function TavernPanel({ facility, onClose }: TavernPanelProps) {
   };
 
   return (
-    <div className="tv-overlay" onClick={onClose}>
-      <div className="tv-panel" onClick={(e) => e.stopPropagation()}>
-        <header className="tv-header">
-          <div className="tv-header-info">
-            <span className="tv-title">{t('tavern.title')}</span>
-            <span className="tv-badge">Lv.{live.level}</span>
-            <span
-              className={`tv-visitors-badge ${visitorCount >= visitorCap ? 'is-full' : ''}`}
-              title={t('tavern.visitorsTooltip', { count: visitorCount, cap: visitorCap })}
-            >
-              {visitorCount}/{visitorCap}
-            </span>
-          </div>
-          <button className="tv-close" onClick={onClose} aria-label={t('common.close')}>✕</button>
-        </header>
+    <div className="tv-positioner">
+      <PanelFrame title={t('facilityNames.tavern')} onClose={onClose} variant="panel" size="lg">
+        {/* ── Header meta: level badge, visitor count ── */}
+        <div className="tv-meta">
+          <span className="tv-badge">Lv.{live.level}</span>
+          <span
+            className={`tv-visitors-badge ${visitorCount >= visitorCap ? 'is-full' : ''}`}
+            title={t('tavern.visitorsTooltip', { count: visitorCount, cap: visitorCap })}
+          >
+            {visitorCount}/{visitorCap}
+          </span>
+        </div>
 
         <TavernKeeperRow facility={live} />
 
@@ -197,7 +195,7 @@ export function TavernPanel({ facility, onClose }: TavernPanelProps) {
                     >🍺</span>
                   ))}
                 </span>
-                <span title={`Rep: ${tavern.reputation}`} style={{ marginLeft: 6, color: 'var(--ink-text-dim)' }}>
+                <span title={`Rep: ${tavern.reputation}`} style={{ marginLeft: 6, color: 'var(--bp-text-ink-soft)' }}>
                   ({tavern.reputation >= 0 ? '+' : ''}{tavern.reputation})
                 </span>
               </>
@@ -255,8 +253,9 @@ export function TavernPanel({ facility, onClose }: TavernPanelProps) {
             {outcomeBanner.outcome.kind === 'success' && ` — ${outcomeBanner.outcome.tier === 'comfortable' ? t('tavern.outcome.comfortable') : t('tavern.outcome.tight')}`}
           </div>
         )}
-      </div>
+      </PanelFrame>
 
+      {/* Modals sit outside PanelFrame so they are not clipped by pf-content overflow */}
       {modal.kind === 'negotiate' && (
         <TavernNegotiateModal
           visitor={modal.visitor}

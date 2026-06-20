@@ -2,6 +2,8 @@
  * Quest Board — unified split-pane panel (list + detail in one surface).
  * Replaces the legacy slide-in panel + stacked detail modal flow.
  * Parchment skin (Phase 1 tokens); mobile <1024px swaps list/detail.
+ * Wrapped in PanelFrame (hideClose) — diegetic close via "Return to Guild"
+ * button, backdrop click, or Esc. No chrome close button (owner decision).
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -10,11 +12,13 @@ import type { QuestTier, Mission } from '@/game/state/game-state';
 import { useGameStore } from '@/game/state/store';
 import { MISSIONS } from '@/game/data/missions';
 import { validateDispatch, createActiveMission } from '@/game/systems/mission-dispatch';
+import { mercContractToPartyMember } from '@/game/systems/tavern-merc-lifecycle';
 import { autoAssignMembers } from '@/game/utils/auto-assign-members';
 import { QUEST_BOARD_TIER_BY_LEVEL } from '@/game/data/buildings';
 import { GameIcon } from '@/ui/components/game-icon';
 import { playSFX } from '@/audio/audio-manager';
 import { AUDIO } from '@/audio/audio-keys';
+import { PanelFrame } from '@/ui/components/panel-frame';
 import { QuestCard } from './quest-card';
 import { QuestDetailPane } from './quest-detail-pane';
 import { QuestRosterPicker } from './quest-roster-picker';
@@ -38,14 +42,23 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
   const gold = useGameStore((s) => s.gold);
   const dispatchMission = useGameStore((s) => s.dispatchMission);
   const updateMemberStatus = useGameStore((s) => s.updateMemberStatus);
+  const markMercsOnQuest = useGameStore((s) => s.markMercsOnQuest);
+  const mercContracts = useGameStore((s) => s.tavern.mercContracts);
   const completedMissions = useGameStore((s) => s.completedMissions);
   const tutorialStep = useGameStore((s) => s.tutorialStep);
   const setTutorialStep = useGameStore((s) => s.setTutorialStep);
 
+  // Party pool = idle guild members + available tavern mercs (one-quest contracts).
+  // Mercs surface as Member-shaped tiles (id === contract.id) so the picker, slots,
+  // and auto-assign treat them uniformly; dispatch re-splits them by contract id.
   const availableMembers = useMemo(() => {
     const all = founder ? [founder, ...roster] : roster;
-    return all.filter((m) => m.status === 'idle');
-  }, [founder, roster]);
+    const idleMembers = all.filter((m) => m.status === 'idle');
+    const availableMercs = mercContracts
+      .filter((c) => c.status === 'available')
+      .map(mercContractToPartyMember);
+    return [...idleMembers, ...availableMercs];
+  }, [founder, roster, mercContracts]);
 
   const unlockedTiers = useMemo(() => {
     const questBoardFurniture = guildHall.furniture.find((f) => f.type === 'quest-board');
@@ -75,15 +88,9 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
     setPickerSlot(null);
   }
 
-  // Paper-unroll on open / seal-break on close. The cleanup fires after the
-  // store flips activePanel back to null (panel unmount) which matches the
-  // expected close-beat audio.
-  useEffect(() => {
-    playSFX(AUDIO.SFX_PAPER_UNROLL);
-    return () => {
-      playSFX(AUDIO.SFX_SEAL_BREAK);
-    };
-  }, []);
+  // Open/close SFX (PAPER_UNROLL / SEAL_BREAK) are delegated to PanelFrame via
+  // sfxOpen / sfxClose props — PanelFrame fires them on mount and on the
+  // PanelClosingContext signal respectively, covering every close path.
 
   // Auto-focus the first quest card so keyboard / screen-reader users land
   // inside the dialog. Microtask delay lets the unroll animation start first.
@@ -201,17 +208,21 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
 
   const handleDispatch = () => {
     if (!selectedMission) return;
-    const memberIds = selectedMemberIds;
-    // Tavern mercs are not surfaced in the quest-board party UI today, so the
-    // party is members-only. Kept as an empty list for createActiveMission.
-    const mercContractIds: string[] = [];
+    // Selection mixes guild members and tavern mercs (merc tile id === contract id).
+    // Split them so members update roster status and mercs flip their contract to
+    // 'on-quest' — combat resolves both via active.mercContractIds downstream.
+    const mercIdSet = new Set(mercContracts.map((c) => c.id));
+    const mercContractIds = selectedMemberIds.filter((id) => mercIdSet.has(id));
+    const memberIds = selectedMemberIds.filter((id) => !mercIdSet.has(id));
     const allMembers = [...(founder ? [founder] : []), ...roster];
     const party = allMembers.filter((m) => memberIds.includes(m.id));
-    const validation = validateDispatch(selectedMission, party, [], gold);
+    const selectedMercs = mercContracts.filter((c) => mercContractIds.includes(c.id));
+    const validation = validateDispatch(selectedMission, party, selectedMercs, gold);
     if (!validation.valid) return;
     const now = Date.now();
     dispatchMission(createActiveMission(selectedMission, memberIds, mercContractIds, now));
     memberIds.forEach((id) => updateMemberStatus(id, 'on-mission'));
+    if (mercContractIds.length > 0) markMercsOnQuest(mercContractIds, selectedMission.id);
     setSelectedId(null);
     setSelectedMemberIds([]);
     setPickerSlot(null);
@@ -226,6 +237,8 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
   const showTierFilter = !isTutorialActive && activeTab === 'expedition';
 
   return (
+    /* Backdrop handles click-outside close. The inner stage stops propagation
+       so clicks on the board or the roster picker don't bubble up and close. */
     <div
       className="quest-board-overlay"
       role="presentation"
@@ -236,101 +249,109 @@ export function QuestBoard({ onClose }: QuestBoardProps) {
         data-picker-open={pickerSlot !== null ? '' : undefined}
         onClick={(e) => e.stopPropagation()}
       >
-      <div
-        className="quest-board parchment-surface parchment-frame parchment-rivets parchment-anim-unroll"
-        role="dialog"
-        aria-label={t('questBoard.ariaLabel')}
-        aria-modal="true"
-        data-mobile-view={isMobile ? mobileView : undefined}
-      >
-        <header className="quest-board__header">
-          <h2 className="quest-board__title parchment-title">{t('questBoard.title')}</h2>
-          {!isTutorialActive && (
-            <div className="quest-board__tabs" role="tablist" aria-label={t('questBoard.tabsAria')}>
-              {(['main', 'expedition'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  role="tab"
-                  className={`quest-board__tab${activeTab === tab ? ' quest-board__tab--active' : ''}`}
-                  aria-selected={activeTab === tab}
-                  onClick={() => setActiveTab(tab)}
-                >
-                  {tab === 'main' ? t('questBoard.tabMain') : t('questBoard.tabExpedition')}
-                </button>
-              ))}
-            </div>
-          )}
-          {showTierFilter && (
-            <div className="quest-board__filter" role="toolbar" aria-label={t('questBoard.filter.ariaLabel')}>
-              <button
-                type="button"
-                className={`tier-pill${filterTier === 'all' ? ' tier-pill--active' : ''}`}
-                onClick={() => setFilterTier('all')}
-                aria-pressed={filterTier === 'all'}
-              >
-                {t('questBoard.filter.all')}
-              </button>
-              {unlockedTiers.map((tier) => (
-                <button
-                  key={tier}
-                  type="button"
-                  className={`tier-pill${filterTier === tier ? ' tier-pill--active' : ''}`}
-                  onClick={() => setFilterTier(tier)}
-                  aria-pressed={filterTier === tier}
-                  aria-label={t('questBoard.filter.tierAria', { tier })}
-                >
-                  <GameIcon category="badge" id={tier} size={24} fallbackText={tier} />
-                </button>
-              ))}
-            </div>
-          )}
-        </header>
-
-        <div className="quest-board__body">
-          <div
-            ref={listPaneRef}
-            className="quest-list-pane"
-            aria-label={t('questBoard.listAria')}
-          >
-            {displayedMissions.length === 0 ? (
-              <div className="quest-list-pane__empty">{t('questBoard.empty')}</div>
-            ) : (
-              displayedMissions.map((m) => (
-                <QuestCard
-                  key={m.id}
-                  mission={m}
-                  selected={m.id === selectedId}
-                  onClick={() => handleSelect(m.id)}
-                  onHover={handleCardHover}
-                />
-              ))
-            )}
-          </div>
-
-          <QuestDetailPane
-            mission={selectedMission}
-            availableMembers={availableMembers}
-            gold={gold}
-            selectedMemberIds={selectedMemberIds}
-            onToggleMember={toggleMember}
-            onOpenPicker={setPickerSlot}
-            onAutoAssign={handleAutoAssign}
-            onDispatch={handleDispatch}
-            onBack={isMobile ? () => setMobileView('list') : undefined}
-          />
-        </div>
-
-        <button
-          type="button"
-          className="quest-board__return"
-          onClick={onClose}
-          aria-label={t('questBoard.returnAria')}
+        <PanelFrame
+          title={t('questBoard.title')}
+          onClose={onClose}
+          variant="panel"
+          hideClose
+          sfxOpen={AUDIO.SFX_PAPER_UNROLL}
+          sfxClose={AUDIO.SFX_SEAL_BREAK}
+          className="quest-board-frame"
         >
-          <span className="quest-board__return-icon" aria-hidden="true">⮌</span>
-          {t('questBoard.return')}
-        </button>
-      </div>
+          {/* Parchment content surface — the diegetic unroll lives inside pf-content */}
+          <div
+            className="quest-board parchment-surface parchment-frame parchment-rivets parchment-anim-unroll"
+            role="region"
+            aria-label={t('questBoard.ariaLabel')}
+            data-mobile-view={isMobile ? mobileView : undefined}
+          >
+            <header className="quest-board__header">
+              {!isTutorialActive && (
+                <div className="quest-board__tabs" role="tablist" aria-label={t('questBoard.tabsAria')}>
+                  {(['main', 'expedition'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      role="tab"
+                      className={`quest-board__tab${activeTab === tab ? ' quest-board__tab--active' : ''}`}
+                      aria-selected={activeTab === tab}
+                      onClick={() => setActiveTab(tab)}
+                    >
+                      {tab === 'main' ? t('questBoard.tabMain') : t('questBoard.tabExpedition')}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {showTierFilter && (
+                <div className="quest-board__filter" role="toolbar" aria-label={t('questBoard.filter.ariaLabel')}>
+                  <button
+                    type="button"
+                    className={`tier-pill${filterTier === 'all' ? ' tier-pill--active' : ''}`}
+                    onClick={() => setFilterTier('all')}
+                    aria-pressed={filterTier === 'all'}
+                  >
+                    {t('questBoard.filter.all')}
+                  </button>
+                  {unlockedTiers.map((tier) => (
+                    <button
+                      key={tier}
+                      type="button"
+                      className={`tier-pill${filterTier === tier ? ' tier-pill--active' : ''}`}
+                      onClick={() => setFilterTier(tier)}
+                      aria-pressed={filterTier === tier}
+                      aria-label={t('questBoard.filter.tierAria', { tier })}
+                    >
+                      <GameIcon category="badge" id={tier} size={24} fallbackText={tier} />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </header>
+
+            <div className="quest-board__body">
+              <div
+                ref={listPaneRef}
+                className="quest-list-pane"
+                aria-label={t('questBoard.listAria')}
+              >
+                {displayedMissions.length === 0 ? (
+                  <div className="quest-list-pane__empty">{t('questBoard.empty')}</div>
+                ) : (
+                  displayedMissions.map((m) => (
+                    <QuestCard
+                      key={m.id}
+                      mission={m}
+                      selected={m.id === selectedId}
+                      onClick={() => handleSelect(m.id)}
+                      onHover={handleCardHover}
+                    />
+                  ))
+                )}
+              </div>
+
+              <QuestDetailPane
+                mission={selectedMission}
+                availableMembers={availableMembers}
+                selectedMemberIds={selectedMemberIds}
+                onToggleMember={toggleMember}
+                onOpenPicker={setPickerSlot}
+                onAutoAssign={handleAutoAssign}
+                onDispatch={handleDispatch}
+                onBack={isMobile ? () => setMobileView('list') : undefined}
+              />
+            </div>
+
+            <button
+              type="button"
+              className="quest-board__return"
+              onClick={onClose}
+              aria-label={t('questBoard.returnAria')}
+            >
+              <span className="quest-board__return-icon" aria-hidden="true">⮌</span>
+              {t('questBoard.return')}
+            </button>
+          </div>
+        </PanelFrame>
 
         <QuestRosterPicker
           open={pickerSlot !== null}

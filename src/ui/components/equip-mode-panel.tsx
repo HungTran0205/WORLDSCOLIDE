@@ -9,6 +9,8 @@ import { ITEM_DATABASE } from '@/game/data/items';
 import type { ItemID } from '@/game/data/items';
 import type { MedicineCondition } from '@/game/state/game-state';
 import { itemName, equipmentName } from '@/i18n/content-wrappers';
+import { GameIcon } from './game-icon';
+import { PanelFrame } from './panel-frame';
 import '@/ui/styles/equip-mode.css';
 
 // Condition keys mapped to i18n keys — values resolved at render time via t()
@@ -20,7 +22,7 @@ const COND_I18N_KEYS: Record<MedicineCondition, string> = {
   never: 'equipMode.condNever',
 };
 const COND_OPTIONS = Object.keys(COND_I18N_KEYS) as MedicineCondition[];
-const GEAR_SLOTS = ['weapon', 'armor', 'headgear'] as const;
+const GEAR_SLOTS = ['weapon', 'armor'] as const;
 
 interface EquipModePanelProps {
   memberId: string;
@@ -78,36 +80,35 @@ export function EquipModePanel({ memberId, onClose }: EquipModePanelProps) {
   }
 
   return (
-    <div className="ink-panel equip-panel ink-enter">
-      {/* ── Header ── */}
-      <div className="equip-header">
-        <div className="equip-header-avatar ink-pixelated">
-          {!avatarFailed && avatarUrl
-            ? <img src={avatarUrl} alt={member.name} onError={() => setAvatarFailed(true)} />
-            : <span style={{ fontFamily: 'var(--ink-font-title)', color: 'var(--ink-gold-dim)' }}>{member.name.slice(0, 2)}</span>
-          }
+    <div className="em-positioner">
+      <PanelFrame title={member.name} onClose={onClose} variant="side" size="lg">
+        {/* ── Meta row: avatar + grade badge + Done button ── */}
+        <div className="em-meta">
+          <div className="em-meta-avatar ink-pixelated">
+            {!avatarFailed && avatarUrl
+              ? <img src={avatarUrl} alt={member.name} onError={() => setAvatarFailed(true)} />
+              : <span className="em-meta-avatar-fallback">{member.name.slice(0, 2)}</span>
+            }
+          </div>
+          <div className="em-meta-info">
+            <div className="em-meta-grade">Grade {member.grade}{member.isMercenary ? ' · MERC' : ''}</div>
+          </div>
+          <button className="em-done-btn" onClick={onClose} type="button">{t('equipMode.done')}</button>
         </div>
-        <div>
-          <div className="equip-header-name">{member.name}</div>
-          <div className="equip-header-sub">{member.rank} · Lv.{member.level}</div>
-        </div>
-        <button className="char-btn" onClick={onClose} type="button" style={{ marginLeft: 'auto' }}>{t('equipMode.done')}</button>
-      </div>
 
-      {/* ── Body: split ── */}
-      <div className="equip-split">
-        {/* Left — slots */}
-        <div className="equip-left">
-          <div className="equip-section-title">{t('equipMode.equipment')}</div>
+        {/* ── Body: split ── */}
+        <div className="equip-split">
+          {/* Left — slots */}
+          <div className="equip-left">
+            <div className="equip-section-title">{t('equipMode.equipment')}</div>
           <div className="equip-gear-grid">
             {GEAR_SLOTS.map(slot => {
               const equipped = member.equipment?.[slot] ?? null;
               const tpl = equipped ? getEquipmentTemplate(equipped.templateId) : null;
-              const isHg = slot === 'headgear';
               return (
                 <div
                   key={slot}
-                  className={`equip-slot-box${equipped ? ' filled' : ''}${dropOver === slot ? ' drop-target' : ''}${isHg ? ' headgear-full' : ''}`}
+                  className={`equip-slot-box${equipped ? ' filled' : ''}${dropOver === slot ? ' drop-target' : ''}`}
                   onDragOver={e => { e.preventDefault(); setDropOver(slot); }}
                   onDragLeave={() => setDropOver(null)}
                   onDrop={() => dropOnGearSlot(slot)}
@@ -116,6 +117,7 @@ export function EquipModePanel({ memberId, onClose }: EquipModePanelProps) {
                   <span className="equip-slot-label">{slot}</span>
                   {tpl ? (
                     <>
+                      <GameIcon category="item" id={equipped!.templateId} size={32} fallbackText={tpl.name.slice(0, 2)} />
                       <span className="equip-slot-item-name">{equipmentName(equipped!.templateId)}</span>
                       <span className="equip-slot-stat">
                         {tpl.damage ? `⚔${tpl.damage}` : ''}{tpl.defense ? ` 🛡${tpl.defense}` : ''}{tpl.hp ? ` ❤+${tpl.hp}` : ''}
@@ -143,7 +145,10 @@ export function EquipModePanel({ memberId, onClose }: EquipModePanelProps) {
               >
                 <span className="med-slot-num">{idx + 1}</span>
                 {hasMedItem
-                  ? <span className="med-slot-name">{itemName(ms.itemId as ItemID)}</span>
+                  ? <>
+                      <GameIcon category="item" id={ms.itemId as ItemID} size={24} fallbackText={(ms.itemId as string).slice(0, 2)} />
+                      <span className="med-slot-name">{itemName(ms.itemId as ItemID)}</span>
+                    </>
                   : <span className="med-slot-empty" onClick={() => dropOnMedSlot(idx)}>{t('equipMode.dropConsumable')}</span>
                 }
                 {hasMedItem && (
@@ -180,6 +185,7 @@ export function EquipModePanel({ memberId, onClose }: EquipModePanelProps) {
                       onDragEnd={() => setDragging(null)}
                       onClick={() => handleItemClick(item.id, 'eq')}
                     >
+                      <GameIcon category="item" id={item.templateId} size={24} fallbackText={tpl.name.slice(0, 2)} />
                       <span className="equip-inv-item-name">{equipmentName(item.templateId)}</span>
                       <span>{tpl.damage ? `⚔${tpl.damage}` : ''}{tpl.defense ? ` 🛡${tpl.defense}` : ''}{tpl.hp ? ` ❤+${tpl.hp}` : ''}</span>
                     </div>
@@ -205,6 +211,7 @@ export function EquipModePanel({ memberId, onClose }: EquipModePanelProps) {
                       onDragEnd={() => setDragging(null)}
                       onClick={() => handleItemClick(id, 'con')}
                     >
+                      <GameIcon category="item" id={id} size={24} fallbackText={id.slice(0, 2)} />
                       <span className="equip-inv-item-name">{itemName(id)}</span>
                       <span>×{Math.floor(items[id] ?? 0)}</span>
                     </div>
@@ -219,6 +226,7 @@ export function EquipModePanel({ memberId, onClose }: EquipModePanelProps) {
           )}
         </div>
       </div>
+      </PanelFrame>
     </div>
   );
 }

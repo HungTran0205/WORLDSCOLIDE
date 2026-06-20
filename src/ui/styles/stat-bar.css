@@ -40,8 +40,9 @@
 }
 
 /* ── Kind variants ── */
-.stat-bar--hp  .stat-bar__fill { background: linear-gradient(90deg, var(--ink-hp-from), var(--ink-hp-to)); }
-.stat-bar--exp .stat-bar__fill { background: linear-gradient(90deg, var(--ink-exp-from), var(--ink-exp-to)); }
+.stat-bar--hp      .stat-bar__fill { background: linear-gradient(90deg, var(--ink-hp-from), var(--ink-hp-to)); }
+.stat-bar--exp     .stat-bar__fill { background: linear-gradient(90deg, var(--ink-exp-from), var(--ink-exp-to)); }
+.stat-bar--blessed .stat-bar__fill { background: linear-gradient(90deg, var(--ink-blessed-from), var(--ink-blessed-to)); }
 
 /* ── Size variants ── */
 .stat-bar--compact .stat-bar__track { height: 4px; }

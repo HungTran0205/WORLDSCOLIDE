@@ -2,7 +2,7 @@
 
 export type ItemID =
   | 'WOOD' | 'STONE' | 'IRON_ORE' | 'GEM'
-  | 'SLIME_GEL' | 'BOAR_PELT' | 'WOLF_FANG'
+  | 'SLIME_GEL' | 'BOAR_PELT' | 'BEAR_PELT' | 'WOLF_FANG'
   | 'GOBLIN_EAR' | 'ORC_TUSK'
   // Workshop v2 future-phase monster materials (declare-only stubs; not yet in ITEM_DATABASE)
   | 'BAT_WING' | 'SPIDER_LEGS' | 'METAL_PLATE' | 'DRONE_SENSOR' | 'SLIME_KING_CORE'
@@ -34,6 +34,7 @@ export const ITEM_DATABASE: Record<ItemID, ItemTemplate> = {
   IRON_ORE:   { id: 'IRON_ORE',   name: 'Iron Ore',    type: 'MATERIAL', rarity: 'UNCOMMON', basePrice: 8,  description: 'Raw ore for smelting.',       stackable: true },
   SLIME_GEL:  { id: 'SLIME_GEL',  name: 'Slime Gel',   type: 'MATERIAL', rarity: 'COMMON',   basePrice: 5,  description: 'Sticky and flammable.',      stackable: true },
   BOAR_PELT:  { id: 'BOAR_PELT',  name: 'Boar Pelt',   type: 'MATERIAL', rarity: 'COMMON',   basePrice: 4,  description: 'Tough hide from forest boars.', stackable: true },
+  BEAR_PELT:  { id: 'BEAR_PELT',  name: 'Bear Pelt',   type: 'MATERIAL', rarity: 'UNCOMMON', basePrice: 12, description: 'Thick mutant-bear hide, prized for warm armor.', stackable: true },
   WOLF_FANG:  { id: 'WOLF_FANG',  name: 'Wolf Fang',   type: 'MATERIAL', rarity: 'UNCOMMON', basePrice: 10, description: 'Sharp canine tooth.',         stackable: true },
   GOBLIN_EAR: { id: 'GOBLIN_EAR', name: 'Goblin Ear',  type: 'MATERIAL', rarity: 'COMMON',   basePrice: 3,  description: 'Proof of goblin subjugation.', stackable: true },
   ORC_TUSK:            { id: 'ORC_TUSK',            name: 'Orc Tusk',       type: 'MATERIAL',   rarity: 'UNCOMMON', basePrice: 15, description: 'Massive ivory tusk.',   stackable: true },

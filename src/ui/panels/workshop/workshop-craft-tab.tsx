@@ -16,7 +16,7 @@ import { GameIcon } from '@/ui/components/game-icon';
 import { WorkshopBlueprintList } from './workshop-blueprint-list';
 import { itemName } from '@/i18n/content-wrappers';
 
-const BASE_MATERIALS: ItemID[] = ['WOOD', 'STONE'];
+const BASE_MATERIALS: ItemID[] = ['WOOD', 'STONE', 'BOAR_PELT', 'BEAR_PELT'];
 const MONSTER_MATERIALS: ItemID[] = ['SLIME_GEL'];
 
 interface Props { facility: GuildFacility; }
@@ -49,7 +49,11 @@ export function WorkshopCraftTab({ facility }: Props) {
   const baseCost = tpl?.craftCost ?? 0;
   const haveBase = (items[baseMat] ?? 0) >= baseCost;
   const haveMonster = !monsterMat || (items[monsterMat] ?? 0) >= 1;
-  const canCraft = haveBase && haveMonster && eligibleTemplates.length > 0;
+  // Check secondary materials (extraMaterials) are available
+  const haveExtras = !tpl?.extraMaterials || Object.entries(tpl.extraMaterials).every(
+    ([id, qty]) => (items[id as ItemID] ?? 0) >= (qty ?? 0),
+  );
+  const canCraft = haveBase && haveMonster && haveExtras && eligibleTemplates.length > 0;
 
   const path = monsterMat ? 'B' : 'A';
   const aff = monsterMat ? getAffinity(monsterMat) : undefined;
@@ -130,11 +134,19 @@ export function WorkshopCraftTab({ facility }: Props) {
       {/* Template selector */}
       <div className="ws-section">
         <div className="ws-section-title">{t('workshop.craft.template')}</div>
-        <select className="ws-select" value={effectiveTemplateId} onChange={(e) => setTemplateId(e.target.value as EquipmentTemplateId)}>
+        <div className="ws-template-grid">
           {eligibleTemplates.map((tpl) => (
-            <option key={tpl.id} value={tpl.id}>{tpl.name}</option>
+            <button
+              key={tpl.id}
+              className={`ws-mat-cell ws-tpl-cell ${effectiveTemplateId === tpl.id ? 'is-selected' : ''}`}
+              onClick={() => setTemplateId(tpl.id)}
+              title={tpl.name}
+            >
+              <GameIcon category="item" id={tpl.id} size={32} fallbackText={tpl.name.slice(0, 2)} />
+              <span className="ws-tpl-name">{tpl.name}</span>
+            </button>
           ))}
-        </select>
+        </div>
       </div>
 
       {/* Path indicator + range */}
@@ -155,6 +167,11 @@ export function WorkshopCraftTab({ facility }: Props) {
                 monsterName: itemName(monsterMat),
               })
             : t('workshop.craft.costLine', { baseCost, baseName: itemName(baseMat) })}
+          {tpl?.extraMaterials && (Object.entries(tpl.extraMaterials) as [ItemID, number][]).map(([id, qty]) => (
+            <span key={id} className={`ws-extra-cost ${(items[id] ?? 0) >= qty ? '' : 'is-missing'}`}>
+              {' + '}{qty}× {itemName(id)}
+            </span>
+          ))}
         </div>
       </div>
 

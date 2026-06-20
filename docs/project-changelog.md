@@ -1,9 +1,607 @@
 # Project Changelog
 
-All notable changes to Worlds Collide are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/).
+All notable changes to 2000s A.C — After the Collapse are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 **Current Version**: 1.27.9
 **Release Date**: 2026-05-10 (Combat AOE Telegraph)
+
+---
+
+## [Unreleased] — 2026-06-17 (feat: Templar skill-VFX — Cleave multi-target + Riposte/Rally cast VFX + buff status icons)
+
+### feat(combat): Cleave multi-target (gameplay change) + generalized skill-VFX orchestrator
+
+**Cleave gameplay change:** New `skillType:'cleave'` with `executeSkillCleave()` in combat-engine.ts. Cleave now strikes the primary target + up to 2 additional enemies within 1.8u radius (bán nguyệt frontal arc), with splash damage at 0.6×. Base multiplier adjusted 1.50× → 1.20× (provisional, pending playtest). Full-impact VFX: steel white-silver crescent (#d8e4f2 primary, #ffffff accent) + shockwave rings + 80ms hitstop + debris particles per victim + skill-specific SFX.
+
+**Orchestrator generalization:** Previously hard-wired to `skill-use` (damage) events only. New `skill-event-resolver.ts` (pure event router) + `cue-sheet-types.ts` schema extensions:
+- New cue schema fields: `anchor` ('target'|'caster'|'caster-front'|'cluster'), `color`, sheet-level `trigger` + `castScoped`
+- Routing: `skill-use` → impact VFX (damage) | `skill-buff-applied` → aura VFX (Rally) | `effect-applied:riposte` → parry-glint (stance entry) + parry-flash (counter-hit)
+- Pool `acquire()` now re-applies kind-default color to prevent bleed-across on recolored shared meshes
+
+**Riposte & Rally cast VFX (stance/warcry tier):**
+- **Riposte**: Blue-silver guard ring + parry glint on stance entry (#7ab8ff primary, #eaf4ff accent). Counter-attacks carry `isRiposte: true` flag, rendered as blue-white spark distinct from standard hits. No hitstop (stance, not a damage hit).
+- **Rally**: Hot gold-orange twin warcry rings + rising rage updraft (#ffb24d primary, #ffe6b0 accent; deliberately hotter than Ancestral pure gold #D4A017). No hitstop. New presets: ls-parry-glint, ls-warcry-updraft.
+- New audio keys: SFX_CLEAVE, SFX_RIPOSTE, SFX_RALLY (POC aliases → sfx-skill).
+
+**Combat HUD buff status icons:** Overhead DOM indicators (pure CSS, no mesh layer) driven by `riposteActive` + `statusEffects`:
+- 🛡️ Riposte stance active (3–4s duration)
+- ⚔️ Damage buff active (Rally, +20% damage)
+Icons refresh per combat tick, fade when status expires.
+
+**Key Files**:
+- `src/scene/effects/skill-vfx/skill-event-resolver.ts` — Event router + cue partition logic
+- `src/scene/effects/skill-vfx/cue-sheet-types.ts` — Extended schema (anchor, color, trigger, castScoped)
+- `src/game/systems/combat-engine.ts` — New `executeSkillCleave()` + multi-target loop
+- `src/scene/effects/presets/generic-presets.ts` — New ls-parry-glint, ls-warcry-updraft presets
+- `src/ui/panels/combat-panel-hud.tsx` — Buff status icon rendering
+- `src/scene/effects/mesh-fx/mesh-fx-pool-root.tsx` — Pool acquire color-reset fix
+- `src/audio/audio-keys.ts` — SFX_CLEAVE, SFX_RIPOSTE, SFX_RALLY keys
+- `docs/gdd/16-linh-son-class-skills.md`, `docs/gdd/06-combat.md`, `docs/gdd/12-art-direction.md`, `docs/gdd/14-ux-ui-i18n.md` — GDD docs updated
+
+**Tests:** 16 unit tests green (tsc -b --force, vitest run). Orchestrator routing, cleave multi-target loop, and hitstop behavior verified.
+
+---
+
+## [Unreleased] — 2026-06-14 (feat: Pierce skill-VFX Phase 08 — quality degradation + tests)
+
+### feat(combat-vfx): skill-VFX quality degradation tier with graceful low-graphics fallback
+
+**Quality degradation foundation.** New `getMeshFxQuality()` / `isLowMeshFxQuality()` helpers in `src/scene/effects/mesh-fx/mesh-fx-quality.ts` establish a single source of truth for skill-VFX quality. Wraps the existing binary graphics-quality setting (no granular VFX slider). On 'low' graphics quality, Pierce sequence degrades gracefully:
+
+- Weapon trail skipped (combat-skill-vfx-layer.tsx conditional guard)
+- Scatter-particle counts halved (explicit-count cues only; implicit emitters scale via preset-defined counts)
+- Lance dissolve-noise dropped (compile-time shader variant — thrust-lance-material.ts reads quality at pool warm)
+- WebGPU screen-space distortion pass skipped (pre-existing guard in distortion layer)
+- Camera shake skipped (pre-existing guard in combat-camera-shake.tsx)
+- **Legible floor guaranteed**: Lance mesh + shockwave rings + SFX always remain (non-negotiable visual clarity)
+
+**Determinism preserved**: Combat simulation (src/game/systems) imports zero presentation/VFX modules — orchestrator is presentation-only; quality setting does not affect combat outcome.
+
+**Tests added**: Cue timing and hitstop behavior verified in 2 unit test suites:
+- `src/scene/effects/skill-vfx/skill-cue-dispatcher.test.ts` (3 tests green) — Cue order, timing, payload correctness
+- `src/scene/combat/hitstop/hitstop-clock.test.ts` — Clamp [80–150ms], stall, expiry, reset behavior
+
+**Key Files**:
+- `src/scene/effects/mesh-fx/mesh-fx-quality.ts` — Single-source quality helpers
+- `src/scene/combat/combat-skill-vfx-layer.tsx` — Weapon trail quality guard
+- `src/scene/effects/materials/thrust-lance-material.ts` — Dissolve-noise variant
+- `src/scene/effects/skill-vfx/skill-cue-dispatcher.ts/test.ts` — Cue scheduler + tests
+- `src/scene/combat/hitstop/hitstop-clock.ts/test.ts` — Hitstop timing + tests
+- `docs/system-architecture.md` — Updated with tier-2 quality-degradation documentation
+
+---
+
+## [Unreleased] — 2026-06-13 (feat: UI Design Language Foundation — bronze × parchment chrome)
+
+### feat(ui): unified PanelFrame system + bronze × parchment tokens + HUD restyled
+
+Complete UI design language overhaul per GDD 12a. All 11 game panels migrated onto the new `PanelFrame` component (one standard chrome: header band, parchment content, close button, open 250ms/close 150ms animations, SFX hooks, hideClose variant). Panel state centralized in `panel-slice.ts` with two independent axes (mainPanel / facilityPanel) via Zustand, mutual exclusion per axis, Esc closes all.
+
+**Token layer** (`src/ui/styles/ui-tokens-v2.css`): `--bp-*` bronze/parchment/cyan ramps (70/20/10 accent law per GDD 12), z-index tiers, motion durations (panel-open 250ms, panel-close 150ms, fast 120ms), easing (`--bp-ease` cubic-bezier). CSS-gradient fallback; border-image PNG assets pending owner approval.
+
+**HUD restyled**: bronze token chassis with 11 pixel icons (24px, PixelLab + manual cleanup, 1px bronze-shadow outline). Icon toggle bar replaces text labels; tooltips preserve aria-labels for accessibility. Facility compass, room nav, resource bar, and save badge all migrated to new palette.
+
+**Quest board exception**: diegetic identity preserved — keeps hideClose variant, wax-seal parchment skin, unroll animation, PAPER_UNROLL/SEAL_BREAK SFX, click-outside close.
+
+**Alchemy rarity borders**: RARITY_BORDER hex values swapped to token names (e.g., `--bp-status-ok` for COMMON).
+
+**21 unit tests** added to `panel-slice` (state mutations, Esc handling, mutual exclusion); zero vitest regressions; ui-parity green (708 keys EN/VI).
+
+**Key Files**:
+- `src/ui/components/panel-frame.tsx` — Reusable panel chrome component
+- `src/game/state/panel-slice.ts` — Central panel state management
+- `src/ui/hooks/use-delayed-unmount.ts` — Exit animation host integration
+- `src/ui/styles/ui-tokens-v2.css` — Design tokens (bronze/parchment/cyan/status/z-tiers/motion)
+- `public/ui/frames/` — 8 Gemini chrome assets + slice-manifest.json
+- `public/ui/icons/ui/` — 9 PixelLab HUD icons; `scripts/process_ui_frame_kit.py` pipeline
+- `docs/gdd/12a-ui-design-language.md` — Complete UI chrome spec (cross-linked in GDD 12, 14, README)
+
+---
+
+## [Unreleased] — 2026-06-09 (feat: hired mercs wander the tavern floor)
+
+### feat(tavern): hired mercs appear and wander in the tavern room
+
+Available merc contracts now spawn as billboard sprites that wander the tavern's
+open floor — the guild-hall member-wander mechanism, scoped to this 7×7 room.
+
+- `tavern-merc-wander.ts` — pure bounded-wander helpers (walkable cell grid +
+  circular furniture keep-out kept in sync with `tavern-furniture.tsx`; facility
+  rooms have no live collision registry, so the keep-out is static).
+- `tavern-merc-sprites.tsx` — `TavernMercSprites` renders `tavern.mercContracts`
+  with `status === 'available'` (sprite art from each contract's frozen
+  `visitorSnapshot`), reusing `GuildHallSpriteAnimator` + the guild-hall wander
+  loop (target-seek, collision slide, wedge-retarget, spawn-snap). Drives the
+  render loop at 20fps only while the camera is inside the tavern.
+- Mounted in `facility-room.tsx` for the tavern. Mercs disappear while away on a
+  quest (`on-quest`) and after the contract resolves.
+- Known caveat: `GuildHallSpriteAnimator` has the documented multi-instance
+  WebGPU UV freeze for 3+ identical sprites; merc cap is 3-4 and archetypes
+  usually vary, so it's rarely hit (uniform-UV fix is the porting target).
+
+## [Unreleased] — 2026-06-09 (Fix: hired tavern mercs were invisible/unusable)
+
+### fix(tavern): surface hired mercs in quest dispatch + live combat
+
+Hiring a merc (counter-offer accept **or** direct "Hire Merc") deducted gold and created
+a contract in `tavern.mercContracts`, but no player-facing UI read that list — the merc
+could not be seen or used anywhere. The hire/contract/combat-result backend was fully
+wired; only the party-selection surfaces were missing.
+
+- **Quest board** (`quest-board.tsx`): `availableMembers` now also lists available merc
+  contracts as Member-shaped tiles (id === contract.id) via the new
+  `mercContractToPartyMember` helper; dispatch re-splits the selection into member ids
+  vs merc contract ids, validates the chosen mercs, passes `mercContractIds` to
+  `createActiveMission`, and flips them to `on-quest` via `markMercsOnQuest`.
+- **Live combat** (`combat-panel-formation.tsx`, `combat-fight-controller.tsx`): the
+  formation picker, engine init, and result handler now include the mission's mercs
+  (`memberFromMercContract`), so a placed merc actually fights and is scored correctly
+  (previously it would be dropped from the fight and then counted defeated).
+- **Cleanup** (`quest-detail-pane.tsx`): removed the stale per-quest 50% "merc fee"
+  preview — mercs are paid upfront at hire, no per-quest fee is charged, and the preview
+  would have falsely blocked dispatch once mercs became selectable.
+
+## [Unreleased] — 2026-06-06 (Ancestral Blessings — Phase 6: Golden Aura Particles)
+
+### feat(combat-vfx): rising golden aura while Ancestral Blessings is active
+
+A blessed entity now emits slow gold motes that rise through its body for the rest of
+the fight — the motion/glow the baked Phase 5 gold-outline overlay (static composite)
+can't provide.
+
+- New `ls-blessing-aura` preset (`linh-son-presets.ts`): DISK emitter, anti-gravity
+  `gravity:[0,1.2,0]`, additive, small motes (`size:[0.05,0.14]`, life `1.5–3s`),
+  `maxParticles:400`. Auto-registered — `linhSonPresets` spreads into `allPresets`
+  and `combat-vfx-root` mounts every `category:'linh-son'` preset (no registry edit).
+- `combat-fight-controller` resolves `useVFXEmitter('ls-blessing-aura')` and, in the
+  `useFrame` tick, emits `AURA_EMIT_COUNT=4` motes at each `blessed && currentHp>0`
+  entity's feet, throttled `~0.3s` on `engine.time` (respects pause + speed multiplier).
+  Disk is feet-anchored (`(position.y ?? 0) + 0.3`) so motes rise through the sprite.
+- Stops cleanly: dead entities excluded by the `currentHp>0` guard; combat end nulls
+  `engineRef` → `useFrame` early-returns. Reuses the persistent `CombatVfxRoot`
+  `<VFXParticles autoStart={false}>` — no per-emit mount/unmount (WebGPU-safe).
+- Scope: live arena only; headless auto-resolve applies the buff with no VFX (POC).
+
+**Key Files**: `src/scene/effects/presets/linh-son-presets.ts`,
+`src/scene/combat/combat-fight-controller.tsx`
+
+---
+
+## [Unreleased] — 2026-06-06 (Ancestral Blessings — Cast skill-name banner)
+
+### feat(combat-vfx): floating skill-name banner when Ancestral Blessings fires
+
+A prominent red-on-orange skill-name banner pops over the caster's head the moment
+Ancestral Blessings fires, alongside the Phase 4 casting clip. Reuses the existing
+combat HUD popup pipeline (`combat-projection-store` → `combat-panel-hud`).
+
+- New `CombatEvent` `{type:'ancestral-cast', casterId}` pushed by `combat-engine` the
+  tick the buff fires (live arena only; one-shot — verified by 3 engine tests).
+- `emitDamagePopups` spawns the banner with the localized passive name
+  (`tContent('civ', …, 'passiveName')` → "Ancestral Blessings").
+- New popup `kind: 'ancestral'` (centered, no jitter) + `.combat-hud__damage--ancestral`
+  CSS: vivid red fill (`#ff2e1f`), orange outline (`-webkit-text-stroke` + `paint-order`),
+  radiating orange gradient glow (layered text-shadows), 22px/900 weight, bigger pop
+  animation than a normal skill banner.
+
+**Key Files**: `src/game/systems/combat-types.ts`, `combat-engine.ts`,
+`src/scene/combat/combat-fight-controller.tsx`, `combat-projection-store.ts`,
+`src/ui/styles/combat-panel.css`
+
+---
+
+## [Unreleased] — 2026-06-06 (Ancestral Blessings — Phase 4: Casting Anim State & Manifest)
+
+### feat(combat-vfx): one-shot casting animation when Ancestral Blessings fires
+
+LS-SWORD-M now plays an 8-frame casting clip in the live arena the moment the buff
+fires, before the (Phase 5/6) blessed overlay/aura take over.
+
+- Registered `Ancestral-casting.png` (1024×128, 8×1, east) in `sprite-sheet-manifest.ts`
+  (hand-added — the packer can't discover a custom-named single sheet).
+- Resolver gained a `'casting'` `CombatAnimState`, `COMBAT_CASTING_FRAME_COUNT=8`,
+  `charsWithCastingEast: {LS-SWORD-M}`, and casting branches in
+  `resolveAllyCombatSheet` / `getAllyCombatFrameCount` (fallback → idle, no 404).
+- `combat-idle-sprite.tsx` loads the casting sheet (unconditional `useLoader`, in the
+  mount Suspense batch), builds a casting atlas (no identity-mask composite — mirrors
+  death), and plays it ONCE at `CASTING_FPS=12` (≈667ms ≈ `ANCESTRAL_CASTING_MS`),
+  freezing on the last frame until the engine reverts `animState` off `'casting'`.
+- **Cast is hit-proof**: incoming hit/block no longer clobbers `animState='casting'`
+  (combat-engine damage guard), so the clip plays through the hits that are likely at
+  its ≤30%-HP trigger — damage still applies, only the hit/block *reaction* is skipped
+  during the cast.
+- Scope: live arena only; headless auto-resolve applies the buff with no VFX (POC).
+
+**Key Files**: `src/scene/sprites/sprite-sheet-manifest.ts`,
+`src/scene/sprites/combat-sprite-resolver.ts`,
+`src/scene/combat/combat-idle-sprite.tsx`, `src/game/systems/combat-engine.ts`
+
+---
+
+## [Unreleased] — 2026-06-06 (Ancestral Blessings — Phase 3: Passive Rename & Buff Trigger)
+
+### feat(combat): rework Linh Sơn passive into Ancestral Blessings (gated last-stand buff)
+
+The Linh Sơn passive `son-the` (Sơn Thể) becomes **Ancestral Blessings (Tổ Tiên Phù
+Độ)** — a one-shot, till-end-of-combat buff gated by the Blessed bar.
+
+- Old `son-the` toggled END +30% every tick at HP ≤ 30%. New model is a **fire-once
+  latch**: at HP ≤ 30% with a full Blessed bar (`blessedReady`, captured at combat
+  init — POC gate: LS-SWORD-M only), it fires once → **+20% END/STR/AGI till end of
+  combat**, never reverting on heal. baseStats stays immutable so the ×1.2 never
+  compounds.
+- Fire sets `animState='casting'` (sprite manifest lands in Phase 4; renderer falls
+  back to idle until then) + `blessed` flag (drives Phase 5/6 VFX).
+- **Bar consumption**: members who fired have their `blessedPct` drained to 0 after
+  combat (win OR loss), via new `CombatResult.blessedConsumedIds` populated in both
+  the live-arena engine (`getResult`) and headless simulator, applied at both
+  result-writeback sites (`arena-result-handler`, `mission-tick`) through new
+  roster-slice action `consumeBlessed`.
+- `applyPassiveTick(entity)` → `applyPassiveTick(entity, now)` (DeQuoc/ThienLu
+  branches untouched).
+- Unit tests: latch lifecycle (fire-once, ×1.2, persist-after-heal, no-compound,
+  gate) + `blessedReady` factory gate + `collectBlessedConsumed` + `consumeBlessed`.
+
+**⚠ Balance note (intentional, tracked):** non-sword Linh Sơn (SCOUT/WARRIOR) lose
+their old universal END+30% last-stand survivability until their archetype phases
+land — only full-bar SWORD members get Ancestral Blessings in this POC.
+
+**Key Files**: `src/game/data/civilization-config.ts`, `src/i18n/content.en.json`,
+`src/game/systems/combat-passives.ts`, `combat-engine.ts`, `combat-simulator.ts`,
+`combat-types.ts`, `combat-entity-factory.ts`, `src/game/state/roster-slice.ts`,
+`arena-result-handler.ts`, `mission-tick.ts`
+
+---
+
+## [Unreleased] — 2026-06-06 (Ancestral Blessings — Phase 2: Blessed Regen & UI Bar)
+
+### feat(blessed): real-time Blessed regen + gold bar for Linh Sơn
+
+The Blessed resource (Phase 1 data) now refills over real time and renders in the
+character panel.
+
+- New `blessed-regen-system.ts` — `BLESSED_FULL_MS = 30 min` (== 1 game-day);
+  `processBlessedRegen(store, dt)` accrues `dt / BLESSED_FULL_MS` (capped 1) for every
+  idle Linh Sơn member. Members dispatched on an active mission are frozen (busy-set
+  from `activeMissions.flatMap(m => m.memberIds)`).
+- Hooked into the 1s tick loop next to injury recovery. **Offline catch-up is free**:
+  the first post-load tick runs with `dt = full offline window` (same single-source
+  pattern as injury/training), so idle members are credited for time away — no change
+  to `offline-progression.ts` (its `processOfflineTime` is unused dead code).
+- New `roster-slice` action `applyBlessedRegen` (mirrors `applyInjuryRecovery`).
+- `HpExpBar` gains a `'blessed'` kind (gold gradient via `--ink-blessed-from/to`);
+  character-detail renders the Blessed bar under HP, gated to Linh Sơn members.
+- 10 unit tests (`tests/blessed-regen-system.test.ts`): rate, cap, busy-set/flatMap,
+  Linh Sơn gate, founder, dt≤0 no-op.
+
+**Key Files**: `src/game/systems/blessed-regen-system.ts`,
+`src/game/state/roster-slice.ts`, `src/ui/hooks/use-game-tick-loop.ts`,
+`src/ui/components/stat-bar.tsx`, `src/ui/styles/{stat-bar,game-ui-tokens}.css`,
+`src/ui/panels/character-detail-panel.tsx`
+
+### fix(build): repair pre-existing TypeScript build break on `develop`
+
+`tsc -b` / `npm run build` was broken by stale references unrelated to this feature.
+All resolved (build now clean):
+
+- `member.level` (removed from `Member`) → `member.grade` in facility-detail-tray,
+  combat-panel-formation, combat-prep-panel.
+- `member.rank === 'MERCENARY'` → `member.isMercenary` in quest-detail-pane.
+- `getSkillFromPool` / `getArchetypeSkillPool` now accept `string | undefined`
+  (member `archetype` is optional) — fixes 6 call-sites at the source.
+- `guild-slice` cross-slice `inventory` write: drop the over-narrow
+  `Partial<GuildSlice>` annotation (returns already cast for `set()`).
+- `ui-store.test` `FacilityHintSeen` fixture: add `'training-yard'` key.
+- Remove unused imports/props (`gradeIndex`, `GRADE_ORDER`, `CIV_CONFIG`,
+  `onPromote`, `canAffordPromote`).
+
+---
+
+## [Unreleased] — 2026-06-06 (Ancestral Blessings — Phase 1: Blessed Resource Data Scaffolding)
+
+### feat(save): add Blessed resource state + SAVE_VERSION 35→36
+
+Foundation slice for the Linh Sơn **Ancestral Blessings** rework (buff + Blessed
+resource bar + VFX — later phases). Pure data/type scaffolding; no player-facing
+behaviour yet.
+
+- `Member` gains optional `blessedPct?: number` (0..1, the Blessed bar fill).
+  `getBlessedPct(member)` helper treats `undefined` as `1` so reads stay finite
+  before the migration/regen populate it.
+- `CombatEntity` gains `blessedReady?` / `blessed?` / `ancestralFired?` flags and
+  `'casting'` in its `animState` union; `ArenaEntity.animState` mirrors `'casting'`.
+- `ArenaEntitySnapshot` gains `blessed?` (wired through `buildSnapshots`).
+- New members (founder + recruit) start with a full bar (`blessedPct: 1`).
+- **Save migration v35→v36** (`migrateV35toV36`): backfills every member's
+  `blessedPct` to `1` when absent — idempotent + null-guarded.
+
+**Key Files**:
+- `src/game/state/game-state.ts` — `Member.blessedPct`, `getBlessedPct`
+- `src/game/systems/combat-types.ts` — `CombatEntity` flags + `'casting'`
+- `src/game/systems/combat-arena-types.ts` — `ArenaEntity.animState` `'casting'`
+- `src/game/state/combat-arena-slice.ts` — `ArenaEntitySnapshot.blessed`
+- `src/scene/combat/combat-fight-controller.tsx` — `buildSnapshots` maps `blessed`
+- `src/game/systems/character-creation.ts` — init `blessedPct: 1`
+- `src/game/save/save-migrations.ts`, `save-types.ts` — `migrateV35toV36`, `SAVE_VERSION` 36
+- `src/game/save/save-migrations.test.ts`, `test-fixtures.ts` — v35→v36 tests + fixture bump
+
+---
+
+## [Unreleased] — 2026-05-30 (Alchemy Ingredient Slots Follow Lab Level)
+
+### fix(alchemy): ingredient slots gated by lab level, not just alchemist skill
+
+A Lv3 Alchemy Lab still showed only 1 ingredient slot because visible slots were
+driven solely by the assigned alchemist's AC skill (`min(4, maxAcLevel + 1)`), and
+with no alchemist assigned `maxAcLevel = 0`. Slots now equal the **lab level**:
+`min(4, max(facility.level, maxAcLevel))` → Lv1 = 1, Lv2 = 2, Lv3 = 3 slots. The 4th
+slot is only reachable by a very skilled alchemist (AC ≥ 4). Recipe-tier gating still
+uses AC level; footer reports the slot-driving level. (`alchemy-craft-panel.tsx`)
+
+---
+
+## [Unreleased] — 2026-05-30 (Facility Panels +30% Size)
+
+### style(ui): scale all facility panels up 30% (responsive — fits mobile/landscape)
+
+Facility function panels were too small to read comfortably. Applied `zoom: 1.3`
+(the existing pattern used by the facilities grid): Workshop (`.ws-panel`), Training
+Yard (`.ty-panel`), Tavern (`.tv-panel`), Alchemy Lab (inline panel style). Facilities
+grid + detail tray bumped from `zoom: 1.2` → `1.3` (the tray scales with its parent).
+
+**Responsive:** because `zoom` multiplies `vw`/`vh`, every viewport-relative cap is
+divided by the zoom so the rendered panel still fits — width `min(Npx, 72vw)` and
+`max-height: calc(Xvh / 1.3)`. This keeps panels on-screen on mobile, including
+**landscape** where height is the tight axis. Alchemy columns `flex-wrap`, and the
+facilities overlay wraps the build picker + grid instead of overflowing on narrow widths.
+
+---
+
+## [Unreleased] — 2026-05-30 (Full Offline Report + Multi-hit Damage Numbers)
+
+### feat(offline): consolidated offline report across all facilities
+
+The return popup showed only wood/stone. New `OfflineReport` (built in
+`use-game-tick-loop.ts` via a before/after diff around the catch-up `handleTick`)
+now also surfaces: **workshop-crafted equipment**, **alchemy items**, **skills
+learned/ranked at the Training Yard**, and **members recovered in the Infirmary** —
+each in its own section. `OfflineFacilityPopup` rewritten to render all sections;
+`game-screen` switched to the new `offlineReport` state.
+
+- New: `src/game/systems/offline-report.ts` (`OfflineReport`, `offlineReportHasContent`)
+- `guild-slice` / `store`: `offlineReport` + `clearOfflineReport`
+- i18n: `offlinePopup.workshop/alchemy/training/infirmary/skillGain/recovered`
+
+### fix(combat): multi-hit skills showed one damage number instead of N
+
+Barrage's 5 hits emit 5 `skill-use` events in one frame, all on the same target at
+the same screen position → they stacked into one number. Damage popups now get a
+small random screen jitter (`offsetX/offsetY`) so multi-hit numbers fan out and stay
+readable; the skill-name banner is de-duplicated to fire once per cast (not per hit).
+
+- `combat-projection-store.ts` (jitter), `combat-panel-hud.tsx` (apply offset),
+  `combat-fight-controller.tsx` (banner de-dupe)
+
+---
+
+## [Unreleased] — 2026-05-30 (Save Reliability — Persist User Actions Promptly)
+
+### fix(save): lost progress on tab close — prompt save after actions + forced close saves
+
+**Bug:** assigning a member to the Training Yard (or unassigning from a room) could be
+lost if the browser was closed before the next 60s autosave — on reload the member was
+back in the old room with no training. The only persistence paths were the 60s interval
+and a `visibilitychange` save that was **non-forced** (could be skipped by the 5s debounce)
+and **async** (IndexedDB write may not flush during tab teardown).
+
+**Fix:**
+- New `save-scheduler.ts` — a debounced (`2s`) `requestSave()` that store actions call
+  after user-driven mutations, so a fresh action is persisted within seconds.
+- Wired `requestSave()` into `assignMemberToFacility`, `unassignMemberFromFacility`,
+  `startSkillTraining`, `cancelSkillTraining`, `equipMemberSkill`.
+- `SaveManager`: close saves are now **forced** (bypass the 5s debounce); added a
+  `pagehide` listener (flush pending + force write) alongside the existing
+  `visibilitychange` handler.
+- `saveNow()` (immediate, debounce-cancelling) for costly discrete actions — wired
+  into `startSkillTraining` / `cancelSkillTraining` so learning a skill persists at
+  the click (player saw no "saved" with the 2s debounce).
+- Save badge is now `position: fixed` top-right at a high z-index so the
+  saving/saved confirmation shows above room panels/overlays (was hidden behind the
+  Training Yard panel backdrop).
+
+**Key Files**:
+- `src/game/save/save-scheduler.ts` (new), `src/game/save/save-manager.ts`
+- `src/game/state/guild-slice.ts`, `src/game/state/roster-slice.ts`
+
+### fix(training): offline skill training counted twice (completed in half the time)
+
+Removed the redundant offline training pass in `use-game-tick-loop.ts`. The first
+`handleTick()` after load already runs with `dt = full offline window` (realTimeLastTick
+is only advanced inside `tickClock`), so the separate offline block double-advanced
+training — a 5-min absence completed a 7.5-min learn. Training now catches up once via
+the same single-source path as injury recovery.
+
+**Verified:** `startSkillTraining` adds the member to the Training Yard's `trainingQueue`
++ `assignedMemberIds`; `applySkillTrainingResults` removes both on rank-up. Offline
+training advances correctly (once) and is capped at one rank per absence.
+
+---
+
+## [Unreleased] — 2026-05-30 (Skill Learning Model + Roster Skill Selection + Descriptions)
+
+### feat(skills): Lv0 learn model, roster equip, authored skill descriptions
+
+**Learning model.** A member now starts with **one learned skill (Lv1)**; the rest of their
+class pool is **Lv0 (not learned)**. The Training Yard both **learns** (Lv0→Lv1, cheap/fast
+`RANK_COSTS[1]`) and **ranks up** (Lv1→Lv5). A skill's level = `skillRanks[id].rank`; absent = Lv0.
+Training is **decoupled from equipping** — training a skill no longer swaps the carried skill.
+
+**Roster skill selection.** The roster Skills tab lists the full class pool with **Level n**,
+description, and detail chips. Learned skills can be **Equipped** as the carried combat skill
+(`equipMemberSkill`); Lv0 skills show **"Learn at Training Yard"** and cannot be equipped.
+Swapping is locked while training.
+
+**Authored descriptions.** Each skill now has a prose effect description (e.g. Pierce —
+"Thrust through one lane: hits the front-row and back-row enemy in the same lane (max 2 targets)")
+in `content.en.json` / `content.vi.json`, shown above the numeric chips in both the roster tab
+and the Training Yard picker. Display switched from `R{n}` to **"Level {n}"** throughout.
+
+**Save migration v34→v35** seeds existing members' carried skill to Lv1 so it stays usable
++ equippable. `SAVE_VERSION` → 35.
+
+**Key Files**:
+- `src/game/data/skill-rank-costs.ts` — `RANK_COSTS[1]` + `RANK_TRAIN_DAYS[1]` (learn tier)
+- `src/game/state/guild-slice.ts` — `startSkillTraining` no longer equips; Lv0 default
+- `src/game/systems/skill-training-system.ts` — Lv0 default; rows show the trained skill
+- `src/game/state/roster-slice.ts` — `equipMemberSkill` rejects unlearned skills
+- `src/game/systems/character-creation.ts`, `tavern-audition.ts` — seed starting skill Lv1
+- `src/game/save/save-migrations.ts`, `save-types.ts` — `migrateV34toV35`, `SAVE_VERSION` 35
+- `src/ui/components/training-yard-pickers.tsx`, `src/ui/panels/character-detail-panel.tsx` — Level/Learn UI + descriptions
+- `src/i18n/content.en.json`, `content.vi.json` — `skills.{id}.desc`; `ui.*.json` level/learn keys
+- `tests/skill-training-system.test.ts` — learn + equip-gating tests (21 green)
+
+---
+
+## [Unreleased] — 2026-05-30 (Training Yard In-Room Panel + Skill Icons & Detail)
+
+### feat(training-yard): diegetic dummy-click assign panel, skill icons, detailed skill info
+
+**Assigning moved in-room.** Clicking the **training dummy** prop now opens a dedicated
+`TrainingYardPanel` (member picker → class skill picker) — the sole assign path, mirroring
+the Workshop/Tavern object-click panels. The facilities-grid tray card is now read-only
+(live progress + Enter Room + hint). Removes the assign/skill flow from the facilities panel.
+
+**Skill icons.** 12 monochrome silhouette icons (LinhSon Templar/Forester/Ranger kits)
+generated via PixelLab and stored at `public/ui/icons/skills/{id}.png`. New `SkillIcon`
+component resolves them with a per-type glyph fallback.
+
+**Detailed skill info.** New `SkillDetail` builds concrete, data-derived effect chips
+(type · damage · accuracy/crit/armor/status/buff · cooldown) straight from the Skill fields
+so they always match real combat numbers and reflect rank milestones. Shown in the roster
+Skills tab (rank-resolved) and the Training Yard skill picker — replaces the bare
+"{mult}× damage" line.
+
+**Skill selection in roster.** The roster Skills tab now lists the member's **full class
+skill pool** (icon · rank · detail chips), marks the carried skill, and lets the player
+**Equip** any pool skill as the combat skill via the new `equipMemberSkill` action
+(preserves earned ranks + auto-cast toggle; locked while training). Previously only the
+single carried skill was shown with no way to switch.
+
+**Key Files**:
+- `src/scene/training-yard/training-yard-furniture.tsx` — dummy wrapped in `InteractiveFacilityObject`
+- `src/game/state/ui-store.ts` — `training-yard` added to `FacilityHintType`
+- `src/ui/screens/game-screen.tsx` — proximity finder + panel open/close + coachmark wiring
+- `src/ui/panels/training-yard-panel.tsx` — new in-room function panel (+ `training-yard-panel.css`)
+- `src/ui/components/training-yard-pickers.tsx` — shared `MemberPicker` / `SkillPicker`
+- `src/ui/components/skill-icon.tsx`, `skill-detail.tsx` — icon + detail-chip components
+- `src/ui/components/training-yard-room-card.tsx` — stripped to read-only status
+- `src/ui/panels/character-detail-panel.tsx` — roster Skills tab shows icon + rank + detail chips
+- `src/i18n/ui.en.json`, `ui.vi.json` — `skillDetail.*`, `coachmark.trainingYard`, `assignHint`
+- `public/ui/icons/skills/*.png` — 12 skill icons
+
+---
+
+## [Unreleased] — 2026-05-30 (Training Yard Skill Selection + Skill Data Fixes)
+
+### fix(training-yard, skills): class-pool skill selection + repair stale/null carried skills
+
+**Training Yard assign reworked into a two-step flow** (mirrors Tavern): pick an idle member → pick a skill from that member's class pool to rank up. The previous picker required a carried skill, so promoted mercenaries (saved with `skill: null`) were unassignable and the picker showed empty. Choosing a skill now equips it as the carried skill so combat reflects the trained rank.
+
+**Skill data repaired**:
+- Promoted mercs now carry their class default skill instead of `null` (fixes roster Skills tab showing the stale "unlocks at Lv.5" placeholder).
+- Save migration **v33→v34** re-keys each member's carried skill onto the LinhSon class kit when the persisted skill is missing or not in the member's class pool — fixes legacy founders still showing "Heavy Strike" after the class-skills overhaul. `SAVE_VERSION` → 34.
+- Stale `characterDetail.skillLocked` copy (referenced the removed level system) replaced.
+
+**Key Files**:
+- `src/game/data/skills.ts` — `getArchetypeSkillPool`, `getSkillFromPool`
+- `src/game/state/guild-slice.ts` — `startSkillTraining` validates against class pool + equips chosen skill
+- `src/ui/components/training-yard-room-card.tsx` — two-step `MemberPicker` → `SkillPicker`
+- `src/game/systems/tavern-audition.ts` — `promoteMercToMember` assigns class default skill
+- `src/game/save/save-migrations.ts`, `save-types.ts` — `migrateV33toV34`, `SAVE_VERSION` 34
+- `src/i18n/ui.en.json`, `src/i18n/ui.vi.json` — skill-picker keys + `skillLocked` copy
+- `tests/skill-training-system.test.ts` — +2 tests (equip-on-train, pool rejection); 17 green
+
+---
+
+## [Unreleased] — 2026-05-30 (Training Yard End-to-End)
+
+### feat(training-yard): wire skill-rank training engine, tick integration, room card UI
+
+**Training Yard fully playable.** Completes the deferred tick wiring + UI from `260523-2230-linhson-skill-kit-implementation`. Engine aligned to GDD speed model (×1.0/×0.8/×0.6 by facility level). Cancel now refunds 50% gold and forfeits in-progress rank progress. New `TrainingYardRoomCard` replaces the generic `BuiltRoomTray` for training-yard; trainee picker lists idle members with carried skill, shows cost/cap gating, and is the sole assign path.
+
+**Key Files**:
+- `src/game/data/skill-rank-costs.ts` — added `TRAIN_SPEED_FACTOR`, `GAME_DAY_REAL_MS`
+- `src/game/systems/skill-training-system.ts` — `processSkillTraining` now uses dtMs + GDD speed model; added `resolveTrainingRows` + `TrainingRow`
+- `src/game/state/guild-slice.ts` — `cancelSkillTraining` now refunds 50% gold + resets progress to 0
+- `src/ui/hooks/use-game-tick-loop.ts` — online + offline training tick wired after infirmary recovery
+- `src/ui/components/training-yard-room-card.tsx` — new room card (slot rows, picker, cancel confirm)
+- `src/ui/components/facility-detail-tray.tsx` — training-yard routed to new card; excluded from `BuiltRoomTray`
+- `src/game/data/facility-definitions.ts` — updated training-yard description + primaryStats
+- `src/i18n/ui.en.json`, `src/i18n/ui.vi.json` — added `trainingYardCard.*` keys
+- `tests/skill-training-system.test.ts` — 15 tests green
+
+---
+
+## [Unreleased] — 2026-05-29 (Items System Overhaul Waves 1–4)
+
+### feat(items): pelt armor tier, 5 new active affixes, SHIELD mechanic, HS2/HS3 alchemy recipes
+
+**Items system expansion** — four-phase overhaul completing pelt-armor tier, affix combat wiring, SHIELD blocking, and higher-tier syringes. Scope: (1) T1 Boar Fur Coat (BOAR_PELT + WOOD) + T2 Bear Coat (BEAR_PELT + STONE) with extraMaterials schema; (2) 5 new materials active: BAT_WING→DODGE armor, SPIDER_LEGS→ATTACK_SPEED weapon, METAL_PLATE→BLOCK armor, DRONE_SENSOR→ACCURACY weapon, SLIME_KING_CORE→SHIELD armor [1–2 charges]; (3) SHIELD mechanic — fresh charges at combat start, each negates 80% of one hit, applies after BLOCK in damage order; (4) Healing Syringe II (2× SLIME_GEL, AC Lv3, 50% heal) + Healing Syringe III (3× SLIME_GEL, AC Lv5, 80% heal); both with quantity-aware recipe matching. Moonbear now drops BEAR_PELT {0.8,1,1}; cave-bat drops BAT_WING {0.30,1,1}; forest-spider drops SPIDER_LEGS {0.22,1,1}. Equip-type guard enforces armor-only (DODGE/BLOCK/SHIELD) vs weapon-only (ACCURACY/ATTACK_SPEED) affixes.
+
+**Key Files**:
+- `src/game/data/items.ts` — BEAR_PELT + 5 materials now in ITEM_DATABASE; HEALING_SYRINGE_2/3 descriptions
+- `src/game/data/equipment-templates.ts` — BOAR_FUR_COAT + BEAR_COAT with extraMaterials schema
+- `src/game/data/workshop-material-affinity.ts` — 5 materials enabled: BAT_WING (DODGE), SPIDER_LEGS (ATTACK_SPEED), METAL_PLATE (BLOCK), DRONE_SENSOR (ACCURACY), SLIME_KING_CORE (SHIELD)
+- `src/game/data/alchemy-recipes.ts` — HS2 + HS3 recipes + quantity-aware matchRecipe logic
+- `src/game/systems/combat-engine.ts` — SHIELD charge handling in damage order (block → shield → HP)
+- `src/game/systems/derived-combat-stats.ts` — dodgeRate, blockRate, accuracyBonus, attackSpeedBonus, shieldCharges fields
+- `src/game/data/enemies.ts` — moonbear drops BEAR_PELT; cave-bat + forest-spider loot updated
+- `src/i18n/content.vi.json` — HS2/HS3 + pelt armor i18n strings (all keys present, content-coverage green)
+- `docs/gdd/15-items-inventory-system.md` + `docs/gdd/10-items-equipment.md` — docs rewritten; stale claims fixed (syringe auto-use now implemented, affix categories live)
+- `docs/gdd/combat/formulas-damage.md` — documented DODGE/BLOCK/SHIELD damage order, new derived stats (accuracy, attack-speed)
+
+**Deferred (forward-ref note)**: METAL_PLATE + DRONE_SENSOR drop sources; WOLF_FANG/GOBLIN_EAR/ORC_TUSK recipes → tracked in separate Enemy & Mission Overhaul plan.
+
+---
+
+## [Unreleased] — 2026-05-28 (Infirmary Recovery — Beds, Queue, Progress, Skip)
+
+### feat(infirmary): bed/queue recovery model with per-tick progress and once-per-day Skip
+
+Replaces the flat wall-clock `injuredUntil` auto-clear with the GDD bed/queue model (plan `260527-2037-infirmary-recovery-logic`). Injured members now accrue `recoveryProgress` (0→1) each tick at a rate derived from their bed/queue placement; beds (1/2/3 per level) heal at ×0.6/×0.5/×0.4 of the wall-clock base, queued members heal at the passive ×1.0 so the roster is never stuck. Bed/queue assignment is **derived every tick** (FIFO by `injuredAt`, tie-break by id) — no stored slot state, so recovering a bedded member auto-promotes the next-oldest on the following tick. Capacity stacks across every active infirmary instance (beds sum; heal speed = highest active level). New room card surfaces beds + queue with progress bars, speed badges, and a per-row Skip-5min button gated guild-wide to once per game day via `lastSkipDay` on the primary infirmary.
+
+**Save bump v30**: `Member` gains `injuredAt` / `baseRecoveryMs` / `recoveryProgress` and `GuildFacility` gains `lastSkipDay`. v29→v30 migration converts in-flight injured members from deadline-driven to progress-driven (remaining wall-clock → new passive base, floored at 30s; progress reset to 0; `injuredUntil` cleared).
+
+**Key Files**:
+- `src/game/systems/infirmary-recovery.ts` (NEW) — `resolveInjuryQueue` (single source of truth for who-is-bedded), `processInjuryRecovery` (per-tick engine), `SKIP_THRESHOLD_MS`.
+- `src/game/state/roster-slice.ts` — new `injureMember` / `applyInjuryRecovery` actions; old `setMemberInjuredUntil` retained for save-compat callers only.
+- `src/game/state/guild-slice.ts` — `skipMemberRecovery` action (guild-wide once/day, ≤5min threshold).
+- `src/game/state/game-state.ts` + `src/game/save/save-types.ts` + `src/game/save/save-migrations.ts` — added fields + v29→v30 migration.
+- `src/ui/components/infirmary-room-card.tsx` (NEW) + `src/ui/components/facility-detail-tray.tsx` — required beds + queue card with Skip button.
+- `src/ui/hooks/use-game-tick-loop.ts` — wall-clock `dt` captured pre-`tickClock` and passed into `processInjuryRecovery`.
+- `src/game/systems/mission-tick.ts` + `src/game/systems/arena-result-handler.ts` — injury triggers now call `injureMember(id, baseRecoveryMs, injuredAt)` instead of stamping `injuredUntil`.
+- `src/ui/components/roster-list-item.tsx` — generic "Injured" badge (precise countdown lives on the infirmary card).
+- `tests/infirmary-recovery.test.ts` (NEW, 14 tests) + `src/game/state/guild-slice-infirmary-skip.test.ts` (NEW, 5 tests) + 2 new v29→v30 cases in `save-migrations.test.ts`.
+- `docs/gdd/rooms/infirmary.md` — flipped Implementation status from "TARGET spec / not yet built" to "implemented (save v30)"; refreshed references section.
+
+**Locks verified (no code change)**: assign / promote / mission-dispatch already exclude injured members (`guild-slice.ts:654`, `:507`, `quest-board.tsx:47`). The GDD's "block repair/upgrade while injured" line was dropped — workshop repair/enhance is item-centric (global target lookup), so no per-member gate maps to the architecture.
+
+---
+
+## [Unreleased] — 2026-05-23 (Deploy Pipeline + Sprite Sheets + Itch Asset Paths)
+
+### chore(deploy): add itch.io butler deploy pipeline
+**Build artifact distribution**. New `scripts/deploy-itch.mjs` + npm script `npm run deploy` (builds + pushes via butler CLI to itch.io `hungtran0205/2000sac:html5`). Flags: `--no-build` (push existing dist), `--status`. Auto-locates butler.exe on PATH; override via `BUTLER_PATH`/`ITCH_TARGET`/`ITCH_CHANNEL` env vars.
+
+### feat(sprites): pre-pack animation frames into sprite sheets
+**Asset count reduction + sprite-sheet packing**. New Python/Pillow packer `scripts/pack-sprite-sheets.py` consolidates per-frame PNGs (`public/sprites/<entity>/animations/<anim>/<dir>/frame_NNN.png`) into ONE sheet PNG per (entity, animation). Emits `src/scene/sprites/sprite-sheet-manifest.ts` with geometry (path, cols, rows, dirRows[], frameCounts). Runtime: new `buildAtlasFromSheet()` in `sprite-atlas.ts` loads one sheet per animation + CLONEs texture per instance (shared three.js Source, independent UV offset). All animators updated (sprite-animator, guild-hall-sprite-animator, enemy-sprite-animator, working-animator, woodcutting-animator, combat-idle-sprite). Combat keeps mask compositing working. Direction row resolved via `dirRows.indexOf(dir)`. COMBAT_SPRITE_MANIFEST still gates anim availability.
+
+**Migration impact**: ~480 individual frame PNGs deleted, 57 sheet PNGs added (from `public/sprites/`). UI portraits (tavern cards, facility avatar) now use static `avatar/frame_000.png`. Title masked-figures crop walking-sheet south-row frame 0. Vite config `stripUnwantedFiles` now also strips `.aseprite` / `.gitkeep` and prunes empty dirs.
+
+**File count win**: itch.io rejects zips with >1000 entries (files + dirs). Build was 1097 (874 files + 223 dirs) → now 489 (389 files + 100 dirs).
+
+### fix(assets): resolve public asset paths via assetUrl for itch subpath
+**Asset path resolution for itch.io subpath**. Wrapped ~60 loader call sites across 29 files (useGLTF/useTexture/useLoader/preload for GLB furniture, VFX/wall/floor textures, title flags/drum) in `assetUrl()`. Root-absolute `/models/...` paths 403 on itch because game is served from subpath; sprites + audio already used assetUrl. Note: `main.tsx`'s `THREE.DefaultLoadingManager.setURLModifier` does NOT reliably catch drei useGLTF, so per-site wrapping is the real fix.
 
 ---
 
@@ -1058,7 +1656,7 @@ Integrated Skill Choreography Sequencer into vfx-playground as a second mode alo
 - Sequence code generator producing `.tsx` exports for game integration
 - localStorage persistence for sequence library
 - R3F preview canvas with Three.js WebGPU rendering
-- Engine adapters for compatibility with Worlds Collide game state
+- Engine adapters for compatibility with the core game state
 
 **New Files**:
 - `tools/vfx-playground/src/ui/mode-tabs.tsx` — Mode switcher component

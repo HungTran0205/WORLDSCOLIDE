@@ -1,8 +1,18 @@
 /**
  * Composite atlas builder — draws body animation frames with identity mask overlaid.
  *
- * One atlas per (charId × maskId × anim). Cache is module-level; dispose on combat unmount
- * via disposeCombatMaskCompositeAtlasCache() to avoid accumulating CanvasTextures.
+ * Phase 3: accepts a sheet source {sheetTexture, cols, rows, row, frameCount}
+ * instead of bodyTextures: Texture[]. Each body frame is sliced from the sheet
+ * via canvas drawImage(sheet, srcX, srcY, frameW, frameH, 0, 0, frameW, frameH).
+ *
+ * One atlas per (charId × maskId × anim × row × blessed). Cache is module-level;
+ * dispose on combat unmount via disposeCombatMaskCompositeAtlasCache() to avoid
+ * accumulating CanvasTextures.
+ *
+ * Layers per frame, painted back-to-front: body slice → blessed overlay (full-frame
+ * gold outline + tattoo, optional) → identity mask (per-frame anchored, optional, on
+ * top so the face stays above the aura). A blessed-only ally (no identity mask) still
+ * composites; a mask-only ally is the original behavior.
  *
  * Coordinate convention: top-left, matches canvas 2D and combat-mask-anchors.ts.
  */
@@ -11,13 +21,44 @@ import * as THREE from 'three';
 import type { SpriteAtlas } from '../sprites/sprite-atlas';
 import { resolveCombatMaskAnchor, type CombatMaskAnim } from './combat-mask-anchors';
 
+/** Sheet-based source for composite atlas — replaces the old bodyTextures[] array. */
+export interface SheetCompositeSource {
+  /** Full pre-packed sheet texture (already loaded via useLoader/TextureLoader). */
+  sheetTexture: THREE.Texture;
+  /** Grid dimensions of the sheet (cols × rows). */
+  cols: number;
+  rows: number;
+  /** Which row in the sheet holds this animation's frames. */
+  row: number;
+  /** Number of frames to composite (≤ cols). */
+  frameCount: number;
+}
+
+/**
+ * Optional blessed-overlay layer — a single-row sheet of square frames (gold
+ * outline + tattoo) drawn full-frame 1:1 over each body frame. Per-anim segment
+ * offset selects the starting cell; overlay frame i = cell (segmentOffset + i).
+ */
+export interface BlessedOverlaySource {
+  /** Full overlay sheet texture (already loaded; single row, square frames). */
+  sheetTexture: THREE.Texture;
+  /** First overlay cell index for this animation within the single-row sheet. */
+  segmentOffset: number;
+  /** Overlay frame count for this animation (matches the body frame count). */
+  frameCount: number;
+}
+
 export interface BuildCombatMaskAtlasArgs {
   charId: string;
   anim: CombatMaskAnim;
-  maskId: string;
-  bodyTextures: THREE.Texture[];
-  maskTexture: THREE.Texture;
-  cols: number;
+  /** Identity mask id; null when compositing a blessed-only (mask-less) atlas. */
+  maskId: string | null;
+  /** Phase 3: sheet-based source replaces bodyTextures[]. */
+  sheetSource: SheetCompositeSource;
+  /** Identity mask texture; omit when maskId is null (no per-frame face mask). */
+  maskTexture?: THREE.Texture;
+  /** Gold-outline + tattoo overlay drawn full-frame over the body, beneath the mask. */
+  blessedOverlay?: BlessedOverlaySource;
 }
 
 const atlasCache = new Map<string, SpriteAtlas>();
@@ -37,14 +78,21 @@ export function getAtlasInvalidationVersion(): number {
 }
 
 function makeCacheKey(args: BuildCombatMaskAtlasArgs): string {
-  return `${args.charId}|${args.maskId}|${args.anim}|${args.bodyTextures.length}`;
+  const { charId, maskId, anim, sheetSource, blessedOverlay } = args;
+  // Blessed discriminator keeps blessed atlases distinct from plain identity-mask
+  // atlases for the same (char, mask, anim, row, frameCount).
+  const blessedKey = blessedOverlay
+    ? `b${blessedOverlay.segmentOffset}:${blessedOverlay.frameCount}`
+    : 'b-';
+  return `${charId}|${maskId ?? 'none'}|${anim}|${sheetSource.row}|${sheetSource.frameCount}|${blessedKey}`;
 }
 
 /**
  * Build (or return cached) a composite SpriteAtlas with the identity mask drawn
  * over each body frame at its per-frame anchor position.
  *
- * Caller must ensure bodyTextures and maskTexture are already loaded.
+ * Body frames are sliced from the pre-packed sheet via canvas drawImage — no
+ * per-frame texture load needed. maskTexture must already be loaded.
  * Returned atlas is shared — do NOT dispose it per-sprite; use disposeCombatMaskCompositeAtlasCache().
  */
 export function buildCombatMaskCompositeAtlas(args: BuildCombatMaskAtlasArgs): SpriteAtlas {
@@ -52,43 +100,79 @@ export function buildCombatMaskCompositeAtlas(args: BuildCombatMaskAtlasArgs): S
   const cached = atlasCache.get(key);
   if (cached) return cached;
 
-  const { charId, anim, bodyTextures, maskTexture, cols } = args;
+  const { charId, anim, sheetSource, maskTexture, blessedOverlay } = args;
+  const { sheetTexture, cols, rows, row, frameCount } = sheetSource;
 
-  if (bodyTextures.length === 0) {
-    throw new Error('buildCombatMaskCompositeAtlas: bodyTextures must not be empty');
+  if (frameCount === 0) {
+    throw new Error('buildCombatMaskCompositeAtlas: frameCount must be > 0');
+  }
+  if (!maskTexture && !blessedOverlay) {
+    throw new Error('buildCombatMaskCompositeAtlas: requires maskTexture and/or blessedOverlay');
   }
 
-  const frameCount = bodyTextures.length;
-  const rows = Math.ceil(frameCount / cols);
+  // Derive frame dimensions from the sheet's image (sheet is rows×cols grid).
+  const sheetImg = sheetTexture.image as HTMLImageElement | HTMLCanvasElement;
+  const sheetW = sheetImg.width || 128 * cols;
+  const sheetH = sheetImg.height || 128 * rows;
+  const frameW = Math.floor(sheetW / cols);
+  const frameH = Math.floor(sheetH / rows);
 
-  const firstImage = bodyTextures[0].image as HTMLImageElement | HTMLCanvasElement;
-  const frameW = firstImage.width || 128;
-  const frameH = firstImage.height || 128;
+  // Output atlas layout: frameCount cols × 1 row (one strip per animation).
+  const atlasCols = frameCount;
+  const atlasRows = 1;
 
   const canvas = document.createElement('canvas');
-  canvas.width = cols * frameW;
-  canvas.height = rows * frameH;
+  canvas.width = atlasCols * frameW;
+  canvas.height = atlasRows * frameH;
   const ctx = canvas.getContext('2d')!;
-  // Mask source is 32×32 upscaled to anchor.size — bilinear would blur it against crisp body pixels
+  // Pixel-art: no bilinear smoothing for body or mask
   ctx.imageSmoothingEnabled = false;
 
-  const maskImg = maskTexture.image as HTMLImageElement | HTMLCanvasElement;
+  const maskImg = maskTexture
+    ? (maskTexture.image as HTMLImageElement | HTMLCanvasElement)
+    : null;
+  const overlayImg = blessedOverlay
+    ? (blessedOverlay.sheetTexture.image as HTMLImageElement | HTMLCanvasElement)
+    : null;
 
   for (let i = 0; i < frameCount; i++) {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    const cellX = col * frameW;
-    const cellY = row * frameH;
+    // Source cell in the sheet: (col, row) in sheet grid
+    const srcCol = i % cols;
+    // Frames within a row run left-to-right; row is fixed for this animation
+    const srcX = srcCol * frameW;
+    const srcY = row * frameH;
 
-    // Body first (1:1, no scaling)
-    const bodyImg = bodyTextures[i].image as HTMLImageElement | HTMLCanvasElement;
-    ctx.drawImage(bodyImg, cellX, cellY, frameW, frameH);
+    const destX = i * frameW;
+    const destY = 0;
 
-    // Mask second — drawn over body at per-frame anchor
-    const anchor = resolveCombatMaskAnchor(charId, anim, i);
-    const drawX = cellX + anchor.x - anchor.size / 2;
-    const drawY = cellY + anchor.y - anchor.size / 2;
-    ctx.drawImage(maskImg, drawX, drawY, anchor.size, anchor.size);
+    // Body: slice frame from the sheet
+    ctx.drawImage(sheetImg, srcX, srcY, frameW, frameH, destX, destY, frameW, frameH);
+
+    // Blessed overlay: full-frame gold outline + tattoo, drawn BEFORE the identity
+    // mask so the mask (the character's face) stays on top of the gold aura rather
+    // than being covered by it. Single-row sheet of square frames authored 1:1 with
+    // the body; the per-anim segment offset selects the matching cell. Frame size is
+    // derived from the overlay sheet itself (single-row → height) so it stays correct
+    // regardless of the body frame size.
+    if (overlayImg && blessedOverlay) {
+      const ovFrameSize = (overlayImg as HTMLImageElement).height || frameH;
+      // Clamp to this animation's own segment: if the body anim has more frames than
+      // the overlay segment, hold the last overlay frame instead of bleeding into the
+      // next animation's cells (segments are contiguous in a single row).
+      const ovLocal = Math.min(i, blessedOverlay.frameCount - 1);
+      const ovSrcX = (blessedOverlay.segmentOffset + ovLocal) * ovFrameSize;
+      ctx.drawImage(overlayImg, ovSrcX, 0, ovFrameSize, ovFrameSize, destX, destY, frameW, frameH);
+    }
+
+    // Identity mask: painted last (topmost) over body + blessed overlay, at the
+    // per-frame anchor position (optional). Keeping the face above the gold aura
+    // preserves the character's identity while blessed.
+    if (maskImg) {
+      const anchor = resolveCombatMaskAnchor(charId, anim, i);
+      const drawX = destX + anchor.x - anchor.size / 2;
+      const drawY = destY + anchor.y - anchor.size / 2;
+      ctx.drawImage(maskImg, drawX, drawY, anchor.size, anchor.size);
+    }
   }
 
   const atlasTexture = new THREE.CanvasTexture(canvas);
@@ -98,10 +182,10 @@ export function buildCombatMaskCompositeAtlas(args: BuildCombatMaskAtlasArgs): S
   atlasTexture.generateMipmaps = true;
 
   // Set initial UV to frame 0
-  atlasTexture.repeat.set(1 / cols, 1 / rows);
-  atlasTexture.offset.set(0, 1 - 1 / rows);
+  atlasTexture.repeat.set(1 / atlasCols, 1 / atlasRows);
+  atlasTexture.offset.set(0, 1 - 1 / atlasRows);
 
-  const atlas: SpriteAtlas = { texture: atlasTexture, cols, rows, frameCount };
+  const atlas: SpriteAtlas = { texture: atlasTexture, cols: atlasCols, rows: atlasRows, frameCount };
   atlasCache.set(key, atlas);
   return atlas;
 }

@@ -1,8 +1,9 @@
 import { useGLTF } from '@react-three/drei';
 import { RoomProp } from '../facility/room-prop';
 import { InteractiveFacilityObject } from '../facility/interactive-facility-object';
+import { assetUrl } from '@/lib/asset-url';
 
-useGLTF.preload('/models/furnitures/LinhSonTavernBackground.glb');
+useGLTF.preload(assetUrl('/models/furnitures/LinhSonTavernBackground.glb'));
 
 export function TavernFurniture({ cx, cz }: { cx: number; cz: number }) {
   return (

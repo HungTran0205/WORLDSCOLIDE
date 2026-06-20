@@ -20,13 +20,11 @@ import { useMemo } from 'react';
 import { VFXParticles, Blending } from 'r3f-vfx';
 import { Lighting } from 'core-vfx';
 import { allPresets } from '@/scene/effects/preset-registry';
-import type { ParticlesPreset } from '@/scene/effects/preset-types';
 
 export function CombatVfxRoot() {
   const children = useMemo(
     () =>
       allPresets
-        .filter((p): p is ParticlesPreset => p.kind !== 'meshline')
         .filter((p) => p.category === 'linh-son' || p.category === 'generic')
         .map((p) => (
           <VFXParticles
@@ -38,6 +36,11 @@ export function CombatVfxRoot() {
             // Force ADDITIVE so hit/burst effects read consistently across the arena.
             blending={Blending.ADDITIVE}
             lighting={Lighting.BASIC}
+            // depthTest off so combat feedback particles (hit spark, crit burst,
+            // heal, death) always read on top of the depth-writing entity sprites
+            // instead of being half-occluded when they spawn behind a sprite plane.
+            depthTest={false}
+            renderOrder={11}
           />
         )),
     [],

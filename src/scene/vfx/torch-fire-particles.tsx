@@ -8,6 +8,7 @@ import { useFrame } from '@react-three/fiber';
 import { useTexture, Billboard } from '@react-three/drei';
 import { useControls } from 'leva';
 import * as THREE from 'three';
+import { assetUrl } from '@/lib/asset-url';
 
 // --- Canvas smoke texture ---
 function makeSmokeTexture(): THREE.CanvasTexture {
@@ -70,7 +71,7 @@ export interface TorchFireEffectProps {
 }
 
 export function TorchFireEffect({ offsetY, scale, debugLabel = 'Fire' }: TorchFireEffectProps) {
-  const fireTex = useTexture('/arena/cave/props/fire-flame.png');
+  const fireTex = useTexture(assetUrl('/arena/cave/props/fire-flame.png'));
   fireTex.magFilter = THREE.NearestFilter;
   fireTex.minFilter = THREE.NearestFilter;
 

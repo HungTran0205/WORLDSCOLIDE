@@ -8,6 +8,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useTexture, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
+import { assetUrl } from '@/lib/asset-url';
 
 function makeSmokeTexture(): THREE.CanvasTexture {
   const c = document.createElement('canvas');
@@ -37,7 +38,7 @@ export interface CandleFireEffectProps {
 }
 
 export function CandleFireEffect({ offsetY, scale = 1 }: CandleFireEffectProps) {
-  const fireTex = useTexture('/arena/cave/props/fire-flame.png');
+  const fireTex = useTexture(assetUrl('/arena/cave/props/fire-flame.png'));
   fireTex.magFilter = THREE.NearestFilter;
   fireTex.minFilter = THREE.NearestFilter;
 

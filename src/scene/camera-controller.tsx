@@ -15,6 +15,7 @@ import { OrbitControls } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '@/game/state/store';
+import { computeBaseZoom, computeZoomClamps } from './responsive-zoom';
 
 // Default isometric offset (initial camera [15,10,14] minus target [5,0,3.5])
 const CAM_OFFSET_DEFAULT: [number, number, number] = [8, 5.5, 8.5];
@@ -36,7 +37,7 @@ export function CameraController() {
   const cameraTarget = useGameStore((s) => s.cameraTarget);
   const cameraFocus = useGameStore((s) => s.cameraFocus);
   const setCameraSettled = useGameStore((s) => s.setCameraSettled);
-  const { camera, invalidate } = useThree();
+  const { camera, invalidate, size } = useThree();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const controlsRef = useRef<any>(null);
@@ -56,6 +57,23 @@ export function CameraController() {
     goalPosition.current.set(tx + ox, oy, tz + oz);
     invalidate();
   }, [cameraTarget, cameraFocus, invalidate]);
+
+  // Responsive ortho zoom — refit the hall when the canvas resizes or the
+  // device rotates. R3F updates `size` on resize, so no manual window listener
+  // is needed. Runs only on size change, not per-frame, so it won't fight a
+  // user's pinch-zoom in steady state.
+  const baseZoom = computeBaseZoom(size);
+  const { minZoom, maxZoom } = computeZoomClamps(baseZoom);
+  // Three.js cameras are mutable objects driven imperatively (same pattern as
+  // the combat camera reset and TransparentBackground's scene.background).
+  /* eslint-disable react-hooks/immutability */
+  useEffect(() => {
+    camera.zoom = baseZoom;
+    camera.updateProjectionMatrix();
+    controlsRef.current?.update();
+    invalidate();
+  }, [camera, baseZoom, invalidate]);
+  /* eslint-enable react-hooks/immutability */
 
   useFrame((_state, delta) => {
     const controls = controlsRef.current;
@@ -96,8 +114,8 @@ export function CameraController() {
       enableRotate={false}
       enablePan={!isBuildMode && userControlsEnabled}
       enableZoom={userControlsEnabled}
-      minZoom={180}
-      maxZoom={220}
+      minZoom={minZoom}
+      maxZoom={maxZoom}
     />
   );
 }

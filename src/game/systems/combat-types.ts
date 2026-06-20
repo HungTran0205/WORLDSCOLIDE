@@ -9,7 +9,7 @@ export interface CombatEntity {
   currentHp: number;
   stats: Stats;
   skill: Skill | null;
-  level: number;
+  level?: number;
   attackIntervalMs: number;
   nextAttackAt: number;
   skillCooldownUntil: number;
@@ -19,15 +19,27 @@ export interface CombatEntity {
   passiveState?: PassiveState;
   baseStats?: Stats;
 
+  // Ancestral Blessings (Linh Sơn) — Blessed resource + buff lifecycle.
+  // Snapshot of the member's full-bar gate, captured at combat init.
+  blessedReady?: boolean;
+  // Buff is active this combat (drives persistent VFX overlay/aura).
+  blessed?: boolean;
+  // Guards one-shot firing so the buff triggers at most once per combat.
+  ancestralFired?: boolean;
+
   // Temporary combat flags (set each tick by engine/simulator)
   _hasDeQuocBuff?: boolean;  // DeQuoc ally team buff: +5% crit/dmg
+  _linhSonDefBuff?: number;  // active teamDefUp magnitude (0.20 base)
+  _linhSonCritBuff?: number; // active teamCritUp magnitude (0.10 base)
+  /** Resist rate (0–1) reducing debuff duration. Computed from INT+END. Enemies: 0. */
+  statusResist?: number;
 
   // Gear bonuses (baked in at entity creation from member.equipment)
   /** Flat damage bonus from equipped weapon (0 if no weapon or durability=0) */
   gearFlatDamage?: number;
-  /** Flat HP bonus from armor+headgear (already added to maxHp at init) */
+  /** Flat HP bonus from armor (already added to maxHp at init) */
   gearFlatHp?: number;
-  /** Flat defense bonus from armor+headgear (used in damage receive calc) */
+  /** Flat defense bonus from armor (used in damage receive calc) */
   gearFlatDefense?: number;
 
   // Syringe auto-use (allies only)
@@ -41,6 +53,12 @@ export interface CombatEntity {
   blockRate: number;
   critDmg: number;
   hpRegenPerSec: number;
+  /** Gear accuracy — subtracts from target dodgeRate before the dodge roll. Enemies: 0. */
+  accuracy: number;
+  /** Remaining hit-shield charges. Each charge absorbs one incoming hit at 80% reduction. Enemies: 0. */
+  shieldCharges: number;
+  /** Charges at combat start — kept for UI display (pip count). Enemies: 0. */
+  shieldChargesMax: number;
 
   // Spatial fields (used by real-time arena, absent in auto-resolve)
   // y is optional — entities on flat (y=0) stages omit it; entities placed
@@ -50,7 +68,10 @@ export interface CombatEntity {
   targetId?: string | null;
   attackRange?: number;
   moveSpeed?: number;
-  animState?: 'idle' | 'walking' | 'attacking' | 'skill' | 'hit' | 'dead' | 'battle-idle' | 'blocking' | 'back';
+  animState?: 'idle' | 'walking' | 'attacking' | 'skill' | 'hit' | 'dead' | 'battle-idle' | 'blocking' | 'back' | 'casting';
+  /** Timestamp (combat ms) when a transient animState reverts to battle-idle.
+   *  Required on ArenaEntity; optional here so headless-sim entities can set it too. */
+  animStateUntil?: number;
   facingRight?: boolean;
   archetype?: string;
   gender?: 'M' | 'F';
@@ -65,8 +86,11 @@ export interface CombatEntity {
 }
 
 export interface ActiveEffect {
-  type: 'poisoned' | 'stunned' | 'boosted' | 'shocked';
+  type: 'poisoned' | 'stunned' | 'boosted' | 'shocked'
+      | 'slowed' | 'taunted' | 'teamDefUp' | 'teamCritUp';
   ticksRemaining: number;
+  /** Magnitude override — used by teamDefUp (0.20) and teamCritUp (0.10). */
+  magnitude?: number;
 }
 
 export type EnemyAbility =
@@ -84,19 +108,23 @@ export interface CombatTick {
 export type AoeShape = 'circle' | 'cone' | 'rect';
 
 export type CombatEvent =
-  | { type: 'auto-attack'; attackerId: string; targetId: string; damage: number; isCrit?: boolean }
+  | { type: 'auto-attack'; attackerId: string; targetId: string; damage: number; isCrit?: boolean; isRiposte?: boolean }
   | { type: 'skill-use'; attackerId: string; targetId: string; damage: number; skillName: string; isCrit?: boolean }
-  | { type: 'effect-applied'; targetId: string; effect: string }
+  | { type: 'effect-applied'; targetId: string; effect: string; casterId?: string }
   | { type: 'effect-tick'; targetId: string; effect: string; damage: number }
   | { type: 'death'; entityId: string }
   | { type: 'dodge'; attackerId: string; targetId: string }
   | { type: 'block'; attackerId: string; targetId: string; reducedDamage: number }
+  | { type: 'shield-break'; targetId: string; chargesRemaining: number }
   | { type: 'heal'; healerId: string; targetId: string; amount: number }
   | { type: 'syringe-used'; entityId: string; healAmount: number }
   | { type: 'wave-cleared'; waveIndex: number }
   | { type: 'victory' }
   | { type: 'ally-turn-start'; entityId: string }
   | { type: 'wipe' }
+  | { type: 'skill-buff-applied'; casterId: string; buffEffect: string; scope: 'self' | 'team'; durationMs: number }
+  | { type: 'skill-debuff-applied'; casterId: string; targetId: string; effect: string; durationMs: number }
+  | { type: 'ancestral-cast'; casterId: string }
   | {
       type: 'aoe-telegraph';
       /** Casting entity id (deduplication / debug source). */
@@ -124,4 +152,7 @@ export interface CombatResult {
   injured: string[];
   totalDamageDealt: number;
   durationMs: number;
+  /** Ally ids whose Ancestral Blessings fired this combat — their Blessed bar is
+   *  drained to 0 post-combat (win OR loss). Absent/empty when nobody fired. */
+  blessedConsumedIds?: string[];
 }

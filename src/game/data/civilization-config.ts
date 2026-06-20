@@ -60,9 +60,9 @@ export const CIV_CONFIG: Record<Civilization, CivConfig> = {
       { stat: 'STR', multiplier: 1.1 },
     ],
     passive: {
-      id: 'son-the',
-      name: 'Sơn Thể',
-      description: 'HP < 30%: END +30%, knockback resist',
+      id: 'ancestral-blessings',
+      name: 'Tổ Tiên Phù Độ',
+      description: 'HP < 30% + Phước Lành đầy: +20% END/STR/AGI đến hết trận',
     },
     colors: {
       primary: '#f5f0e6',

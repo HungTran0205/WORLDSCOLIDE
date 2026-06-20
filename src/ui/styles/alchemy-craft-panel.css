@@ -1,0 +1,250 @@
+/* Alchemy Craft Panel — content styles only.
+   Panel chrome (border, header, close button, open/close animation) is owned
+   by PanelFrame. Only content-layout classes live here. */
+
+/* ── Positioner: centers PanelFrame on screen without a dark scrim. ── */
+.ac-positioner {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: var(--bp-z-panel-elevated);
+}
+.ac-positioner > * {
+  pointer-events: auto;
+  width: min(860px, 92vw);
+  max-height: 88vh;
+}
+
+/* ── Two-column layout: inventory | divider | craft ── */
+.ac-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.ac-inventory-col {
+  min-width: 270px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ac-craft-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-width: 320px;
+}
+
+/* ── Divider ── */
+.ac-divider {
+  width: 1px;
+  background: var(--bp-parch-burn);
+  opacity: 0.35;
+  align-self: stretch;
+}
+
+/* ── Section titles ── */
+.ac-section-title {
+  font-family: var(--ink-font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--bp-status-info);
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+/* ── Inventory grid ── */
+.ac-inv-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 50px);
+  gap: 4px;
+}
+
+.ac-item-cell {
+  width: 50px;
+  height: 50px;
+  border-radius: var(--bp-radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  user-select: none;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ac-item-qty {
+  font-size: 10px;
+  color: var(--bp-text-ink-soft);
+  margin-top: 2px;
+}
+
+.ac-empty {
+  font-family: var(--ink-font-mono);
+  color: var(--bp-text-ink-soft);
+  font-size: 0.65rem;
+  font-style: italic;
+  margin-top: 8px;
+}
+
+/* ── Combine row (slots + arrow + output) ── */
+.ac-combine-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.ac-slot-label {
+  font-family: var(--ink-font-mono);
+  font-size: 0.62rem;
+  color: var(--bp-text-ink-soft);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.ac-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 60px);
+  gap: 8px;
+}
+
+.ac-slot {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--bp-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ac-output-slot {
+  width: 68px;
+  height: 68px;
+}
+
+.ac-slot-hint {
+  font-family: var(--ink-font-mono);
+  color: var(--bp-iron);
+  font-size: 0.62rem;
+  text-align: center;
+}
+
+.ac-slot-locked {
+  font-family: var(--ink-font-mono);
+  color: var(--bp-bronze-shadow);
+  font-size: 0.6rem;
+}
+
+.ac-output-unknown {
+  color: var(--bp-iron);
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.ac-arrow {
+  color: var(--bp-bronze-light);
+  font-size: 28px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+/* ── Recipe hints ── */
+.ac-recipe-hint {
+  font-family: var(--ink-font-mono);
+  color: var(--bp-text-ink-soft);
+  font-size: 0.62rem;
+  text-align: center;
+}
+
+.ac-recipe-blocked {
+  font-family: var(--ink-font-mono);
+  color: var(--bp-status-bad);
+  font-size: 0.62rem;
+  text-align: center;
+}
+
+/* ── Quantity row ── */
+.ac-qty-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ac-qty-label {
+  font-family: var(--ink-font-mono);
+  color: var(--bp-text-ink-soft);
+  font-size: 0.7rem;
+}
+
+.ac-qty-input {
+  width: 64px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--bp-parch-burn);
+  border-radius: var(--bp-radius);
+  color: var(--bp-parch-light);
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  outline: none;
+  text-align: center;
+  font-family: var(--ink-font-mono);
+}
+.ac-qty-input:focus { border-color: var(--bp-bronze-light); }
+
+/* ── Action buttons ── */
+.ac-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.ac-btn {
+  padding: 8px 22px;
+  border-radius: var(--bp-radius);
+  font-family: var(--ink-font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--bp-parch-burn);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--bp-text-ink-soft);
+  transition: background var(--bp-dur-fast), border-color var(--bp-dur-fast);
+}
+
+.ac-btn-craft {
+  background: rgba(100, 200, 80, 0.12);
+  border-color: var(--bp-parch-burn);
+  color: var(--bp-text-ink-soft);
+  cursor: not-allowed;
+}
+.ac-btn-craft.is-active {
+  background: rgba(100, 200, 80, 0.22);
+  border-color: var(--bp-status-ok);
+  color: var(--bp-status-ok);
+  cursor: pointer;
+}
+.ac-btn-craft.is-active:hover {
+  background: rgba(100, 200, 80, 0.32);
+}
+
+.ac-btn-cancel {
+  background: rgba(196, 74, 74, 0.12);
+  border-color: var(--bp-status-bad);
+  color: var(--bp-status-bad);
+}
+.ac-btn-cancel:hover {
+  background: rgba(196, 74, 74, 0.22);
+}
+
+/* ── Level note ── */
+.ac-level-note {
+  font-family: var(--ink-font-mono);
+  color: var(--bp-iron);
+  font-size: 0.6rem;
+}

@@ -15,6 +15,17 @@ export const AUDIO = {
   SFX_VICTORY: 'sfx-reward',   // alias: reuse reward sound for victory
   SFX_WIPE: 'sfx-hit',         // alias: reuse hit sound for wipe
 
+  // Pierce skill impact cue. POC alias → sfx-skill. Swap to 'sfx-pierce'
+  // once a CC0 spear-stab asset is sourced + registered in audio-manager.ts.
+  SFX_PIERCE: 'sfx-skill',
+
+  // Templar skill cues — aliased to existing sounds until dedicated CC0 assets
+  // are sourced. When real files arrive, swap the value here AND register the
+  // Howl in audio-manager.ts initAudio().
+  SFX_CLEAVE:  'sfx-skill',  // alias → skill (heavy horizontal slash)
+  SFX_RIPOSTE: 'sfx-skill',  // alias → skill (metallic parry-ready chime)
+  SFX_RALLY:   'sfx-skill',  // alias → skill (warcry shout)
+
   // Quest board diegetic SFX — aliased to existing sounds until CC0
   // freesound.org files are sourced. When dedicated assets arrive (e.g.
   // /audio/sfx-paper-unroll.ogg), swap value here AND register the Howl

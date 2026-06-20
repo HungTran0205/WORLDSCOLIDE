@@ -16,6 +16,7 @@ import { useLoader } from '@react-three/fiber';
 import { TextureLoader } from 'three';
 import { useControls } from 'leva';
 import { COMBAT_CAM_TILT_RAD } from './combat-camera-config';
+import { assetUrl } from '@/lib/asset-url';
 
 export interface CombatBgFarProps {
   /** Texture path. Default keeps the Mountain Village forest art for back-compat. */
@@ -42,7 +43,7 @@ export function CombatBgFar({ texture = DEFAULT_FAR_BG_TEXTURE }: CombatBgFarPro
     tint:   { value: '#c2c4ae' },
   }, { collapsed: true });
 
-  const tex = useLoader(TextureLoader, texture);
+  const tex = useLoader(TextureLoader, assetUrl(texture));
 
   return (
     <mesh

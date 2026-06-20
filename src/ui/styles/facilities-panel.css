@@ -1,67 +1,67 @@
-/* Facilities Panel — HD-2D Ink UI */
+/* Facilities Panel — content styles only.
+   Panel chrome (border, header, close button, animation) is owned by PanelFrame.
+   All parchment-surface overrides are scoped via bp-content-theme.css under
+   .pf-content — the --ink-* variable overrides there flip slot-fills, text, hover. */
 
-/* ── Overlay + Panel ─────────────────────────────────── */
+/* ── Positioner: right-aligned, no dark scrim.
+   Flex row so the build picker (left) and PanelFrame (right) sit side-by-side.
+   pointer-events: none so the 3D scene stays interactive. ── */
 .fp-overlay {
   position: fixed;
   inset: 0;
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 12px;
   padding: 16px;
-  z-index: 200;
+  z-index: var(--bp-z-panel-elevated);
   pointer-events: none;
 }
-
-.fp-panel {
-  width: 460px;
-  /* Scaled up 20% for readability on large displays; max-height divided by the
-     zoom factor so the zoomed panel still fits within the viewport. */
-  zoom: 1.2;
-  max-height: calc((100vh - 32px) / 1.2);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  pointer-events: all;
+.fp-overlay > * {
+  pointer-events: auto;
+  max-height: 88vh;
+}
+/* Explicit panel width: PanelFrame applies no default max-width clamp, so the
+   slot-grid panel sets its own footprint. */
+.fp-overlay > .pf-root {
+  width: min(640px, 92vw);
 }
 
-/* ── Header ──────────────────────────────────────────── */
-.fp-header {
+/* ── Header meta row (guild level, gold, slots used) ── */
+.fp-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px 8px;
-  border-bottom: 1px solid var(--ink-gold-dim);
-  flex-shrink: 0;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--bp-parch-aged);
+  margin-bottom: 4px;
 }
 
-.fp-title {
-  font-family: var(--ink-font-title);
-  font-size: 0.78rem;
-  color: var(--ink-gold);
-  letter-spacing: 0.1em;
-  flex: 1;
-}
-
+/* Header chips: parch-aged fill + card-border + ink text (6.1:1 on parch-aged ✓) */
 .fp-badge {
   font-family: var(--ink-font-mono);
   font-size: 0.5rem;
-  color: var(--ink-text-dim);
-  border: 1px solid var(--ink-gold-dim);
+  color: var(--bp-text-ink-soft);
+  background: var(--bp-card-fill, #c9b687);
+  border: 1px solid var(--bp-card-border, #8b6a3f);
   border-radius: var(--ink-radius-sm);
   padding: 1px 5px;
 }
 
+/* Gold value: bronze-dark text (6.6:1 on parch-base ✓) */
 .fp-header-gold {
   font-family: var(--ink-font-mono);
   font-size: 0.58rem;
-  color: var(--ink-amber);
+  color: var(--bp-text-accent, #5c4a20);
 }
 
+/* fp-close is used by facility-build-picker.tsx — keep the class. */
 .fp-close {
   background: none;
-  border: 1px solid var(--ink-gold-dim);
-  color: var(--ink-text-muted);
+  border: 1px solid var(--bp-parch-burn);
+  color: var(--bp-text-ink-soft);
   font-family: var(--ink-font-mono);
   font-size: 0.55rem;
   padding: 2px 8px;
@@ -69,7 +69,15 @@
   cursor: pointer;
   transition: color 120ms, border-color 120ms;
 }
-.fp-close:hover { color: var(--ink-gold); border-color: var(--ink-gold); }
+.fp-close:hover { color: var(--bp-text-accent); border-color: var(--bp-bronze-light); }
+
+/* Tutorial hint line */
+.fp-tutorial-hint {
+  padding: 4px 0;
+  font-size: 0.7rem;
+  color: var(--bp-text-accent, #5c4a20);
+  font-family: var(--ink-font-mono);
+}
 
 /* ── Slot Grid ───────────────────────────────────────── */
 .fp-grid-area {
@@ -92,22 +100,23 @@
 
 /* Hall center — navigates to guild hall on click */
 .fp-slot-hall {
-  border-color: var(--ink-gold);
-  background: rgba(212, 168, 67, 0.1);
+  border-color: var(--bp-bronze-light);
+  background: rgba(138, 109, 44, 0.15);
   box-shadow: var(--ink-glow-gold);
 }
 .fp-slot-hall:hover {
-  border-color: var(--ink-gold);
-  background: rgba(212, 168, 67, 0.2);
+  border-color: var(--bp-bronze-light);
+  background: rgba(138, 109, 44, 0.25);
 }
 
-/* Slot card base */
+/* Slot card base — parchment card on parchment surface */
+/* Fill: --bp-card-fill (#c9b687); border: --bp-card-border (#8b6a3f) */
 .fp-slot {
   position: relative;
   aspect-ratio: 1 / 1.1;
-  border: 1px solid var(--ink-gold-dim);
+  border: 1px solid var(--bp-card-border, #8b6a3f);
   border-radius: var(--ink-radius-sm);
-  background: var(--ink-bg-panel-alt);
+  background: var(--bp-card-fill, #c9b687);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -118,23 +127,24 @@
   padding: 6px 4px 4px;
 }
 .fp-slot:hover {
-  border-color: var(--ink-amber);
-  background: var(--ink-bg-hover);
+  border-color: var(--bp-bronze-light);
+  background: var(--bp-parch-base, #e8d9b0);
 }
+/* Selected: cyan border per bible §3.4 selected state law */
 .fp-slot.selected {
-  border-color: var(--ink-gold);
-  box-shadow: var(--ink-glow-gold);
-  background: var(--ink-bg-selected);
+  border-color: var(--bp-cyan-core, #46d8d0);
+  box-shadow: 0 0 6px var(--bp-cyan-halo, rgba(70, 216, 208, 0.35));
+  background: var(--bp-parch-base, #e8d9b0);
 }
 
-/* Slot number badge */
+/* Slot number badge — muted ink (4.75:1 on #c9b687 ✓) */
 .fp-slot-num {
   position: absolute;
   top: 3px;
   left: 4px;
   font-family: var(--ink-font-mono);
   font-size: 0.42rem;
-  color: var(--ink-text-muted);
+  color: var(--bp-text-muted, #5a4630);
   line-height: 1;
 }
 
@@ -143,10 +153,11 @@
   font-size: 1.5rem;
   line-height: 1;
 }
+/* Slot name: soft ink (6.1:1 on #c9b687 ✓) */
 .fp-slot-name {
   font-family: var(--ink-font-mono);
   font-size: 0.5rem;
-  color: var(--ink-text-dim);
+  color: var(--bp-text-ink-soft, #5a4630);
   text-align: center;
   max-width: 100%;
   overflow: hidden;
@@ -157,10 +168,10 @@
 .fp-slot-level {
   font-family: var(--ink-font-mono);
   font-size: 0.44rem;
-  color: var(--ink-text-muted);
+  color: var(--bp-text-muted, #5a4630);
 }
 
-/* Green dot — has assigned members */
+/* Green dot — has assigned members; semantic color as status indicator */
 .fp-slot-dot {
   position: absolute;
   top: 4px;
@@ -168,34 +179,36 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--ink-status-ok);
-  box-shadow: 0 0 4px var(--ink-status-ok);
+  background: var(--bp-status-ok, #6dbf6d);
+  box-shadow: 0 0 4px var(--bp-status-ok, #6dbf6d);
 }
 
-/* Empty slot */
+/* Empty slot — dashed bronze border, muted "+ Empty" */
 .fp-slot-empty {
   border-style: dashed;
-  border-color: rgba(138, 109, 44, 0.4);
+  border-color: var(--bp-parch-burn, #8b6a3f);
+  background: var(--bp-parch-base, #e8d9b0);
   opacity: 0.65;
 }
 .fp-slot-empty:hover {
   opacity: 1;
   border-style: solid;
-  border-color: var(--ink-amber);
+  border-color: var(--bp-bronze-light);
 }
 .fp-slot-empty.selected {
   opacity: 1;
   border-style: solid;
 }
+/* "+ Empty" icon and label: muted ink (4.75:1 on parch-base ✓) */
 .fp-slot-empty-icon {
   font-size: 1.4rem;
-  color: var(--ink-text-muted);
+  color: var(--bp-text-muted, #5a4630);
   line-height: 1;
 }
 .fp-slot-empty-label {
   font-family: var(--ink-font-mono);
   font-size: 0.44rem;
-  color: var(--ink-text-muted);
+  color: var(--bp-text-muted, #5a4630);
 }
 
 /* Locked slot */
@@ -205,8 +218,8 @@
   border-style: dashed;
 }
 .fp-slot-locked:hover {
-  border-color: var(--ink-gold-dim);
-  background: var(--ink-bg-panel-alt);
+  border-color: var(--bp-parch-burn);
+  background: var(--bp-card-fill, #c9b687);
   opacity: 0.28;
 }
 
@@ -217,7 +230,7 @@
 .fp-slot-lock-label {
   font-family: var(--ink-font-mono);
   font-size: 0.4rem;
-  color: var(--ink-text-muted);
+  color: var(--bp-text-muted, #5a4630);
   text-align: center;
 }
 
@@ -228,15 +241,15 @@
   right: 4px;
   font-family: var(--ink-font-mono);
   font-size: 0.42rem;
-  color: var(--ink-accent, var(--ink-amber));
+  color: var(--bp-text-accent, #5c4a20);
   line-height: 1;
   opacity: 0.85;
 }
 
 /* ── Detail Tray ─────────────────────────────────────── */
 .fp-tray {
-  border-top: 1px solid var(--ink-gold-dim);
-  background: var(--ink-bg-deep);
+  border-top: 1px solid var(--bp-parch-burn);
+  background: var(--bp-parch-aged);
   max-height: 0;
   overflow: hidden;
   transition: max-height 220ms var(--ink-ease-out);
@@ -252,42 +265,44 @@
   align-items: flex-start;
   margin-bottom: 6px;
 }
+/* Tray name: accent text (6.6:1 on parch-aged #c9b687 ✓) */
 .fp-tray-name {
   font-family: var(--ink-font-title);
   font-size: 0.75rem;
-  color: var(--ink-gold);
+  color: var(--bp-text-accent, #5c4a20);
 }
 .fp-tray-stat {
   font-family: var(--ink-font-mono);
   font-size: 0.56rem;
-  color: var(--ink-amber);
+  color: var(--bp-text-accent, #5c4a20);
   margin-top: 1px;
 }
 .fp-tray-level {
   font-family: var(--ink-font-mono);
   font-size: 0.52rem;
-  color: var(--ink-text-muted);
+  color: var(--bp-text-muted, #5a4630);
   margin-right: 6px;
 }
 .fp-upgrade-badge {
   font-family: var(--ink-font-mono);
   font-size: 0.52rem;
-  color: var(--ink-status-ok);
-  background: rgba(109, 191, 109, 0.12);
-  border: 1px solid rgba(109, 191, 109, 0.4);
+  color: var(--bp-status-ok);
+  background: rgba(109, 191, 109, 0.15);
+  border: 1px solid rgba(109, 191, 109, 0.5);
   border-radius: var(--ink-radius-sm);
   padding: 1px 6px;
   cursor: pointer;
   transition: background 120ms, border-color 120ms;
 }
 .fp-upgrade-badge:hover {
-  background: rgba(109, 191, 109, 0.22);
-  border-color: var(--ink-status-ok);
+  background: rgba(109, 191, 109, 0.25);
+  border-color: var(--bp-status-ok);
 }
 
 .fp-tray-divider {
   height: 1px;
-  background: rgba(138, 109, 44, 0.3);
+  background: var(--bp-parch-burn);
+  opacity: 0.4;
   margin: 5px 0;
 }
 
@@ -307,21 +322,24 @@
 }
 .fp-tray-bonus {
   font-family: var(--ink-font-mono);
-  font-size: 0.56rem;
-  color: var(--ink-status-ok);
+  font-size: 0.78rem;
+  font-weight: 700;
+  /* Darkened status-ok: #6dbf6d is ~1.9:1 on parchment — unreadable. */
+  color: #2e7b2e;
 }
 .fp-tray-bonus::before { content: '▲ '; }
 .fp-tray-bonus--inactive {
-  color: var(--ink-text-muted);
+  color: var(--bp-text-muted, #5a4630);
 }
 .fp-tray-bonus--inactive::before { content: ''; }
 
+/* Enter-room button: bronze per §6 default */
 .fp-btn-enter {
   font-family: var(--ink-font-mono);
   font-size: 0.58rem;
-  color: var(--ink-gold);
-  background: var(--ink-bg-selected);
-  border: 1px solid var(--ink-gold);
+  color: var(--bp-parch-light);
+  background: linear-gradient(180deg, var(--bp-bronze-base), var(--bp-bronze-dark));
+  border: 1px solid var(--bp-bronze-light);
   border-radius: var(--ink-radius-sm);
   padding: 4px 10px;
   cursor: pointer;
@@ -329,17 +347,134 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
-.fp-btn-enter:hover { background: rgba(212, 168, 67, 0.25); }
+.fp-btn-enter:hover { background: linear-gradient(180deg, var(--bp-bronze-light), var(--bp-bronze-base)); border-color: var(--bp-bronze-glint); }
 
 /* Member avatar card (.fp-avatar-*) lives in member-avatar.css — shared with
    the quest-board party slots so the assigned-member tile is identical. */
+
+/* ── Infirmary room card (beds + queue) ──────────────── */
+.fp-inf-section-label {
+  font-family: var(--ink-font-title);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  color: var(--bp-text-accent, #5c4a20);
+  margin: 4px 0 4px;
+}
+.fp-inf-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.fp-inf-empty {
+  font-family: var(--ink-font-mono);
+  font-size: 0.55rem;
+  color: var(--bp-text-muted, #5a4630);
+  font-style: italic;
+  padding: 4px 2px;
+}
+/* Infirmary row: card-fill bg + card-border on parchment */
+.fp-inf-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px;
+  background: var(--bp-card-fill, #c9b687);
+  border: 1px solid var(--bp-card-border, #8b6a3f);
+  border-radius: var(--ink-radius-sm);
+}
+.fp-inf-row--queue {
+  opacity: 0.85;
+  background: transparent;
+  border-style: dashed;
+}
+.fp-inf-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.fp-inf-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+/* Member name: primary ink (11.9:1 on card-fill ✓) */
+.fp-inf-row-name {
+  font-family: var(--ink-font-mono);
+  font-size: 0.58rem;
+  color: var(--bp-text-ink, #2a1f12);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fp-inf-row-badge {
+  font-family: var(--ink-font-mono);
+  font-size: 0.5rem;
+  color: var(--bp-status-ok);
+  background: rgba(109, 191, 109, 0.15);
+  border: 1px solid rgba(109, 191, 109, 0.5);
+  border-radius: var(--ink-radius-sm);
+  padding: 1px 5px;
+}
+.fp-inf-row-pos {
+  font-family: var(--ink-font-mono);
+  font-size: 0.5rem;
+  color: var(--bp-text-accent, #5c4a20);
+}
+.fp-inf-progress {
+  height: 5px;
+  background: rgba(139, 106, 63, 0.20);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.fp-inf-progress-fill {
+  height: 100%;
+  background: var(--bp-status-ok, #6dbf6d);
+  transition: width 240ms linear;
+}
+.fp-inf-progress--queue .fp-inf-progress-fill {
+  background: var(--bp-status-warn, #d4a843);
+}
+.fp-inf-row-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.fp-inf-row-remaining {
+  font-family: var(--ink-font-mono);
+  font-size: 0.52rem;
+  color: var(--bp-text-muted, #5a4630);
+}
+.fp-inf-row-waiting {
+  font-family: var(--ink-font-mono);
+  font-size: 0.5rem;
+  color: var(--bp-text-muted, #5a4630);
+  font-style: italic;
+}
+/* Skip btn: bronze ghost per §6 */
+.fp-inf-skip-btn {
+  font-family: var(--ink-font-mono);
+  font-size: 0.52rem;
+  color: var(--bp-parch-light);
+  background: linear-gradient(180deg, var(--bp-bronze-base), var(--bp-bronze-dark));
+  border: 1px solid var(--bp-bronze-light);
+  border-radius: var(--ink-radius-sm);
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: background 120ms;
+}
+.fp-inf-skip-btn:hover { background: linear-gradient(180deg, var(--bp-bronze-light), var(--bp-bronze-base)); }
 
 /* Assign placeholder card */
 .fp-assign-card {
   width: 48px;
   height: 60px;
-  background: var(--ink-bg-deep);
-  border: 1px dashed rgba(138, 109, 44, 0.5);
+  background: var(--bp-parch-aged);
+  border: 1px dashed var(--bp-parch-burn);
   border-radius: var(--ink-radius-sm);
   display: flex;
   flex-direction: column;
@@ -351,8 +486,8 @@
   position: relative;
 }
 .fp-assign-card:hover {
-  border-color: var(--ink-gold);
-  background: var(--ink-bg-hover);
+  border-color: var(--bp-bronze-light);
+  background: var(--bp-parch-base);
   border-style: solid;
 }
 .fp-assign-card select {
@@ -365,21 +500,21 @@
 }
 .fp-assign-plus {
   font-size: 1rem;
-  color: var(--ink-text-muted);
+  color: var(--bp-text-muted, #5a4630);
   line-height: 1;
 }
 .fp-assign-label {
   font-family: var(--ink-font-mono);
   font-size: 0.42rem;
-  color: var(--ink-text-muted);
+  color: var(--bp-text-muted, #5a4630);
 }
 
 /* ── Build Picker (left-docked icon grid) ────────────── */
 .fp-build-picker {
-  width: 212px;
-  /* Match the facilities panel's 20% upscale (see .fp-panel). */
-  zoom: 1.2;
-  max-height: calc((100vh - 32px) / 1.2);
+  /* Match the facilities panel's 30% upscale (see .fp-panel). */
+  zoom: 1.3;
+  width: min(212px, 44vw);
+  max-height: calc((100vh - 32px) / 1.3);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -392,20 +527,20 @@
   align-items: center;
   gap: 8px;
   padding: 10px 12px 8px;
-  border-bottom: 1px solid var(--ink-gold-dim);
+  border-bottom: 1px solid var(--bp-parch-burn);
   flex-shrink: 0;
 }
 .fp-bp-title {
   font-family: var(--ink-font-title);
   font-size: 0.72rem;
-  color: var(--ink-gold);
+  color: var(--bp-text-accent, #5c4a20);
   letter-spacing: 0.1em;
   flex: 1;
 }
 .fp-bp-slot {
   font-family: var(--ink-font-mono);
   font-size: 0.5rem;
-  color: var(--ink-text-muted);
+  color: var(--bp-text-muted, #5a4630);
 }
 
 .fp-bp-grid {
@@ -417,6 +552,7 @@
   padding: 10px 12px;
 }
 
+/* Build picker cards: card-fill bg + card-border + ink text */
 .fp-bp-card {
   position: relative;
   display: flex;
@@ -424,18 +560,18 @@
   align-items: center;
   gap: 2px;
   padding: 8px 4px 6px;
-  background: var(--ink-bg-panel-alt);
-  border: 1px solid var(--ink-gold-dim);
+  background: var(--bp-card-fill, #c9b687);
+  border: 1px solid var(--bp-card-border, #8b6a3f);
   border-radius: var(--ink-radius-sm);
   cursor: pointer;
   transition: border-color 120ms, background 120ms, box-shadow 120ms;
   overflow: hidden;
 }
-.fp-bp-card:hover { border-color: var(--ink-amber); background: var(--ink-bg-hover); }
+.fp-bp-card:hover { border-color: var(--bp-bronze-light); background: var(--bp-parch-base); }
 .fp-bp-card.selected {
-  border-color: var(--ink-gold);
-  background: var(--ink-bg-selected);
-  box-shadow: var(--ink-glow-gold);
+  border-color: var(--bp-cyan-core, #46d8d0);
+  background: var(--bp-parch-base);
+  box-shadow: 0 0 6px var(--bp-cyan-halo, rgba(70, 216, 208, 0.35));
 }
 .fp-bp-card.unaffordable { cursor: not-allowed; }
 .fp-bp-card.unaffordable .fp-bp-card-icon { filter: grayscale(1); opacity: 0.4; }
@@ -449,32 +585,33 @@
   object-fit: contain;
   image-rendering: pixelated;
 }
+/* Card name: soft ink (6.1:1 on card-fill ✓) */
 .fp-bp-card-name {
   font-family: var(--ink-font-mono);
   font-size: 0.55rem;
-  color: var(--ink-text-dim);
+  color: var(--bp-text-ink-soft, #5a4630);
   text-align: center;
   line-height: 1.1;
 }
 .fp-bp-card-stat {
   font-family: var(--ink-font-mono);
   font-size: 0.46rem;
-  color: var(--ink-text-muted);
+  color: var(--bp-text-muted, #5a4630);
 }
 .fp-bp-card-cost {
   font-family: var(--ink-font-mono);
   font-size: 0.5rem;
-  color: var(--ink-status-warn);
+  color: var(--bp-text-accent, #5c4a20);
   text-align: center;
 }
-.fp-bp-card-cost--short { color: #d9534f; }
+.fp-bp-card-cost--short { color: var(--bp-status-bad, #c44a4a); }
 .fp-bp-card-req {
   font-family: var(--ink-font-mono);
   font-size: 0.46rem;
-  color: var(--ink-text-muted);
+  color: var(--bp-text-muted, #5a4630);
   text-align: center;
 }
-.fp-bp-card-req--unmet { color: #d9534f; }
+.fp-bp-card-req--unmet { color: var(--bp-status-bad, #c44a4a); }
 
 .fp-bp-card-count {
   position: absolute;
@@ -482,8 +619,8 @@
   right: 4px;
   font-family: var(--ink-font-mono);
   font-size: 0.45rem;
-  color: var(--ink-text-muted);
-  background: var(--ink-bg-deep);
+  color: var(--bp-text-muted, #5a4630);
+  background: var(--bp-parch-aged);
   border-radius: var(--ink-radius-sm);
   padding: 0 3px;
   z-index: 1;
@@ -497,13 +634,13 @@
   align-items: center;
   justify-content: center;
   gap: 3px;
-  background: rgba(10, 8, 6, 0.78);
+  background: rgba(40, 20, 5, 0.65);
 }
 .fp-bp-lock-icon { font-size: 0.95rem; }
 .fp-bp-lock-label {
   font-family: var(--ink-font-mono);
   font-size: 0.42rem;
-  color: var(--ink-text-muted);
+  color: var(--bp-parch-aged);
   font-style: italic;
   text-align: center;
   padding: 0 4px;
@@ -512,31 +649,34 @@
 .fp-blueprint-empty {
   font-family: var(--ink-font-mono);
   font-size: 0.55rem;
-  color: var(--ink-text-muted);
+  color: var(--bp-text-muted, #5a4630);
   text-align: center;
   padding: 8px 0;
   grid-column: 1 / -1;
 }
 
+/* Build button: bronze per §6; disabled = iron ghost */
 .fp-bp-build-btn {
   margin: 0 12px 12px;
   padding: 6px;
   font-family: var(--ink-font-mono);
   font-size: 0.6rem;
-  color: var(--ink-gold);
-  background: var(--ink-bg-selected);
-  border: 1px solid var(--ink-gold);
+  color: var(--bp-parch-light);
+  background: linear-gradient(180deg, var(--bp-bronze-base), var(--bp-bronze-dark));
+  border: 1px solid var(--bp-bronze-light);
   border-radius: var(--ink-radius-sm);
   cursor: pointer;
   transition: background 120ms;
   flex-shrink: 0;
 }
-.fp-bp-build-btn:hover:not(:disabled) { background: rgba(212, 168, 67, 0.25); }
+.fp-bp-build-btn:hover:not(:disabled) { background: linear-gradient(180deg, var(--bp-bronze-light), var(--bp-bronze-base)); border-color: var(--bp-bronze-glint); }
+/* Disabled: §6 disabled state — iron fill, dark border, muted text */
 .fp-bp-build-btn:disabled {
-  opacity: 0.3;
+  background: var(--bp-iron);
   cursor: not-allowed;
-  border-color: var(--ink-gold-dim);
-  color: var(--ink-text-muted);
+  border-color: var(--bp-bronze-dark);
+  color: var(--bp-text-muted, #5a4630);
+  opacity: 1;
 }
 
 /* Responsive — shrink picker on narrow viewports so picker + panel still fit */
@@ -547,6 +687,7 @@
 }
 
 /* ── Confirm Dialog ──────────────────────────────────── */
+/* Dialog sits above pf-content on a dark modal scrim — dark bg is appropriate */
 .fp-dialog-overlay {
   position: fixed;
   inset: 0;
@@ -559,26 +700,9 @@
   pointer-events: auto;
 }
 
-/* Build picker + its inline confirm dialog stack vertically as one left-docked
-   column: the confirm box sits directly beneath the picker panel (same width,
-   same left edge) instead of dead-centering over the game scene. */
-.fp-bp-column {
-  display: flex;
-  flex-direction: column;
-  align-self: flex-start;
-  gap: 10px;
-}
-/* Inline build-confirm: match the picker's 212px width + 20% upscale so it lines
-   up flush under the picker. pointer-events:auto re-enables clicks (the .fp-overlay
-   ancestor sets pointer-events:none; panels opt back in individually). */
-.fp-bp-column .fp-dialog {
-  width: 212px;
-  zoom: 1.2;
-  pointer-events: auto;
-}
 .fp-dialog {
-  background: var(--ink-bg-panel);
-  border: 2px solid var(--ink-gold);
+  background: var(--bp-header-fill);
+  border: 2px solid var(--bp-bronze-light);
   border-radius: var(--ink-radius-md);
   box-shadow: var(--ink-shadow-deep), var(--ink-glow-gold);
   padding: 20px 22px;
@@ -592,7 +716,7 @@
   position: absolute;
   width: var(--ink-corner-size);
   height: var(--ink-corner-size);
-  background: var(--ink-gold);
+  background: var(--bp-bronze-light);
   transform: rotate(45deg);
   z-index: 1;
 }
@@ -602,14 +726,14 @@
 .fp-dialog-title {
   font-family: var(--ink-font-title);
   font-size: 0.78rem;
-  color: var(--ink-gold);
+  color: var(--bp-parch-light);
   letter-spacing: 0.07em;
   margin-bottom: 8px;
 }
 .fp-dialog-body {
   font-family: var(--ink-font-body);
   font-size: 0.75rem;
-  color: var(--ink-text-muted);
+  color: var(--bp-parch-aged);
   line-height: 1.5;
   margin-bottom: 16px;
 }
@@ -619,9 +743,9 @@
   justify-content: flex-end;
 }
 .fp-btn-confirm {
-  background: var(--ink-bg-selected);
-  border: 1px solid var(--ink-gold);
-  color: var(--ink-gold);
+  background: linear-gradient(180deg, var(--bp-bronze-base), var(--bp-bronze-dark));
+  border: 1px solid var(--bp-bronze-light);
+  color: var(--bp-parch-light);
   font-family: var(--ink-font-mono);
   font-size: 0.6rem;
   padding: 5px 14px;
@@ -629,11 +753,11 @@
   cursor: pointer;
   transition: background 120ms;
 }
-.fp-btn-confirm:hover { background: rgba(212, 168, 67, 0.25); }
+.fp-btn-confirm:hover { background: linear-gradient(180deg, var(--bp-bronze-light), var(--bp-bronze-base)); }
 .fp-btn-cancel {
   background: none;
-  border: 1px solid var(--ink-gold-dim);
-  color: var(--ink-text-muted);
+  border: 1px solid var(--bp-bronze-dark);
+  color: var(--bp-parch-aged);
   font-family: var(--ink-font-mono);
   font-size: 0.6rem;
   padding: 5px 14px;
@@ -641,7 +765,7 @@
   cursor: pointer;
   transition: border-color 120ms, color 120ms;
 }
-.fp-btn-cancel:hover { border-color: var(--ink-amber); color: var(--ink-amber); }
+.fp-btn-cancel:hover { border-color: var(--bp-bronze-light); color: var(--bp-parch-light); }
 
 /* ── Guild Upgrade Footer ────────────────────────────── */
 .fp-guild-upgrade {
@@ -649,24 +773,26 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 14px;
-  border-top: 1px solid rgba(138, 109, 44, 0.3);
+  border-top: 1px solid var(--bp-parch-burn);
   flex-shrink: 0;
 }
+/* Footer label: muted ink (6.1:1 on parch-base ✓) */
 .fp-guild-label {
   font-family: var(--ink-font-mono);
   font-size: 0.58rem;
-  color: var(--ink-text-muted);
+  color: var(--bp-text-muted, #5a4630);
 }
+/* Guild upgrade button: bronze per §6; disabled = iron ghost */
 .fp-btn-guild-upgrade {
   font-family: var(--ink-font-title);
   font-size: 0.62rem;
-  color: var(--ink-gold);
-  background: var(--ink-bg-selected);
-  border: 1px solid var(--ink-gold);
+  color: var(--bp-parch-light);
+  background: linear-gradient(180deg, var(--bp-bronze-base), var(--bp-bronze-dark));
+  border: 1px solid var(--bp-bronze-light);
   padding: 4px 11px;
   border-radius: var(--ink-radius-sm);
   cursor: pointer;
   transition: background 120ms;
 }
-.fp-btn-guild-upgrade:hover:not(:disabled) { background: rgba(212, 168, 67, 0.25); }
-.fp-btn-guild-upgrade:disabled { opacity: 0.35; cursor: not-allowed; }
+.fp-btn-guild-upgrade:hover:not(:disabled) { background: linear-gradient(180deg, var(--bp-bronze-light), var(--bp-bronze-base)); border-color: var(--bp-bronze-glint); }
+.fp-btn-guild-upgrade:disabled { background: var(--bp-iron); border-color: var(--bp-bronze-dark); color: var(--bp-text-muted); opacity: 1; cursor: not-allowed; }

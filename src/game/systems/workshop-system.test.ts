@@ -58,18 +58,19 @@ describe('processCraft', () => {
   });
 
   it('Path B (Slime Gel) — guaranteed HP slot in [50,200]', () => {
+    // SLIME_GEL is armor-only — must target an armor template to pass the equip-type guard.
     const { equipment } = processCraft(
-      { kind: 'CRAFT', baseMaterial: 'STONE', templateId: 'STONE_SWORD', monsterMaterial: 'SLIME_GEL' },
+      { kind: 'CRAFT', baseMaterial: 'BOAR_PELT', templateId: 'BOAR_FUR_COAT', monsterMaterial: 'SLIME_GEL' },
       fixedRng(0.5),
     );
     expect(equipment.slots).toHaveLength(1);
     expect(equipment.slots?.[0]).toMatchObject({ category: 'TANKY', statKey: 'HP', value: 125 });
   });
 
-  it('Path B with disabled material — no slot rolled', () => {
-    // BAT_WING is enabled:false in the affinity table
+  it('Path B with material missing affinity — no slot rolled', () => {
+    // WOLF_FANG has no MATERIAL_AFFINITY entry → treated as disabled.
     const { equipment } = processCraft(
-      { kind: 'CRAFT', baseMaterial: 'WOOD', templateId: 'WOODEN_AXE', monsterMaterial: 'BAT_WING' },
+      { kind: 'CRAFT', baseMaterial: 'WOOD', templateId: 'WOODEN_AXE', monsterMaterial: 'WOLF_FANG' },
       fixedRng(0.5),
     );
     expect(equipment.slots).toEqual([]);
@@ -88,9 +89,10 @@ describe('processCraft', () => {
 // ── processEnhanceAdd ──────────────────────────────────────────────────────
 
 describe('processEnhanceAdd', () => {
+  // SLIME_GEL is armor-only (tier 1) — use a T1 armor template so the equip-type guard passes.
   const baseEq: EquipmentItem = {
     id: 'e1',
-    templateId: 'WOODEN_AXE',
+    templateId: 'BOAR_FUR_COAT',
     durability: 50,
     slots: [],
     maxSlots: 4,
@@ -113,15 +115,22 @@ describe('processEnhanceAdd', () => {
     expect(result).toEqual({ error: 'NO_FREE_SLOT' });
   });
 
-  it('returns MATERIAL_DISABLED for disabled material', () => {
-    const result = processEnhanceAdd(baseEq, 'BAT_WING', fixedRng(0.5));
+  it('returns MATERIAL_DISABLED for material with no affinity entry', () => {
+    // WOLF_FANG has no MATERIAL_AFFINITY entry → undefined.enabled → falsy → MATERIAL_DISABLED.
+    const result = processEnhanceAdd(baseEq, 'WOLF_FANG', fixedRng(0.5));
     expect(result).toEqual({ error: 'MATERIAL_DISABLED' });
   });
 
+  it('returns EQUIP_TYPE_MISMATCH when material slot does not match template slot', () => {
+    // SLIME_GEL is armor-only; using it on a weapon template must be rejected.
+    const weapon: EquipmentItem = { ...baseEq, templateId: 'WOODEN_AXE' };
+    const result = processEnhanceAdd(weapon, 'SLIME_GEL', fixedRng(0.5));
+    expect(result).toEqual({ error: 'EQUIP_TYPE_MISMATCH' });
+  });
+
   it('returns TIER_MISMATCH when material tier < template tier', () => {
-    // STONE_SWORD has craftMaterial=STONE → tier 1; SLIME_GEL is tier 1 → equal → OK
-    // To force mismatch, simulate higher-tier template by using IRON_SWORD (tier 2)
-    const t2: EquipmentItem = { ...baseEq, templateId: 'IRON_SWORD' };
+    // SLIME_GEL is tier-1 armor; BEAR_COAT is tier-2 armor (BEAR_PELT primary).
+    const t2: EquipmentItem = { ...baseEq, templateId: 'BEAR_COAT' };
     const result = processEnhanceAdd(t2, 'SLIME_GEL', fixedRng(0.5));
     expect(result).toEqual({ error: 'TIER_MISMATCH' });
   });

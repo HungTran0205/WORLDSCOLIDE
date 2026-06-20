@@ -1,19 +1,7 @@
 import type { StateCreator } from 'zustand';
-import type { Member, MemberStatus, StatKey, Stats, GuildRank } from './game-state';
-import { expToNextLevel, LEVEL_UP_BONUS_POINTS } from '@/game/systems/leveling-system';
-import { GUILD_RANKS } from '@/game/data/ranks';
-
-const ALL_STATS: StatKey[] = ['STR', 'END', 'INT', 'DEX', 'CHA', 'LCK', 'AGI'];
-
-/** Randomly distribute stat points across all stats (for mercenary level-ups) */
-function autoDistributeStats(stats: Stats, points: number): Stats {
-  const result = { ...stats };
-  for (let i = 0; i < points; i++) {
-    const key = ALL_STATS[Math.floor(Math.random() * ALL_STATS.length)];
-    result[key] += 1;
-  }
-  return result;
-}
+import type { Member, MemberStatus, StatKey } from './game-state';
+import { getSkillFromPool } from '@/game/data/skills';
+import { requestSave } from '@/game/save/save-scheduler';
 
 export interface RosterSlice {
   founder: Member | null;
@@ -25,38 +13,28 @@ export interface RosterSlice {
   renameMember: (id: string, name: string) => void;
   updateMemberStatus: (id: string, status: MemberStatus) => void;
   setMemberInjuredUntil: (id: string, until: number | null) => void;
+  /** Mark a member injured under the recovery engine: status='injured', progress reset to 0,
+   *  `baseRecoveryMs` + `injuredAt` recorded, legacy `injuredUntil` nulled (progress is the driver). */
+  injureMember: (memberId: string, baseRecoveryMs: number, injuredAt: number) => void;
   toggleAutoCast: (memberId: string) => void;
+  /** Equip a skill from the member's class pool as the carried (combat) skill.
+   *  Preserves earned skillRanks and the auto-cast toggle. No-op while training. */
+  equipMemberSkill: (memberId: string, skillId: string) => void;
   allocateStat: (memberId: string, stat: StatKey, amount?: number) => void;
-  addMemberExp: (memberId: string, exp: number) => void;
   /** Increment missionsCompleted counter for given member IDs */
   incrementMissionsCompleted: (memberIds: string[]) => void;
-}
-
-function applyExpGain(member: Member, rawExp: number): Member {
-  // Apply rank EXP bonus (mercenaries get 0% bonus)
-  let exp = rawExp;
-  if (member.rank !== 'MERCENARY') {
-    const bonus = GUILD_RANKS[member.rank as GuildRank]?.perks.expBonusPct ?? 0;
-    exp = Math.floor(rawExp * (1 + bonus / 100));
-  }
-
-  let newExp = member.exp + exp;
-  let newLevel = member.level;
-  let newPoints = member.unallocatedPoints;
-  let newStats = member.stats;
-
-  while (newExp >= expToNextLevel(newLevel)) {
-    newExp -= expToNextLevel(newLevel);
-    newLevel++;
-    if (member.rank === 'MERCENARY') {
-      // Mercenaries auto-distribute stat points — no manual allocation
-      newStats = autoDistributeStats(newStats, LEVEL_UP_BONUS_POINTS);
-    } else {
-      newPoints += LEVEL_UP_BONUS_POINTS;
-    }
-  }
-
-  return { ...member, exp: newExp, level: newLevel, unallocatedPoints: newPoints, stats: newStats };
+  /** Apply one recovery tick: set progress on still-injured members,
+   *  clear (→ idle, fields nulled) members who reached 100%. Single set(). */
+  applyInjuryRecovery: (
+    progressUpdates: { id: string; progress: number }[],
+    recoveredIds: string[],
+  ) => void;
+  /** Apply one Blessed-regen tick: write `blessedPct` on the listed members.
+   *  Keyed by id so founder + roster share one set(); caller owns the 0..1 cap. */
+  applyBlessedRegen: (updates: { id: string; pct: number }[]) => void;
+  /** Drain the Blessed bar to 0 for members whose Ancestral Blessings fired in combat
+   *  (called once per combat resolution, win OR loss). Merc ids are silently ignored. */
+  consumeBlessed: (memberIds: string[]) => void;
 }
 
 function updateMember(members: Member[], id: string, updater: (m: Member) => Member): Member[] {
@@ -79,7 +57,7 @@ export const createRosterSlice: StateCreator<RosterSlice> = (set) => ({
       if (!trimmed) return s;
       return {
         roster: s.roster.map((m) =>
-          m.id === id && m.rank !== 'MERCENARY' ? { ...m, name: trimmed } : m,
+          m.id === id && !m.isMercenary ? { ...m, name: trimmed } : m,
         ),
       };
     }),
@@ -106,6 +84,22 @@ export const createRosterSlice: StateCreator<RosterSlice> = (set) => ({
       };
     }),
 
+  injureMember: (memberId, baseRecoveryMs, injuredAt) =>
+    set((s) => {
+      const injure = (m: Member): Member => ({
+        ...m,
+        status: 'injured',
+        injuredAt,
+        baseRecoveryMs,
+        recoveryProgress: 0,
+        injuredUntil: null,
+      });
+      if (s.founder?.id === memberId) {
+        return { founder: injure(s.founder) };
+      }
+      return { roster: updateMember(s.roster, memberId, injure) };
+    }),
+
   toggleAutoCast: (memberId) =>
     set((s) => {
       const toggler = (m: Member): Member => {
@@ -117,6 +111,25 @@ export const createRosterSlice: StateCreator<RosterSlice> = (set) => ({
       }
       return { roster: updateMember(s.roster, memberId, toggler) };
     }),
+
+  equipMemberSkill: (memberId, skillId) => {
+    set((s) => {
+      const equip = (m: Member): Member => {
+        if (m.status === 'training') return m; // carried skill locked while training
+        const chosen = getSkillFromPool(m.archetype, skillId);
+        if (!chosen) return m;
+        // Only learned skills (Lv1+) can be equipped — Lv0 must be learned at the Training Yard.
+        if ((m.skillRanks?.[skillId]?.rank ?? 0) < 1) return m;
+        // Keep the auto-cast toggle when swapping; earned skillRanks are untouched.
+        return { ...m, skill: { ...chosen, autoEnabled: m.skill?.autoEnabled ?? chosen.autoEnabled } };
+      };
+      if (s.founder?.id === memberId) {
+        return { founder: equip(s.founder) };
+      }
+      return { roster: updateMember(s.roster, memberId, equip) };
+    });
+    requestSave(); // persist the carried-skill change promptly
+  },
 
   allocateStat: (memberId, stat, amount = 1) =>
     set((s) => {
@@ -135,14 +148,6 @@ export const createRosterSlice: StateCreator<RosterSlice> = (set) => ({
       return { roster: updateMember(s.roster, memberId, updater) };
     }),
 
-  addMemberExp: (memberId, exp) =>
-    set((s) => {
-      if (s.founder?.id === memberId) {
-        return { founder: applyExpGain(s.founder, exp) };
-      }
-      return { roster: updateMember(s.roster, memberId, (m) => applyExpGain(m, exp)) };
-    }),
-
   incrementMissionsCompleted: (memberIds) =>
     set((s) => {
       const idSet = new Set(memberIds);
@@ -154,6 +159,57 @@ export const createRosterSlice: StateCreator<RosterSlice> = (set) => ({
         roster: s.roster.map((m) =>
           idSet.has(m.id) ? { ...m, missionsCompleted: m.missionsCompleted + 1 } : m
         ),
+      };
+    }),
+
+  applyInjuryRecovery: (progressUpdates, recoveredIds) =>
+    set((s) => {
+      if (progressUpdates.length === 0 && recoveredIds.length === 0) return s;
+      const progressById = new Map(progressUpdates.map((u) => [u.id, u.progress]));
+      const recoveredSet = new Set(recoveredIds);
+      const apply = (m: Member): Member => {
+        if (recoveredSet.has(m.id)) {
+          // Fully healed → back to idle, injury fields cleared.
+          return {
+            ...m,
+            status: 'idle',
+            injuredAt: null,
+            baseRecoveryMs: null,
+            injuredUntil: null,
+            recoveryProgress: 0,
+          };
+        }
+        const next = progressById.get(m.id);
+        return next === undefined ? m : { ...m, recoveryProgress: next };
+      };
+      return {
+        founder: s.founder ? apply(s.founder) : s.founder,
+        roster: s.roster.map(apply),
+      };
+    }),
+
+  applyBlessedRegen: (updates) =>
+    set((s) => {
+      if (updates.length === 0) return s;
+      const pctById = new Map(updates.map((u) => [u.id, u.pct]));
+      const apply = (m: Member): Member => {
+        const next = pctById.get(m.id);
+        return next === undefined ? m : { ...m, blessedPct: next };
+      };
+      return {
+        founder: s.founder ? apply(s.founder) : s.founder,
+        roster: s.roster.map(apply),
+      };
+    }),
+
+  consumeBlessed: (memberIds) =>
+    set((s) => {
+      if (memberIds.length === 0) return s;
+      const idSet = new Set(memberIds);
+      const drain = (m: Member): Member => (idSet.has(m.id) ? { ...m, blessedPct: 0 } : m);
+      return {
+        founder: s.founder ? drain(s.founder) : s.founder,
+        roster: s.roster.map(drain),
       };
     }),
 });

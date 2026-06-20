@@ -1,4 +1,7 @@
-/** Inventory panel — tabs, search, rarity filter, sort, 8-col grid, detail panel. */
+/** Inventory panel — tabs, search, rarity filter, sort, 8-col grid, detail panel.
+ *  Shell (chrome, header, close button, open/close animation, SFX) is owned by
+ *  PanelFrame. This file contains only content-specific JSX.
+ */
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +19,7 @@ import { GameIcon } from '@/ui/components/game-icon';
 import { InventoryDetailPanel } from '@/ui/components/inventory-detail-panel';
 import { InventorySlotExpansion } from '@/ui/components/inventory-slot-expansion';
 import { EquipModePanel } from '@/ui/components/equip-mode-panel';
+import { PanelFrame } from '@/ui/components/panel-frame';
 import { saveManager } from '@/game/save/save-manager';
 import '@/ui/styles/inventory.css';
 import '@/ui/styles/equip-mode.css';
@@ -46,11 +50,15 @@ export function InventoryPanel({ onClose }: { onClose: () => void }) {
   const [sort, setSort]                   = useState<'rarity' | 'name' | 'qty'>('rarity');
   const [selectedEntry, setSelectedEntry] = useState<UnifiedSlotEntry | null>(null);
 
+  // Esc is now handled by PanelFrame (via onClose prop) for the normal inventory view.
+  // The equip-mode early return still needs its own Esc handler since PanelFrame
+  // is not mounted in that branch.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    if (inventoryMode !== 'equip') return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeEquipMode(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [inventoryMode, closeEquipMode]);
 
   // Auto-clear selection when the selected item is dropped/consumed
   useEffect(() => {
@@ -66,7 +74,7 @@ export function InventoryPanel({ onClose }: { onClose: () => void }) {
     const all = founder ? [founder, ...roster] : roster;
     for (const m of all) {
       if (!m.equipment) continue;
-      for (const slot of ['weapon', 'armor', 'headgear'] as const) {
+      for (const slot of ['weapon', 'armor'] as const) {
         const e = m.equipment[slot];
         if (e) map.set(e.id, m.name);
       }
@@ -91,13 +99,13 @@ export function InventoryPanel({ onClose }: { onClose: () => void }) {
     const c: Record<TabId, number> = { all: allEntries.length, weapon: 0, armor: 0, material: 0, consumable: 0 };
     for (const e of allEntries) {
       if (e.kind === 'item') {
-        const t = ITEM_DATABASE[e.itemId];
-        if (t.type === 'MATERIAL')   c.material++;
-        if (t.type === 'CONSUMABLE') c.consumable++;
+        const tmpl = ITEM_DATABASE[e.itemId];
+        if (tmpl.type === 'MATERIAL')   c.material++;
+        if (tmpl.type === 'CONSUMABLE') c.consumable++;
       } else {
-        const t = EQUIPMENT_DATABASE[e.templateId];
-        if (t.slot === 'weapon')                          c.weapon++;
-        if (t.slot === 'armor' || t.slot === 'headgear')  c.armor++;
+        const tmpl = EQUIPMENT_DATABASE[e.templateId];
+        if (tmpl.slot === 'weapon')  c.weapon++;
+        if (tmpl.slot === 'armor')   c.armor++;
       }
     }
     return c;
@@ -108,11 +116,11 @@ export function InventoryPanel({ onClose }: { onClose: () => void }) {
     if (activeTab !== 'all') {
       list = list.filter(e => {
         if (e.kind === 'item') {
-          const t = ITEM_DATABASE[e.itemId];
-          return activeTab === 'material' ? t.type === 'MATERIAL' : activeTab === 'consumable' ? t.type === 'CONSUMABLE' : false;
+          const tmpl = ITEM_DATABASE[e.itemId];
+          return activeTab === 'material' ? tmpl.type === 'MATERIAL' : activeTab === 'consumable' ? tmpl.type === 'CONSUMABLE' : false;
         }
-        const t = EQUIPMENT_DATABASE[e.templateId];
-        return activeTab === 'weapon' ? t.slot === 'weapon' : t.slot === 'armor' || t.slot === 'headgear';
+        const tmpl = EQUIPMENT_DATABASE[e.templateId];
+        return activeTab === 'weapon' ? tmpl.slot === 'weapon' : tmpl.slot === 'armor';
       });
     }
     if (search.trim()) {
@@ -165,10 +173,10 @@ export function InventoryPanel({ onClose }: { onClose: () => void }) {
 
   const { t } = useTranslation();
 
-  // Equip mode — kept intact, rendered after all hooks
+  // Equip mode — rendered inside its own positioner since PanelFrame is not used here
   if (inventoryMode === 'equip' && equipModeMemberId) {
     return (
-      <div className="inventory-overlay" onClick={closeEquipMode}>
+      <div className="inv-positioner">
         <div onClick={e => e.stopPropagation()}>
           <EquipModePanel memberId={equipModeMemberId} onClose={closeEquipMode} />
         </div>
@@ -181,14 +189,9 @@ export function InventoryPanel({ onClose }: { onClose: () => void }) {
     : undefined;
 
   return (
-    <div className="inventory-overlay" onClick={onClose}>
-      <div className="inventory-panel inventory-panel--wide" onClick={e => e.stopPropagation()}>
+    <div className="inv-positioner">
+      <PanelFrame title={t('inventory.title')} onClose={onClose} variant="panel" size="lg">
         <div className="inv-main-col">
-          <div className="inventory-panel__header">
-            <h2 className="inventory-panel__title">{t('inventory.title')}</h2>
-            <button className="inventory-panel__close" onClick={onClose}>{t('inventory.close')}</button>
-          </div>
-
           <div className="inv-tabs">
             {TAB_IDS.map(id => (
               <button key={id} className={`inv-tab${activeTab === id ? ' inv-tab--active' : ''}`}
@@ -262,7 +265,7 @@ export function InventoryPanel({ onClose }: { onClose: () => void }) {
         <div className="inv-detail-col">
           <InventoryDetailPanel entry={selectedEntry} equippedByName={selectedEquippedBy} onDrop={handleDetailDrop} />
         </div>
-      </div>
+      </PanelFrame>
     </div>
   );
 }

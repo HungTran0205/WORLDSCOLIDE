@@ -30,23 +30,36 @@ import { ENEMIES } from '@/game/data/enemies';
 import { TUTORIAL_BEAR_MISSION_ID } from '@/game/data/tutorial-data';
 import { WaveManager, legacyToWaves } from '@/game/systems/combat-wave-manager';
 import { applyMissionResultSideEffects } from '@/game/systems/arena-result-handler';
+import { memberFromMercContract } from '@/game/systems/combat-entity-factory';
 import { simulateCombatFromSnapshot, cloneCombatEntity } from '@/game/systems/combat-simulator';
 import { resolveCombatMapId, getStageSpec } from './maps/combat-map-registry';
+import { tickAccum, isHitstopActive, resetHitstop } from './hitstop/hitstop-clock';
 import { useCombatProjectionStore } from './combat-projection-store';
-import {
-  getEnemyCombatFrameCount,
-  resolveEnemyCombatSprite,
-} from '@/scene/sprites/combat-sprite-resolver';
+import { tContent } from '@/i18n/content-localization';
+import { resolveEnemyCombatSheet } from '@/scene/sprites/combat-sprite-resolver';
 import {
   COMBAT_VFX_PRESETS, COMBAT_VFX_COUNTS,
   COMBAT_CRIT_DOM_EVENT, COMBAT_SKIP_DOM_EVENT,
+  COMBAT_IMPACT_DELAY_S, COMBAT_HIT_SPARK_SIZE, COMBAT_HIT_SPARK_COLOR,
 } from './combat-vfx-bridge';
+import { hasCueSheet } from '@/scene/effects/skill-vfx/skill-cue-registry';
 import type { CombatEvent, CombatResult } from '@/game/systems/combat-types';
 import type { CombatEngine as CombatEngineType } from '@/game/systems/combat-engine';
 import type { ArenaEntitySnapshot } from '@/game/state/combat-arena-slice';
 
+/** Per-emit overrides forwarded to the r3f-vfx preset. colorStart tints the
+ *  start palette (ally hit-debris glow); size enlarges the particles. */
+interface VfxEmitOverrides {
+  colorStart?: string[];
+  size?: [number, number];
+}
+
 /** Emitter callbacks resolved per preset id at component mount via useVFXEmitter. */
-type VfxEmit = (position: [number, number, number], count?: number) => void;
+type VfxEmit = (
+  position: [number, number, number],
+  count?: number,
+  overrides?: VfxEmitOverrides,
+) => void;
 interface VfxEmitters {
   hit: VfxEmit;
   crit: VfxEmit;
@@ -63,6 +76,21 @@ const WAVE_TRANSITION_MS = 1000;
 /** Autosave engine entity snapshot to the active mission every 2s — keeps
  *  mid-fight reload (D12) cheap (~3.6KB serialized, ≪ once-per-tick churn). */
 const SNAPSHOT_INTERVAL_MS = 2000;
+/** Golden aura (Ancestral Blessings) — throttle the continuous mote emission to
+ *  ~0.3s with a few motes per blessed entity each tick. Tied to engine.time so
+ *  it respects pause + speed multiplier and stops cleanly when the fight ends. */
+const AURA_EMIT_INTERVAL_MS = 300;
+const AURA_EMIT_COUNT = 4;
+/** Emit the aura disk near the entity's feet so the anti-gravity motes rise up
+ *  through the sprite body (hit sparks use y=1.2 chest height for reference). */
+const AURA_EMIT_Y = 0.3;
+/** Ancestral smoke ring — each emission spawns one expanding ring, on a slower
+ *  cadence than the wisps so the rings read as distinct pulsing waves. A high
+ *  count fills the circle so it reads as a continuous ring, not dots. Emitted at
+ *  near-ground height so the ring hugs the floor. */
+const DUST_EMIT_INTERVAL_MS = 600;
+const DUST_EMIT_COUNT = 28;
+const DUST_EMIT_Y = 0.15;
 
 export function CombatFightController() {
   const engineRef = useRef<CombatEngine | null>(null);
@@ -90,9 +118,20 @@ export function CombatFightController() {
   const critEmitter = useVFXEmitter(COMBAT_VFX_PRESETS.crit);
   const healEmitter = useVFXEmitter(COMBAT_VFX_PRESETS.heal);
   const deathEmitter = useVFXEmitter(COMBAT_VFX_PRESETS.death);
+  // Persistent golden aura for Ancestral Blessings — loop-driven (not event-
+  // driven like the four above), emitted each frame in useFrame while an
+  // entity stays blessed. Throttled via lastAuraEmitRef on the combat clock.
+  const auraEmitter = useVFXEmitter('ls-blessing-aura');
+  const lastAuraEmitRef = useRef(0);
+  // Ground dust gust layer — horizontal counterpart to the vertical aura wisps.
+  const dustEmitter = useVFXEmitter('ls-blessing-dust');
+  const lastDustEmitRef = useRef(0);
   const vfxRef = useRef<VfxEmitters | null>(null);
   vfxRef.current = {
-    hit: (pos, count) => hitEmitter.emit(pos, count ?? COMBAT_VFX_COUNTS.hit),
+    // overrides forwarded through r3f-vfx's `null`-typed 3rd param (runtime
+    // forwards the object — the upstream type is too narrow).
+    hit: (pos, count, overrides) =>
+      hitEmitter.emit(pos, count ?? COMBAT_VFX_COUNTS.hit, (overrides ?? undefined) as unknown as null),
     crit: (pos, count) => critEmitter.emit(pos, count ?? COMBAT_VFX_COUNTS.crit),
     heal: (pos, count) => healEmitter.emit(pos, count ?? COMBAT_VFX_COUNTS.heal),
     death: (pos, count) => deathEmitter.emit(pos, count ?? COMBAT_VFX_COUNTS.death),
@@ -108,6 +147,7 @@ export function CombatFightController() {
   const endCombat = useGameStore((s) => s.endCombat);
   const founder = useGameStore((s) => s.founder);
   const roster = useGameStore((s) => s.roster);
+  const mercContracts = useGameStore((s) => s.tavern.mercContracts);
   const inventory = useGameStore((s) => s.inventory);
   const removeItem = useGameStore((s) => s.removeItem);
   const saveCombatSnapshot = useGameStore((s) => s.saveCombatSnapshot);
@@ -120,7 +160,10 @@ export function CombatFightController() {
       waveTransitioningRef.current = false;
       lastSyncRef.current = 0;
       lastSnapshotRef.current = 0;
+      lastAuraEmitRef.current = 0;
+      lastDustEmitRef.current = 0;
       engineBoundMissionIdRef.current = null;
+      resetHitstop();
       return;
     }
 
@@ -128,7 +171,14 @@ export function CombatFightController() {
     const missionData = MISSIONS.find((m) => m.id === missionId);
     if (!missionData) return;
 
-    const members = allMembers.filter((m) => formation.includes(m.id));
+    // Party pool = guild members + this mission's hired mercs (id === contract.id).
+    // Without the merc shapes here, formation slots holding a merc would resolve to
+    // nothing and the merc would silently miss the fight (then be scored defeated).
+    const active = useGameStore.getState().activeMissions.find((m) => m.instanceId === instanceId);
+    const mercMembers = mercContracts
+      .filter((c) => active?.mercContractIds.includes(c.id))
+      .map(memberFromMercContract);
+    const members = [...allMembers, ...mercMembers].filter((m) => formation.includes(m.id));
     const waves = missionData.waves ?? legacyToWaves(missionData.enemyIds);
     const waveManager = new WaveManager(waves);
     waveManagerRef.current = waveManager;
@@ -227,6 +277,11 @@ export function CombatFightController() {
       return;
     }
 
+    // Presentation-layer hitstop: accumulate frozen time for mesh-FX clock,
+    // then skip engine.tick for the freeze window (~80–150ms wall-clock).
+    tickAccum(delta, now);
+    if (isHitstopActive(now)) return;
+
     const dtMs = Math.min(delta * 1000, MAX_FRAME_DT_MS) * speedMultiplier;
     const events = engine.tick(dtMs);
     if (events.length > 0) {
@@ -261,6 +316,29 @@ export function CombatFightController() {
       );
     }
 
+    // Ancestral Blessings persistent VFX: two loop-driven layers emitted at each
+    // blessed, living entity — rising gold wisps (vertical) + a ground dust gust
+    // (horizontal, slower cadence). Both supply the motion the static baked
+    // overlay can't. Single entity walk, independent throttles on the combat
+    // clock. Skips dead + unpositioned entities; naturally stops on death
+    // (currentHp<=0) and combat end (engine cleared → useFrame early-returns).
+    const emitAura = engine.time - lastAuraEmitRef.current >= AURA_EMIT_INTERVAL_MS;
+    const emitDust = engine.time - lastDustEmitRef.current >= DUST_EMIT_INTERVAL_MS;
+    if (emitAura) lastAuraEmitRef.current = engine.time;
+    if (emitDust) lastDustEmitRef.current = engine.time;
+    if (emitAura || emitDust) {
+      for (const e of engine.entities) {
+        if (!e.blessed || e.currentHp <= 0 || !e.position) continue;
+        const baseY = e.position.y ?? 0;
+        if (emitAura) {
+          auraEmitter.emit([e.position.x, baseY + AURA_EMIT_Y, e.position.z], AURA_EMIT_COUNT);
+        }
+        if (emitDust) {
+          dustEmitter.emit([e.position.x, baseY + DUST_EMIT_Y, e.position.z], DUST_EMIT_COUNT);
+        }
+      }
+    }
+
     // Cleanup transient damage popups (>1s old).
     useCombatProjectionStore.getState().pruneDamages(1000);
 
@@ -279,7 +357,7 @@ export function CombatFightController() {
     if (!id || !instId) return;
 
     const result = resultOverride ?? engine.getResult();
-    if (engine.syringesConsumed > 0) removeItem('HEALING_SYRINGE', engine.syringesConsumed);
+    if (engine.syringesConsumed > 0) removeItem(engine.loadedSyringeItemId, engine.syringesConsumed);
 
     // Combat resolved — drop snapshot so reload doesn't re-resolve from stale state.
     saveCombatSnapshot(instId, null, 0);
@@ -294,7 +372,11 @@ export function CombatFightController() {
       return;
     }
     const allMembers = store.founder ? [store.founder, ...store.roster] : store.roster;
-    const members = allMembers.filter((m) => active.memberIds.includes(m.id));
+    const realMembers = allMembers.filter((m) => active.memberIds.includes(m.id));
+    const mercMembers = store.tavern.mercContracts
+      .filter((c) => active.mercContractIds.includes(c.id))
+      .map(memberFromMercContract);
+    const members = [...realMembers, ...mercMembers];
 
     const missionResult = applyMissionResultSideEffects(mission, active, members, result);
     // Story beat: main quests with post-combat dialog play it before the
@@ -335,6 +417,9 @@ function buildSnapshots(engine: CombatEngineType): ArenaEntitySnapshot[] {
     nextAttackAt: e.nextAttackAt,
     attackIntervalMs: e.attackIntervalMs,
     isBoss: e.isBoss,
+    blessed: e.blessed,
+    // Derived here so the HUD can show the Riposte icon without an engine clock.
+    riposteActive: (e.riposteUntil ?? 0) > engine.time,
     attackMoveState: e.attackMoveState,
     // Cosmetic slide hint — carried once (on the wave-spawn sync); subsequent
     // syncs overwrite with the same undefined (entity is already on-screen).
@@ -356,14 +441,34 @@ function emitVfxFromEvents(
   if (!vfx) return;
   for (const event of events) {
     if (event.type === 'auto-attack' || event.type === 'skill-use') {
-      const target = engine.entities.find((e) => e.id === event.targetId);
+      const attacker = engine.entities.find((e) => e.id === event.attackerId);
+      const target   = engine.entities.find((e) => e.id === event.targetId);
       if (!target) continue;
       const pos: [number, number, number] = [target.position.x, 1.2, target.position.z];
-      vfx.hit(pos);
-      if (event.isCrit) {
-        vfx.crit(pos);
-        window.dispatchEvent(new CustomEvent(COMBAT_CRIT_DOM_EVENT));
-      }
+
+      // Skill-use events with a cue sheet delegate ALL feedback to CombatSkillVfxLayer.
+      // Skip the default gen-hit spark so the cue sheet's particle cues don't stack.
+      if (event.type === 'skill-use' && hasCueSheet(attacker?.skill?.id)) continue;
+
+      // Uniform warm-orange hit debris for every attack. Single gen-hit emit owns
+      // the spark — CombatImpactLayer renders only the slash/beam mesh.
+      const isCrit = event.isCrit;
+      // Riposte counter hits read as a blue-white parry flash, distinct from the
+      // warm-orange of a normal swing.
+      const isRiposte = event.type === 'auto-attack' && event.isRiposte === true;
+      // Delay hit feedback to the animation's connect/release frame so the spark,
+      // crit burst, screen-shake, and the slash/beam mesh all land together on the
+      // visual hit rather than during the swing/draw windup.
+      setTimeout(() => {
+        vfx.hit(pos, undefined, {
+          colorStart: isRiposte ? ['#7ab8ff', '#eaf4ff', '#ffffff'] : COMBAT_HIT_SPARK_COLOR,
+          size: COMBAT_HIT_SPARK_SIZE,
+        });
+        if (isCrit) {
+          vfx.crit(pos);
+          window.dispatchEvent(new CustomEvent(COMBAT_CRIT_DOM_EVENT));
+        }
+      }, COMBAT_IMPACT_DELAY_S * 1000);
     } else if (event.type === 'heal' || event.type === 'syringe-used') {
       const targetId = event.type === 'heal' ? event.targetId : event.entityId;
       const target = engine.entities.find((e) => e.id === targetId);
@@ -396,25 +501,21 @@ function preloadNextWaveTextures(wm: WaveManager): void {
   }
 
   for (const spriteId of spriteIds) {
-    // Preload idle frames — the primary animation; attack/death are warm on first use.
-    const idleCount = getEnemyCombatFrameCount(spriteId, 'idle');
-    const idlePaths = Array.from({ length: Math.max(1, idleCount) }, (_, i) =>
-      resolveEnemyCombatSprite(spriteId, 'idle', i),
-    );
-    useLoader.preload(TextureLoader, idlePaths);
-
-    // Preload attack frames to avoid a second suspend on first attack animation.
-    const attackCount = getEnemyCombatFrameCount(spriteId, 'attack');
-    const attackPaths = Array.from({ length: Math.max(1, attackCount) }, (_, i) =>
-      resolveEnemyCombatSprite(spriteId, 'attack', i),
-    );
-    useLoader.preload(TextureLoader, attackPaths);
+    // Preload the idle + attack SHEETS (one PNG each) into the useLoader cache —
+    // CombatIdleSprite loads exactly these sheet paths, so warming them here keeps
+    // new entities from suspending on mount. Death sheet is warm on first KO.
+    const idleSheet = resolveEnemyCombatSheet(spriteId, 'idle').sheetPath;
+    const attackSheet = resolveEnemyCombatSheet(spriteId, 'attack').sheetPath;
+    useLoader.preload(TextureLoader, [idleSheet, attackSheet]);
   }
 }
 
 /** Translate combat events into floating damage / heal / poison popups. */
 function emitDamagePopups(events: CombatEvent[], engine: CombatEngineType): void {
   const spawn = useCombatProjectionStore.getState().spawnDamage;
+  // One skill-name banner per caster per batch — multi-hit skills (Barrage) emit one
+  // skill-use event per hit, but the name should pop once, not 5× stacked.
+  const bannerShown = new Set<string>();
   for (const event of events) {
     if (event.type === 'auto-attack' || event.type === 'skill-use') {
       spawn(event.targetId, String(event.damage), event.isCrit ? 'crit' : 'normal');
@@ -429,6 +530,26 @@ function emitDamagePopups(events: CombatEvent[], engine: CombatEngineType): void
       if (target) spawn(target.id, 'DODGE', 'normal');
     } else if (event.type === 'block') {
       spawn(event.targetId, `BLOCK ${event.reducedDamage}`, 'normal');
+    } else if (event.type === 'ancestral-cast') {
+      // Ancestral Blessings cast → prominent red/orange skill-name banner.
+      const caster = engine.entities.find((e) => e.id === event.casterId);
+      const civ = caster?.civilization ?? 'LinhSon';
+      spawn(event.casterId, tContent('civ', civ, 'passiveName', 'Ancestral Blessings'), 'ancestral');
+    }
+
+    // Skill cast → floating skill-name banner on the caster (localized), shown
+    // alongside the damage numbers so the player can read what was triggered.
+    let castCasterId: string | null = null;
+    if (event.type === 'skill-use') castCasterId = event.attackerId;
+    else if (event.type === 'skill-buff-applied' || event.type === 'skill-debuff-applied') castCasterId = event.casterId;
+    // Riposte casts emit effect-applied (self) — casterId set by the engine.
+    else if (event.type === 'effect-applied' && event.effect === 'riposte') castCasterId = event.casterId ?? event.targetId;
+    if (castCasterId && !bannerShown.has(castCasterId)) {
+      const caster = engine.entities.find((e) => e.id === castCasterId);
+      if (caster?.skill) {
+        bannerShown.add(castCasterId);
+        spawn(castCasterId, tContent('skills', caster.skill.id, 'name', caster.skill.name), 'skill');
+      }
     }
   }
 }

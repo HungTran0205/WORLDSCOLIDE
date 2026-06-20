@@ -1,7 +1,6 @@
 /**
  * Material → stat-category affinity table.
- * MVP: only SLIME_GEL enabled. Other monster materials are stubs (enabled:false)
- * to lock in API shape for future phases without affecting current gameplay.
+ * Enabled materials roll their statKey in craft/enhance flows.
  * Spec: workshop-room-v2.md §4.4.
  */
 
@@ -15,20 +14,19 @@ export interface MaterialAffinity {
   range: [number, number];
   tier: 1 | 2 | 3 | 4 | 5;
   equipmentType: 'weapon' | 'armor';
-  /** MVP gate — disabled materials cannot be used by craft/enhance flows */
+  /** Disabled materials cannot be used by craft/enhance flows */
   enabled: boolean;
 }
 
 export const MATERIAL_AFFINITY: Partial<Record<ItemID, MaterialAffinity>> = {
-  // Active in MVP
-  SLIME_GEL: { category: 'TANKY', statKey: 'HP', range: [50, 200], tier: 1, equipmentType: 'armor', enabled: true },
+  // Active
+  SLIME_GEL:    { category: 'TANKY',        statKey: 'HP',           range: [50, 200],   tier: 1, equipmentType: 'armor',  enabled: true  },
+  BAT_WING:     { category: 'DODGE',        statKey: 'DODGE',        range: [0.03, 0.08], tier: 1, equipmentType: 'armor',  enabled: true  },
+  SPIDER_LEGS:  { category: 'ATTACK_SPEED', statKey: 'ATTACK_SPEED', range: [0.05, 0.12], tier: 1, equipmentType: 'weapon', enabled: true  },
+  METAL_PLATE:  { category: 'BLOCK',        statKey: 'BLOCK',        range: [0.03, 0.08], tier: 2, equipmentType: 'armor',  enabled: true  },
+  DRONE_SENSOR: { category: 'ACCURACY',     statKey: 'ACCURACY',     range: [0.05, 0.15], tier: 2, equipmentType: 'weapon', enabled: true  },
 
-  // Future-phase stubs (locked off; will enable when stat keys + combat support land)
-  BAT_WING:        { category: 'DODGE',        statKey: 'HP', range: [1, 5],   tier: 1, equipmentType: 'weapon', enabled: false },
-  SPIDER_LEGS:     { category: 'ACCURACY',     statKey: 'HP', range: [1, 10],  tier: 1, equipmentType: 'weapon', enabled: false },
-  METAL_PLATE:     { category: 'BLOCK',        statKey: 'HP', range: [1, 5],   tier: 2, equipmentType: 'armor',  enabled: false },
-  DRONE_SENSOR:    { category: 'ATTACK_SPEED', statKey: 'HP', range: [5, 10],  tier: 2, equipmentType: 'weapon', enabled: false },
-  SLIME_KING_CORE: { category: 'SHIELD',       statKey: 'HP', range: [50, 500], tier: 3, equipmentType: 'armor', enabled: false },
+  SLIME_KING_CORE: { category: 'SHIELD', statKey: 'SHIELD', range: [1, 2], tier: 3, equipmentType: 'armor', enabled: true },
 };
 
 export function getAffinity(id: ItemID): MaterialAffinity | undefined {

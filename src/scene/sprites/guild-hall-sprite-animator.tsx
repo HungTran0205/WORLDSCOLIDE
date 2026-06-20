@@ -1,34 +1,39 @@
 /**
- * Guild hall member sprite animator — east/west walking only + one static
- * south idle frame.
+ * Guild hall member sprite animator — east/west walking + south-facing idle.
  *
- * Walk uses a 2-row atlas (east = row 0, west = row 1, 8 frames each) driven by
- * UV offset (setAtlasFrame), the same zero-rebind technique as SpriteAnimator.
- * Idle is a SEPARATE static texture — south frame_000 from the member's own
- * folder — so a stopped member always faces south regardless of the last walk
- * direction. The walk plane and idle plane are toggled imperatively
- * (mesh.visible) in useFrame to avoid per-frame React re-renders and any
- * material.map swap.
+ * Phase 3: loads ONE pre-packed walking sheet PNG (same 4-dir sheet as
+ * SpriteAnimator). Direction rows derived from manifest dirRows via indexOf —
+ * no hardcoded DIR_ROW map. Idle is driven from the walk sheet's south row
+ * frame 0, eliminating the separate idle texture load.
  *
- * Kept separate from SpriteAnimator (which loads all 4 directions and is also
- * used by facility zone/room workers) so this guild-hall-only simplification
- * doesn't touch those.
+ * The walk plane and idle plane share the atlas GPU texture but each has its
+ * own MeshStandardMaterial instance so their UV offset/repeat states don't
+ * interfere. useFrame locks the idle material's UV every frame while stopped
+ * to guard against any drift (setAtlasFrame mutates atlas.texture.offset which
+ * is shared across materials referencing the same texture object).
+ *
+ * Walk/idle toggled imperatively via mesh.visible to avoid per-frame re-renders.
+ *
+ * NOTE (2026-05-09): texture.offset/repeat UV animation has known multi-instance
+ * WebGPU freeze (only 1 sprite per pipeline batch animates). Hidden at typical
+ * guild hall occupancy (1-2 per spriteId). For N≥3, port to uniform-UV pattern —
+ * see idle-sprite-material.ts.
  */
 
 import { useRef, useMemo } from 'react';
-import { useLoader, useFrame, useThree } from '@react-three/fiber';
-import { TextureLoader, NearestFilter, SRGBColorSpace } from 'three';
+import { useLoader, useFrame } from '@react-three/fiber';
+import { TextureLoader, MeshStandardMaterial } from 'three';
 import type { MutableRefObject } from 'react';
 import type { Mesh } from 'three';
 import type { HorizontalDirection } from './sprite-path-resolver';
-import { getWalkingFramePath, getGuildHallIdleFramePath } from './sprite-path-resolver';
-import { buildAtlasFromTextures, setAtlasFrame } from './sprite-atlas';
+import { getEntityKeyFromBasePath } from './sprite-path-resolver';
+import { buildAtlasFromSheet, setAtlasFrame, getAtlasFrameUv } from './sprite-atlas';
 import type { SpriteAtlas } from './sprite-atlas';
+import { getSheetEntry } from './sprite-sheet-manifest';
+import { assetUrl } from '@/lib/asset-url';
 
-const FRAME_COUNT = 8;
 const ANIMATION_FPS = 10;
-/** Atlas row per direction — walk frames are loaded east-then-west. */
-const DIR_ROW: Record<HorizontalDirection, number> = { east: 0, west: 1 };
+const WALK_ANIM = 'walking-8-frames';
 
 interface GuildHallSpriteAnimatorProps {
   basePath: string;
@@ -47,36 +52,46 @@ export function GuildHallSpriteAnimator({
   const elapsedRef = useRef(0);
   const walkMeshRef = useRef<Mesh>(null);
   const idleMeshRef = useRef<Mesh>(null);
+  // Separate material refs so we can address idle UV independently
+  const walkMatRef = useRef<MeshStandardMaterial>(null);
+  const idleMatRef = useRef<MeshStandardMaterial>(null);
 
-  // Walk frames: east 0-7 then west 0-7 → 8-col × 2-row atlas.
-  const walkPaths = useMemo(() => {
-    const p: string[] = [];
-    for (let i = 0; i < FRAME_COUNT; i++) p.push(getWalkingFramePath(basePath, 'east', i));
-    for (let i = 0; i < FRAME_COUNT; i++) p.push(getWalkingFramePath(basePath, 'west', i));
-    return p;
+  // Resolve sheet geometry from manifest once per basePath
+  const { sheetPath, cols, rows, dirRows, frameCounts } = useMemo(() => {
+    const entityKey = getEntityKeyFromBasePath(basePath);
+    const entry = getSheetEntry(entityKey, WALK_ANIM);
+    if (!entry) {
+      console.warn(`GuildHallSpriteAnimator: no manifest entry for ${entityKey}/${WALK_ANIM}`);
+      return {
+        sheetPath: assetUrl(`${basePath}/animations/${WALK_ANIM}.png`),
+        cols: 8, rows: 4,
+        dirRows: ['north', 'south', 'east', 'west'],
+        frameCounts: { north: 8, south: 8, east: 8, west: 8 } as Record<string, number>,
+      };
+    }
+    return {
+      sheetPath: assetUrl(entry.path),
+      cols: entry.cols,
+      rows: entry.rows,
+      dirRows: entry.dirRows,
+      frameCounts: entry.frameCounts,
+    };
   }, [basePath]);
 
-  const idlePath = useMemo(() => getGuildHallIdleFramePath(basePath), [basePath]);
+  // Single sheet load — one PNG for all 4 dirs (Three.js cache hit if SpriteAnimator
+  // already loaded the same path for this character in this scene).
+  const sheetTexture = useLoader(TextureLoader, sheetPath);
 
-  const walkTextures = useLoader(TextureLoader, walkPaths);
-  const idleTexture = useLoader(TextureLoader, idlePath);
-  const { gl } = useThree();
+  const atlas = useMemo<SpriteAtlas>(
+    () => buildAtlasFromSheet(sheetTexture, cols, rows, cols * rows),
+    [sheetTexture, cols, rows],
+  );
 
-  const atlas = useMemo<SpriteAtlas>(() => {
-    for (const t of walkTextures) {
-      t.magFilter = NearestFilter;
-      t.minFilter = NearestFilter;
-      t.colorSpace = SRGBColorSpace;
-    }
-    return buildAtlasFromTextures(walkTextures, FRAME_COUNT);
-  }, [walkTextures, gl]);
-
-  const idleMap = useMemo(() => {
-    idleTexture.magFilter = NearestFilter;
-    idleTexture.minFilter = NearestFilter;
-    idleTexture.colorSpace = SRGBColorSpace;
-    return idleTexture;
-  }, [idleTexture]);
+  // South-row frame-0 UV — used to pin the idle material every frame
+  const idleFrameIdx = useMemo(() => {
+    const southRow = dirRows.indexOf('south');
+    return (southRow >= 0 ? southRow : 0) * cols + 0;
+  }, [dirRows, cols]);
 
   useFrame((_, rawDelta) => {
     const moving = isMovingRef.current;
@@ -86,30 +101,63 @@ export function GuildHallSpriteAnimator({
     if (!moving) {
       frameIndexRef.current = 0;
       elapsedRef.current = 0;
+      // Pin idle material UV to south-row frame 0 every frame so walk UV drift
+      // (setAtlasFrame mutates atlas.texture.offset shared across materials) is
+      // immediately corrected for any frame the idle mesh becomes visible.
+      if (idleMatRef.current?.map) {
+        const uv = getAtlasFrameUv(atlas, idleFrameIdx);
+        idleMatRef.current.map.offset.set(uv.u, uv.v);
+        idleMatRef.current.map.repeat.set(uv.w, uv.h);
+        idleMatRef.current.map.updateMatrix();
+      }
       return;
     }
 
     const delta = Math.min(rawDelta, 0.1);
+    const dir = directionRef.current;
+    const frameCount = frameCounts[dir] ?? cols;
+
     elapsedRef.current += delta;
     if (elapsedRef.current >= 1 / ANIMATION_FPS) {
       elapsedRef.current -= 1 / ANIMATION_FPS;
-      frameIndexRef.current = (frameIndexRef.current + 1) % FRAME_COUNT;
+      frameIndexRef.current = (frameIndexRef.current + 1) % frameCount;
     }
-    setAtlasFrame(atlas, DIR_ROW[directionRef.current] * FRAME_COUNT + frameIndexRef.current);
+
+    // Row derived from manifest dirRows via indexOf — never a hardcoded map
+    const row = dirRows.indexOf(dir);
+    setAtlasFrame(atlas, (row >= 0 ? row : 0) * cols + frameIndexRef.current);
+
+    // Walk material picks up the updated atlas.texture.offset automatically
+    // (same texture object). Idle material is invisible during walk — its UV
+    // will be re-pinned next idle frame.
   });
 
   return (
     <>
-      {/* Walk plane (east/west atlas) — shown while moving. Starts hidden;
-          members spawn idle, so the idle plane is the initial visible one. */}
+      {/* Walk plane — shown while moving. Starts hidden; members spawn idle. */}
       <mesh ref={walkMeshRef} visible={false}>
         <planeGeometry args={size} />
-        <meshStandardMaterial map={atlas.texture} transparent alphaTest={0.1} roughness={1} metalness={0} />
+        <meshStandardMaterial
+          ref={walkMatRef}
+          map={atlas.texture}
+          transparent
+          alphaTest={0.1}
+          roughness={1}
+          metalness={0}
+        />
       </mesh>
-      {/* Idle plane (static south frame_000) — shown while stopped. */}
+      {/* Idle plane — south row frame 0 from the shared walk sheet.
+          Separate material instance so its UV state is set independently in useFrame. */}
       <mesh ref={idleMeshRef}>
         <planeGeometry args={size} />
-        <meshStandardMaterial map={idleMap} transparent alphaTest={0.1} roughness={1} metalness={0} />
+        <meshStandardMaterial
+          ref={idleMatRef}
+          map={atlas.texture}
+          transparent
+          alphaTest={0.1}
+          roughness={1}
+          metalness={0}
+        />
       </mesh>
     </>
   );

@@ -1,91 +1,67 @@
-/* ─── Combat Panel — overlay shell, header, sub-phase chrome ──────────────── */
+/* ─── Combat Panel — positioner + PanelFrame overrides ─────────────────────
+   Chrome (header, border, close button, animation) is owned by PanelFrame.
+   Only combat-specific content styles and sub-phase chrome live here.       */
 
-.combat-panel-overlay {
+/* Positioner: centers PanelFrame on screen with a dark scrim.
+   Combat is a blocking full-scene overlay so a dark backdrop is intentional
+   (unlike facility panels which use no scrim). */
+.combat-pf-positioner {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
-  font-family: var(--ink-font-body);
+  background: rgba(0, 0, 0, 0.55);
+  z-index: var(--bp-z-panel);
 }
 
-.combat-panel {
-  /* Shared size for ALL phases (formation/result/battle) so switching phases
-     doesn't jump size. ~80% screen, framed; aspect ~1.74 ≈ 16:9. Battle relies
-     on this width too — see the camera-zoom coverage note in
-     .combat-panel--phase-battle. */
+/* PanelFrame size override: combat uses a large viewport (~80% screen, 16:9).
+   Battle phase relies on this exact width for camera-zoom coverage:
+   panel_px / zoom must stay ≤ far-bg width (25.5u). At 1536px / 64 = 24u ✓.
+   pointer-events: auto restores clicks inside the centered PanelFrame. */
+.combat-pf-positioner > .pf-root {
   width: min(1536px, 90vw);
   height: min(880px, 88vh);
-  background: var(--ink-bg-panel);
-  border: var(--ink-border-w) solid var(--ink-gold);
-  border-radius: var(--ink-radius-md);
-  color: var(--ink-text);
+  max-width: unset;
+  pointer-events: auto;
+}
+
+/* pf-content overrides for combat: remove padding and parchment bg so
+   sub-phase chrome fills the full content area without inset white space.
+   MUST be a flex column: combat-panel-body uses flex:1 to fill the panel
+   height (the battle viewport collapses to zero height otherwise, dumping
+   the HUD strips to the top). */
+.combat-pf .pf-content {
+  padding: 0;
+  background: var(--bp-parch-aged);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: var(--ink-shadow-deep), var(--ink-glow-gold);
-  position: relative;
-  overflow: hidden;
 }
 
-.combat-panel::before,
-.combat-panel::after {
-  content: '';
-  position: absolute;
-  width: var(--ink-corner-size);
-  height: var(--ink-corner-size);
-  background: var(--ink-gold);
-  transform: rotate(45deg);
-  z-index: 1;
-}
-.combat-panel::before { top: -5px; left: -5px; }
-.combat-panel::after  { top: -5px; right: -5px; }
-
-/* ─── Header ──────────────────────────────────────────────────────────────── */
-.combat-panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--ink-space-3) var(--ink-space-5);
-  border-bottom: 1px solid var(--ink-gold-dim);
-  background: var(--ink-bg-panel-alt);
-  flex-shrink: 0;
+/* Battle phase: transparent content area so the world canvas shows through. */
+.combat-pf--battle .pf-content {
+  background: transparent;
 }
 
-.combat-panel-header__title {
-  font-family: var(--ink-font-title);
-  color: var(--ink-gold);
-  font-size: var(--ink-fs-h1);
-  letter-spacing: 0.08em;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--ink-space-2);
+/* Battle phase outer mask: the world canvas renders BEHIND the positioner and
+   must stay visible through the panel rect (pf-content is transparent), while
+   everything OUTSIDE the rect goes near-opaque (full-frustum bg planes extend
+   past the panel). A background on the positioner would also cover the area
+   behind the panel and black out the battle — the 9999px box-shadow spread
+   paints outside the panel's border box only. */
+.combat-pf-positioner--battle {
+  background: transparent;
+}
+.combat-pf-positioner--battle > .pf-root {
+  box-shadow: 0 0 0 9999px rgba(6, 4, 3, 0.98);
 }
 
-.combat-panel-header__zone {
-  font-family: var(--ink-font-mono);
-  font-size: var(--ink-fs-small);
-  color: var(--ink-text-dim);
-  letter-spacing: 0.08em;
-}
-
-.combat-panel-header__close {
-  background: none;
-  border: 1px solid var(--ink-gold-dim);
-  color: var(--ink-text-dim);
-  width: 32px;
-  height: 32px;
-  border-radius: var(--ink-radius-sm);
-  cursor: pointer;
-  font-size: 1.1rem;
-  line-height: 1;
-  transition: background var(--ink-dur-fast), color var(--ink-dur-fast);
-}
-.combat-panel-header__close:hover {
-  background: var(--ink-bg-hover);
-  color: var(--ink-gold);
+/* Battle phase: header gets dark solid fill so the mission name stays readable
+   against the canvas that bleeds through the content area below. */
+.combat-pf--battle .pf-header {
+  background: rgb(20, 18, 14);
+  border-bottom-color: var(--bp-parch-burn);
 }
 
 /* ─── Body (sub-phase host) ───────────────────────────────────────────────── */
@@ -268,37 +244,16 @@
  *  (header on top, footer at bottom, transparent center) so the canvas peeks
  *  through. HUD elements (HP bars + damage popups) are absolute-positioned
  *  in viewport pixels via the projection store.
+ *
+ *  .combat-panel--phase-battle is queried by combat-scissor.tsx to compute the
+ *  scissor rect — class stays on the body div so getBoundingClientRect() returns
+ *  the combat content area (below the header). Background transparency during
+ *  battle is handled by .combat-pf--battle .pf-content in the positioner block.
  */
-.combat-panel-overlay--battle {
-  /* Battle phase: panel viewport is transparent so the canvas (single shared
-     world canvas) shows through inside the panel rect. The dimming AROUND the
-     panel is now done via a large box-shadow spread on the panel itself
-     (next rule) — that keeps the inside of the panel viewport at full canvas
-     brightness while everything outside is opaque dark. */
-  background: transparent;
-}
-
 .combat-panel--phase-battle {
+  /* Transparent so the world canvas shows through this element.
+     Outer dimming is handled by the combat-pf-positioner scrim. */
   background: transparent;
-  border-color: var(--ink-gold-dim);
-  /* 9999px spread shadow paints an opaque dark sheet covering the entire
-     viewport EXCEPT the panel's own rect. This is the PRIMARY mechanism for
-     hiding canvas content (HD-2D bg/fg layers, leaked guild meshes) outside
-     the panel rect — scissor was unreliable on WebGPU. 0.98 alpha because
-     the canvas underneath has full-frustum bg planes that would otherwise
-     show through any noticeable transparency. */
-  box-shadow: 0 0 0 9999px rgba(6, 4, 3, 0.98);
-  /* Size inherited from .combat-panel (~80% screen, framed) so all phases match.
-     Camera zoom (COMBAT_CAM_ZOOM) is paired with that width so fighters fill the
-     rect instead of leaving empty arena. Coverage constraint: panel-visible
-     world width = panel_px / zoom must stay ≤ far-bg width (25.5u). At
-     1536px / 64 = 24u ✓. Box-shadow + full-window canvas mean the bigger rect
-     just unmasks more of the already-rendered scene — bg/camera unaffected. */
-}
-
-.combat-panel--phase-battle .combat-panel-header {
-  background: rgb(20, 18, 14);
-  border-bottom-color: var(--ink-gold-dim);
 }
 
 .combat-panel-battle {
@@ -656,6 +611,19 @@
   background: var(--ink-status-bad, #c44a4a);
 }
 
+/* Overhead buff/stance status icons (Riposte 🛡️, Rally ⚔️). */
+.combat-hud__buff-row {
+  display: flex;
+  gap: 2px;
+  line-height: 1;
+}
+
+.combat-hud__buff-icon {
+  font-size: 11px;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+}
+
 .combat-hud__damage {
   position: absolute;
   transform: translate(-50%, -100%);
@@ -677,6 +645,51 @@
 
 .combat-hud__damage--heal { color: #79e288; }
 .combat-hud__damage--poison { color: #b88dff; }
+
+/* Skill-name banner — floats above the caster's head, distinct from damage numbers. */
+.combat-hud__damage--skill {
+  color: #6fe0ff;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 1), 0 0 10px rgba(70, 180, 255, 0.6);
+  animation: combat-hud-skill-rise 800ms ease-out forwards;
+}
+
+@keyframes combat-hud-skill-rise {
+  0%   { transform: translate(-50%, -150%) scale(0.85); opacity: 0; }
+  25%  { transform: translate(-50%, -190%) scale(1.05); opacity: 1; }
+  75%  { transform: translate(-50%, -220%);             opacity: 1; }
+  100% { transform: translate(-50%, -250%);             opacity: 0; }
+}
+
+/* Ancestral Blessings cast banner — vivid red fill + orange gradient outline (crisp
+   stroke + radiating glow), bigger/bolder than a normal skill banner so the dramatic
+   moment stands out. */
+.combat-hud__damage--ancestral {
+  color: #ff2e1f;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  -webkit-text-stroke: 2px #ff8a1e;
+  paint-order: stroke fill; /* keep the red fill crisp on top of the orange stroke */
+  text-shadow:
+    0 0 4px #ffc24a,
+    0 0 9px #ff8a1e,
+    0 0 16px rgba(255, 96, 0, 0.85),
+    0 0 26px rgba(255, 64, 0, 0.55),
+    0 2px 6px rgba(0, 0, 0, 0.95);
+  animation: combat-hud-ancestral-rise 800ms ease-out forwards;
+}
+
+@keyframes combat-hud-ancestral-rise {
+  0%   { transform: translate(-50%, -150%) scale(0.70); opacity: 0; }
+  18%  { transform: translate(-50%, -198%) scale(1.20); opacity: 1; }
+  70%  { transform: translate(-50%, -228%) scale(1.00); opacity: 1; }
+  100% { transform: translate(-50%, -262%) scale(1.00); opacity: 0; }
+}
 
 @keyframes combat-hud-damage-rise {
   0%   { transform: translate(-50%, -100%);            opacity: 1; }

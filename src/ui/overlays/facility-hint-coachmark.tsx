@@ -23,6 +23,7 @@ const OBJECT_OFFSET: Record<FacilityHintType, [number, number, number]> = {
   workshop: [0.8, 1.0, -0.5],     // anvil
   'alchemy-lab': [0, 2.0, -0.2],  // reactor (tall)
   tavern: [-2.8, 1.6, 1.2],       // apothecary counter
+  'training-yard': [0, 1.4, -1.8], // training dummy
 };
 
 // i18n key per facility type (resolved at render time via t())
@@ -30,6 +31,7 @@ const CAPTION_KEY: Record<FacilityHintType, string> = {
   workshop: 'coachmark.workshop',
   'alchemy-lab': 'coachmark.alchemyLab',
   tavern: 'coachmark.tavern',
+  'training-yard': 'coachmark.trainingYard',
 };
 
 interface FacilityHintCoachmarkProps {

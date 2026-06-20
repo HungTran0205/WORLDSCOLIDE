@@ -45,7 +45,6 @@ export function applyMissionResultSideEffects(
       if (amount && amount > 0) store.addItem(itemId as ItemID, amount);
     }
     for (const memberId of memberSurvivors) {
-      store.addMemberExp(memberId, result.expPerMember);
       store.updateMemberStatus(memberId, 'idle');
     }
     store.completeMission(active.instanceId);
@@ -58,10 +57,17 @@ export function applyMissionResultSideEffects(
   }
 
   // Injuries scale with mission difficulty (members only — mercs never enter infirmary).
+  // Progress-driven recovery: `baseRecoveryMs` is the passive wall-clock time, `now` the
+  // FIFO ordering key for bed/queue assignment.
   const now = Date.now();
-  const injuryDuration = mission.durationMs * 0.5;
+  const baseRecoveryMs = mission.durationMs * 0.5;
   for (const memberId of memberInjured) {
-    store.setMemberInjuredUntil(memberId, now + injuryDuration);
+    store.injureMember(memberId, baseRecoveryMs, now);
+  }
+
+  // Ancestral Blessings: drain the Blessed bar for anyone who fired it (win OR loss).
+  if (combatResult.blessedConsumedIds?.length) {
+    store.consumeBlessed(combatResult.blessedConsumedIds);
   }
 
   // Phase 04: tavern merc-contract bookkeeping (RP, defeat rep, veteranPool).

@@ -9,6 +9,7 @@ import { extractGameSaveData, createSaveEnvelope } from './save-types';
 import type { SaveEnvelope } from './save-types';
 import { migrateSave } from './save-migrations';
 import { validateAndMigrate, type ValidationResult } from './save-validation';
+import { registerSaveHandler, flushSave } from './save-scheduler';
 import { useGameStore } from '@/game/state/store';
 
 const AUTO_SAVE_INTERVAL = 60_000;
@@ -19,6 +20,7 @@ export class SaveManager {
   private autoSaveTimer: number | null = null;
   private lastSaveTime = 0;
   private visibilityHandler: (() => void) | null = null;
+  private pageHideHandler: (() => void) | null = null;
   /** Metadata from last load — used for play time tracking */
   private lastMeta: import('./save-types').SaveSlotMetadata | undefined;
 
@@ -89,22 +91,31 @@ export class SaveManager {
     return validateAndMigrate(text);
   }
 
-  /** Start auto-save timer + visibility change listener */
+  /** Start auto-save timer + visibility/pagehide listeners + action-driven scheduler */
   startAutoSave(getState: () => Record<string, unknown>): void {
     this.stopAutoSave();
     this.autoSaveTimer = window.setInterval(() => {
       this.save(getState);
     }, AUTO_SAVE_INTERVAL);
 
+    // Prompt save after user actions (assign / train / equip …) — debounced in the
+    // scheduler so a burst coalesces. Forced to bypass the 5s save-debounce.
+    registerSaveHandler(() => { void this.save(getState, true); });
+
+    // Tab hidden (switch/minimize) — force a save while the page is still alive.
     this.visibilityHandler = () => {
-      if (document.visibilityState === 'hidden') {
-        this.save(getState);
-      }
+      if (document.visibilityState === 'hidden') void this.save(getState, true);
     };
     document.addEventListener('visibilitychange', this.visibilityHandler);
+
+    // pagehide fires on real navigation/close/bfcache — flush any pending scheduled
+    // save and force a final write. (Async IndexedDB may not finish on a hard close,
+    // but the scheduler's prompt post-action saves are the real safety net.)
+    this.pageHideHandler = () => { flushSave(); void this.save(getState, true); };
+    window.addEventListener('pagehide', this.pageHideHandler);
   }
 
-  /** Stop auto-save timer and visibility listener */
+  /** Stop auto-save timer and listeners */
   stopAutoSave(): void {
     if (this.autoSaveTimer) {
       clearInterval(this.autoSaveTimer);
@@ -114,6 +125,11 @@ export class SaveManager {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
       this.visibilityHandler = null;
     }
+    if (this.pageHideHandler) {
+      window.removeEventListener('pagehide', this.pageHideHandler);
+      this.pageHideHandler = null;
+    }
+    registerSaveHandler(null);
   }
 }
 

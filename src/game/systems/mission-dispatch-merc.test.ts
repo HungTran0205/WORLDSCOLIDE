@@ -1,6 +1,7 @@
 /**
  * Phase 04 — mission-dispatch validateDispatch with mixed parties.
- * Verifies legacy MERCENARY fee removal + merc-contract validation gates.
+ * Verifies party size gating, status gating, and contract availability checks.
+ * Note: level/requiredLevel gating was removed in the grade model overhaul (GDD §17).
  */
 
 import { describe, it, expect } from 'vitest';
@@ -16,26 +17,24 @@ const MISSION: Mission = {
   travelTimeMs: 1000,
   goldRewardMin: 100,
   goldRewardMax: 200,
-  expReward: 100,
   enemyIds: [],
   requiredMembers: 2,
-  requiredLevel: 3,
 };
 
-function member(id: string, level = 5, status: Member['status'] = 'idle'): Member {
+function member(id: string, status: Member['status'] = 'idle'): Member {
   return {
-    id, name: id, level, exp: 0,
+    id, name: id, grade: 'F', isMercenary: false,
     stats: { STR: 5, END: 5, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 },
     unallocatedPoints: 0, skill: null, status, injuredUntil: null,
-    civilization: 'LinhSon', isFounder: false, rank: 'MEMBER',
-    missionsCompleted: 0, rarity: 1,
+    civilization: 'LinhSon', isFounder: false,
+    missionsCompleted: 0,
   };
 }
 
-function visitor(level = 5): TavernVisitor {
+function visitor(): TavernVisitor {
   return {
     id: 'vis-1', name: 'vis-1', archetype: 'warrior', civilization: 'LinhSon', gender: 'M',
-    rarity: 2, level,
+    grade: 'E',
     stats: { STR: 10, END: 10, INT: 5, DEX: 5, CHA: 5, LCK: 5, AGI: 5 },
     derivedDemand: 0, dailyMoodBias: 0, traits: [],
     preferredGiftCategory: 'consumable', attemptHistory: [],
@@ -62,24 +61,23 @@ describe('validateDispatch (Phase 04)', () => {
     expect(v.valid).toBe(false);
   });
 
-  it('rejects when merc level below requiredLevel', () => {
+  it('accepts merc regardless of grade (level gating removed in grade overhaul)', () => {
+    // Grade model: validateDispatch no longer gates on member/merc power level
     const v = validateDispatch(
       MISSION,
       [member('a')],
-      [makeMercContract(visitor(1), 100, 1)],
+      [makeMercContract(visitor(), 100, 1)],
     );
-    expect(v.valid).toBe(false);
-    expect(v.reason).toMatch(/Mercs must be level/);
+    expect(v.valid).toBe(true);
   });
 
   it('does NOT charge any per-quest mercenary fee (legacy MERCENARY 50% removed)', () => {
-    // Pure validation result has no mercenaryFee field anymore — type guarantee.
     const v = validateDispatch(MISSION, [member('a'), member('b')], []);
     expect(v).toEqual({ valid: true });
   });
 
   it('rejects busy member', () => {
-    const v = validateDispatch(MISSION, [member('a', 5, 'on-mission'), member('b')], []);
+    const v = validateDispatch(MISSION, [member('a', 'on-mission'), member('b')], []);
     expect(v.valid).toBe(false);
   });
 });

@@ -1,22 +1,21 @@
 /**
  * Global keyboard shortcuts for the guild-hall HUD.
- * - Q  → toggle Quest Board
- * - ESC → close any open panel
+ * - Q   → toggle Quest Board
+ * - ESC → close all open panels (main + facility axes)
  *
- * Mounted by GameScreen so it can drive the same activePanel state as the
- * HUD buttons and the drum click bridge.
+ * Mounted by GameScreen. Reads panel state from ui-store directly — no props needed.
+ * Uses capture phase so this handler beats HomeButton's bubble-phase ESC listener,
+ * preventing a panel-close from also firing a camera-reset in the same keydown.
  */
 
 import { useEffect } from 'react';
-import type { PanelId } from '@/ui/hud/panel-toggle';
 import { useUiStore } from '@/game/state/ui-store';
 
-interface KeyboardShortcutsProps {
-  activePanel: PanelId;
-  setActivePanel: (id: PanelId) => void;
-}
-
-export function KeyboardShortcuts({ activePanel, setActivePanel }: KeyboardShortcutsProps) {
+export function KeyboardShortcuts() {
+  const mainPanel = useUiStore((s) => s.mainPanel);
+  const facilityPanel = useUiStore((s) => s.facilityPanel);
+  const openPanel = useUiStore((s) => s.openPanel);
+  const closeAllPanels = useUiStore((s) => s.closeAllPanels);
   const markTutorialSeen = useUiStore((s) => s.markQuestTutorialSeen);
 
   useEffect(() => {
@@ -33,24 +32,28 @@ export function KeyboardShortcuts({ activePanel, setActivePanel }: KeyboardShort
 
       if (e.key === 'q' || e.key === 'Q') {
         e.preventDefault();
-        const next = activePanel === 'quests' ? null : 'quests';
-        setActivePanel(next);
-        if (next === 'quests') markTutorialSeen();
+        if (mainPanel === 'quests') {
+          closeAllPanels();
+        } else {
+          openPanel('quests');
+          markTutorialSeen();
+        }
         return;
       }
 
-      if (e.key === 'Escape' && activePanel !== null) {
-        // Capture the close so HomeButton's ESC handler doesn't also fire.
+      // ESC closes whichever panel axis is open. stopImmediatePropagation prevents
+      // HomeButton's bubble-phase listener from also resetting the camera on the
+      // same keydown when a panel is open.
+      if (e.key === 'Escape' && (mainPanel !== null || facilityPanel !== null)) {
         e.stopImmediatePropagation();
         e.preventDefault();
-        setActivePanel(null);
+        closeAllPanels();
       }
     };
 
-    // Capture phase so we beat HomeButton's bubble-phase listener to ESC.
     window.addEventListener('keydown', handler, true);
     return () => window.removeEventListener('keydown', handler, true);
-  }, [activePanel, setActivePanel, markTutorialSeen]);
+  }, [mainPanel, facilityPanel, openPanel, closeAllPanels, markTutorialSeen]);
 
   return null;
 }

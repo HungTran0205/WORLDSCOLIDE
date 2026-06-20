@@ -13,7 +13,7 @@ export interface ArenaEntity extends CombatEntity {
   targetId: string | null;
   attackRange: number;
   moveSpeed: number;
-  animState: 'idle' | 'walking' | 'attacking' | 'skill' | 'hit' | 'dead' | 'battle-idle' | 'blocking' | 'back';
+  animState: 'idle' | 'walking' | 'attacking' | 'skill' | 'hit' | 'dead' | 'battle-idle' | 'blocking' | 'back' | 'casting';
   facingRight: boolean;
   /** Timestamp when current animState should revert to idle */
   animStateUntil: number;
@@ -33,6 +33,10 @@ export interface ArenaEntity extends CombatEntity {
    * - Never read by engine/AI/victory logic; ignored by cloneCombatEntity.
    */
   spawnSlideFromX?: number;
+  /** Riposte stance expiry timestamp. 0/undefined = not in stance. */
+  riposteUntil?: number;
+  /** Tracks which attacker IDs have already been countered in the current logic tick. Reset per-tick. */
+  riposteCountersThisTick?: Set<string>;
   /** Summoner Wars step-attack state machine */
   attackMoveState: AttackMoveState;
   /** Where the entity is stepping toward for this attack */

@@ -17,13 +17,15 @@
  */
 
 import { assetUrl } from '@/lib/asset-url';
+import { getSheetEntry } from './sprite-sheet-manifest';
 
-export type CombatAnimState = 'idle' | 'attack' | 'blocking' | 'death';
+export type CombatAnimState = 'idle' | 'attack' | 'blocking' | 'death' | 'casting';
 
 export const COMBAT_IDLE_FRAME_COUNT = 8;
 export const COMBAT_ATTACK_FRAME_COUNT = 8;
 export const COMBAT_BLOCKING_FRAME_COUNT = 4;
 export const COMBAT_DEATH_FRAME_COUNT = 8;
+export const COMBAT_CASTING_FRAME_COUNT = 8;
 
 /** Compile-time map of which entities have which combat-panel assets on disk. */
 export const COMBAT_SPRITE_MANIFEST = {
@@ -51,6 +53,10 @@ export const COMBAT_SPRITE_MANIFEST = {
   /** Char IDs with `animations/blocking/east/frame_0..3.png`. */
   charsWithBlockingEast: new Set<string>([
     'LS-SCOUT-F', 'LS-WARRIOR-M', 'LS-SWORD-M',
+  ]),
+  /** Char IDs with an Ancestral Blessings casting sheet (8 frames, east). */
+  charsWithCastingEast: new Set<string>([
+    'LS-SWORD-M', 'LS-SCOUT-F', 'LS-WARRIOR-M',
   ]),
   /** Char IDs with `animations/death/east/frame_0..7.png`. */
   charsWithDeathEast: new Set<string>([
@@ -208,6 +214,10 @@ export function getAllyCombatFrameCount(basePath: string, state: CombatAnimState
     if (COMBAT_SPRITE_MANIFEST.charsWithBlockingEast.has(charId)) return COMBAT_BLOCKING_FRAME_COUNT;
     return getAllyCombatFrameCount(basePath, 'idle');
   }
+  if (state === 'casting') {
+    if (COMBAT_SPRITE_MANIFEST.charsWithCastingEast.has(charId)) return COMBAT_CASTING_FRAME_COUNT;
+    return getAllyCombatFrameCount(basePath, 'idle');
+  }
   return COMBAT_SPRITE_MANIFEST.charsWithDeathEast.has(charId) ? COMBAT_DEATH_FRAME_COUNT : 1;
 }
 
@@ -239,4 +249,171 @@ export function hasAllyBlockingAnim(basePath: string): boolean {
 }
 export function hasEnemyAttackAnim(spriteId: string): boolean {
   return COMBAT_SPRITE_MANIFEST.enemiesWithAttackWest.has(spriteId);
+}
+
+// ─── Phase 3 sheet resolvers ──────────────────────────────────────────────────
+//
+// These replace the per-frame path builders for the combat panel. Fallback
+// chains mirror resolveAllyCombatSprite / resolveEnemyCombatSprite exactly:
+// geometry (cols, rows, frameCount) comes from the sheet manifest; availability
+// still gated by COMBAT_SPRITE_MANIFEST. ENEMY_*_FRAME_OVERRIDES are kept as a
+// redundant guard but sheet manifest frameCounts is the primary source.
+
+export interface CombatSheetInfo {
+  /** Full public URL to the pre-packed sheet PNG (ready for useLoader/fetch). */
+  sheetPath: string;
+  /** Row index within the sheet for the resolved direction. */
+  row: number;
+  /** True loop frame count for this direction (from sheet manifest frameCounts). */
+  frameCount: number;
+  /** Column count of the sheet (needed by buildAtlasFromSheet). */
+  cols: number;
+  /** Row count of the sheet (needed by buildAtlasFromSheet). */
+  rows: number;
+}
+
+/**
+ * Resolve ONE sheet + geometry for an ally combat animation.
+ * Fallback chain (mirrors resolveAllyCombatSprite):
+ *   idle  → battle-idle/east  → walking-8-frames/east
+ *   attack → attack/east      → idle result
+ *   blocking → blocking/east  → idle result
+ *   death → death/east        → walking-8-frames/east frame 0 (static)
+ */
+export function resolveAllyCombatSheet(
+  basePath: string,
+  state: CombatAnimState,
+): CombatSheetInfo {
+  const charId = getCharIdFromBasePath(basePath);
+  // entityKey for manifest: e.g. 'characters/LS-SWORD-M'
+  const entityKey = (() => {
+    const parts = basePath.replace(/\\/g, '/').split('/').filter(Boolean);
+    // basePath ends with charId segment; find 'characters' prefix
+    const idx = parts.lastIndexOf('characters');
+    if (idx >= 0 && idx + 1 < parts.length) return `characters/${parts[idx + 1]}`;
+    return `characters/${charId}`;
+  })();
+
+  const resolve = (anim: string, dir: string): CombatSheetInfo | null => {
+    const entry = getSheetEntry(entityKey, anim);
+    if (!entry) return null;
+    const row = entry.dirRows.indexOf(dir);
+    if (row < 0) return null;
+    const frameCount = entry.frameCounts[dir] ?? entry.cols;
+    return { sheetPath: assetUrl(entry.path), row, frameCount, cols: entry.cols, rows: entry.rows };
+  };
+
+  if (state === 'death') {
+    if (COMBAT_SPRITE_MANIFEST.charsWithDeathEast.has(charId)) {
+      const info = resolve('death', 'east');
+      if (info) return info;
+    }
+    // Fallback: walking sheet, east row, 1 frame (static)
+    const walkInfo = resolve('walking-8-frames', 'east');
+    if (walkInfo) return { ...walkInfo, frameCount: 1 };
+    // Last resort: a minimal 1×1 descriptor pointing at the walking sheet path
+    return { sheetPath: assetUrl(`${basePath}/animations/walking-8-frames.png`), row: 0, frameCount: 1, cols: 8, rows: 4 };
+  }
+
+  if (state === 'attack') {
+    if (COMBAT_SPRITE_MANIFEST.charsWithAttackEast.has(charId)) {
+      const info = resolve('attack', 'east');
+      if (info) return info;
+    }
+    return resolveAllyCombatSheet(basePath, 'idle');
+  }
+
+  if (state === 'blocking') {
+    if (COMBAT_SPRITE_MANIFEST.charsWithBlockingEast.has(charId)) {
+      const info = resolve('blocking', 'east');
+      if (info) return info;
+    }
+    return resolveAllyCombatSheet(basePath, 'idle');
+  }
+
+  if (state === 'casting') {
+    if (COMBAT_SPRITE_MANIFEST.charsWithCastingEast.has(charId)) {
+      const info = resolve('casting', 'east');
+      if (info) return info;
+    }
+    // No casting sheet → reuse idle (the cast simply doesn't render a distinct clip).
+    return resolveAllyCombatSheet(basePath, 'idle');
+  }
+
+  // idle
+  if (COMBAT_SPRITE_MANIFEST.charsWithBattleIdleEast.has(charId)) {
+    const info = resolve('battle-idle', 'east');
+    if (info) return info;
+  }
+  // Fallback: walking sheet east row as battle idle
+  const walkInfo = resolve('walking-8-frames', 'east');
+  if (walkInfo) return walkInfo;
+  return { sheetPath: assetUrl(`${basePath}/animations/walking-8-frames.png`), row: 0, frameCount: 8, cols: 8, rows: 4 };
+}
+
+/**
+ * Resolve ONE sheet + geometry for an enemy combat animation.
+ * Fallback chain (mirrors resolveEnemyCombatSprite):
+ *   idle  → idle/west  → walk/west  → rotations/west (static, not a sheet — stays as per-frame path)
+ *   attack → attack/west → idle result
+ *   death → death/west  → idle/west → walk/west → rotations/west (static)
+ *
+ * For the rotations/west last resort (no sheet exists) the caller receives
+ * frameCount=1 and a path to the PNG; it should load that as a 1×1 sheet.
+ */
+export function resolveEnemyCombatSheet(
+  spriteId: string,
+  state: CombatAnimState,
+): CombatSheetInfo {
+  const entityKey = `enemies/${spriteId}`;
+
+  const resolve = (anim: string, dir: string): CombatSheetInfo | null => {
+    const entry = getSheetEntry(entityKey, anim);
+    if (!entry) return null;
+    const row = entry.dirRows.indexOf(dir);
+    if (row < 0) return null;
+    const frameCount = entry.frameCounts[dir] ?? entry.cols;
+    return { sheetPath: assetUrl(entry.path), row, frameCount, cols: entry.cols, rows: entry.rows };
+  };
+
+  /** Static fallback: rotations/west.png loaded as a 1×1 sheet. */
+  const rotationsFallback = (): CombatSheetInfo => ({
+    sheetPath: assetUrl(`/sprites/enemies/${spriteId}/rotations/west.png`),
+    row: 0, frameCount: 1, cols: 1, rows: 1,
+  });
+
+  if (state === 'death') {
+    if (COMBAT_SPRITE_MANIFEST.enemiesWithDeathWest.has(spriteId)) {
+      const info = resolve('death', 'west');
+      if (info) return info;
+    }
+    if (COMBAT_SPRITE_MANIFEST.enemiesWithIdleWest.has(spriteId)) {
+      const info = resolve('idle', 'west');
+      if (info) return { ...info, frameCount: 1 };
+    }
+    if (COMBAT_SPRITE_MANIFEST.enemiesWithWalkWest.has(spriteId)) {
+      const info = resolve('walk', 'west');
+      if (info) return { ...info, frameCount: 1 };
+    }
+    return rotationsFallback();
+  }
+
+  if (state === 'attack') {
+    if (COMBAT_SPRITE_MANIFEST.enemiesWithAttackWest.has(spriteId)) {
+      const info = resolve('attack', 'west');
+      if (info) return info;
+    }
+    return resolveEnemyCombatSheet(spriteId, 'idle');
+  }
+
+  // idle (and blocking which falls through to idle for enemies)
+  if (COMBAT_SPRITE_MANIFEST.enemiesWithIdleWest.has(spriteId)) {
+    const info = resolve('idle', 'west');
+    if (info) return info;
+  }
+  if (COMBAT_SPRITE_MANIFEST.enemiesWithWalkWest.has(spriteId)) {
+    const info = resolve('walk', 'west');
+    if (info) return info;
+  }
+  return rotationsFallback();
 }

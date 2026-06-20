@@ -18,6 +18,7 @@ import { TextureLoader } from 'three';
 import { useControls } from 'leva';
 import { COMBAT_CAM_TILT_RAD } from './combat-camera-config';
 import { CombatHorizonGradient } from './combat-horizon-gradient';
+import { assetUrl } from '@/lib/asset-url';
 
 export interface CombatBgMidProps {
   /** Texture path. Default keeps the Mu Cang Chai silhouette for back-compat. */
@@ -47,7 +48,7 @@ export function CombatBgMid({ texture = DEFAULT_MID_BG_TEXTURE }: CombatBgMidPro
     alphaTest: { value: 0.05, min: 0, max: 1, step: 0.01 },
   }, { collapsed: true });
 
-  const tex = useLoader(TextureLoader, texture);
+  const tex = useLoader(TextureLoader, assetUrl(texture));
 
   return (
     <>

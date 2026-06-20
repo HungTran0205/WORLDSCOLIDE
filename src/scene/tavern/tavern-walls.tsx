@@ -26,6 +26,7 @@ import {
   DoubleSide,
   type Texture,
 } from 'three';
+import { assetUrl } from '@/lib/asset-url';
 
 const ROOM_SIZE = 7;
 const WALL_HEIGHT = 5;
@@ -83,7 +84,7 @@ const BEAM_LENGTH = 2.5;
 const BEAM_ROT_X = -Math.atan2(0.4, 0.92); // ≈ -24° (negative tilts +Z direction)
 
 function useStoneTexture(): Texture {
-  const base = useLoader(TextureLoader, STONE_TEX);
+  const base = useLoader(TextureLoader, assetUrl(STONE_TEX));
   return useMemo(() => {
     const t = base.clone();
     t.needsUpdate = true;
@@ -99,7 +100,7 @@ function useStoneTexture(): Texture {
 /** Generic decal texture loader — SRGB color, no repeat (clamp), linear filter
  *  for painterly assets so they don't look pixelated when scaled up. */
 function useDecalTexture(path: string): Texture {
-  const base = useLoader(TextureLoader, path);
+  const base = useLoader(TextureLoader, assetUrl(path));
   return useMemo(() => {
     const t = base.clone();
     t.needsUpdate = true;
