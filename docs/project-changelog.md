@@ -7,6 +7,97 @@ All notable changes to 2000s A.C — After the Collapse are documented in this f
 
 ---
 
+## [Unreleased] — 2026-06-17 (feat: Templar skill-VFX — Cleave multi-target + Riposte/Rally cast VFX + buff status icons)
+
+### feat(combat): Cleave multi-target (gameplay change) + generalized skill-VFX orchestrator
+
+**Cleave gameplay change:** New `skillType:'cleave'` with `executeSkillCleave()` in combat-engine.ts. Cleave now strikes the primary target + up to 2 additional enemies within 1.8u radius (bán nguyệt frontal arc), with splash damage at 0.6×. Base multiplier adjusted 1.50× → 1.20× (provisional, pending playtest). Full-impact VFX: steel white-silver crescent (#d8e4f2 primary, #ffffff accent) + shockwave rings + 80ms hitstop + debris particles per victim + skill-specific SFX.
+
+**Orchestrator generalization:** Previously hard-wired to `skill-use` (damage) events only. New `skill-event-resolver.ts` (pure event router) + `cue-sheet-types.ts` schema extensions:
+- New cue schema fields: `anchor` ('target'|'caster'|'caster-front'|'cluster'), `color`, sheet-level `trigger` + `castScoped`
+- Routing: `skill-use` → impact VFX (damage) | `skill-buff-applied` → aura VFX (Rally) | `effect-applied:riposte` → parry-glint (stance entry) + parry-flash (counter-hit)
+- Pool `acquire()` now re-applies kind-default color to prevent bleed-across on recolored shared meshes
+
+**Riposte & Rally cast VFX (stance/warcry tier):**
+- **Riposte**: Blue-silver guard ring + parry glint on stance entry (#7ab8ff primary, #eaf4ff accent). Counter-attacks carry `isRiposte: true` flag, rendered as blue-white spark distinct from standard hits. No hitstop (stance, not a damage hit).
+- **Rally**: Hot gold-orange twin warcry rings + rising rage updraft (#ffb24d primary, #ffe6b0 accent; deliberately hotter than Ancestral pure gold #D4A017). No hitstop. New presets: ls-parry-glint, ls-warcry-updraft.
+- New audio keys: SFX_CLEAVE, SFX_RIPOSTE, SFX_RALLY (POC aliases → sfx-skill).
+
+**Combat HUD buff status icons:** Overhead DOM indicators (pure CSS, no mesh layer) driven by `riposteActive` + `statusEffects`:
+- 🛡️ Riposte stance active (3–4s duration)
+- ⚔️ Damage buff active (Rally, +20% damage)
+Icons refresh per combat tick, fade when status expires.
+
+**Key Files**:
+- `src/scene/effects/skill-vfx/skill-event-resolver.ts` — Event router + cue partition logic
+- `src/scene/effects/skill-vfx/cue-sheet-types.ts` — Extended schema (anchor, color, trigger, castScoped)
+- `src/game/systems/combat-engine.ts` — New `executeSkillCleave()` + multi-target loop
+- `src/scene/effects/presets/generic-presets.ts` — New ls-parry-glint, ls-warcry-updraft presets
+- `src/ui/panels/combat-panel-hud.tsx` — Buff status icon rendering
+- `src/scene/effects/mesh-fx/mesh-fx-pool-root.tsx` — Pool acquire color-reset fix
+- `src/audio/audio-keys.ts` — SFX_CLEAVE, SFX_RIPOSTE, SFX_RALLY keys
+- `docs/gdd/16-linh-son-class-skills.md`, `docs/gdd/06-combat.md`, `docs/gdd/12-art-direction.md`, `docs/gdd/14-ux-ui-i18n.md` — GDD docs updated
+
+**Tests:** 16 unit tests green (tsc -b --force, vitest run). Orchestrator routing, cleave multi-target loop, and hitstop behavior verified.
+
+---
+
+## [Unreleased] — 2026-06-14 (feat: Pierce skill-VFX Phase 08 — quality degradation + tests)
+
+### feat(combat-vfx): skill-VFX quality degradation tier with graceful low-graphics fallback
+
+**Quality degradation foundation.** New `getMeshFxQuality()` / `isLowMeshFxQuality()` helpers in `src/scene/effects/mesh-fx/mesh-fx-quality.ts` establish a single source of truth for skill-VFX quality. Wraps the existing binary graphics-quality setting (no granular VFX slider). On 'low' graphics quality, Pierce sequence degrades gracefully:
+
+- Weapon trail skipped (combat-skill-vfx-layer.tsx conditional guard)
+- Scatter-particle counts halved (explicit-count cues only; implicit emitters scale via preset-defined counts)
+- Lance dissolve-noise dropped (compile-time shader variant — thrust-lance-material.ts reads quality at pool warm)
+- WebGPU screen-space distortion pass skipped (pre-existing guard in distortion layer)
+- Camera shake skipped (pre-existing guard in combat-camera-shake.tsx)
+- **Legible floor guaranteed**: Lance mesh + shockwave rings + SFX always remain (non-negotiable visual clarity)
+
+**Determinism preserved**: Combat simulation (src/game/systems) imports zero presentation/VFX modules — orchestrator is presentation-only; quality setting does not affect combat outcome.
+
+**Tests added**: Cue timing and hitstop behavior verified in 2 unit test suites:
+- `src/scene/effects/skill-vfx/skill-cue-dispatcher.test.ts` (3 tests green) — Cue order, timing, payload correctness
+- `src/scene/combat/hitstop/hitstop-clock.test.ts` — Clamp [80–150ms], stall, expiry, reset behavior
+
+**Key Files**:
+- `src/scene/effects/mesh-fx/mesh-fx-quality.ts` — Single-source quality helpers
+- `src/scene/combat/combat-skill-vfx-layer.tsx` — Weapon trail quality guard
+- `src/scene/effects/materials/thrust-lance-material.ts` — Dissolve-noise variant
+- `src/scene/effects/skill-vfx/skill-cue-dispatcher.ts/test.ts` — Cue scheduler + tests
+- `src/scene/combat/hitstop/hitstop-clock.ts/test.ts` — Hitstop timing + tests
+- `docs/system-architecture.md` — Updated with tier-2 quality-degradation documentation
+
+---
+
+## [Unreleased] — 2026-06-13 (feat: UI Design Language Foundation — bronze × parchment chrome)
+
+### feat(ui): unified PanelFrame system + bronze × parchment tokens + HUD restyled
+
+Complete UI design language overhaul per GDD 12a. All 11 game panels migrated onto the new `PanelFrame` component (one standard chrome: header band, parchment content, close button, open 250ms/close 150ms animations, SFX hooks, hideClose variant). Panel state centralized in `panel-slice.ts` with two independent axes (mainPanel / facilityPanel) via Zustand, mutual exclusion per axis, Esc closes all.
+
+**Token layer** (`src/ui/styles/ui-tokens-v2.css`): `--bp-*` bronze/parchment/cyan ramps (70/20/10 accent law per GDD 12), z-index tiers, motion durations (panel-open 250ms, panel-close 150ms, fast 120ms), easing (`--bp-ease` cubic-bezier). CSS-gradient fallback; border-image PNG assets pending owner approval.
+
+**HUD restyled**: bronze token chassis with 11 pixel icons (24px, PixelLab + manual cleanup, 1px bronze-shadow outline). Icon toggle bar replaces text labels; tooltips preserve aria-labels for accessibility. Facility compass, room nav, resource bar, and save badge all migrated to new palette.
+
+**Quest board exception**: diegetic identity preserved — keeps hideClose variant, wax-seal parchment skin, unroll animation, PAPER_UNROLL/SEAL_BREAK SFX, click-outside close.
+
+**Alchemy rarity borders**: RARITY_BORDER hex values swapped to token names (e.g., `--bp-status-ok` for COMMON).
+
+**21 unit tests** added to `panel-slice` (state mutations, Esc handling, mutual exclusion); zero vitest regressions; ui-parity green (708 keys EN/VI).
+
+**Key Files**:
+- `src/ui/components/panel-frame.tsx` — Reusable panel chrome component
+- `src/game/state/panel-slice.ts` — Central panel state management
+- `src/ui/hooks/use-delayed-unmount.ts` — Exit animation host integration
+- `src/ui/styles/ui-tokens-v2.css` — Design tokens (bronze/parchment/cyan/status/z-tiers/motion)
+- `public/ui/frames/` — 8 Gemini chrome assets + slice-manifest.json
+- `public/ui/icons/ui/` — 9 PixelLab HUD icons; `scripts/process_ui_frame_kit.py` pipeline
+- `docs/gdd/12a-ui-design-language.md` — Complete UI chrome spec (cross-linked in GDD 12, 14, README)
+
+---
+
 ## [Unreleased] — 2026-06-09 (feat: hired mercs wander the tavern floor)
 
 ### feat(tavern): hired mercs appear and wander in the tavern room

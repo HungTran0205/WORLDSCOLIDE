@@ -42,12 +42,13 @@ Each pool = **3 combat skills (1 signature damage, 1 special, 1 role utility) + 
 | EN key | VN label | Effect (tuned) | Mult | CD | Tier |
 |--------|----------|----------------|------|----|----|
 | **Pierce** | Đâm | Thrust through one lane: hits front-row + back-row enemy in same lane (max 2 targets) | 1.30× each | 9s | 1 |
-| **Cleave** | Chém | Single target, **+50% damage** and **+10% crit rate** for this hit | 1.50× | 12s | 0 |
+| **Cleave** | Chém | Frontal-arc multi-target: primary target + up to 2 extra enemies within 1.8u radius (splash at 0.6×) | 1.20× primary | 12s | 1 |
 | **Riposte** | Phản | Enter parry stance 3s: when hit, **70% chance to counter** (1.0× auto-dmg, max 1 counter per incoming hit) | — | 16s | 2 |
 | **Rally** *(buff)* | Trợ | **Self-buff: +20% damage for 4s** (reuses `boosted` effect, longer duration) | — | 12s | 0 |
 
 **Tuning notes:**
 - "Line attack" → engine formation is **lane-based** (Z-axis lanes, `combat-arena-types.ts`), so a line = front + back slot of one lane = up to 2 targets.
+- **Cleave multi-target** (`skillType:'cleave'`, `executeSkillCleave`): Sweeps a frontal arc, striking the primary target + up to 2 secondary enemies within 1.8u radius of the primary. Secondaries take 0.6× splash damage. Base damage reduced 1.50× → 1.20× to balance multi-hit (provisional, pending playtest).
 - Riposte capped at **1 counter per incoming hit** to prevent infinite loops when multiple enemies strike in one tick.
 - Templar should have slightly higher block than Forester (block scales END+STR — Templar has both) to reinforce parry-trade identity.
 

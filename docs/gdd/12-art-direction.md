@@ -17,6 +17,12 @@
 **Final production law:**
 > Everything in 2000s A.C should look like a handcrafted fantasy miniature staged for play, while remaining clear enough to function as a game first.
 
+**UI chrome:** the UI design language (panels, HUD, buttons, motion) is specified in
+[GDD 12a — UI Design Language](./12a-ui-design-language.md). Its bronze × parchment
+system is this document's "brass / antique gold premium UI trim" **matured into a
+motif system** — patinated Đông Sơn bronze chrome framing parchment content fields.
+12a extends §4's accent rules; it does not replace them.
+
 ---
 
 ## 2. Visual Pillars
@@ -80,7 +86,9 @@ The god-ray `sourceId` must map to a registered light mesh; unregistered sources
 - Interactable magic: soft gold, pale yellow-green, faint cyan
 - Enemy danger: muted red, controlled acidic green
 - Player-friendly UI: soft green-blue
-- Premium UI trim: brass / antique gold
+- Premium UI trim: brass / antique gold — realized for UI chrome as the Đông Sơn
+  bronze ramp in [GDD 12a](./12a-ui-design-language.md) §3 (brass→bronze lineage;
+  `#d4a843` survives as the ramp anchor)
 
 **Balance:** 70% grounded base · 20% supporting variation · 10% accents.
 
@@ -118,6 +126,18 @@ Reserve strong saturation for key enemies, magic effects, important collectibles
 **Good VFX types:** dust puffs, spark motes in sunbeams, small weapon flash, magical particle drift, compact hit sparks, brief impact lines.
 
 **Post-processing stack:** subtle color grading, very light bloom, minimal vignette, atmospheric haze. Goal: unify world and sprites, never melt pixel identity.
+
+### Per-Skill VFX Palette
+
+Each Templar skill carries a dedicated cue-sheet VFX with signature color identity (mesh, rings, particles, light). Applied via `skill-event-resolver.ts` routing to the orchestrator.
+
+| Skill | Trigger | Color identity | Mesh/Effect | Intensity | Notes |
+|-------|---------|---|---|---|---|
+| **Cleave** | skill-use (damage) | Steel white-silver: `#d8e4f2` primary, `#ffffff` accent | Crescent (vertical slash, 2D billboard) + shockwave rings | Full (shake, hitstop 80ms, impact particles) | Reuses slash-arc material at axisAngle π/2 |
+| **Riposte** | effect-applied:riposte (stance entry) | Blue-silver: `#7ab8ff` primary, `#eaf4ff` accent | Guard ring + parry glint mesh | Light (no hitstop; aura/stance tier) | Emits when stance activated; counter-attack renders parry-flash |
+| **Rally** | skill-buff-applied (self-buff) | Hot gold-orange: `#ffb24d` primary, `#ffe6b0` accent | Twin warcry rings + rising updraft column | Light (no hitstop; stance tier) | Distinct from Ancestral pure gold `#D4A017`; uses ls-warcry-updraft preset |
+
+**Color constraint:** Distinct from all other civ/buff auras to maintain visual clarity during multi-character battles. Ancestral Blessings (pure gold) reserved for DeQuoc; Thiên Lữ clone auras (cyan) reserved for future clan.
 
 ---
 

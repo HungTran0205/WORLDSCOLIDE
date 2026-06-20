@@ -24,6 +24,7 @@ it describes — when the code changes, the section must be updated (see *Keepin
 | 10 | [Items & Equipment](./10-items-equipment.md) | Slots/affixes, inventory, crafting, alchemy, loot |
 | 11 | [Onboarding & Retention](./11-onboarding-retention.md) | New-game flow, tutorial state machine, first hour |
 | 12 | [Art Direction](./12-art-direction.md) | HD-2D language, palette → `reference/asset-list-sprites.md` |
+| 12a | [UI Design Language](./12a-ui-design-language.md) | Bronze × parchment UI chrome bible — tokens, motifs, panel anatomy, motion, z-tiers |
 | 13 | [Audio Direction](./13-audio-direction.md) | BGM/SFX intent → `reference/asset-list-audio.md` |
 | 14 | [UX / UI & i18n](./14-ux-ui-i18n.md) | Panel/HUD conventions, i18next EN/VI |
 | 15 | [Items Master Database](./15-items-inventory-system.md) | Comprehensive items/materials/consumables/equipment/recipes lookup — use this for edits |
